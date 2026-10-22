@@ -104,9 +104,17 @@ HEADER_TOKENS: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("length", ("length", "长")),
     ("width", ("width", "宽")),
     ("height", ("height", "高")),
+    # Reference keys and counts that only a multi-level packing list declares.
+    # They are columns, never a goods identity: `contract` / `REF NO` are the
+    # reference codes a pallet or carton line carries, and `PC` / `Total` are
+    # level counts that must never be added to the quantity being sold.
+    ("contract", ("contract", "合同号", "合同")),
+    ("ref", ("ref no", "ref.", "reference no", "ref")),
+    ("pieces", ("pc",)),
+    ("total", ("total",)),
 )
 SHORT_ASCII_TOKENS = {"sl", "qty", "pcs", "nw", "n.w", "gw", "g.w", "cbm", "note",
-                      "dai", "l", "w", "h"}
+                      "dai", "l", "w", "h", "pc", "ref", "total"}
 
 DISCLOSURES = (
     ("payment", "Thanh toán 80% trước khi giao hàng."),
@@ -430,55 +438,123 @@ def _read_rows(sheet, val_sheet, table: Mapping[str, Any]) -> tuple[list[dict], 
             text = _text(value(row, key))
             if text:
                 extra[label] = text
+        # The reference code the line carries keeps its own source column name, so
+        # a carton line can be traced back to the code it was linked on.
+        for key, label in (("ref", "ref_no"), ("contract", "contract")):
+            text = _text(value(row, key))
+            if text:
+                extra[label] = text
         for key, label in (("cartons", "cartons"), ("net_weight", "net_weight_kg"),
                            ("gross_weight", "gross_weight_kg"), ("cbm", "volume_cbm")):
             number = {"cartons": cartons, "net_weight": net, "gross_weight": gross, "cbm": volume}[key]
             if number is not None:
                 extra[label] = number
         if extra:
-            evidence.append({"ref": f"{sheet.title}!{row}", **extra})
-        keys.append({"row": row, "model": model,
+            evidence.append({"ref": f"{sheet.title}!{row}", "source_sheet": sheet.title,
+                             "source_row": row, **extra})
+        keys.append({"row": row, "model": model, "description": description,
+                     "ref": _text(value(row, "ref")), "contract": _text(value(row, "contract")),
                      "pallet": _text(value(row, "pallet"))})
     return goods, evidence, unknowns, keys
+
+
+def _is_total_row(val_sheet, row: int, columns: Mapping[str, int]) -> bool:
+    """A source TOTAL/合计 line is a sum of the level, not a level line."""
+    for column in columns.values():
+        text = folded(val_sheet.cell(row, column).value)
+        if text and text.startswith(TOTAL_ROW_WORDS):
+            return True
+    return False
+
+
+def _goods_code(key: Mapping[str, Any]) -> str:
+    """Reference code of a GOODS line.
+
+    The model column wins, then the source's own reference columns, then the
+    product/description cell — in the real multi-level workbook that cell carries
+    the code that the pallet and carton sheets repeat.
+    """
+    return (key.get("model") or key.get("ref") or key.get("contract")
+            or key.get("description") or "")
+
+
+def _level_code(key: Mapping[str, Any]) -> str:
+    """Reference code of a PALLET/CARTON line: explicit code columns only.
+
+    A free-text description is never a key here, so a level line is never tied to
+    a goods line just because the wording happens to match.
+    """
+    return key.get("contract") or key.get("ref") or key.get("model") or ""
 
 
 def _read_level_rows(sheet, val_sheet, table: Mapping[str, Any]) -> tuple[list[dict], list[dict]]:
     """Rows of a LEVEL table (pallet detail): recorded, never summed as goods.
 
-    A pallet line has a pallet identifier and packing numbers, not a product code
-    and not a quantity to sell. Repeated group headers and empty rows are skipped
-    so the recorded row count is the number of real level lines.
+    A real pallet sheet names the pallet ONCE for a group of allocation lines
+    (``A2`` filled, ``A3``.. blank). The pallet is therefore carried forward as
+    the group's context, and it is dropped when the source repeats a group header
+    so a later group can never inherit the previous pallet.
+
+    Each line also keeps its own reference code (``contract`` on the pallet sheet,
+    ``REF NO`` on the carton sheet) and its level counts (``PC``, ``Total``,
+    cartons). None of those numbers is ever added to the quantity being sold.
     """
     columns = table["columns"]
+    axes = table.get("dimension_axis_columns") or {}
+    used_rows = int(table.get("used_rows") or 0)
     start = int(table["header_row"]) + 1
-    stop = start + MAX_GOODS_ROWS
+    stop = min(start + MAX_GOODS_ROWS, used_rows) if used_rows else start + MAX_GOODS_ROWS
     evidence: list[dict[str, Any]] = []
     keys: list[dict[str, Any]] = []
-
-    def value(row: int, key: str) -> Any:
-        column = columns.get(key)
-        return val_sheet.cell(row, column).value if column else None
+    pallet = ""
 
     for row in range(start, stop + 1):
         if _repeated_header(val_sheet, row, columns):
+            pallet = ""  # a new group starts here: never inherit across it
             continue
-        numbers = {"cartons": _number(value(row, "cartons")),
-                   "net_weight_kg": _number(value(row, "net_weight")),
-                   "gross_weight_kg": _number(value(row, "gross_weight")),
-                   "volume_cbm": _number(value(row, "cbm"))}
+        if all(val_sheet.cell(row, column).value in (None, "")
+               for column in {**columns, **axes}.values()):
+            continue
+        if _is_total_row(val_sheet, row, columns):
+            continue
+        own_pallet = _text(val_sheet.cell(row, columns["pallet"]).value) if "pallet" in columns else ""
+        if own_pallet:
+            pallet = own_pallet
+        contract = _text(val_sheet.cell(row, columns["contract"]).value) if "contract" in columns else ""
+        ref_no = _text(val_sheet.cell(row, columns["ref"]).value) if "ref" in columns else ""
+        model = _text(val_sheet.cell(row, columns["model"]).value) if "model" in columns else ""
+        pieces = _number(val_sheet.cell(row, columns["pieces"]).value) if "pieces" in columns else None
+        total = _number(val_sheet.cell(row, columns["total"]).value) if "total" in columns else None
+        numbers = {"cartons": _number(val_sheet.cell(row, columns["cartons"]).value) if "cartons" in columns else None,
+                   "net_weight_kg": _number(val_sheet.cell(row, columns["net_weight"]).value) if "net_weight" in columns else None,
+                   "gross_weight_kg": _number(val_sheet.cell(row, columns["gross_weight"]).value) if "gross_weight" in columns else None,
+                   "volume_cbm": _number(val_sheet.cell(row, columns["cbm"]).value) if "cbm" in columns else None}
         numbers = {key: number for key, number in numbers.items() if number is not None}
-        pallet = _text(value(row, "pallet"))
-        model = _text(value(row, "model"))
-        if not numbers and not pallet and not model:
+        carton_size = [_number(val_sheet.cell(row, axes[axis]).value) if axes.get(axis) else None
+                       for axis in ("w", "d", "h")] if axes else []
+        if any(part is not None for part in carton_size):
+            numbers["carton_size_mm"] = carton_size
+        code = contract or ref_no or model
+        if not (pallet or code or numbers or pieces is not None or total is not None):
             continue
-        entry: dict[str, Any] = {"ref": f"{sheet.title}!{row}", **numbers}
+        entry: dict[str, Any] = {"ref": f"{sheet.title}!{row}", "source_sheet": sheet.title,
+                                 "source_row": row, **numbers}
         if pallet:
             entry["pallet"] = pallet
-        size_text = _text(value(row, "package_dimensions"))
+        if contract:
+            entry["contract"] = contract
+        if ref_no:
+            entry["ref_no"] = ref_no
+        if pieces is not None:
+            entry["pieces"] = pieces
+        if total is not None:
+            entry["total"] = total
+        size_text = _text(val_sheet.cell(row, columns["package_dimensions"]).value) if "package_dimensions" in columns else ""
         if size_text:
             entry["package_size"] = size_text
         evidence.append(entry)
-        keys.append({"row": row, "model": model, "pallet": pallet})
+        keys.append({"row": row, "model": model, "ref": ref_no, "contract": contract,
+                     "pallet": pallet})
     return evidence, keys
 
 
@@ -499,6 +575,7 @@ def _level_only_tables(wb, values, bounds, tables) -> list[dict[str, Any]]:
         if not evidence:
             continue
         found.append({**table, "sheet": sheet.title, "hidden": False, "index": len(found) + 1,
+                      "used_rows": rows,
                       "evidence": evidence, "keys": keys, "goods": [], "unknowns": [],
                       "row_count": len(evidence)})
     return found
@@ -716,6 +793,7 @@ def parse_luc_giac_workbook(data: bytes, file_name: str, *, today: date | None =
             continue
         rows_of = [g["source_row"] for g in table["goods"]] if table else []
         models_of = sorted({g["model"] for g in table["goods"] if g["model"]}) if table else []
+        codes_of = sorted({code for code in (_level_code(key) for key in table["keys"]) if code}) if table else []
         if table is not None and table.get("row_count") is not None and not rows_of:
             rows_of = [key["row"] for key in table["keys"]]
             models_of = sorted({key["model"] for key in table["keys"] if key["model"]})
@@ -727,6 +805,7 @@ def parse_luc_giac_workbook(data: bytes, file_name: str, *, today: date | None =
             else (len(table["goods"]) if table else 0),
             "source_rows": rows_of[:50],
             "models": models_of[:50],
+            "codes": codes_of[:50],
         })
     # Every sheet that is not the goods source, with what it actually was: a
     # duplicate money table and a hidden instruction sheet are both named here,
@@ -735,23 +814,48 @@ def parse_luc_giac_workbook(data: bytes, file_name: str, *, today: date | None =
                         "hidden": level["hidden"], "row_count": level["row_count"]}
                        for level in levels]
 
+    # A level links to a goods line ONLY on an exact, unique reference code.
+    goods_codes: dict[str, list[int]] = {}
+    for key in primary["keys"]:
+        code = _goods_code(key)
+        if code:
+            goods_codes.setdefault(code, []).append(key["row"])
+    ambiguous = {code for code, rows in goods_codes.items() if len(rows) > 1}
+    level_codes = {_level_code(key) for table in level_tables for key in table["keys"]}
+    level_codes &= {code for code in level_codes if code}
     links: dict[str, dict[str, list[Any]]] = {}
-    linked_models = set()
+    unmatched: dict[str, list[int]] = {}
     for table in level_tables:
         for key in table["keys"]:
-            model = key["model"]
-            if not model:
+            code = _level_code(key)
+            if not code:
                 continue
-            linked_models.add(model)
-            links.setdefault(model, {}).setdefault(table["sheet"], []).append(key["pallet"] or key["row"])
+            if code not in goods_codes:
+                unmatched.setdefault(code, []).append(key["row"])
+                continue
+            if code in ambiguous:
+                continue  # the same code names two goods lines: no safe link
+            target = key["pallet"] or key["row"]
+            per_sheet = links.setdefault(code, {}).setdefault(table["sheet"], [])
+            if target not in per_sheet:
+                per_sheet.append(target)
+    linked_codes = set(links)
+    if level_tables and ambiguous & level_codes:
+        warnings.append({"id": "level-link-ambiguous",
+                         "text": "Cùng một mã tham chiếu xuất hiện ở nhiều dòng hàng: KHÔNG tự nối cấp pallet/kiện, "
+                                 "giữ NEEDS_REVIEW cho tới khi TT xác nhận."})
+    if unmatched:
+        warnings.append({"id": "level-link-unmatched",
+                         "text": "Có mã tham chiếu ở cấp pallet/kiện không khớp dòng hàng nào: giữ nguyên làm bằng chứng "
+                                 "rà soát, không tự thêm dòng hàng mới."})
     if level_tables and not links:
         warnings.append({"id": "level-link-needs-review",
-                         "text": "Có cấp pallet/kiện nhưng KHÔNG có khóa đối chiếu chắc chắn với danh sách hàng "
-                                 "(pallet không có mã hàng, kiện chỉ có REF NO): giữ NEEDS_REVIEW, không tự đoán liên kết."})
+                         "text": "Có cấp pallet/kiện nhưng KHÔNG có khóa đối chiếu chắc chắn với danh sách hàng: "
+                                 "giữ NEEDS_REVIEW, không tự đoán liên kết."})
     if level_tables:
-        for item in goods:
-            if not item["model"] or item["model"] not in linked_models:
-                note_unknown("level_link_missing", sheet_name, item["source_row"],
+        for key in primary["keys"]:
+            if _goods_code(key) not in linked_codes:
+                note_unknown("level_link_missing", sheet_name, key["row"],
                              "Không nối chắc chắn được mã hàng giữa tổng hàng và cấp pallet/kiện: CHỜ TT KIỂM TRA.")
 
     selected = ["80%" in all_text, "30 ngay" in all_text, bool(re.search(r"14\s*[–−-]\s*20", all_text)),

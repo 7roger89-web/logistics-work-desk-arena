@@ -38,13 +38,21 @@ from core.quote_excel_import import parse_luc_giac_workbook
 from core.quote_workbook_view import overview
 from core.quotations import calculate_quote, customer_quote_snapshot
 from scripts.make_hexa_layout_fixtures import (
+    CARTON_GROUP_HEADER_ROWS_REAL,
+    CARTON_GROUP_ONE_ROWS_REAL,
+    CARTON_GROUP_THREE_ROWS_REAL,
+    CARTON_GROUP_TWO_ROWS_REAL,
     CARTON_HEADER_ROW_REAL,
-    CARTON_REPEAT_HEADER_ROW_REAL,
     CARTON_ROWS_REAL,
+    CARTON_TOTAL_ROW_REAL,
+    GOODS_CODES_REAL,
     PACKING_HEADER_ROW_REAL,
     PACKING_ROWS_REAL,
+    PALLET_ALLOCATION_ROWS_REAL,
+    PALLET_GROUP_ONE_ROWS_REAL,
+    PALLET_GROUP_TWO_ROWS_REAL,
+    PALLET_LINES_REAL,
     PALLET_REPEAT_HEADER_ROW_REAL,
-    PALLET_ROWS_REAL,
     PI_HEADER_ROW_REAL,
     PI_ROWS_REAL,
     SENTINEL,
@@ -65,11 +73,6 @@ from scripts.make_hexa_layout_fixtures import (
 
 TODAY = date(2026, 10, 16)
 
-CARTON_GROUP_ONE_ROWS = tuple(range(CARTON_HEADER_ROW_REAL + 2, 8))       # 4..7
-CARTON_GROUP_TWO_ROWS = tuple(range(CARTON_REPEAT_HEADER_ROW_REAL + 2, 17))  # 11..16
-PALLET_GROUP_ONE_ROWS = tuple(range(2, PALLET_REPEAT_HEADER_ROW_REAL))     # 2..8
-PALLET_GROUP_TWO_ROWS = tuple(
-    range(PALLET_REPEAT_HEADER_ROW_REAL + 1, PALLET_REPEAT_HEADER_ROW_REAL + 1 + 5))  # 10..14
 
 
 @pytest.fixture(scope="module")
@@ -124,7 +127,8 @@ def test_fixtures_carry_the_real_header_wording(file_a, file_b, file_c):
     assert wb[SHEET_CARTONS][f"D{CARTON_HEADER_ROW_REAL}"].value == "Size(mm x mm x mm)"
     assert wb[SHEET_CARTONS][f"D{CARTON_HEADER_ROW_REAL + 1}"].value == "W"
     assert wb[SHEET_CARTONS][f"F{CARTON_HEADER_ROW_REAL + 1}"].value == "H"
-    assert wb[SHEET_CARTONS][f"A{CARTON_REPEAT_HEADER_ROW_REAL}"].value == "REF NO"
+    assert wb[SHEET_CARTONS][f"A{CARTON_GROUP_HEADER_ROWS_REAL[1]}"].value == "REF NO"
+    assert wb[SHEET_CARTONS][f"A{CARTON_GROUP_HEADER_ROWS_REAL[2]}"].value == "REF NO"
     assert wb[SHEET_INSTRUCTION].sheet_state == "hidden"
 
 
@@ -149,9 +153,9 @@ def test_real_file_c_pallet_level_is_counted_from_real_rows_only(file_c):
     proposal = parse(file_c, "multilevel-REAL-LAYOUT-SYNTHETIC.xlsx")
     pallet = level_by_sheet(proposal)[SHEET_PALLETS]
 
-    assert pallet["row_count"] == len(PALLET_ROWS_REAL)
+    assert pallet["row_count"] == len(PALLET_LINES_REAL) == len(PALLET_ALLOCATION_ROWS_REAL)
     # The header repeated at row 9 is structure, not a pallet line.
-    assert pallet["source_rows"] == list(PALLET_GROUP_ONE_ROWS + PALLET_GROUP_TWO_ROWS)
+    assert pallet["source_rows"] == list(PALLET_ALLOCATION_ROWS_REAL)
     assert PALLET_REPEAT_HEADER_ROW_REAL not in pallet["source_rows"]
 
     refs = {row["ref"] for row in proposal["review"]["rows"]}
@@ -167,10 +171,12 @@ def test_real_file_c_carton_level_skips_the_axis_row_and_repeated_headers(file_c
     # repair it was read as an extra goods list called UNCLASSIFIED_TABLE.
     assert carton["role"] == "CARTON_DETAIL"
     assert carton["row_count"] == len(CARTON_ROWS_REAL)
-    assert carton["source_rows"] == list(CARTON_GROUP_ONE_ROWS + CARTON_GROUP_TWO_ROWS)
-    for not_a_row in (CARTON_HEADER_ROW_REAL, CARTON_HEADER_ROW_REAL + 1,
-                      CARTON_REPEAT_HEADER_ROW_REAL, CARTON_REPEAT_HEADER_ROW_REAL + 1):
-        assert not_a_row not in carton["source_rows"]
+    assert carton["source_rows"] == list(
+        CARTON_GROUP_ONE_ROWS_REAL + CARTON_GROUP_TWO_ROWS_REAL + CARTON_GROUP_THREE_ROWS_REAL)
+    skipped = {CARTON_TOTAL_ROW_REAL}
+    for header_row in CARTON_GROUP_HEADER_ROWS_REAL:
+        skipped.update({header_row, header_row + 1})  # repeated header + W/D/H axis row
+    assert set(carton["source_rows"]) & skipped == set()
 
 
 def test_real_file_c_repeated_headers_never_become_goods_rows(file_c):
@@ -206,16 +212,98 @@ def test_real_file_c_no_double_counting_of_qty_cbm_or_weight(file_c):
     assert str(round(goods_cbm_total, 3)) not in serialized
 
 
-def test_real_file_c_levels_stay_needs_review_without_a_link_key(file_c):
+def test_real_file_c_ten_pallet_allocation_lines_are_all_kept(file_c):
+    """The real sheet names the pallet once per group; every line must survive."""
     proposal = parse(file_c, "multilevel-REAL-LAYOUT-SYNTHETIC.xlsx")
+    pallet_rows = [row for row in proposal["review"]["rows"]
+                   if row["ref"].startswith(f"{SHEET_PALLETS}!")]
 
-    # The pallet sheet carries no product code and the carton sheet only a REF NO;
-    # nothing proves they equal a goods line, so no link may be invented.
-    assert proposal["review"]["links"] == {}
-    assert "level-link-needs-review" in warning_ids(proposal)
+    assert len(pallet_rows) == 10
+    assert [row["source_row"] for row in pallet_rows] == list(PALLET_ALLOCATION_ROWS_REAL)
+    assert [row["contract"] for row in pallet_rows] == [line[0] for line in PALLET_LINES_REAL]
+
+    # The pallet context is carried forward inside a group, and never across the
+    # repeated group header at row 9.
+    first = [row for row in pallet_rows if row["source_row"] in PALLET_GROUP_ONE_ROWS_REAL]
+    second = [row for row in pallet_rows if row["source_row"] in PALLET_GROUP_TWO_ROWS_REAL]
+    assert {row["pallet"] for row in first} == {"PLT-01"} and len(first) == 7
+    assert {row["pallet"] for row in second} == {"PLT-02"} and len(second) == 3
+
+    # PC / Total are the pallet level's own counts: kept apart, never added to qty.
+    assert [row["pieces"] for row in pallet_rows] == [line[4] for line in PALLET_LINES_REAL]
+    assert [row["total"] for row in pallet_rows] == [line[5] for line in PALLET_LINES_REAL]
+
+
+def test_real_file_c_ten_contract_codes_link_goods_to_pallet(file_c):
+    proposal = parse(file_c, "multilevel-REAL-LAYOUT-SYNTHETIC.xlsx")
+    links = proposal["review"]["links"]
+
+    assert sorted(links) == sorted(GOODS_CODES_REAL)
+    expected_pallets = {"PLT-01": 7, "PLT-02": 3}
+    seen: dict[str, int] = {}
+    for code, per_sheet in links.items():
+        assert list(per_sheet[SHEET_PALLETS]) , code
+        pallet = per_sheet[SHEET_PALLETS][0]
+        seen[pallet] = seen.get(pallet, 0) + 1
+    assert seen == expected_pallets
+    # The goods sheet is the source of the codes, not the level sheets.
+    assert {item["model"] or item["description"] for item in proposal["goods"]} == set(GOODS_CODES_REAL)
+    assert "level_link_missing" not in unknown_codes(proposal)
+
+
+def test_real_file_c_thirty_six_carton_lines_link_by_ref_no(file_c):
+    proposal = parse(file_c, "multilevel-REAL-LAYOUT-SYNTHETIC.xlsx")
+    carton = level_by_sheet(proposal)[SHEET_CARTONS]
+
+    assert carton["row_count"] == 36
+    assert len(carton["codes"]) == len(GOODS_CODES_REAL)
+    links = proposal["review"]["links"]
+    carton_links = sum(len(per_sheet.get(SHEET_CARTONS, [])) for per_sheet in links.values())
+    assert carton_links == 36
+    assert {row["source_row"] for row in proposal["review"]["rows"]
+            if row["ref"].startswith(f"{SHEET_CARTONS}!")} == set(
+        CARTON_GROUP_ONE_ROWS_REAL + CARTON_GROUP_TWO_ROWS_REAL + CARTON_GROUP_THREE_ROWS_REAL)
+    # Every REF NO in the source is one of the summary codes, and none is dropped.
+    assert [row[0] for row in CARTON_ROWS_REAL] == [
+        row["ref_no"] for row in proposal["review"]["rows"]
+        if row["ref"].startswith(f"{SHEET_CARTONS}!")]
+
+
+def test_real_file_c_ambiguous_or_unknown_code_is_never_guessed():
+    """A duplicate / unknown reference code must fall back to NEEDS_REVIEW."""
+    from io import BytesIO
+
+    from openpyxl import Workbook
+
+    from core.quote_excel_import import parse_luc_giac_workbook
+
+    wb = Workbook()
+    goods = wb.active
+    goods.title = SHEET_TOTAL
+    goods["A1"], goods["B1"], goods["C1"], goods["D1"] = (
+        "序号", "Name product-Description", "数量（件数）", "体积")
+    goods["A2"], goods["B2"], goods["C2"], goods["D2"] = 1, "CODE-A", 5, 1.0
+    # The same code on two goods lines cannot be linked unambiguously.
+    goods["A3"], goods["B3"], goods["C3"], goods["D3"] = 2, "CODE-A", 7, 1.5
+    goods["A4"], goods["B4"], goods["C4"], goods["D4"] = 3, "CODE-B", 9, 2.0
+    pallets = wb.create_sheet(SHEET_PALLETS)
+    for column, title in {"A": "The pallet number", "B": "Pallet size", "C": "contract",
+                          "G": "PC", "H": "Total"}.items():
+        pallets[f"{column}1"] = title
+    pallets["A2"], pallets["C2"], pallets["G2"], pallets["H2"] = "PLT-01", "CODE-A", 5, 5
+    pallets["C3"], pallets["G3"], pallets["H3"] = "CODE-ZZ", 1, 1  # matches no goods line
+    output = BytesIO()
+    wb.save(output)
+
+    proposal = parse_luc_giac_workbook(output.getvalue(), "ambiguous.xlsx", today=TODAY)
+    links = proposal["review"]["links"]
+    # The ambiguous code is not linked, and the unknown one creates no goods row.
+    assert "CODE-A" not in links
+    assert "CODE-ZZ" not in links
+    assert len(proposal["goods"]) == 3
+    assert "level-link-ambiguous" in warning_ids(proposal)
+    assert "level-link-unmatched" in warning_ids(proposal)
     assert "level_link_missing" in unknown_codes(proposal)
-    flagged = next(u for u in proposal["review"]["unknowns"] if u["code"] == "level_link_missing")
-    assert flagged["rows"] == [item["source_row"] for item in proposal["goods"]]
 
 
 def test_real_file_c_carton_axis_row_is_a_carton_size_not_a_product_size(file_c):

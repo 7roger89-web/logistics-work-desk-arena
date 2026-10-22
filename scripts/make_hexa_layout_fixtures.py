@@ -342,18 +342,26 @@ TOTAL_HEADERS_REAL = {
     "E": "毛重",
     "F": "体积",
 }
-# (description, qty pieces, net weight kg, gross weight kg, volume cbm)
+# The ten reference codes of the summary sheet. In the real workbook this column
+# (`Name product-Description`) carries the CODE, and the same code is what the
+# pallet sheet repeats in its `contract` column and what the carton sheet puts in
+# `REF NO` — that is the only key that ties the three levels together.
+GOODS_CODES_REAL = (
+    "HD-2601-001", "HD-2601-002", "HD-2601-003", "HD-2601-004", "HD-2601-005",
+    "HD-2601-006", "HD-2601-007", "HD-2601-008", "HD-2601-009", "HD-2601-010",
+)
+# (reference code, qty pieces, net weight kg, gross weight kg, volume cbm)
 TOTAL_ROWS_REAL = (
-    ("浴室柜 800 白色 Bathroom cabinet 800", 12, 240.0, 268.0, 3.20),
-    ("浴室柜 1000 灰色 Bathroom cabinet 1000", 8, 180.0, 202.0, 2.40),
-    ("LED 镜 600 LED mirror 600", 6, 96.0, 108.0, 1.10),
-    ("浴室架 900 Basin shelf 900", 5, 48.0, 55.0, 0.90),
-    ("淋浴柱 1200 Shower column 1200", 4, 32.0, 38.0, 0.64),
-    ("马桶 700 Toilet 700", 3, 96.0, 105.0, 0.87),
-    ("龙头 200 Faucet 200", 20, 30.0, 34.0, 0.40),
-    ("地漏 100 Floor drain 100", 15, 12.0, 14.0, 0.12),
-    ("浴室柜 600 木纹 Bathroom cabinet 600", 6, 108.0, 121.0, 1.44),
-    ("镜柜 700 Mirror cabinet 700", 4, 56.0, 63.0, 0.72),
+    ("HD-2601-001", 12, 240.0, 268.0, 3.20),
+    ("HD-2601-002", 8, 180.0, 202.0, 2.40),
+    ("HD-2601-003", 6, 96.0, 108.0, 1.10),
+    ("HD-2601-004", 5, 48.0, 55.0, 0.90),
+    ("HD-2601-005", 4, 32.0, 38.0, 0.64),
+    ("HD-2601-006", 3, 96.0, 105.0, 0.87),
+    ("HD-2601-007", 20, 30.0, 34.0, 0.40),
+    ("HD-2601-008", 15, 12.0, 14.0, 0.12),
+    ("HD-2601-009", 6, 108.0, 121.0, 1.44),
+    ("HD-2601-010", 4, 56.0, 63.0, 0.72),
 )
 
 PALLET_HEADERS_REAL = {
@@ -366,26 +374,34 @@ PALLET_HEADERS_REAL = {
     "G": "PC",
     "H": "Total",
 }
-# (pallet number, pallet size, contract, house type, room, project, pc, total)
-PALLET_ROWS_REAL = (
-    ("PLT-01", "1200x1000x1500", "HD-2026-01", "VILLA", "R01", "Du an mau A", 6, 12),
-    ("PLT-01", "1200x1000x1500", "HD-2026-01", "VILLA", "R02", "Du an mau A", 4, 8),
-    ("PLT-01", "1200x1000x1500", "HD-2026-01", "VILLA", "R03", "Du an mau A", 2, 6),
-    ("PLT-01", "1200x1000x1500", "HD-2026-01", "VILLA", "R04", "Du an mau A", 3, 5),
-    ("PLT-01", "1200x1000x1500", "HD-2026-01", "VILLA", "R05", "Du an mau A", 1, 4),
-    ("PLT-01", "1200x1000x1500", "HD-2026-01", "VILLA", "R06", "Du an mau A", 2, 3),
-    ("PLT-01", "1200x1000x1500", "HD-2026-01", "VILLA", "R07", "Du an mau A", 5, 20),
-    ("PLT-02", "1100x900x1450", "HD-2026-01", "VILLA", "R01", "Du an mau A", 4, 15),
-    ("PLT-02", "1100x900x1450", "HD-2026-01", "VILLA", "R02", "Du an mau A", 3, 6),
-    ("PLT-02", "1100x900x1450", "HD-2026-01", "VILLA", "R03", "Du an mau A", 2, 4),
-    ("PLT-02", "1100x900x1450", "HD-2026-01", "VILLA", "R04", "Du an mau A", 1, 2),
-    ("PLT-02", "1100x900x1450", "HD-2026-01", "VILLA", "R05", "Du an mau A", 2, 3),
-)
+# 10 allocation lines on 2 pallets. As in the real sheet the pallet number is
+# written ONCE per group (A2, A10) and the following lines leave column A blank,
+# so the reader has to carry the group context forward. The `contract` column
+# carries one summary code per allocation line.
+PALLET_GROUP_ONE_FIRST_ROW_REAL = 2
+PALLET_GROUP_ONE_ROWS_REAL = tuple(range(PALLET_GROUP_ONE_FIRST_ROW_REAL, 9))      # 2..8  (7 lines)
 PALLET_REPEAT_HEADER_ROW_REAL = 9
+PALLET_GROUP_TWO_ROWS_REAL = tuple(range(10, 13))                                  # 10..12 (3 lines)
+PALLET_ALLOCATION_ROWS_REAL = PALLET_GROUP_ONE_ROWS_REAL + PALLET_GROUP_TWO_ROWS_REAL
+
+# (contract code, house type, room, project, pc, total) — one per allocation line
+PALLET_LINES_REAL = (
+    ("HD-2601-001", "VILLA", "R01", "Du an mau A", 6, 12),
+    ("HD-2601-002", "VILLA", "R02", "Du an mau A", 4, 8),
+    ("HD-2601-003", "VILLA", "R03", "Du an mau A", 2, 6),
+    ("HD-2601-004", "VILLA", "R04", "Du an mau A", 3, 5),
+    ("HD-2601-005", "VILLA", "R05", "Du an mau A", 1, 4),
+    ("HD-2601-006", "VILLA", "R06", "Du an mau A", 2, 3),
+    ("HD-2601-007", "VILLA", "R07", "Du an mau A", 5, 20),
+    ("HD-2601-008", "VILLA", "R08", "Du an mau A", 4, 15),
+    ("HD-2601-009", "VILLA", "R09", "Du an mau A", 3, 6),
+    ("HD-2601-010", "VILLA", "R10", "Du an mau A", 2, 4),
+)
+PALLET_NUMBER_BY_GROUP_REAL = {"group-1": "PLT-01", "group-2": "PLT-02"}
+PALLET_SIZE_REAL = {"group-1": "1200x1000x1500", "group-2": "1100x900x1450"}
 
 CARTON_HEADER_ROW_REAL = 2
 CARTON_AXIS_ROW_REAL = 3
-CARTON_REPEAT_HEADER_ROW_REAL = 9
 CARTON_HEADERS_REAL = {
     "A": "REF NO",
     "B": "Package NO",
@@ -398,28 +414,48 @@ CARTON_HEADERS_REAL = {
     "K": "货物中文名称",
 }
 CARTON_AXES_REAL = {"D": "W", "E": "D", "F": "H"}
+# Three groups of 12 carton lines = 36, each group preceded by the repeated
+# header + the W/D/H axis row, and closed by a source TOTAL line.
+CARTON_GROUP_HEADER_ROWS_REAL = (2, 16, 30)
+CARTON_GROUP_ONE_ROWS_REAL = tuple(range(4, 16))    # 4..15   (12 lines)
+CARTON_GROUP_TWO_ROWS_REAL = tuple(range(18, 30))   # 18..29  (12 lines)
+CARTON_GROUP_THREE_ROWS_REAL = tuple(range(32, 44))  # 32..43  (12 lines)
+CARTON_ROWS_REAL_ROWS = (CARTON_GROUP_ONE_ROWS_REAL + CARTON_GROUP_TWO_ROWS_REAL
+                         + CARTON_GROUP_THREE_ROWS_REAL)
+CARTON_TOTAL_ROW_REAL = 45
 # (ref no, package no, desc, W, D, H, NW, GW, VOL, cartons, chinese name)
-CARTON_ROWS_REAL = (
-    ("REF-800", "PKG-001", "Bathroom cabinet 800", 860, 540, 900, 48.0, 54.0, 0.42, 2, "浴室柜 800"),
-    ("REF-800", "PKG-002", "Bathroom cabinet 800", 860, 540, 900, 48.0, 54.0, 0.42, 2, "浴室柜 800"),
-    ("REF-1000", "PKG-003", "Bathroom cabinet 1000", 1060, 540, 900, 42.0, 47.0, 0.52, 2, "浴室柜 1000"),
-    ("REF-600", "PKG-004", "LED mirror 600", 660, 80, 860, 8.0, 9.0, 0.09, 4, "LED 镜 600"),
-    ("REF-900", "PKG-005", "Basin shelf 900", 960, 560, 800, 9.0, 11.0, 0.43, 1, "浴室架 900"),
-    ("REF-700", "PKG-006", "Toilet 700", 760, 480, 720, 32.0, 35.0, 0.26, 1, "马桶 700"),
-    ("REF-1200", "PKG-007", "Shower column 1200", 1250, 220, 240, 8.0, 10.0, 0.07, 2, "淋浴柱 1200"),
-    ("REF-200", "PKG-008", "Faucet 200", 240, 180, 160, 1.5, 2.0, 0.01, 10, "龙头 200"),
-    ("REF-100", "PKG-009", "Floor drain 100", 120, 120, 60, 0.8, 1.0, 0.001, 5, "地漏 100"),
-    ("REF-600B", "PKG-010", "Bathroom cabinet 600", 660, 440, 860, 18.0, 21.0, 0.25, 3, "浴室柜 600 木纹"),
+_CARTON_SHAPES_REAL = (
+    ("Bathroom cabinet 800", 860, 540, 900, 48.0, 54.0, 0.42, 2, "浴室柜 800"),
+    ("Bathroom cabinet 1000", 1060, 540, 900, 42.0, 47.0, 0.52, 2, "浴室柜 1000"),
+    ("LED mirror 600", 660, 80, 860, 8.0, 9.0, 0.09, 4, "LED 镜 600"),
+    ("Basin shelf 900", 960, 560, 800, 9.0, 11.0, 0.43, 1, "浴室架 900"),
+    ("Shower column 1200", 1250, 220, 240, 8.0, 10.0, 0.07, 2, "淋浴柱 1200"),
+    ("Toilet 700", 760, 480, 720, 32.0, 35.0, 0.26, 1, "马桶 700"),
+    ("Faucet 200", 240, 180, 160, 1.5, 2.0, 0.01, 10, "龙头 200"),
+    ("Floor drain 100", 120, 120, 60, 0.8, 1.0, 0.001, 5, "地漏 100"),
+    ("Bathroom cabinet 600", 660, 440, 860, 18.0, 21.0, 0.25, 3, "浴室柜 600 木纹"),
+    ("Mirror cabinet 700", 760, 180, 720, 14.0, 16.0, 0.10, 2, "镜柜 700"),
+)
+CARTON_ROWS_REAL = tuple(
+    (GOODS_CODES_REAL[i % len(GOODS_CODES_REAL)],
+     "PKG-%03d" % (i + 1), *_CARTON_SHAPES_REAL[i % len(_CARTON_SHAPES_REAL)])
+    for i in range(len(CARTON_ROWS_REAL_ROWS))
 )
 
 
 def build_multilevel_packing_real_layout() -> bytes:
     """File C as it actually is: goods list → pallet level → carton level.
 
-    Header WORDING and row positions follow the independent review; every value
-    is invented. The pallet sheet carries NO product code at all, and the carton
-    sheet only has a ``REF NO`` that cannot be proven equal to a goods line, so
-    the levels must stay UNLINKED (NEEDS_REVIEW) instead of being guessed.
+    Header WORDING, row positions and DATA SHAPE follow the independent review of
+    the real workbook; every value is invented (`HD-2601-00x` codes, fake rooms):
+
+    * the pallet number is written once per group (A2, A10) and the following
+      allocation lines leave column A blank;
+    * the `contract` column carries one summary code per allocation line, and all
+      ten summary codes are present exactly once;
+    * the carton sheet has 36 carton lines whose `REF NO` is one of those codes,
+      split over three groups separated by the repeated header + W/D/H axis row,
+      and closed by a source TOTAL line.
     """
     wb = Workbook()
 
@@ -434,10 +470,10 @@ def build_multilevel_packing_real_layout() -> bytes:
         cell.font = Font(name="Arial", size=10, bold=True)
         cell.fill = HEAD_FILL
         cell.alignment = Alignment(horizontal="center", wrap_text=True)
-    for offset, (description, qty, net, gross, cbm) in enumerate(TOTAL_ROWS_REAL):
+    for offset, (code, qty, net, gross, cbm) in enumerate(TOTAL_ROWS_REAL):
         excel_row = TOTAL_FIRST_ROW_REAL + offset
         total[f"A{excel_row}"] = offset + 1
-        total[f"B{excel_row}"] = description
+        total[f"B{excel_row}"] = code
         total[f"C{excel_row}"] = qty
         total[f"D{excel_row}"] = net
         total[f"E{excel_row}"] = gross
@@ -453,19 +489,29 @@ def build_multilevel_packing_real_layout() -> bytes:
             cell.font = Font(name="Arial", size=10, bold=True)
             cell.fill = HEAD_FILL
 
-    def pallet_rows(first_row: int, rows) -> None:
-        for offset, row in enumerate(rows):
-            excel_row = first_row + offset
-            for column, value in zip("ABCDEFGH", row):
-                pallets[f"{column}{excel_row}"] = value
+    def pallet_group(excel_row: int, group: str, lines) -> None:
+        """First line names the pallet; the following lines leave A blank."""
+        for offset, (contract, house, room, project, pc, total_count) in enumerate(lines):
+            row = excel_row + offset
+            if offset == 0:
+                pallets[f"A{row}"] = PALLET_NUMBER_BY_GROUP_REAL[group]
+            pallets[f"B{row}"] = PALLET_SIZE_REAL[group]
+            pallets[f"C{row}"] = contract
+            pallets[f"D{row}"] = house
+            pallets[f"E{row}"] = room
+            pallets[f"F{row}"] = project
+            pallets[f"G{row}"] = pc
+            pallets[f"H{row}"] = total_count
 
     pallet_header(1)
-    pallet_rows(2, PALLET_ROWS_REAL[:7])
+    pallet_group(PALLET_GROUP_ONE_FIRST_ROW_REAL, "group-1",
+                 PALLET_LINES_REAL[:len(PALLET_GROUP_ONE_ROWS_REAL)])
     pallet_header(PALLET_REPEAT_HEADER_ROW_REAL)
-    pallet_rows(PALLET_REPEAT_HEADER_ROW_REAL + 1, PALLET_ROWS_REAL[7:])
+    pallet_group(PALLET_GROUP_TWO_ROWS_REAL[0], "group-2",
+                 PALLET_LINES_REAL[len(PALLET_GROUP_ONE_ROWS_REAL):])
 
     cartons = wb.create_sheet(SHEET_CARTONS)
-    cartons["A1"] = "CHI TIẾT KIỆN THEO NHÓM — 2 NHÓM"
+    cartons["A1"] = "CHI TIẾT KIỆN THEO NHÓM — 3 NHÓM / 36 DÒNG"
 
     def carton_header(excel_row: int) -> None:
         for column, title in CARTON_HEADERS_REAL.items():
@@ -478,20 +524,22 @@ def build_multilevel_packing_real_layout() -> bytes:
         for column, axis in CARTON_AXES_REAL.items():
             cartons[f"{column}{excel_row + 1}"] = axis
 
-    def carton_rows(first_row: int, rows) -> None:
-        for offset, row in enumerate(rows):
-            excel_row = first_row + offset
-            for column, value in zip("ABCDEFGHIJK", row):
+    groups = (CARTON_GROUP_ONE_ROWS_REAL, CARTON_GROUP_TWO_ROWS_REAL,
+              CARTON_GROUP_THREE_ROWS_REAL)
+    cursor = 0
+    for header_row, rows_of_group in zip(CARTON_GROUP_HEADER_ROWS_REAL, groups):
+        carton_header(header_row)
+        for excel_row in rows_of_group:
+            for column, value in zip("ABCDEFGHIJK", CARTON_ROWS_REAL[cursor]):
                 cartons[f"{column}{excel_row}"] = value
-
-    carton_header(CARTON_HEADER_ROW_REAL)
-    carton_rows(CARTON_AXIS_ROW_REAL + 1, CARTON_ROWS_REAL[:4])
-    carton_header(CARTON_REPEAT_HEADER_ROW_REAL)
-    carton_rows(CARTON_REPEAT_HEADER_ROW_REAL + 2, CARTON_ROWS_REAL[4:])
+            cursor += 1
+    cartons[f"A{CARTON_TOTAL_ROW_REAL}"] = "TOTAL"
+    cartons[f"J{CARTON_TOTAL_ROW_REAL}"] = sum(row[9] for row in CARTON_ROWS_REAL)
+    cartons[f"I{CARTON_TOTAL_ROW_REAL}"] = round(sum(row[8] for row in CARTON_ROWS_REAL), 3)
 
     instruction = wb.create_sheet(SHEET_INSTRUCTION)
     instruction["A1"] = "打托指令 — HƯỚNG DẪN ĐÓNG PALLET (nội bộ)"
-    instruction["A2"] = "Pallet 1: 7 kiện · Pallet 2: 5 kiện"
+    instruction["A2"] = "Pallet 1: 7 dòng phân bổ · Pallet 2: 3 dòng phân bổ"
     instruction["A3"] = SENTINEL
     instruction["B3"] = 987654321
     instruction.sheet_state = "hidden"

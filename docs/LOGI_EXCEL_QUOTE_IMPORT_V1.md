@@ -161,10 +161,21 @@ Only three levels exist, and they are never interchangeable:
 | `PALLET` | an explicit pallet header (`The pallet number`, `Pallet size`, …) with no qty/price of its own | recorded for review with its row count; never becomes a goods list, never adds qty/CBM/weight |
 | `CARTON` | either three explicit `L/W/H` columns or ONE size column plus a `W`/`D`/`H` axis row directly under the header, together with weight/volume evidence | recorded for review with its carton size and numbers; never becomes a goods list, never adds to the shipment totals |
 
-A level is linked to the goods list **only** when the same unambiguous product code
-appears on both. Otherwise the workbook is reported as `NEEDS_REVIEW`
-(`level-link-needs-review` warning plus one `level_link_missing` unknown per goods
-row) and nothing is guessed.
+A level is linked to the goods list **only** on an exact, unique reference code.
+The code is read from its own source column: on the goods side the model column,
+then the source's reference columns, then the product/description cell (in the real
+multi-level workbook that cell carries the code); on the level side only an
+explicit `contract` / `REF NO` / model — never a free-text description.
+
+A pallet is named **once per group** (`A2` filled, `A3`… blank). The reader carries
+that pallet forward as the group's context and clears it when the source repeats
+the group header, so a later group can never inherit the previous pallet. A source
+`TOTAL` line is a sum of the level, not a level line, and is excluded.
+
+Resulting states: a duplicate code on two goods lines ⇒ `level-link-ambiguous`, no
+link, `NEEDS_REVIEW`; a level code matching no goods line ⇒ `level-link-unmatched`,
+kept as evidence and never turned into a new goods row; no link at all ⇒
+`level-link-needs-review` plus one `level_link_missing` unknown per goods row.
 
 ### Three layout families and how they are handled
 
@@ -172,7 +183,7 @@ row) and nothing is guessed.
 |---|---|---|
 | A — packing list with photos, table at row 7, 257 declared columns, no price | header row of bilingual column labels (`Item number`, `Product name`, `Size`, `Quantity`, `CTN`, `NW`, `GW`, `CBM`); used region ends at column T | goods rows with `source_sheet`/`source_row`; `unit_price = None` + `unit_price_missing`; product size kept as review evidence, never as package dims; no CBM invented |
 | B — proforma invoice `PI (2)` + duplicate money sheet `File tiền hàng` | priced goods header on the PI sheet (`Model 型号`, `Size尺寸(MM)`, `Qt.数量`, `Unit Price 单价 (CNY)`, `Amount 金额 (CNY)`); the money sheet is classified `INTERNAL_CALC` | one goods table only (no double count), `money-sheet-not-imported`; fees/tax/cost on the money sheet never enter the goods or the customer quotation |
-| C — `总清单` (header row 3, goods rows 7–16) → `托盘明细（2托）` (header row 1, repeated at row 9) → `卫浴` (header row 2, repeated per group, `W`/`D`/`H` axis row at 3) → hidden `打托指令` | GOODS/PALLET/CARTON roles from header evidence; hidden sheets never read | one goods list from `总清单` only; pallet and carton recorded as separate levels with their own row counts; `level-not-summed`; no link key ⇒ `NEEDS_REVIEW` |
+| C — `总清单` (header row 3, goods rows 7–16, 10 codes) → `托盘明细（2托）` (header row 1, repeated at row 9; pallet named once per group, `contract` on every line) → `卫浴` (header row 2 repeated per group, `W`/`D`/`H` axis row, `REF NO` per carton line, source `TOTAL` row) → hidden `打托指令` | GOODS/PALLET/CARTON roles from header evidence; hidden sheets never read; reference codes read from their own columns | one goods list from `总清单` only; 10/10 pallet allocation lines and 36/36 carton lines recorded as separate levels; `level-not-summed`; no link key ⇒ `NEEDS_REVIEW` |
 
 ### Standing protection (unchanged by this work)
 
@@ -185,19 +196,21 @@ row) and nothing is guessed.
 ### Evidence and status
 
 - `RED` (v1, before the first checkpoint's change): `tests/test_hexa_excel_import_layouts_v1.py` → 14 failed / 1 passed.
-- `RED` (v2 reproof on the real layout, parser before THIS repair): `tests/test_hexa_excel_import_real_headers_v2.py` → **6 failed / 106 passed** in the focused set. The whole workbook was labelled `PACKING_LIST`, `托盘明细（2托）` was not recognised as a level at all, `卫浴` was read as an extra goods list (`UNCLASSIFIED_TABLE`), the carton W/D/H breakdown was reported as a product size, and `Item number` was not read as a model code.
-- `GREEN` (after this repair): **15/15** v2 + **16/16** v1 = **31 passed**; focused set (`test_excel_quote_import_v1`, `test_quote_workbook_view_v1`, `test_excel_fidelity_repair_v1`, `test_excel_text_edit_v1`, both HEXA files) = **112 passed**.
-- Whole suite, same environment and same command, on base `83162293` (excluding the pre-existing collection error in `test_partner_reconciliation_desk_write_oracle.py`, which imports a `ROUTES` symbol absent at this base): before the repair **640 failed/error test ids**, after **634**. `NEW=∅`; `GONE` = exactly the 6 new HEXA tests. The remaining failures/errors are pre-existing sandbox/Streamlit-runtime issues, not caused by this change.
-- `IMPORT_STATUS=PROVEN_SYNTHETIC`; `REAL_WORKBOOK_TEST=NOT_RUN_IN_ARENA`. The Owner's three original workbooks are **not** in this repository and were **not** uploaded; only the described structures and header wording are reproduced synthetically.
+- `RED` (v2 reproof on the real layout, parser before the header repair): **6 failed / 106 passed** in the focused set. The whole workbook was labelled `PACKING_LIST`, `托盘明细（2托）` was not recognised as a level at all, `卫浴` was read as an extra goods list (`UNCLASSIFIED_TABLE`), the carton W/D/H breakdown was reported as a product size, and `Item number` was not read as a model code.
+- `RED` (LINK repair, parser of `451e4e8` against the real-data fixture): **5 failed / 13 passed**. Only **2 of 10** pallet allocation lines survived (the 8 lines with a blank `A` were dropped), **0** reference codes were read (`contract` / `REF NO` were unmapped columns), therefore **0** links, and the source `TOTAL` line / repeated group headers were not excluded by rule.
+- `GREEN` (after both repairs): **34 passed** in the two HEXA files (the link-repair suite included); focused 6-file set **115 passed**.
+- Whole suite, same environment and same command, EXPECTED_HEAD `451e4e8` parser vs repaired parser with the SAME test files (excluding the pre-existing collection error in `test_partner_reconciliation_desk_write_oracle.py`, which imports a `ROUTES` symbol absent at this base): **639 → 634** failed/error test ids. `NEW=∅`; `GONE` = exactly the 5 link-repair tests. The remaining failures/errors are pre-existing sandbox/Streamlit-runtime issues, not caused by this change.
+- Acceptance numbers on the real-data fixture (SYNTHETIC values): pallet **10/10** allocation lines kept, **10/10** `contract` codes read and matched to the summary sheet, pallet context `PLT-01` ×7 / `PLT-02` ×3 with no bleed across the repeated header, carton **36/36** lines linked by `REF NO`, goods table still **10 rows / qty 83** (the pallet `PC`/`Total` counts are kept apart and never added), `shipment.cbm` / `shipment.weight_kg` stay `None`.
+- `IMPORT_STATUS=PROVEN_SYNTHETIC`; `REAL_WORKBOOK_TEST=NOT_RUN_IN_ARENA`. The Owner's three original workbooks are **not** in this repository and were **not** uploaded; only the described structures, header wording and data shape are reproduced synthetically.
 
 ### Fields that stay UNKNOWN
 
 - `unit_price` for every packing-list / multi-level source (`unit_price_missing`) — never 0.
 - `qty` when the source has no quantity column (`qty_missing`).
 - Formula cells without a cached value (`formula_no_cache` / `formula-gap`) — never recomputed.
-- Level ↔ goods links without a shared product code (`level_link_missing`, `NEEDS_REVIEW`).
+- Level ↔ goods links without an exact, unique reference code (`level_link_missing` / `level-link-ambiguous` / `level-link-unmatched`) — `NEEDS_REVIEW`, never guessed.
 - `shipment.cbm` / `shipment.weight_kg`: contradictory or level-only measurements are deliberately left empty instead of being summed.
-- Pallet sheet fields that this repair does not read (`contract`, `House type`, `Room number`, `Project name`, `PC`, `Total`) — recorded as unread, not guessed.
+- Pallet `contract` / `House type` / `Room number` / `Project name` / `PC` / `Total`: kept as level evidence only; `PC` and `Total` are **not** the quantity being sold and are not added to it.
 
 ### Owner gates respected
 
