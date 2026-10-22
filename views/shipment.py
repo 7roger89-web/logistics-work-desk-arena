@@ -10,6 +10,7 @@ from core.auth import can_operate_business
 from core.utils import mark_changed, parse_date, safe_float
 from core.logic import calculate_shipment_financials, apply_financial_snapshot
 from core.validators import validate_shipment
+from core.customs_truth import customs_clearance_confirmed
 # [QUAN TRỌNG] Import đủ hàm
 from core.database import (
     save_shipment_atomic,
@@ -418,7 +419,7 @@ def ui_shipment_detail_tabs(sid, ship):
                                 st.error(f"Lỗi khi tạo file GNT: {e}")
 
                 c4, c5 = st.columns([1,2])
-                d['2.4']['customs_status'] = c4.checkbox("Đã thông quan", d['2.4'].get('customs_status', False), key=f"{prefix}_cst")
+                d['2.4']['customs_status'] = c4.checkbox("Đã thông quan", value=customs_clearance_confirmed(d['2.4'].get('customs_status')), key=f"{prefix}_cst")
                 d['2.4']['phan_luong'] = c5.selectbox("Luồng", ["Xanh", "Vàng", "Đỏ"], index=["Xanh", "Vàng", "Đỏ"].index(d['2.4'].get('phan_luong','Xanh')) if d['2.4'].get('phan_luong') in ["Xanh", "Vàng", "Đỏ"] else 1, key=f"{prefix}_pl")
 
             st.caption("2. Giao hàng")

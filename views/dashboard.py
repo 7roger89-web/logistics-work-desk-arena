@@ -10,6 +10,7 @@ import re
 # --- IMPORT CHUẨN TỪ CORE SYSTEM ---
 from core.config import STATUS_MAP_INV
 from core.utils import get_shipment_business_date, parse_date, log_error, escape_html, safe_float
+from core.customs_truth import customs_clearance_confirmed
 from core.logic import calculate_from_shipment, apply_financial_snapshot
 from core.auth import can_operate_business, has_permission
 from core.database import load_data, load_archived_data, save_shipment_atomic, delete_shipment, load_users
@@ -163,7 +164,7 @@ def render_status_pill(label, color_code, is_active):
 def render_status_visual(ship_data):
     d = ship_data.get('data', {})
     has_docs = bool(d.get('1.2', {}).get('booking_no') or d.get('1.2', {}).get('mbl'))
-    is_cleared = d.get('2.4', {}).get('customs_status', False)
+    is_cleared = customs_clearance_confirmed(d.get('2.4', {}).get('customs_status'))
     is_delivered = d.get('2.7', {}).get('is_delivered', False)
     summary = calculate_from_shipment(ship_data)
     rev = safe_float(summary.get('receivable', 0))

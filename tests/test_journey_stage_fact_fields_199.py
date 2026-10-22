@@ -35,37 +35,79 @@ class SeaStageFields199(unittest.TestCase):
         nodes = {n['id']: n for n in _project(_profile())['nodes']}
         self.assertEqual([x['key'] for x in nodes['si-vgm']['factFields']],
                          ['si_status', 'vgm_status', 'si_cutoff', 'vgm_cutoff'])
-        self.assertEqual([x['key'] for x in nodes['gate-in']['factFields']], ['gate_in_at'])
+        self.assertEqual([x['key'] for x in nodes['gate-in']['factFields']],
+                         ['empty_pickup_at', 'stuffing_at', 'eir_no', 'gate_in_at'])
         self.assertEqual([x['key'] for x in nodes['customs-export']['factFields']],
-                         ['export_declaration_no'])
+                         ['export_declaration_no', 'export_clearance_at'])
         all_fields = {field['key'] for node in nodes.values()
                       for field in node.get('factFields', [])}
-        self.assertEqual(all_fields, SEA_FACT_FIELDS)
-        self.assertNotIn('factFields', nodes['pickup'])
-        self.assertNotIn('factFields', nodes['on-board'])
+        # Tích hợp T1–T5: profile 4 stage (không DELIVERY/IMPORT) chiếu đúng
+        # 12 field này; đều là tập con của writer whitelist (CFS/POD/D-O sống
+        # ở node DELIVERY/CFS theo mode).
+        self.assertEqual(all_fields, {
+            'booking_status', 'export_declaration_no', 'export_clearance_at',
+            'si_status', 'vgm_status', 'si_cutoff', 'vgm_cutoff',
+            'empty_pickup_at', 'stuffing_at', 'eir_no', 'gate_in_at',
+            'on_board_at'})
+        self.assertLessEqual(all_fields, SEA_FACT_FIELDS)
+        self.assertEqual(nodes['pickup']['factFields'], [])
+        # Node-truth round 2: booking/on-board completion facts now HAVE their
+        # input fields (previously pinned absent — that was the gap being fixed).
+        self.assertEqual([x['key'] for x in nodes['booking']['factFields']],
+                         ['booking_status'])
+        self.assertEqual(nodes['booking']['factFields'][0]['label'],
+                         'Trạng thái booking')
+        self.assertEqual([x['key'] for x in nodes['on-board']['factFields']],
+                         ['on_board_at'])
 
     def test_status_options_are_whitelisted_without_silent_completion(self):
         nodes = {n['id']: n for n in _project(_profile())['nodes']}
         fields = nodes['si-vgm']['factFields']
         self.assertEqual([v['value'] for v in fields[0]['options']],
                          ['UNKNOWN', 'RECEIVED', 'SUBMITTED', 'ACCEPTED'])
-        self.assertTrue(fields[2]['secondary'])
+        # Tích hợp T1–T5: secondary chỉ bật khi >5 primary (_SECONDARY_FACTS);
+        # si-vgm FCL có đúng 4 primary (popup ≤5) nên cutoff không bị fold.
+        self.assertFalse(fields[2].get('secondary'))
+        self.assertEqual(sum(1 for f in fields if not f.get('secondary')), 4)
         self.assertFalse(nodes['si-vgm']['completed'])
         self.assertFalse(nodes['gate-in']['completed'])
         self.assertFalse(nodes['customs-export']['completed'])
 
     def test_air_and_lcl_never_invent_fcl_forms(self):
+        from core.shipment_journey import AIR_FACT_FIELDS
         air = {n['id']: n for n in _project(_profile(mode='AIR'))['nodes']}
-        self.assertFalse(any(n.get('factFields') for n in air.values()))
+        # Tích hợp T3: node AIR CÓ factFields của riêng AIR — nhưng KHÔNG bao giờ
+        # chứa form FCL (si_/vgm_/gate_in) và mọi key nằm trong AIR_FACT_FIELDS.
+        air_keys = {f['key'] for n in air.values() for f in n.get('factFields', [])}
+        self.assertTrue(air_keys)
+        self.assertFalse({'si_status', 'vgm_status', 'si_cutoff', 'vgm_cutoff',
+                          'gate_in_at'} & air_keys)
+        self.assertLessEqual(air_keys, AIR_FACT_FIELDS)
         lcl = {n['id']: n for n in _project(_profile(load_model='LCL'))['nodes']}
         self.assertNotIn('gate-in', lcl)
-        self.assertNotIn('factFields', lcl['si-vgm'])  # no mandatory container VGM for LCL
+        # False-done batch 2 (f51710b) + guard fix: the LCL node exists as
+        # SI-only and KEEPS the SI inputs (si_status/si_cutoff) — without them
+        # the node needs SI but can never complete — while dropping ONLY the
+        # shipment-level VGM form (vgm_status/vgm_cutoff). The original pin
+        # `assertNotIn('factFields', ...)` froze the guard bug this fix removes.
+        self.assertIn('si-vgm', lcl)
+        self.assertEqual(lcl['si-vgm']['label'], 'SI')
+        lcl_keys = [x['key'] for x in lcl['si-vgm'].get('factFields', [])]
+        self.assertIn('si_status', lcl_keys)
+        self.assertIn('si_cutoff', lcl_keys)
+        self.assertNotIn('vgm_status', lcl_keys)
+        self.assertNotIn('vgm_cutoff', lcl_keys)
 
     def test_unowned_export_cannot_offer_an_edit_form(self):
         nodes = {n['id']: n for n in
                  _project(_profile(scope=['MAIN_CARRIAGE']))['nodes']}
+        # Tích hợp T1–T5 (fields= trong add()): metadata field được project cả
+        # khi unowned — nhưng node KHÔNG có quyền sửa: SeaExportFacts Input và
+        # nút Lưu đều disabled={!node?.owned} (ShipmentJourney.tsx) và writer
+        # chặn theo scope. Chốt: unowned = không ghi được, không phải ẩn metadata.
         self.assertFalse(nodes['customs-export']['owned'])
-        self.assertNotIn('factFields', nodes['customs-export'])
+        self.assertEqual([x['key'] for x in nodes['customs-export']['factFields']],
+                         ['export_declaration_no', 'export_clearance_at'])
         self.assertTrue(nodes['si-vgm']['owned'])
 
 

@@ -34,19 +34,35 @@ If that profile cannot be read, apply this minimum capsule:
 
 ## Mandatory prompt serialization contract
 
-Every P2P-generated operational prompt handed to another executor must explicitly serialize both gates below. Do not leave them implicit merely because the current chat already read the law.
+Xem mục “Mandatory prompt serialization contract” trong managed P2P block bên dưới; không lặp thân luật top-level.
 
-`P2P_LAW_PREFLIGHT` must tell the executor to read repository-root `AGENTS.md`, use canonical only if already successfully reachable; otherwise installed > valid portable > inline capsule > blocked; repo-scoped portable requires no cross-repo probe solely for fallback, and report exactly one `P2P_LAW_SOURCE=<actual source>`.
+## NGUỒN SỰ THẬT & THỨ TỰ TIN (đọc trước khi tin bất kỳ số nào)
+Khi hai nguồn mâu thuẫn, tin theo đúng thứ tự này, dừng ở nguồn đầu tiên có dữ liệu:
+1. api.github.com/repos/7roger89-web/logistics-work-desk-arena/pulls/211 → state, head.sha, merged (MÁY ĐO — tin nhất)
+2. docs/CONTROL-TOWER-HANDOFF.md MỤC 3 (TRẠNG THÁI SỐNG — chỉ file này giữ trạng thái)
+3. Comment PR mới nhất (BẰNG CHỨNG, có timestamp)
+4. MỤC 4 (bằng chứng, phải có nhãn ngày)
+5. Body PR (KHAI BÁO — thường cũ, không tin nếu chưa đối chiếu)
+6. MỤC 6 + docs/CONTROL-TOWER-ARCHIVE.md (LỊCH SỬ — số chỉ đúng tại thời điểm viết)
+Luật: (a) mọi con số phải kèm NGÀY ĐO + SHA nguồn, thiếu ngày ⇒ đo lại; (b) file ngoài MỤC 3 chỉ TRỎ tới trạng thái, không chép lại; (c) PASS/FAIL/DONE phải kèm phạm vi + ngày + SHA; (d) link theo nhánh = trạng thái, link theo SHA = bằng chứng; (e) head.sha trong tài liệu khác api.github.com ⇒ tin API và ghi lại.
 
-`OE_GATE` must ask exactly `Không bị over engineering chứ?`, evaluate `SIMPLER_PATH`, `MATERIAL_PROGRESS`, `NECESSITY`, `CORE_BEFORE_SUPPORT`, and `SMALLER_VERIFIABLE_SLICE`, then return `OE_VERDICT=DO_IT|SKIP_IT|DEFER_UNTIL_NEEDED` with one concrete reason. A weak/negative answer means reduce, remove, or defer the step; never return a ceremonial PASS.
+**STALE_KNOWN — chuỗi đã biết là cũ, ĐỪNG TIN** (ghi 2026-10-20, HEAD_AT_WRITE=`365ad6d`; chính bảng này là nhãn lịch sử cho các chuỗi bên trong):
 
-This applies to NEW_CHAT and SAME_CHAT prompts for Arena, Codex, Manus, reviewers, supervisors, and other delegated executors. Do not repeat the whole law body when a valid law source is readable.
+| Chuỗi cũ | Đúng hiện nay | Vì sao còn |
+|---|---|---|
+| head trong body PR (mọi SHA cụ thể) | head thật — luôn đo api.github.com | body PATCH mỗi phiên, trễ 1 nhịp so với commit docs |
+| [LỊCH SỬ @8aba473] BROWSER QA FAIL / repair task UI copy (body PR; chuỗi cũ `FIX=NOT_STARTED` không còn trong body) | FIX=DONE @afbc18d · BROWSER_MODE_COPY=PASS | body đã PATCH 2026-10-20 (gắn `[LỊCH SỬ]` @8aba473 + `FIX=DONE @afbc18d`) |
+| "còn 40 failure" (MỤC 3 ĐANG CHỜ) | 37 failed (đo 2026-10-20) | 40 là số 2026-10-19 |
+| BASELINE_FAILED='41' (ci.yml) | 37 cho nhánh tích hợp; 31 cho main | gắn ngày 2026-10-19 |
+| FULL_SUITE=NOT_RUN (dòng docs-only) | đã đo 37/2110/44 | ghi trước khi đo |
+| guide §7 → "bảng T1–T6 ở playbook §0.2" | §0.2 chưa có bảng đó | con trỏ sai |
+| 61/2048 · 63/2047 · 37/2089 · 37/2100 · 37/2108 | 37/2110/44 | lịch sử MỤC 6 |
 
 ## Baseline hiện tại
 
-- **Branch verified:** `log-c15-user-identity-rbac` @ `e518cae` (LOG-C13 + LOG-C14 + LOG-C15, đã kiểm chứng).
-- Lineage: `main` ← `log-c13-contract-commercial-handoff` ← `log-c14-e2e-release-readiness` ← `log-c15-user-identity-rbac`.
-- Merge strategy được khuyến nghị: 1 PR cumulative (C13+C14+C15) vào `main`, xem `docs/LOG_C15_HANDOFF.md` mục 37.
+- **Trạng thái sống của dự án nằm ở `docs/CONTROL-TOWER-HANDOFF.md`** — đọc TRƯỚC khi làm bất cứ việc gì; file được cập nhật cuối mỗi task và là sự thật mới nhất về đang ở đâu / còn gì / cần Owner gì.
+- **Công việc hiện tại:** chuỗi LOGI-199 trên PR **#211** — head `arena/a3117943-logistics-work-desk-arena`, base `ct/logi199-journey-main-integration-20261017`.
+- Chuỗi LOG-C13/C14/C15 (`log-c15-user-identity-rbac` @ `e518cae`) là **lịch sử** — ngữ cảnh xem `docs/LOG_C15_HANDOFF.md`; KHÔNG dùng làm baseline cho công việc hiện tại.
 - KHÔNG deploy production; KHÔNG merge main cho đến khi Owner xác nhận.
 
 ## Quy ước quan trọng
@@ -60,8 +76,11 @@ This applies to NEW_CHAT and SAME_CHAT prompts for Arena, Codex, Manus, reviewer
 
 ## Testing
 
-- Full suite: `python -m pytest tests -q` → kỳ vọng 200 passed, 28 skipped (pure tests).
+- Full suite (lệnh CI): `python -m pytest tests -q --ignore=tests/test_partner_reconciliation_desk_write_oracle.py` → số thật gần nhất: **37 failed / 2110 passed / 44 skipped / 0 errors** (đo 2026-10-20 tại SHA `8f4d15ff581c1fa3daf12626ae5d02d7b734d649` & `a4c49a0e90694bee48da175980f875eda02f489d`, pytest 9.1.1 + node 22–24 + `npm --prefix component ci`; mốc lịch sử 2026-10-20 trước `@afbc18d` tại `8aba473` là 37 / 2109 / 44 / 0, bản ghi lịch sử 2026-10-19 là 37 / ~2100 / 44 / 2 — chênh trong biên flaky ±1 và khác phiên bản pytest). Kỳ vọng cũ "200 passed, 28 skipped" là của chuỗi LOG-C15 đã kết thúc — không còn đúng, đừng dùng.
+- Cách đọc đúng: tập failure = **31 lỗi có sẵn trên main** + **6 xung đột test-main × code-#210 còn lại** (tên đã biết: `test_journey_super_goal_186`, họ `test_journey_visual_fidelity_190` ×4, `test_visual_shipment_workspace::test_same_attachment_id_...`; 4 ca `test_journey_fresh_parity_188` đã sửa ở `c5e904d` nên còn 37 thay vì 41 — 41 là số đo 2026-10-19, đã cũ, xem bảng STALE_KNOWN). **ĐỎ = hồi quy so với baseline**, không phải "phải 0 lỗi": so tập FAILED/ERROR với baseline cùng môi trường — chấp nhận khi `NEW=∅` và `GONE=∅`.
+- Baseline đã mã hoá trong `.github/workflows/ci.yml` (`BASELINE_FAILED` kèm phân rã thành phần trong comment) — CI đỏ khi vượt baseline đó.
 - Tests runtime cần Streamlit/Mongo thực được skip theo thiết kế — không cố sửa chúng thành chạy được.
+- Số flaky ±1 skip/fail theo môi trường; vượt 1 test thì re-run xác nhận trước khi gọi hồi quy.
 - Auth/RBAC: `tests/test_logc15_auth_rbac.py` (pure, mock streamlit).
 - DB users: `scripts/logc15_db_users_test.py` + runner — chạy trên DB test riêng, tự dọn.
 
@@ -75,26 +94,11 @@ Chưa có user → app render form tạo Admin đầu tiên (không default cred
 
 ## Native long-running goal bridge (P2P)
 
-For a clear long-running task on a host that supports native `/goal`, use `/goal` only as a session-continuation primitive. Canonical P2P GoalPlan/TaskPlan, durable task state, evidence, and verifier remain authoritative.
-
-- Prefer `.p2p/system/p2p_capabilities/native_goal_bridge.py` when an installed P2P runtime is present.
-- If installed runtime is absent in a fresh clone, derive the `/goal` completion condition directly from the active P2P goal/task contract. Do not create a second roadmap, state machine, memory authority, router, ledger, daemon, or scheduler.
-- Do not conflate host semantics. Only claim automatic continuation or evaluator behavior that is documented or directly verified for that host; do not assume Codex CLI has Claude Code's evaluator semantics.
-- Recovery remains failure-class adaptive. Never introduce a fixed retry-count hard stop such as `three strikes => BLOCKED`.
-- Before completion, compare the exact original baseline with the complete worktree: committed-after-baseline, staged, unstaged, deleted tracked, and untracked files. Prefer `.p2p/system/p2p_capabilities/worktree_evidence.py` when installed; otherwise use equivalent read-only Git inspection.
-- Before claiming done, replay the original task contract and re-check acceptance requirements and evidence. Host-native `/goal` evaluation and executor self-report are never P2P acceptance authority.
-- If the host has no native `/goal`, continue with the normal P2P execution path; do not add a substitute control plane just to imitate `/goal`.
+Xem mục “Native long-running goal bridge” trong managed P2P block bên dưới; heading này chỉ dẫn đường.
 
 ## Native `/goal` auto-activation (P2P)
 
-After law preflight and after durable P2P GoalPlan/TaskPlan state exists, but before the first substantive execution turn for that goal, decide native `/goal` activation automatically. Do not ask the Owner whether to use `/goal`.
-
-- If installed runtime contains `.p2p/system/p2p_capabilities/native_goal_activation.py`, run `python .p2p/system/p2p_capabilities/native_goal_activation.py --host <claude_code|codex_cli> --format json`. Host identity comes from the current executor; Claude Code may use its stable in-session markers, while Codex passes `codex_cli` from known executor identity and must not infer it from `CODEX_HOME` alone.
-- `decision=ACTIVATE_NATIVE_GOAL` -> if this same goal is not already active in the current host session, immediately invoke the returned `command` once, then continue the same P2P task.
-- `decision=NORMAL_P2P_PATH` -> continue the normal P2P path.
-- helper `status=BLOCKED` -> treat it as a durable-state/control-plane blocker; never fabricate a `/goal` condition.
-- If the helper is absent, apply the exact same deterministic rule directly from authoritative durable state: activate only for Goal `APPROVED|IN_PROGRESS` + TaskPlan `ACTIVE` + at least two tasks + unfinished work; otherwise use the normal P2P path. Do not create another detector, state machine, router, ledger, daemon, or scheduler.
-- Native `/goal` remains session continuation only. P2P task state, Owner Gates, evidence and independent verifier remain authoritative.
+Quy tắc auto-activation nằm trong mục “Native long-running goal bridge” của managed P2P block bên dưới; heading này chỉ dẫn đường.
 
 ## Prompt authoring discipline (P2P)
 
@@ -111,119 +115,169 @@ After law preflight and after durable P2P GoalPlan/TaskPlan state exists, but be
 - Use the output surface that fits the destination and workflow; do not force Markdown, files, XML, JSON, tables, or another wrapper unless the task contract, destination capability, machine parsing, or copy/paste workflow materially benefits.
 - Stop when the prompt is executable and aligned to outcome, destination, scope, acceptance, evidence, authority boundaries, and stop condition. Do not append optional prompt theory, examples, or future-proofing unless requested.
 
-## P2P portable Supreme Law entrypoint
-
-Before substantive P2P-managed analysis, planning, prompt writing, implementation, review, testing, or release work:
-
-1. If the active canonical law at `7roger89-web/P2P-upgrade-github-1@main:docs/p2p-development/P2P-OPERATIONS-NOTEBOOK.md` has already been successfully reached in this actor/session, read it; canonical wins.
-2. In a repo-scoped remote clone with a valid portable projection, read `.p2p/portable/P2P-OPERATIONS-NOTEBOOK.md` directly; do not probe canonical solely to prove cross-repository unavailability.
-3. `TARGET_REPO_AUTH != CANONICAL_CROSS_REPO_REACHABILITY`. Authentication to the target repository is not evidence that the private canonical repository is reachable.
-4. The project copy is a generated transport projection, never a new law authority. Do not edit it by hand.
-5. `TASK_BRANCH != LAW_AUTHORITY` and `TARGET_PROJECT != LAW_SOURCE` remain mandatory.
-6. Never claim the canonical repository was read when only the portable projection was read.
-7. If neither canonical, installed, nor portable law context is available, use the explicit P2P `SUPREME_LAW_CAPSULE`; otherwise stop at `LAW_CONTEXT_BLOCKED`.
-
-### Actor separation and self-law preflight
-
-Every actor (Control Tower, prompt writer, executor, reviewer, supervisor, tool session) must establish its own valid Supreme Law context before substantive work. A law context valid for one actor does not satisfy another actor's preflight.
-
-- `PARENT_SELF_LAW_PREFLIGHT != EXECUTOR_LAW_PREFLIGHT`
-- `EXECUTOR_P2P_LAW_SOURCE` cannot satisfy a parent/prompt-writer/control-tower preflight
-- `CONTROL_TOWER_SELF_LAW_RECEIPT=PASS` (when serialized by Control Tower) proves only the parent Control Tower's own preflight; it never proves executor preflight and never substitutes for `P2P_LAW_PREFLIGHT`
-- No actor may fake, infer, or copy another actor's receipt/source. Only an actually performed read counts
-- If no valid law source can be established for the current actor, stop at `LAW_CONTEXT_BLOCKED`
-- Every actor must visibly emit its own self-read receipt before first substantive work:
-  `LAW_CHECK=PASS | SOURCE=<actual source> | SOURCE_SHA256=<canonical source content sha256>`
-  or: `LAW_CHECK=BLOCKED | REASON=<reason>`
-- A portable PASS must bind to the recorded `SOURCE_CONTENT_SHA256` from `.p2p/portable/P2P-OPERATIONS-NOTEBOOK.md`. A stale portable copy cannot produce PASS
-
-### Remote repo-scoped handoff freshness
-
-- Before delegating to a repo-scoped remote executor that may not reach canonical P2P, the parent Control Tower/prompt writer must fresh-compare this projection's source identity with reachable canonical law.
-- If this projection is stale or missing and an authorized repository write path is available, refresh the generated portable notebook and managed AGENTS block before handoff.
-- If refresh cannot be performed safely, mark the portable projection stale/missing and hand off a fresh SUPREME_LAW_CAPSULE; the executor must not rely on a known-stale portable copy.
-- An authenticated GitHub connector may perform the repository refresh without a local clone; do not add a daemon, registry, GitHub Action, PAT, or new secret solely for projection freshness.
-- Parent delegation surfaces target-law freshness receipt before delegation:
-  `TARGET_LAW_FRESHNESS=CURRENT | REFRESHED | INLINE | BLOCKED`
-  `CANONICAL_LAW_SHA256=<sha256>`
-  `TARGET_LAW_SHA256=<sha256>`
-
-### Experience preflight and auto-reuse contract
-
-For every non-trivial P2P-managed task, after valid law/task-state preflight and before substantive execution:
-
-1. Perform bounded ACTIVE experience lookup:
-   - When installed runtime is present: run `python .p2p/system/p2p_capabilities/experience_evolution.py --root . retrieve --task-text "<task>"`
-   - In a repo-scoped remote clone without installed runtime: read `.p2p/portable/P2P-EXPERIENCE-CAPSULE.json` directly and match task triggers against promoted ACTIVE records
-2. Emit observable preflight receipt before substantive execution:
-   `EXPERIENCE_CHECK=USE_ACTIVE_EXPERIENCE | IDS=<id,...>`
-   or: `EXPERIENCE_CHECK=NO_MATCH`
-   or: `EXPERIENCE_CHECK=UNAVAILABLE`
-3. Invariants: max results <= 3; experience is NONAUTHORITATIVE context; current law, active task contract, and fresh project truth always outrank prior experience; experience cannot widen permissions or change acceptance authority.
-
-### Task-end learning reconciliation contract
-
-At task reconciliation, distinguish routine progress from reusable corrections:
-
-- `ROUTINE_SUCCESS` => emit `LEARNING_RECONCILIATION=NONE`; do not manufacture memory.
-- `REPEATED_OR_MATERIAL_FAILURE` / `CLEARLY_REUSABLE_CORRECTION` => emit `LEARNING_RECONCILIATION=CANDIDATE` with evidence and trigger conditions, or provide an explicit evidence-based reason why no reusable lesson exists.
-- Lifecycle: `CANDIDATE -> VERIFIED -> ACTIVE -> SUPERSEDED | QUARANTINED`. No executor self-promotion into Supreme Law, shared authority, capability, or skill.
-
-### Repo-native required skill handoff
+### Prompt-writer skill routing (chi tiết không có trong managed block)
 
 - `PROMPT_WRITER_SKILL_ROUTING_V1=YES`: before any P2P-generated delegated repository-work prompt, the prompt writer must inspect the target repo's supported skill metadata/projection and select the smallest relevant set (max 3). Reuse the existing Skill Consumption Wire when available; do not create a second router.
 - Explicit Owner `@skill` / `$skill` / `REQUIRED_SKILLS` wins when valid. No relevant match => serialize `SKILL_CHECK=NO_MATCH` and continue normally; unknown/missing/ambiguous/hash-mismatched required skill => fail closed before delegation.
 - For every selected skill, bind exact repo-local `SKILL.md` path + SHA-256 into the handoff, require executor read/apply before substantive work, and require one exact `p2p-skill-consumption-receipt/1`. A downstream `@skill` token alone is not consumption evidence.
 - Do not preload every skill or add another router, registry, vector DB, daemon, or background skill scanner for prompt-writer routing.
-- This managed repository carries a bounded canonical operator-skill projection under `.agents/skills/`: every canonical `p2p-*` skill plus `scope-reality-check`. It is transport, not a second router or authority.
-- Source-bound projection metadata lives at `.p2p/portable/P2P-SKILL-PROJECTION.json`. Do not treat an unlisted or hash-mismatched file as a current projected skill.
-- When an execution prompt serializes `REQUIRED_SKILLS=<ids>`, every required skill is mandatory for that turn. Read each exact repo-local `SKILL.md` before substantive task execution and apply each required skill.
-- The prompt/handoff must bind exact selected skill IDs to repo-local source paths and SHA-256 hashes. Missing file, unknown required skill, or hash mismatch => `SKILL_CONSUMPTION=LOAD_FAILED` and stop; do not silently substitute another skill.
-- Do not preload unselected skills. Deep-load references/assets only from selected skills and only when materially required.
-- Required skill guidance cannot widen Owner authority, permissions, mutation authority, release/deploy/promotion authority, or task scope.
-- Return one exact `p2p-skill-consumption-receipt/1` covering the complete frozen selected set. A receipt missing one required skill is not acceptance evidence.
 
-### Mandatory prompt serialization contract
+## Control Tower handoff — bắt buộc mọi task
 
-Every P2P-generated operational prompt handed to an executor must explicitly serialize both gates below; they must not be left implicit or assumed from chat memory:
+Repo này có một file bàn giao ca cho Control Tower: `docs/CONTROL-TOWER-HANDOFF.md`.
 
-### Arena new-chat title-first UX
+Cuối MỌI task có thay đổi file, TRƯỚC khi báo cáo hoàn tất:
 
-For Arena `NEW_CHAT`, apply `ARENA_CHAT_TITLE_FIRST_LINE_V1`: the first nonblank prompt line is a concise human-readable title, normally `<PROJECT> — <bounded task/outcome>`, with distinguishing words front-loaded. Do not start with `GỬI CHO:`, `DESTINATION=`, `TASK_ID=`, a code fence, or a generic `P2P` prefix. Put routing metadata immediately after the title and set `CHAT_TITLE` to that exact first-line title. For `SAME_CHAT`, preserve the exact existing chat title.
+1. Cập nhật `docs/CONTROL-TOWER-HANDOFF.md`:
+   - Mục 6 NHẬT KÝ PHIÊN: thêm mục mới LÊN TRÊN — ngày, commit SHA, đã làm, còn lại, cần Owner.
+   - Mục 3 TRẠNG THÁI: cập nhật cho khớp sự thật.
+   - MỤC 3 phải ≤ ~1 màn hình (CURRENT + ĐANG CHỜ + NEXT_ACTION/NEXT_PACKET). Mốc lịch sử đẩy xuống MỤC 6; khi MỤC 6 vượt ~10 mục thì chuyển các mục cũ nhất NGUYÊN VĂN sang docs/CONTROL-TOWER-ARCHIVE.md (lịch sử, không phải luật). MỤC 4 chỉ giữ bằng chứng của các mốc còn sống.
+   - Mục 1, 2, 5: GIỮ NGUYÊN, chỉ đổi khi prompt nói rõ.
+   - File chưa có thì tạo đúng cấu trúc mục 1→6.
+2. Commit cùng branch.
+3. Phát receipt trong báo cáo:
+   `HANDOFF_UPDATE=YES | PATH=docs/CONTROL-TOWER-HANDOFF.md | COMMIT=<sha>`
+   hoặc `HANDOFF_UPDATE=SKIPPED | REASON=<lý do>` nếu task chỉ đọc.
 
-`P2P_LAW_PREFLIGHT`:
-- tell the executor to read repository-root `AGENTS.md` before substantive work;
-- use canonical when it is already successfully reachable; otherwise follow installed > valid portable > inline capsule > blocked;
-- for a repo-scoped clone with valid portable law, do not make a cross-repo probe solely to trigger fallback;
-- report exactly one `P2P_LAW_SOURCE=<actual source>` and never claim a source was read when it was not;
-- emit actor-own `LAW_CHECK=PASS | SOURCE=<actual source> | SOURCE_SHA256=<canonical hash>` or `LAW_CHECK=BLOCKED`;
-- for non-trivial tasks, perform bounded experience check and emit `EXPERIENCE_CHECK=USE_ACTIVE_EXPERIENCE|NO_MATCH|UNAVAILABLE`;
-- at task reconciliation, emit `LEARNING_RECONCILIATION=NONE|CANDIDATE`.
+Không cập nhật handoff = task CHƯA hoàn tất. Task chỉ đọc thì không bắt buộc.
 
-`OE_GATE`:
-- ask exactly `Không bị over engineering chứ?`;
-- evaluate `SIMPLER_PATH`, `MATERIAL_PROGRESS`, `NECESSITY`, `CORE_BEFORE_SUPPORT`, and `SMALLER_VERIFIABLE_SLICE`;
-- return `OE_VERDICT=DO_IT|SKIP_IT|DEFER_UNTIL_NEEDED` with one concrete reason;
-- interpret directionally: SIMPLER_PATH=YES or SMALLER_VERIFIABLE_SLICE=YES means choose the simpler/smaller valid path; MATERIAL_PROGRESS=NO, NECESSITY=NO, or CORE_BEFORE_SUPPORT=NO means reduce/remove/defer; do not treat every negative answer as failure or return a ceremonial PASS.
+## Hai vòng phát triển — không trộn
 
-### Native long-running goal bridge
+Nguồn: P2P-DEVELOPMENT-CHARTER §5A (bản rút gọn cho dự án này).
 
-For a clear long-running task on a host that supports native `/goal`, use native `/goal` only as a session continuation primitive; canonical P2P GoalPlan/TaskPlan, task state, evidence, and verifier remain authoritative.
+PRODUCT FAST LOOP: Business/Owner Outcome → Minimum Product Truth → Product/UX Synthesis
+→ Interactive Prototype → Owner Review → Visual/Product Reference Lock → Real Implementation
+→ Targeted Tests → Human Outcome Test.
 
-- Prefer `.p2p/system/p2p_capabilities/native_goal_bridge.py` when an installed P2P runtime is present.
-- After durable GoalPlan/TaskPlan exists and before the first substantive execution turn for that goal, run `.p2p/system/p2p_capabilities/native_goal_activation.py` when installed and use its decision automatically; do not ask the Owner whether `/goal` should be used.
-- `ACTIVATE_NATIVE_GOAL` means invoke the returned host-native command once unless the same goal is already active in the current host session. `NORMAL_P2P_PATH` means continue normally. Helper `BLOCKED` means fail closed on the state/control-plane issue; never synthesize a goal condition.
-- Auto-activation is intentionally narrow: Goal status must be `APPROVED` or `IN_PROGRESS`, TaskPlan lifecycle must be `ACTIVE`, the canonical plan must contain at least two tasks, and at least one task must remain non-terminal. If the helper is absent but authoritative durable state is readable, apply exactly this same rule directly; do not invent another detector or state machine.
-- Choose `claude_code` or `codex_cli` from the current executor identity, never by asking the Owner. Claude Code may be identified from stable in-session markers; do not treat `CODEX_HOME` alone as proof of a Codex session.
-- If installed runtime is absent in a fresh clone, derive the `/goal` completion condition directly from the active P2P goal/task contract. Do not create a second roadmap, state machine, memory authority, router, ledger, daemon, or scheduler.
-- Do not conflate host semantics: only claim automatic continuation/evaluator behavior that is documented or directly verified for that host. In particular, do not assume Codex CLI has Claude Code's evaluator semantics.
-- Recovery remains failure-class adaptive. Never introduce a fixed retry-count hard stop such as `three strikes => BLOCKED`.
-- Before completion, compare against the original baseline across the complete worktree: committed-after-baseline, staged, unstaged, deleted tracked, and untracked files. Prefer `.p2p/system/p2p_capabilities/worktree_evidence.py` when installed; otherwise use equivalent read-only Git inspection.
-- Before claiming done, replay the original task contract and re-check acceptance requirements/evidence. Host-native `/goal` evaluation and executor self-report are never P2P acceptance authority.
-- If the host has no native `/goal`, continue with the normal P2P execution path; do not add a substitute control plane just to imitate `/goal`.
+ASSURANCE / RELEASE LOOP: Risk-Proportional Hardening → Independent Verification → Release.
 
-This serialization requirement applies to NEW_CHAT and SAME_CHAT execution prompts, including Arena, Codex, Manus, reviewers, supervisors, and other delegated executors. It does not require repeating the whole law body in every prompt.
+Trạng thái đi theo bậc, không nhảy:
+IDEA → PROTOTYPE → OWNER TRUTH → IMPLEMENTATION → SYSTEM TRUTH → VERIFICATION → RELEASE TRUTH.
 
+Luật:
+- "Xong kỹ thuật" KHÁC "được phát hành". Goal PASS, verify candidate, sẵn sàng phát hành,
+  và phát hành là bốn trạng thái riêng.
+- KHÔNG kéo một việc qua vòng assurance khi vòng product chưa xong.
+- Gia cố theo rủi ro, dùng đúng lane đã có: FAST | STANDARD | STRICT | CRITICAL.
+  Rủi ro thấp → kiểm hẹp sát chỗ đổi. Việc thường → bằng chứng acceptance/regression rõ.
+  Việc chặt → thêm kiểm độc lập khi có giá trị quyết định.
+  Việc nguy (auth, migration, xoá dữ liệu, phát hành) → verifier độc lập + bằng chứng
+  đường thật + Owner duyệt.
+- Chạy một agent tử tế từ đầu tới cuối trước; chỉ thêm verifier khi rủi ro đòi.
+- Tiêu chí người: Owner phải nhận ra việc cần xử lý trong 30 giây.
+
+## Thang chống over-engineering
+
+Nguồn: P2P-DEVELOPMENT-CHARTER §5A.
+
+Trước khi thêm bất cứ gì, thử theo ĐÚNG thứ tự này và DỪNG ở bậc đầu tiên giải quyết được:
+1. Không code — trả lời hoặc ra quyết định
+2. Đổi cấu hình
+3. Sửa quy trình
+4. Sửa hẹp đúng chỗ
+5. Dùng helper/component đã có
+6. Thay skill/tool sẵn có
+7. Chỉ tạo abstraction mới khi chứng minh được là bắt buộc về mặt cơ học
+
+Câu hỏi bắt buộc kèm theo: `Không bị over engineering chứ?`
+
+## Owner Gate — chỉ hỏi Owner những việc này
+
+Nguồn: P2P-DEVELOPMENT-CHARTER §4.
+
+Chỉ hỏi Owner khi thuộc một trong các loại: ý định sản phẩm/kinh doanh · dữ liệu nghiệp vụ
+thật · hành động xoá dữ liệu · cấp quyền secret/credential · chi tiêu đáng kể · deploy
+production · phát hành cần duyệt · mơ hồ không gỡ được bằng kỹ thuật và hậu quả lớn.
+
+KHÔNG hỏi Owner chọn cơ chế kỹ thuật mà tự xác định được từ bằng chứng.
+
+## Bất biến then chốt
+
+Nguồn: P2P-DEVELOPMENT-CHARTER §3.
+
+- OUTPUT_NOT_EVIDENCE — output của executor là ĐỀ XUẤT cho tới khi được kiểm với bằng chứng.
+- INVENTORY_NOT_BEHAVIOR — file/class/registry tồn tại KHÔNG phải bằng chứng nó hoạt động.
+- UNKNOWN_IS_NOT_SUPPORTED — cái không kiểm được thì giữ UNKNOWN, không coi là đã hỗ trợ.
+- GOAL_PASS_NOT_PROMOTION — PASS mục tiêu ≠ đã phát hành.
+- PROJECT_STATE_NOT_CHAT_HISTORY — phiên mới hồi phục từ trạng thái dự án, không từ chat.
+- DETERMINISTIC_FIRST — kiểm được bằng máy thì kiểm trước, đừng suy luận.
+
+## Bằng chứng trước khi kết luận
+
+Nguồn: bài học từ các phiên Arena — có phiên kết luận "KHÔNG phải lỗi" trên cây thiếu file.
+
+Trước khi kết luận bất cứ điều gì về code:
+- Đọc file THẬT ở ĐÚNG HEAD. Không suy từ trí nhớ, không suy từ mô tả.
+- Trích `file:line` làm căn cứ.
+
+Kết luận "KHÔNG phải lỗi" PHẢI kèm đoạn code thật làm căn cứ, không suy đoán.
+
+Nếu file không tồn tại ở cây đang xét, kiểm tra lại ở HEAD của nhánh/PR đích trước khi
+kết luận — file có thể chỉ tồn tại trên nhánh đó.
+
+Không có bằng chứng thì ghi `[KHÔNG CÓ BẰNG CHỨNG]`, đừng kết luận.
+
+## Khảo sát bắt buộc trước khi sửa (TASK 0)
+
+Mọi prompt có sửa file PHẢI mở đầu bằng TASK 0, làm TRƯỚC mọi thay đổi:
+
+- Nêu branch + HEAD SHA đang làm việc.
+- Với TỪNG file sẽ đụng: nó CÓ tồn tại ở HEAD đó không? Trích NGUYÊN đoạn dòng sẽ sửa.
+- Nêu sẽ đổi gì ở mỗi file.
+- Nêu chỗ CHƯA CHẮC → đánh dấu `[CHƯA CHẮC]`.
+- Nếu file KHÔNG tồn tại ở cây hiện tại: kiểm ở HEAD nhánh/PR đích rồi nói rõ.
+- Nếu phát hiện prompt của Control Tower SAI: NÓI RA, đừng im lặng làm theo.
+- Receipt: `PREFLIGHT_READ=PASS | HEAD=<sha> | FILES=<n> | MISSING=<n>`
+
+## Tự kiểm trước khi báo xong (TASK CUỐI)
+
+Mọi prompt có sửa file PHẢI kết thúc bằng TASK CUỐI, làm TRƯỚC khi báo hoàn tất:
+
+- Đọc lại diff của chính mình.
+- Với TỪNG tiêu chí acceptance: trích DÒNG CODE THẬT chứng minh đã đạt.
+- Tick checklist. Tiêu chí nào không đạt thì KHÔNG tick, ghi rõ lý do.
+- Receipt: `SELF_VERIFY=PASS | ACCEPTANCE=<đạt>/<tổng> | CHECKLIST=<tick>/<tổng>`
+
+Không có SELF_VERIFY tick đủ = task CHƯA hoàn tất.
+
+## Xoay phiên Arena
+
+Mở CHAT MỚI khi: PR vừa merge/đóng · xong một mục tiêu · Arena bắt đầu lặp lại ·
+phải giải thích lại điều đã nói. Chat dài làm chất lượng giảm.
+
+Một prompt chỉ nên chứa MỘT loại việc. Việc khác loại thì tách prompt.
+
+## Bài học tích lũy
+
+Mỗi lần một phiên làm sai và được Control Tower chỉ ra, thêm MỘT DÒNG luật vào mục này.
+Giữ mỗi dòng thật ngắn. Nếu dài quá thì để chi tiết ở playbook §9.
+
+- Push vào nhánh không ai theo dõi thì coi như mất việc — sau mỗi phiên phải kiểm nhánh mồ côi (`GET /repos/.../branches?per_page=100`).
+- Sửa source React mà không rebuild `component/dist` trong CÙNG commit → QA nhìn bundle cũ, mất một vòng "fix" ma.
+- Bằng chứng chỉ nằm ở ổ đĩa máy trạm thì Control Tower coi như KHÔNG CÓ — phải đưa lên comment PR hoặc `docs/`.
+- Prompt giao việc thiếu `P2P_LAW_PREFLIGHT`/`OE_GATE` → executor lệch chuẩn, mất cả phiên làm lại.
+- Hướng dẫn stale (số test cũ, baseline chuỗi cũ) làm người đọc sau hiểu sai trạng thái — phát hiện là sửa ngay.
+- **Đồng bộ head PR là việc của phiên Arena (2026-10-20)**: base commit LUÔN từ head PR (không từ main); push nhánh session; rồi PATCH ref arena/a3117943-... qua API force=false — PATCH ref KHÔNG phải "push nhánh khác"; nếu 403 mới báo FF_BLOCKED.
+- Mode của lô KHÔNG đọc từ `s.mode` (có thể là chặng đầu, vd Truck); Journey dùng `executionProfile.mode` — đối chiếu trước khi kết luận câu chữ.
+- Gọi nhiều edit song song trên CÙNG 1 file có thể làm mất edit lặng lẽ (phiên W1 2026-10-21 suýt ship NameError) — sửa tuần tự từng file và `git diff` kiểm lại trước khi chạy test.
+- **Handover kèm SHA + PR phải chứng minh ancestry (2026-10-21)**: `git cat-file -e <sha>` chỉ chứng minh object tồn tại; dùng `git merge-base --is-ancestor <sha> <head>` (hoặc compare ahead/behind) trước khi ghi "nằm trong PR".
+- **Nghi receipt sai hash ⇒ đọc định nghĩa nguồn trước (2026-10-21)**: xác minh `SOURCE_CONTENT_SHA256` trong header projection (không so với hash file portable) trước khi kết luận FAILED — tránh "sửa" một receipt đúng.
+
+Chi tiết + bối cảnh: docs/CONTROL-TOWER-PLAYBOOK.md §9. Mỗi dòng ở đây phải ngắn.
+- Mọi LEARNING_RECONCILIATION=CANDIDATE phải hạ xuống đây đúng 1 dòng trước khi kết phiên — không để mắc trong nhật ký.
+- Trước khi đính log/ZIP lên PR công khai: quét secret và redaction TRƯỚC, vì attachment GitHub không xoá được về sau.
+- Receipt bắt buộc phải nằm trong COMMENT công khai trên PR, không chỉ trong chat; `OE_VERDICT` phải đúng enum DO_IT|SKIP_IT|DEFER_UNTIL_NEEDED; số đo độ dài section phải nêu ranh giới trích xuất.
+- Sau khi thêm ca test tuỳ chọn, kiểm bất biến số học `RED_failed + RED_passed == GREEN_total` ở MỌI chỗ ghi trong handoff/body PR trước khi commit docs.
+
+
+## Definition of Done tối thiểu cho task đụng UI
+
+1. Đổi source React ⇒ BẮT BUỘC rebuild `component/dist` trong CÙNG commit + kiểm marker parity source↔dist; bundle ship phải khớp source của đúng commit đó.
+2. Browser/visual QA phải chạy trên bundle của ĐÚNG commit được kiểm, và phải có ít nhất 1 ca đúng vai trò Sale và 1 ca Support (không chỉ admin).
+3. Bằng chứng QA/browser phải nằm ở nơi Control Tower đọc được (comment PR hoặc file trong `docs/`), không chỉ ổ đĩa máy trạm.
+4. Task CHỈ ĐỌC mà có kết quả nghiệm thu (QA/browser/audit) thì Control Tower phải ghi 1 dòng vào `docs/CONTROL-TOWER-HANDOFF.md` mục 3/4 (hoặc ghi rõ lý do không).
+
+Cách vận hành Control Tower + mẫu prompt + thang failover: `docs/CONTROL-TOWER-PLAYBOOK.md`.
 
 <!-- BEGIN P2P FRONTEND CAPABILITY PACK -->
 ## P2P project-local frontend capability pack

@@ -20,6 +20,9 @@ import vietnamChartUrl from '../assets/journey/vietnam-east-sea-chart.webp?url';
 export const JOURNEY_NODE_W = 116, JOURNEY_NODE_H = 66;
 const W = JOURNEY_NODE_W, H = JOURNEY_NODE_H, PITCH = 140, PX = 42;
 const ROW_TOP = 116, ROW_MAIN = 240, ROW_BOTTOM = 364;
+// Bước (3B) — a separate row for the two SUB-only stages: they carry no
+// journey edge, so they must not sit inside the transport chain.
+const ROW_ENTRUSTMENT = 488;
 const col = (c: number) => PX + c * PITCH;
 export interface JourneyPosition { x: number; y: number; w: number; h: number }
 export const DEMO_POS: Record<string, JourneyPosition> = {
@@ -36,6 +39,9 @@ export const DEMO_POS: Record<string, JourneyPosition> = {
   arrival: { x: col(7), y: ROW_MAIN, w: W, h: H },
   'customs-import': { x: col(8), y: ROW_MAIN, w: W, h: H },
   delivery: { x: col(9), y: ROW_MAIN, w: W, h: H },
+  // Bước (3B) — rendered only when the backend emits them (TT_ENTRUSTED_SUB).
+  'entrustment-ready': { x: col(8), y: ROW_ENTRUSTMENT, w: W, h: H },
+  'tt-warehouse-handover': { x: col(9), y: ROW_ENTRUSTMENT, w: W, h: H },
 };
 const CW = col(9) + W + PX, CH = ROW_BOTTOM + H + ROW_TOP;
 export const JOURNEY_META = {
@@ -91,7 +97,8 @@ export default function JourneyMap({
   const gridCols = Math.max(1, Math.min(5, nodes.length)), gridRows = Math.max(1, Math.ceil(nodes.length / 5));
   const positions = new Map(nodes.map((n, i) => [n.id, sea && DEMO_POS[n.id] ? DEMO_POS[n.id] : { x: col(i % 5), y: 140 + Math.floor(i / 5) * 170, w: W, h: H }]));
   const canvasWidth = sea ? CW : col(gridCols - 1) + W + PX;
-  const canvasHeight = sea ? CH : 140 + (gridRows - 1) * 170 + H + 140;
+  const hasEntrustmentRow = nodes.some(n => n.id === 'entrustment-ready' || n.id === 'tt-warehouse-handover');
+  const canvasHeight = sea ? (hasEntrustmentRow ? ROW_ENTRUSTMENT + H + ROW_TOP : CH) : 140 + (gridRows - 1) * 170 + H + 140;
   const fit = useCallback(() => {
     const el = vp.current; if (!el?.clientWidth || !el.clientHeight) return;
     const w = el.clientWidth, h = el.clientHeight;

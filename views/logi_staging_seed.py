@@ -78,25 +78,76 @@ QUOTES: list[dict[str, Any]] = [
 # never invented by the sandbox.
 # ---------------------------------------------------------------------------
 
+# Owner cấp dữ liệu thật 2026-10-21 (nguyên văn: "Mst 0105937262, công ty trường
+# thành logistics. Cả 3 tên đều như thế") ⇒ MỘT pháp nhân đứng ở CẢ BA vai trò
+# của chuỗi TT_ENTRUSTED_SUB, nên 3 record dưới đây mang CÙNG `legal_name` +
+# CÙNG MST và chỉ khác `id` + vai trò. Đây là SEED STAGING; master production
+# vẫn ở DB thật và không được seed từ đây.
+#
+# Vì sao vẫn là 3 record riêng, không gộp thành 1:
+#   * vai trò 1 (ký hợp đồng ủy thác) và vai trò 3 (đứng tên nhập khẩu) — writer
+#     bắt buộc ``importer_company_id != company_id`` (xem
+#     ``core.shipment_document_workflow.project_commercial_flow``) nên 2 id PHẢI
+#     khác nhau;
+#   * vai trò 2 (đối tác hợp đồng / sub agent) resolve từ ``authority_agents``
+#     và KHÔNG BAO GIỜ được promote từ company master, nên phải có row AGENT
+#     riêng, MST ghi đúng spelling của AGENT master là ``legal_code``.
+# Hệ quả thiết kế: khi TÊN và MST trùng nhau thì thứ DUY NHẤT phân biệt 3 lựa
+# chọn bên giao/bên nhận là NHÃN VAI TRÒ do
+# ``core.shipment_document_workflow.entrustment_parties`` dựng.
+# Id cũ ``TT-COMPANY`` được giữ cho vai trò 1 để không phá tham chiếu sẵn có
+# (contract / shipment / partner index đều dùng id này).
 AUTHORITY_COMPANIES: list[dict[str, Any]] = [
-    {
+    {   # Vai trò 1 — pháp nhân ký hợp đồng ủy thác (id cũ, giữ nguyên).
         "company_id": "TT-COMPANY",
         "id": "TT-COMPANY",
-        "legal_name": "CÔNG TY TNHH GIAO NHẬN QUỐC TẾ TRƯỜNG THÀNH",
-        "tax_or_legal_code": "0100987654",
+        "legal_name": "CÔNG TY TRƯỜNG THÀNH LOGISTICS",
+        "tax_or_legal_code": "0105937262",
         "legal_address": "Số 12, Đường Láng Hạ, Ba Đình, Hà Nội",
         "legal_representative": "Nguyễn Thị Thu Hằng",
         "representative_title": "Giám đốc",
         "phone": "0241234567",
         "email": "info@truongthanh.vn",
-        "bank_account_holder": "CÔNG TY TNHH GIAO NHẬN QUỐC TẾ TRƯỜNG THÀNH",
+        "bank_account_holder": "CÔNG TY TRƯỜNG THÀNH LOGISTICS",
+        "bank_account_number": "0123456789",
+        "bank_name": "Vietcombank",
+    },
+    {   # Vai trò 3 — pháp nhân đứng tên nhập khẩu. Id KHÁC vai trò 1 (điều kiện
+        # của writer); cùng pháp nhân nên cùng tên + cùng MST + cùng hồ sơ.
+        "company_id": "TT-COMPANY-IMPORT",
+        "id": "TT-COMPANY-IMPORT",
+        "legal_name": "CÔNG TY TRƯỜNG THÀNH LOGISTICS",
+        "tax_or_legal_code": "0105937262",
+        "legal_address": "Số 12, Đường Láng Hạ, Ba Đình, Hà Nội",
+        "legal_representative": "Nguyễn Thị Thu Hằng",
+        "representative_title": "Giám đốc",
+        "phone": "0241234567",
+        "email": "info@truongthanh.vn",
+        "bank_account_holder": "CÔNG TY TRƯỜNG THÀNH LOGISTICS",
         "bank_account_number": "0123456789",
         "bank_name": "Vietcombank",
     },
 ]
 
 AUTHORITY_AGENTS: list[dict[str, Any]] = [
-    {
+    {   # Vai trò 2 — đối tác hợp đồng (sub agent). Cùng pháp nhân Trường Thành
+        # nên cùng tên; MST ghi theo spelling của AGENT master: ``legal_code``.
+        "agent_id": "AGT-TRUONGTHANH",
+        "id": "AGT-TRUONGTHANH",
+        "legal_name": "CÔNG TY TRƯỜNG THÀNH LOGISTICS",
+        "legal_code": "0105937262",
+        "legal_address": "Số 12, Đường Láng Hạ, Ba Đình, Hà Nội",
+        "legal_representative": "Nguyễn Thị Thu Hằng",
+        "representative_title": "Giám đốc",
+        "phone": "0241234567",
+        "email": "info@truongthanh.vn",
+        "bank_account_holder": "CÔNG TY TRƯỜNG THÀNH LOGISTICS",
+        "bank_account_number": "0123456789",
+        "bank_name": "Vietcombank",
+    },
+    {   # Record Phú Anh lịch sử — KHÔNG phải một trong 3 vai trò của chuỗi ủy
+        # thác, giữ nguyên để không phá tham chiếu partner/payable sẵn có
+        # (contract/shipment cũ + fixture partner-context).
         "agent_id": "AGT-PHUANH",
         "id": "AGT-PHUANH",
         "legal_name": "CÔNG TY TNHH PHÚ ANH LOGISTICS",

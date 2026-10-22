@@ -18,6 +18,7 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Any, Mapping, Sequence
 
+from core.customs_truth import customs_clearance_confirmed
 from core.database import _UNSET_DB
 
 from views.logi_route import shipment_path
@@ -162,7 +163,7 @@ def operational_stage(shipment: Mapping[str, Any]) -> tuple[str, str]:
         return "Đã giao", "green"
     if status == "cancel":
         return "Đã hủy", "gray"
-    if customs.get("customs_status"):
+    if customs_clearance_confirmed(customs.get("customs_status")):
         return "Chờ giao", "blue"
     # A registered declaration, or goods already arrived at the border, both
     # mean the shipment is waiting on customs — derived from real facts only.
@@ -206,7 +207,7 @@ def document_checklist(
     rows = [
         {"name": "Số tờ khai nhập khẩu", "ok": bool(tk),
          "note": tk or "Chưa đăng ký tờ khai"},
-        {"name": "Đã thông quan", "ok": bool(customs.get("customs_status")),
+        {"name": "Đã thông quan", "ok": customs_clearance_confirmed(customs.get("customs_status")),
          "note": text(customs.get("phan_luong")) or ("Chờ kết quả phân luồng" if tk else "Chờ số tờ khai")},
         {"name": "Xe giao VN + tài xế", "ok": bool(delivery_plate),
          "note": delivery_plate or "Chưa đặt xe giao"},
@@ -1183,6 +1184,12 @@ def _gnt_projection(
                 "history": history,
             }
 
+    # Tax payment evidence is SEPARATE from GNT generation.
+    # Persisted truth: gnt_customs.taxPaid / taxPaidAt / paidAt (operator confirms with proof).
+    tax_paid_raw = gnt_customs.get("taxPaid") or gnt_customs.get("tax_paid") or customs.get("taxPaid") or customs.get("tax_paid")
+    tax_paid_at_raw = gnt_customs.get("taxPaidAt") or gnt_customs.get("tax_paid_at") or customs.get("taxPaidAt") or customs.get("tax_paid_at") or gnt_customs.get("paidAt") or customs.get("paidAt")
+    tax_paid = bool(tax_paid_raw) or bool(text(tax_paid_at_raw))
+    tax_paid_at = text(tax_paid_at_raw)
     return {
         "payer": text(gnt_data.get("taxpayer_name") or gnt_customs.get("nguoi_nop")),
         "taxCode": text(gnt_data.get("taxpayer_tax_code") or gnt_customs.get("mst")),
@@ -1196,6 +1203,8 @@ def _gnt_projection(
         "done": bool(gnt_doc),
         "document": gnt_doc,
         "documentHistory": history,
+        "taxPaid": tax_paid,
+        "taxPaidAt": tax_paid_at,
         "readiness": {
             "state": readiness_state,
             "gate": readiness_gate,
@@ -1459,8 +1468,10 @@ def shipment_projection(
     # collection and no duplicate finance/document truth.
     from core.shipment_document_workflow import (  # noqa: PLC0415
         build_document_workflow,
-        match_sub_purchase_contract,
         project_commercial_flow,
+        project_entrustment_stages,
+        resolve_sub_purchase_contract,
+        stored_entrustment_evidence,
     )
     from core.shipment_document_catalog import (  # noqa: PLC0415
         effective_catalog,
@@ -1513,12 +1524,19 @@ def shipment_projection(
             )
         )
     )
-    candidate_contracts: dict[str, Any] = {}
-    if linked_contracts is not None:
-        candidate_contracts.update(linked_contracts.get(sid.upper()) or {})
-    if contract_id and isinstance(contracts.get(contract_id), Mapping):
-        candidate_contracts.setdefault(contract_id, contracts[contract_id])
-    sub_purchase_contract = match_sub_purchase_contract(commercial_flow, candidate_contracts)
+    sub_purchase_contract = resolve_sub_purchase_contract(
+        shipment=shipment,
+        flow=commercial_flow,
+        contracts=contracts,
+        linked_contracts=linked_contracts,
+    )
+    # Bước (3B) — exactly two extra SUB stages. Their truth is the recorded
+    # evidence block only; the contract match is a precondition, not a proof.
+    entrustment_stages = project_entrustment_stages(
+        commercial_flow,
+        sub_purchase_contract,
+        stored_entrustment_evidence(shipment),
+    )
 
     document_workflow = build_document_workflow(
         flow=commercial_flow,
@@ -1551,7 +1569,8 @@ def shipment_projection(
         }
     journey = build_journey(shipment, profile=execution_profile, operational=operational,
                             primary=primary_action, dashboard=view, attachments=attachment_view,
-                            work_modules=work_modules)
+                            work_modules=work_modules,
+                            entrustment_stages=entrustment_stages)
 
     return {
         "id": sid,
@@ -1596,6 +1615,7 @@ def shipment_projection(
         "missingDocs": missing,
         "docs": document_checklist(shipment, execution_profile=execution_profile),
         "commercialFlow": commercial_flow,
+        "entrustmentStages": entrustment_stages,
         "documentWorkflow": document_workflow,
         # LOGI_SHIPMENT_DOCUMENTS_DRIVE_REINTEGRATE_02 — real attachments of the
         # lot: bounded metadata read back from the canonical
@@ -1691,7 +1711,7 @@ def shipment_projection(
             "tax": num(customs.get("import_duty_amount")),
             "vat": num(customs.get("import_vat_amount")),
             "inspection": text(customs.get("phan_luong")),
-            "customsStatus": bool(customs.get("customs_status")),
+            "customsStatus": customs_clearance_confirmed(customs.get("customs_status")),
             "license": "",
             "gnt": gnt_view,
             "arrivalDate": _ddmmyyyy(arrival.get("arrival_date")) or _ddmmyyyy(operational.get("eta")),
@@ -2260,7 +2280,7 @@ def tracking_projection(shipment: Mapping[str, Any]) -> dict[str, Any]:
         milestones.append({"time": _declaration_date(customs), "title": "Đăng ký tờ khai nhập khẩu",
                            "desc": f"TK {text(customs.get('tk_no'))} · luồng {text(customs.get('phan_luong')) or 'chờ phân luồng'}",
                            "done": True, "tone": "blue"})
-    if customs.get("customs_status"):
+    if customs_clearance_confirmed(customs.get("customs_status")):
         milestones.append({"time": _ddmmyyyy(customs.get("clearance_date")), "title": "Đã thông quan",
                            "desc": "", "done": True, "tone": "green"})
     if text(delivery.get("delivery_date")):

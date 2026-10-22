@@ -14,6 +14,9 @@ export interface BubbleTask {
   title: string;
   meta: string;
   tone: 'PROBLEM' | 'CURRENT' | 'WAITING' | 'COMPLETED' | 'UPCOMING';
+  // Honest per-task label override: FILE_PRESENT is its own state and must not
+  // borrow the COMPLETED badge ('✓ Có bằng chứng') — files are not accepted evidence.
+  badge?: { text: string; cls: string };
   onOpen?: () => void;
   disabled?: boolean;
 }
@@ -41,12 +44,16 @@ export function bubbleTasksFor(
   node.blockers.slice(1).forEach((b, i) => tasks.push({
     key: `blocker-${i}`, title: b, meta: 'VIỆC ĐANG CHẶN', tone: 'PROBLEM', onOpen: () => onTask(node, 'info'),
   }));
-  // 3. Documents required at this stage.
+  // 3. Documents required at this stage. FILE_PRESENT != DOCUMENT_ACCEPTED —
+  // the repo has no authority that accepts stage documents (uploads never
+  // self-accept), so recorded files are shown AS files and never claim the
+  // green "có bằng chứng" completion badge.
   if (node.documentCategories.length > 0 || docs > 0) tasks.push({
     key: 'docs',
     title: 'Chứng từ đính kèm công đoạn',
-    meta: `${attached} TỆP ĐÃ GHI NHẬN${node.documentCategories.length ? ` · ${node.documentCategories.length} LOẠI YÊU CẦU` : ''}`,
-    tone: attached > 0 ? 'COMPLETED' : 'WAITING',
+    meta: `${attached} TỆP ĐÃ GHI NHẬN${node.documentCategories.length ? ` · ${node.documentCategories.length} LOẠI YÊU CẦU` : ''}${attached > 0 ? ' · CHƯA XÁC NHẬN BẰNG CHỨNG' : ''}`,
+    tone: attached > 0 ? 'CURRENT' : 'WAITING',
+    badge: attached > 0 ? { text: '✓ Tệp đã ghi nhận', cls: 'border-[#8EC0E8] bg-[#DCEBFA] text-[#154C79]' } : undefined,
     onOpen: () => onTask(node, 'docs'),
   });
   // 4. Work Modules anchored at this node (their next step opens in the popup).
@@ -115,7 +122,7 @@ export default function JourneyBubble({ node, pos, canvas, tasks, onClose, onQui
           </div>
           <ul className="journey-bubble-list" data-testid="journey-bubble-tasks">
             {tasks.map(t => {
-              const b = TONE_BADGE[t.tone];
+              const b = t.badge ?? TONE_BADGE[t.tone];
               return (
                 <li key={t.key}>
                   <button

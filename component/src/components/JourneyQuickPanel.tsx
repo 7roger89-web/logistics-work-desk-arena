@@ -22,7 +22,11 @@ const ACTION_STYLE = {
 };
 function Label({ children }: { children: React.ReactNode }) { return <div className="mb-1 text-[12px] font-bold uppercase tracking-widest text-slate-500">{children}</div>; }
 export function stageAction(node: JourneyNode) {
-  return node.blockers.join(' · ') || (node.completed ? 'Mốc hoàn thành đã được ghi nhận; kiểm tra thông tin liên quan khi cần.' : node.owned ? 'Kiểm tra bằng chứng và cập nhật tại bàn làm việc công đoạn.' : 'Theo dõi thông tin tham chiếu; chưa xác nhận Trường Thành phụ trách.');
+  // Real guidance first: the screen must say what to do, never a generic
+  // filler that pretends guidance exists. When none is stored, say so.
+  return node.guidance?.what_to_do
+    || node.blockers.join(' · ')
+    || (node.completed ? 'Mốc hoàn thành đã được ghi nhận; kiểm tra thông tin liên quan khi cần.' : node.owned ? 'Chưa có hướng dẫn cho công đoạn này' : 'Theo dõi thông tin tham chiếu; chưa xác nhận Trường Thành phụ trách.');
 }
 export default function JourneyQuickPanel({ shipment: s, selected: n, onOpen, runPrimary, onClose }: {
   shipment: Shipment; selected: JourneyNode; onOpen: (node: JourneyNode, work: string) => void;
@@ -46,10 +50,10 @@ export default function JourneyQuickPanel({ shipment: s, selected: n, onOpen, ru
       <div className={cx('mt-0.5 text-sm font-bold', m.text)}>{n.evidence || 'Chưa có bằng chứng thực tế'}</div>
     </div>
     <div className="min-h-0 flex-1 space-y-3 overflow-auto px-4 py-3">
-      <section><Label>Support Sale cần làm</Label><div className={cx('rounded-lg border-2 p-3', a.box)}><div className="text-[12px] font-extrabold tracking-[0.12em] opacity-90">{a.label}</div><div className="mt-0.5 text-[19px] font-extrabold leading-snug">{stageAction(n)}</div><button type="button" onClick={() => onOpen(n, 'info')} data-testid="journey-quick-action" className="touch-target mt-2.5 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#0f2a4a] px-3 py-2.5 text-[13px] font-extrabold tracking-wide text-white">XỬ LÝ NGAY <ArrowRight size={15} /></button></div></section>
+      <section><Label>Support Sale cần làm</Label><div className={cx('rounded-lg border-2 p-3', a.box)}><div className="text-[12px] font-extrabold tracking-[0.12em] opacity-90">{a.label}</div><div className="mt-0.5 text-[19px] font-extrabold leading-snug" data-testid="journey-what-to-do">{stageAction(n)}</div><div className="mt-2 rounded-md border border-slate-200 bg-white px-2.5 py-2" data-testid="journey-done-when"><div className="text-[11px] font-bold uppercase tracking-widest text-slate-500">DONE WHEN — xong khi nào</div><div className="text-[13px] font-semibold text-slate-800">{n.guidance?.done_when || 'Chưa có hướng dẫn cho công đoạn này'}</div></div><button type="button" onClick={() => onOpen(n, 'info')} data-testid="journey-quick-action" className="touch-target mt-2.5 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#0f2a4a] px-3 py-2.5 text-[13px] font-extrabold tracking-wide text-white">XỬ LÝ NGAY <ArrowRight size={15} /></button></div></section>
       <section><Label>Thông tin chính</Label></section>
       <dl className="divide-y divide-slate-100 rounded-lg border border-slate-200 text-[13px]" data-testid="journey-quick-facts">
-        <div className="flex items-center justify-between gap-2 px-3 py-2"><dt className="shrink-0 text-slate-500">NGƯỜI NHẬP KHẨU</dt><dd className="text-right font-bold">{s.importInfo.receiver || s.customer || 'Chưa có thông tin'}</dd></div>
+        <div className="flex items-center justify-between gap-2 px-3 py-2"><dt className="shrink-0 text-slate-500">NGƯỜI NHẬP KHẨU</dt><dd className="text-right font-bold">{s.commercialFlow?.legalImporterName || 'UNKNOWN'}</dd></div>
         <div className="flex items-center justify-between gap-2 px-3 py-2"><dt className="shrink-0 text-slate-500">TỜ KHAI</dt><dd className="text-right font-bold">{s.importInfo.declarationNo ? `${s.importInfo.declarationNo} · đã đăng ký` : 'Chưa có thông tin'}</dd></div>
         <div className="flex items-center justify-between gap-2 px-3 py-2"><dt className="shrink-0 text-slate-500">THÔNG QUAN</dt><dd className={cx('text-right font-bold', !s.importInfo.customsStatus && 'text-red-700')}>{s.importInfo.customsStatus ? 'Đã xác nhận' : 'Chưa xác nhận'}</dd></div>
         <div className="flex items-center justify-between gap-2 px-3 py-2"><dt className="shrink-0 text-slate-500">THUẾ NK</dt><dd className={cx('text-right font-bold', s.importInfo.tax == null && 'text-red-700')}>{s.importInfo.tax == null ? 'Chưa có thông tin' : fmtCcy(s.importInfo.tax, 'VND')}</dd></div>
@@ -60,6 +64,7 @@ export default function JourneyQuickPanel({ shipment: s, selected: n, onOpen, ru
         <div className="flex items-center justify-between gap-2 px-3 py-2"><dt className="shrink-0 text-slate-500">HẠN</dt><dd className="text-right font-bold">{n.deadline || 'Chưa ghi nhận'}</dd></div>
         <div className="flex items-center justify-between gap-2 px-3 py-2"><dt className="shrink-0 text-slate-500">CHỜ AI / PHỤ THUỘC</dt><dd className="text-right font-bold">{deps || '—'}</dd></div>
         <div className="flex items-center justify-between gap-2 px-3 py-2"><dt className="shrink-0 text-slate-500">Chứng từ</dt><dd className="text-right font-bold">{files.length ? `${files.length} tệp đã ghi nhận` : 'Chưa ghi nhận'}</dd></div>
+        {n.missingEvidence && n.missingEvidence.length > 0 && <div className="bg-amber-50 px-3 py-2" data-testid="journey-missing-evidence"><dt className="text-xs font-bold text-amber-800">CÒN THIẾU BẰNG CHỨNG</dt><dd className="mt-0.5 text-[13px] font-semibold leading-snug text-amber-950">{n.missingEvidence.join(' · ')}</dd></div>}
         {n.blockers.length > 0 && <div className="bg-red-50 px-3 py-2"><dt className="text-xs font-bold text-red-700">BLOCKER / ẢNH HƯỞNG</dt><dd className="mt-0.5 text-[13px] font-bold leading-snug text-red-900">{n.blockers.join(' · ')}</dd></div>}
       </dl>
       {n.moduleId && <section className="rounded-lg border border-slate-300 bg-slate-50 p-3" data-testid="journey-module-context"><Label>Quy trình · V{n.moduleTemplateVersion}</Label><div className="font-bold">{n.moduleName}</div><p className="text-xs text-slate-600">{n.moduleStatus === 'DONE' ? 'Đã xong' : n.moduleStatus === 'BLOCKING' ? 'Đang chặn' : n.moduleStatus === 'UNKNOWN' ? 'Chưa xác định' : 'Đang chờ'} · {n.moduleProvenance === 'COMPANY_STANDARD' ? 'Chuẩn công ty' : 'Thêm thủ công'}</p>{n.moduleGateText && <p className="mt-1 text-sm font-semibold text-red-900">{n.moduleGateText}</p>}</section>}

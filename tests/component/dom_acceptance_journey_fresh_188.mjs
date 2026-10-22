@@ -50,60 +50,73 @@ const TAB_BY_LABEL = { 'Thông tin': 'van-tai', 'Xuất khẩu': 'lay-hang', 'Nh
 const triggers = [];
 const mount = (await import(pathToFileURL(path.resolve(process.argv[3] || path.join(root, 'component/dist/logi-shell.js'))))).default;
 mount({ name: 'logi_shell', data: fixture.before, parentElement: document.getElementById('host'), setTriggerValue: (event, value) => triggers.push({ event, value }) });
-const tick = () => new Promise((r) => setTimeout(r, 250));
+const tick = (ms = 250) => new Promise((r) => setTimeout(r, ms));
 const byId = (id) => document.querySelector(`[data-testid="${id}"]`);
 const click = async (el) => { assert.ok(el, 'click target'); el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true })); await tick(); };
 const text = (el) => el.textContent.replace(/\s+/g, ' ').trim();
+const waitFor = async (fn, ms = 4000) => {
+  const deadline = Date.now() + ms;
+  while (Date.now() < deadline) {
+    const val = fn();
+    if (val) return val;
+    await tick(50);
+  }
+  return fn();
+};
 
 await tick();
 await click([...document.querySelectorAll('a')].find((a) => text(a) === 'Lô Hàng'));
-await click(byId('shipment-period-tat-ca'));
-await click([...document.querySelectorAll('main a')].find((a) => text(a) === meta.shipmentId));
+await click(await waitFor(() => byId('shipment-period-tat-ca')));
+await click(await waitFor(() => [...document.querySelectorAll('main a')].find((a) => text(a) === meta.shipmentId)));
 
-// 1. the approved cockpit shell survives a truthful zero-node Journey
-const cockpit = byId('shipment-journey');
-assert.ok(cockpit, 'cockpit shell must exist for journey.nodes=[]');
+// 1. the approved map-first Journey shell survives a truthful zero-node Journey
+const cockpit = await waitFor(() => byId('shipment-journey'));
+assert.ok(
+  cockpit,
+  `cockpit shell must exist for journey.nodes=[] (mounted testids: ${[...document.querySelectorAll('[data-testid]')].map((e) => e.getAttribute('data-testid')).join(',')})`
+);
 assert.equal(cockpit.getAttribute('data-empty-journey'), 'true', 'cockpit renders the fresh-shipment state');
-assert.equal(document.querySelector('.journey-canvas') !== null || byId('journey-empty-canvas') !== null, true);
+const mapFirst = byId('journey-zero-map-first');
+assert.ok(mapFirst, 'zero-node map-first container exists');
+assert.ok(mapFirst.classList.contains('journey-map-first'), 'uses map-first layout class');
+assert.equal(mapFirst.getAttribute('data-layout'), 'full-width', 'map-first shell is full-width');
+assert.ok(byId('journey-map-viewport'), 'JourneyMap viewport is mounted inside zero-node shell');
+assert.ok(byId('journey-sea-chart'), 'Vietnam East Sea chart background is mounted');
 
-// 2. six universal phases, HỒ SƠ actionable, downstream UNKNOWN and inert
-const phases = [...document.querySelectorAll('[data-testid^="journey-phase-"]')].filter((e) => e.dataset.testid !== 'journey-phase-strip');
-assert.equal(phases.length, 6, `six phases, got ${phases.length}`);
-const labels = phases.map((p) => p.querySelectorAll('span')[1].textContent.trim());
-assert.deepEqual(labels, ['HỒ SƠ', 'ĐẦU ĐI', 'CHẶNG CHÍNH', 'NHẬP KHẨU', 'GIAO HÀNG', 'HOÀN TẤT'], 'exact beginner phase labels');
-const profile = phases.find((p) => p.dataset.testid === 'journey-phase-profile');
-assert.equal(profile.dataset.state, 'ACTION', 'HỒ SƠ is the actionable phase');
-assert.equal(profile.disabled, false, 'HỒ SƠ is actionable');
-for (const p of phases.filter((p) => p !== profile)) {
-  assert.equal(p.dataset.state, 'UNKNOWN', `${p.dataset.testid} stays UNKNOWN`);
-  assert.equal(p.disabled, true, `${p.dataset.testid} is inert until authority exists`);
-}
+// 2. truthful unknown position in compact toolbar + profile status overlay (no legacy 6-phase strip)
+assert.equal(byId('journey-phase-strip'), null, 'legacy six-phase strip is superseded by map-first ZeroNodeJourney');
+const toolbar = byId('journey-compact-toolbar');
+assert.ok(toolbar, 'compact toolbar exists in zero-node focus row');
+assert.ok(text(toolbar).includes('Đang ở: Chưa xác định'), 'toolbar states unknown current position');
+assert.ok(text(toolbar).includes('Chưa đủ hồ sơ để xác định công đoạn chi tiết.'), 'toolbar states why detailed stages are absent');
+const emptyMap = byId('journey-empty-map');
+assert.ok(emptyMap, 'empty-map notice overlay exists');
+assert.equal(emptyMap.getAttribute('role'), 'status', 'empty-map notice is a status region');
+assert.equal(text(byId('journey-zero-profile-state')), 'Hồ sơ lô còn thiếu', 'profile state label is shown');
 
-// 3. no fabricated detailed nodes anywhere in the cockpit
+// 3. no fabricated detailed nodes anywhere in the Journey shell
 assert.equal(document.querySelectorAll('[data-testid^="journey-node-"]').length, 0, 'no fabricated detailed nodes');
 assert.equal(byId('journey-parallel-branch'), null, 'no fabricated SI/VGM + Gate-in group');
-const empty = byId('journey-empty-canvas');
-assert.ok(empty, 'empty/onboarding canvas exists');
-assert.ok(byId('journey-side-panel').contains(byId('journey-quick-panel')), 'right onboarding Quick Panel exists');
+assert.equal(document.querySelectorAll('svg path.journey-edge').length, 0, 'no fabricated edges');
 
 // 4. exactly ONE dominant action, bound to the Execution Profile next action
-const ctas = document.querySelectorAll('[data-testid="journey-empty-primary-cta"]');
+const ctas = document.querySelectorAll('[data-testid="journey-zero-primary-cta"]');
 assert.equal(ctas.length, 1, 'one dominant fresh-shipment CTA');
 assert.match(text(ctas[0]), /BỔ SUNG HỒ SƠ/, 'dominant CTA label');
-assert.ok(text(byId('journey-quick-panel')).includes(meta.primaryAction), 'Quick Panel states the server primary action');
-assert.ok(text(byId('journey-empty-profile-issues')).includes(meta.nextActionDetail), 'missing profile facts are stated verbatim');
+assert.equal(text(byId('journey-zero-next-action')), meta.primaryAction, 'zero-node card states the server primary action');
+assert.ok(text(byId('journey-zero-profile')).includes(meta.nextActionDetail), 'missing profile facts are stated verbatim');
 
 // 5. the removed legacy fallback must not come back
 assert.equal(document.body.textContent.includes('Chưa có công đoạn phù hợp'), false, 'legacy zero-node fallback text is gone');
 assert.equal(byId('journey-global-workspace'), null, 'global workspace stays closed by default');
 
-// 6. composition: Attention → Cockpit → Completion Goals
+// 6. composition: Attention → Journey → Completion Goals
 const order = ['attention-now', 'shipment-journey', 'shipment-completion-goals'].map((id) => {
   const el = byId(id);
   assert.ok(el, `${id} present`);
   return Array.prototype.indexOf.call(document.querySelectorAll('main [data-testid]'), el);
 });
-assert.ok(order[0] < order[1] && order[1] < order[2], `Attention → Cockpit → Completion Goals order (${order.join(' < ')})`);
+assert.ok(order[0] < order[1] && order[1] < order[2], `Attention → Journey → Completion Goals order (${order.join(' < ')})`);
 assert.ok(text(byId('attention-now')).includes(meta.primaryAction), 'Attention surfaces the same primary action');
 
 // 7. reading the fresh cockpit, and running its dominant action, writes nothing
@@ -115,7 +128,7 @@ assert.deepEqual(writes, [], `fresh-shipment CTA must not invent a business writ
 // Supervisor B1: "actionable" means the click reaches the existing profile
 // editor, not merely that a button is enabled and write-free. The tab lives in
 // the MemoryRouter search state, so assert it through the rendered DOM truth.
-const workspace = byId('journey-global-workspace');
+const workspace = await waitFor(() => byId('journey-global-workspace'));
 assert.ok(workspace, 'profile CTA opens the Cockpit global workspace');
 const pressed = [...workspace.querySelectorAll('button[aria-pressed="true"]')];
 assert.equal(pressed.length, 1, 'exactly one selected Global Workspace tab');
@@ -124,8 +137,9 @@ assert.equal(TAB_BY_LABEL[text(pressed[0])], 'van-tai',
 const editor = byId('shipment-execution-profile');
 assert.ok(editor, 'profile CTA must mount the existing Execution Profile editor');
 assert.ok(workspace.contains(editor), 'profile editor must mount INSIDE the Global Workspace');
+await waitFor(() => reveals.includes('shipment-execution-profile'), 1000);
 assert.equal(reveals[reveals.length - 1], 'shipment-execution-profile',
   `anchored reveal must land on the mounted editor after the tab mount, got ${JSON.stringify(reveals)}`);
 
-console.log(`PASS journey fresh 188 (deterministic jsdom): shell kept, 6 phases (HỒ SƠ ACTION, 5 UNKNOWN), 0 fabricated nodes, CTA reaches Execution Profile on tab=van-tai inside Global Workspace with post-mount reveal, zero writes`);
+console.log(`PASS journey fresh 188 (deterministic jsdom): ZeroNodeJourney map-first shell kept, 0 fabricated nodes, CTA reaches Execution Profile on tab=van-tai inside Global Workspace with post-mount reveal, zero writes`);
 process.exit(0);

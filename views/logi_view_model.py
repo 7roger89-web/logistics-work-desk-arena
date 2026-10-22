@@ -637,7 +637,9 @@ def _task_projection(rows: list[dict[str, Any]], references: Mapping[str, Any]) 
             "dueNote": "Đã hoàn thành" if done else "Việc được giao",
             "status": "Đã xong" if done else "Chưa làm",
             "statusTone": "green" if done else "amber",
-            "route": (logi_route.shipment_path(sid) + "?tab=lay-hang") if sid else "/lo-hang",
+            # Same honest fallback as Home Attention: a manual task carries no
+            # canonical stage, so never invent an export destination.
+            "route": logi_route.shipment_path(sid) if sid else "/lo-hang",
             "source": "core.database.load_tasks",
         })
 
@@ -1236,6 +1238,9 @@ PHASE_B_EVENTS = {
     # through the SAME dispatcher/RBAC/attachment/docgen-revision seams the
     # PXK, GNT and FORM_07 events already use. No second document store.
     "uploaded_template_generate",
+    # Bước (3B) — evidence of the two SUB-only stages. ONE bounded writer
+    # into the existing shipment document; completion stays derived.
+    "entrustment_evidence_save",
     # C2B — single-partner payable slice. The canonical writers are
     # core.financial_ledger.save_obligation / save_transaction /
     # allocate_transaction; these events are only the bounded shell boundary
@@ -1455,7 +1460,21 @@ def _coerce(key: str, value: Any) -> Any:
     for these fields a blank means UNKNOWN.
     """
     if key in _BOOL_FIELDS:
-        return bool(value)
+        # customs_status is the explicit "Đã thông quan" checkbox, not
+        # a free-text status. bool("false") / bool("REGISTERED") would be True.
+        if isinstance(value, bool):
+            return value
+        if value is None:
+            return False
+        if type(value) is int and value == 0:
+            return False
+        if isinstance(value, str):
+            raw_bool = value.strip()
+            if raw_bool in ("", "false", "0"):
+                return False
+            if raw_bool == "true":
+                return True
+        raise ValueError("Trạng thái thông quan chỉ nhận true/false; không nhận '1' hoặc giá trị khác.")
     if value is None:
         return None
     raw = str(value).strip()
@@ -2367,11 +2386,26 @@ def _projection_for(shipment: Mapping[str, Any], *, db: Any = _UNSET_DB) -> dict
         # metadata write landed instead of echoing what the browser sent.
         "attachments": (lambda: _attachment_records(sid, db=db)) if sid else (lambda: None),
     })
+    # Bước (3B) — the readback must see the SAME linked-contract set as the
+    # render path, otherwise a just-recorded entrustment evidence could read
+    # back as "no linked contract".  Derived from the contracts already loaded
+    # above: no extra query, no second truth.
+    contracts_loaded = loaded["contracts"] or {}
+    linked_contracts: dict[str, dict[str, Any]] = {}
+    if sid:
+        upper_sid = sid.upper()
+        for cid, row in contracts_loaded.items():
+            if not isinstance(row, Mapping):
+                continue
+            ids = [str(x).upper() for x in (row.get("shipment_ids") or [])]
+            if upper_sid in ids or str(row.get("shipment_id") or "").upper() == upper_sid:
+                linked_contracts[cid] = row
     return rd.shipment_projection(
         shipment,
         work_module_templates=load_work_module_templates(db=db),
         customers=loaded["customers"] or {},
-        contracts=loaded["contracts"] or {},
+        contracts=contracts_loaded,
+        linked_contracts={sid.upper(): linked_contracts} if sid else None,
         quotes=loaded["quotes"] or {},
         dashboard=view,
         history=loaded["history"],
@@ -2833,7 +2867,10 @@ def _handle_field_save(payload: Mapping[str, Any]) -> dict[str, Any]:
         if path is None:
             rejected.append(str(key))
             continue
-        applied[str(key)] = _coerce(str(key), value)
+        try:
+            applied[str(key)] = _coerce(str(key), value)
+        except ValueError as exc:
+            return _result("shipment_field_save", sid, False, str(exc), rejected=[str(key)])
         _set_path(shipment, path, applied[str(key)])
 
     if not applied:
@@ -2932,7 +2969,7 @@ def _handle_shipment_customer_save(payload: Mapping[str, Any]) -> dict[str, Any]
 def _handle_sea_facts_save(payload: Mapping[str, Any]) -> dict[str, Any]:
     from core.auth import can_operate_business
     from core.database import get_last_db_error, save_shipment_atomic
-    from core.shipment_journey import normalize_sea_facts
+    from core.shipment_journey import MODE_FACT_BLOCK, normalize_mode_facts
     from core.shipment_execution_profile import build_execution_profile
     sid, request_id = rd.text(payload.get("shipmentId")), rd.text(payload.get("requestId"))
     def out(ok, error="", **extra):
@@ -2948,17 +2985,61 @@ def _handle_sea_facts_save(payload: Mapping[str, Any]) -> dict[str, Any]:
         return out(False, "Lô đã thay đổi — đọc lại dữ liệu trước khi lưu.")
     profile = build_execution_profile(shipment)
     scope = set(profile.get("serviceScope") or []) if profile.get("serviceScopeConfirmed") else set()
-    if profile.get("mode") != "SEA": return out(False, "Mốc này chỉ dành cho lô đường biển.")
+    mode = profile.get("mode")
+    if mode not in MODE_FACT_BLOCK: return out(False, "Phương thức của lô chưa có mốc bằng chứng được phép ghi.")
     fields = payload["fields"]
+    # LOGI-199 T3/T4 — AIR/ROAD facts: same writer, own block, own scope gates.
+    if mode == "AIR":
+        if ({"air_acceptance_at", "air_gross_kg", "air_chargeable_kg", "air_screened_at"} & set(fields)) and not (
+                {"MAIN_CARRIAGE", "EXPORT_HANDLING", "ORIGIN_TERMINAL_OR_BORDER"} & scope):
+            return out(False, "Nhận hàng kho hàng không không thuộc phạm vi đã xác nhận.")
+        if "air_uplifted_at" in fields and "MAIN_CARRIAGE" not in scope:
+            return out(False, "Uplift không thuộc phạm vi chặng bay đã xác nhận.")
+    if mode == "ROAD":
+        if ({"ltl_received_at", "ltl_package_count", "ltl_weight_kg", "ltl_consolidated_at"} & set(fields)) and (
+                profile.get("loadModel") != "LTL" or not ({"ORIGIN_PICKUP", "MAIN_CARRIAGE"} & scope)):
+            return out(False, "Nhận/ghép hàng lẻ chỉ áp dụng cho lô LTL thuộc phạm vi đã xác nhận.")
+        if "border_crossed_at" in fields and "CROSS_BORDER_COORDINATION" not in scope:
+            return out(False, "Lô nội địa / không có phạm vi qua biên giới: không ghi mốc cửa khẩu.")
+        if "handover_doc_no" in fields and not ({"DESTINATION_TRUCKING", "FINAL_DELIVERY"} & scope):
+            return out(False, "Biên bản giao nhận không thuộc phạm vi giao hàng đã xác nhận.")
     if any(k.startswith(('si_', 'vgm_')) for k in fields) and "MAIN_CARRIAGE" not in scope:
         return out(False, "SI/VGM không thuộc phạm vi chặng chính đã xác nhận.")
+    if profile.get("loadModel") == "LCL" and any(k.startswith("vgm_") for k in fields):
+        return out(False, "LCL là hàng ghép — không yêu cầu VGM riêng, chỉ cần SI.")
     if "gate_in_at" in fields and ("ORIGIN_TERMINAL_OR_BORDER" not in scope or profile.get("loadModel") != "FCL"):
         return out(False, "Gate-in không thuộc phạm vi bàn giao container đã xác nhận.")
     if "export_declaration_no" in fields and not ({"EXPORT_HANDLING", "EXPORT_CUSTOMS"} & scope):
         return out(False, "Tờ khai xuất không thuộc phạm vi dịch vụ đã xác nhận.")
-    try: normalized = normalize_sea_facts(fields)
+    # LOGI-199 T1 — SEA FCL lifecycle facts, each gated by the confirmed scope
+    # that owns it. Nothing is derived from the Incoterm alone.
+    if ({"booking_status", "on_board_at"} & set(fields)) and "MAIN_CARRIAGE" not in scope:
+        return out(False, "Booking/on-board không thuộc phạm vi chặng chính đã xác nhận.")
+    if ({"empty_pickup_at", "stuffing_at", "eir_no"} & set(fields)) and ("ORIGIN_TERMINAL_OR_BORDER" not in scope or profile.get("loadModel") != "FCL"):
+        return out(False, "Cấp rỗng/đóng hàng/EIR chỉ áp dụng cho lô FCL có phạm vi bàn giao container.")
+    if "export_clearance_at" in fields and not ({"EXPORT_HANDLING", "EXPORT_CUSTOMS"} & scope):
+        return out(False, "Thông quan xuất không thuộc phạm vi dịch vụ đã xác nhận.")
+    delivery_scope = {"DESTINATION_TRUCKING", "FINAL_DELIVERY"} & scope
+    if "do_released_at" in fields and not (delivery_scope or "IMPORT_CUSTOMS" in scope):
+        return out(False, "D/O không thuộc phạm vi đầu nhập đã xác nhận.")
+    if ({"pod_received_at", "empty_return_at"} & set(fields)) and not delivery_scope:
+        return out(False, "POD/trả rỗng không thuộc phạm vi giao hàng đã xác nhận.")
+    if "empty_return_at" in fields and profile.get("loadModel") != "FCL":
+        return out(False, "Trả container rỗng chỉ áp dụng cho lô FCL.")
+    lcl = profile.get("loadModel") == "LCL"
+    if lcl and any(k.startswith("vgm_") for k in fields):
+        return out(False, "LCL: VGM thuộc container ghép của người gom hàng, không ghi riêng cho lô.")
+    cfs_keys = {"cfs_received_at", "cfs_receipt_no", "cfs_package_count", "cfs_weight_kg", "cfs_cbm", "consolidated_at"}
+    if (cfs_keys & set(fields)) and (not lcl or not ({"MAIN_CARRIAGE", "ORIGIN_TERMINAL_OR_BORDER"} & scope)):
+        return out(False, "Nhận hàng CFS/ghép hàng chỉ áp dụng cho lô LCL thuộc phạm vi đã xác nhận.")
+    if "deconsolidated_at" in fields and (not lcl or not (delivery_scope or "IMPORT_CUSTOMS" in scope)):
+        return out(False, "Tách hàng CFS đích chỉ áp dụng cho lô LCL có phạm vi đầu nhập.")
+    delivered = bool(((shipment.get("data") or {}).get("2.7") or {}).get("is_delivered"))
+    if rd.text(fields.get("pod_received_at")) and not delivered:
+        return out(False, "POD chỉ ghi sau khi lô đã xác nhận giao hàng thực tế.")
+    try: normalized = normalize_mode_facts(fields, mode)
     except ValueError as exc: return out(False, str(exc))
-    block = shipment.setdefault("data", {}).setdefault("1.2", {}).setdefault("sea_export", {})
+    block = shipment.setdefault("data", {}).setdefault("1.2", {}).setdefault(MODE_FACT_BLOCK[mode], {})
     if "export_declaration_no" in normalized:
         shipment["china_export_decl_no"] = normalized.pop("export_declaration_no")
     block.update(normalized)
@@ -2966,7 +3047,7 @@ def _handle_sea_facts_save(payload: Mapping[str, Any]) -> dict[str, Any]:
         return out(False, get_last_db_error() or "Không lưu được.")
     fresh = read_shipment(sid)
     if fresh is None: return out(False, "Đã gửi ghi nhưng chưa đọc lại được lô. Mở lại để kiểm tra trước khi thử tiếp.")
-    return out(True, readback=_projection_for(fresh), persisted=(fresh.get("data") or {}).get("1.2", {}).get("sea_export"), audit=_audit_trail(sid))
+    return out(True, readback=_projection_for(fresh), persisted=(fresh.get("data") or {}).get("1.2", {}).get(MODE_FACT_BLOCK[mode]), audit=_audit_trail(sid))
 
 
 # ---------------------------------------------------------------------------
@@ -3558,10 +3639,13 @@ def _handle_shipment_commercial_flow_save(payload: Mapping[str, Any]) -> dict[st
         agents=agents,
         company_id=payload.get("companyId"),
         sub_agent_id=payload.get("subAgentId"),
+        importer_company_id=payload.get("importerCompanyId"),
     )
     rejected = [
         key for key in payload
-        if key not in {"shipmentId", "requestId", "mode", "companyId", "subAgentId"}
+        if key not in {
+            "shipmentId", "requestId", "mode", "companyId", "subAgentId", "importerCompanyId",
+        }
     ]
     if errors or document is None:
         return _res(
@@ -3603,6 +3687,140 @@ def _handle_shipment_commercial_flow_save(payload: Mapping[str, Any]) -> dict[st
         audit=_audit_trail(sid),
     )
 
+
+
+def _handle_entrustment_evidence_save(payload: Mapping[str, Any]) -> dict[str, Any]:
+    """Bước (3B) — record the evidence of the TWO approved SUB stages.
+
+    The write owns exactly one block: ``data.0.0.entrustment_evidence``.
+    It never marks a stage done on its own: completion is re-derived by
+    ``core.shipment_document_workflow.project_entrustment_stages`` on the fresh
+    read, from the recorded values only.  Customs, D/O, PXK, attachments,
+    partner selection and another leg's DELIVERY are not accepted as handover
+    evidence because they are not part of this payload at all.
+    """
+
+    from core.auth import can_operate_business
+    from core.database import (
+        get_last_db_error,
+        load_authority_agents,
+        load_authority_companies,
+        load_contracts,
+        load_contracts_for_shipment,
+        save_shipment_atomic,
+    )
+    from core.logic import apply_financial_snapshot
+    from core.shipment_document_workflow import (
+        ENTRUSTMENT_EVIDENCE_BLOCK,
+        project_commercial_flow,
+        resolve_sub_purchase_contract,
+        stored_entrustment_evidence,
+        validate_entrustment_evidence_write,
+    )
+
+    sid = rd.text(payload.get("shipmentId"))
+    request_id = rd.text(payload.get("requestId"))
+
+    def _res(ok: bool, error: str = "", **extra: Any) -> dict[str, Any]:
+        return _result(
+            "entrustment_evidence_save",
+            sid,
+            ok,
+            error,
+            requestId=request_id,
+            **extra,
+        )
+
+    if not sid or not request_id:
+        return _res(False, "Thiếu shipmentId hoặc requestId.")
+    # Commercial evidence of an entrustment is a commercial write: Sale and
+    # Support both hold it; accounting/operations/viewer cannot record it.
+    if not can_operate_business("commercial_write"):
+        return _res(False, "RBAC: không có quyền commercial_write.")
+
+    shipment = read_shipment(sid)
+    if shipment is None:
+        return _res(False, f"Không tìm thấy lô {sid}.")
+
+    rejected = [key for key in payload if key not in {"shipmentId", "requestId", "expectedVersion", "fields"}]
+    fields = payload.get("fields")
+    if not isinstance(fields, Mapping) or not fields:
+        return _res(False, "Thiếu fields bằng chứng để lưu.", rejected=rejected)
+
+    expected_version = payload.get("expectedVersion")
+    if expected_version is not None:
+        try:
+            stale = int(expected_version) != int(shipment.get("version") or 0)
+        except (TypeError, ValueError):
+            return _res(False, "expectedVersion không hợp lệ.", rejected=rejected)
+        if stale:
+            return _res(
+                False,
+                "Dữ liệu lô đã thay đổi; tải lại trước khi lưu bằng chứng.",
+                gate="STALE_VERSION",
+                rejected=rejected,
+            )
+
+    companies = load_authority_companies() or {}
+    agents = load_authority_agents() or {}
+    flow = project_commercial_flow(shipment, companies=companies, agents=agents)
+    linked = load_contracts_for_shipment(sid) or {}
+    contract = resolve_sub_purchase_contract(
+        shipment=shipment,
+        flow=flow,
+        contracts=load_contracts() or {},
+        # The helper takes the projection's grouped shape {SID: {contract_id: row}}.
+        linked_contracts={sid.upper(): linked} if linked else {},
+    )
+    merged, errors = validate_entrustment_evidence_write(
+        shipment=shipment,
+        flow=flow,
+        contract=contract,
+        fields=fields,
+    )
+    if errors or merged is None:
+        return _res(
+            False,
+            errors[0] if errors else "Bằng chứng ủy thác/bàn giao không hợp lệ.",
+            gate="ENTRUSTMENT_EVIDENCE_REFUSED",
+            issues=errors,
+            rejected=rejected,
+        )
+
+    head = shipment.setdefault("data", {}).setdefault("0.0", {})
+    previous = stored_entrustment_evidence(shipment)
+    if factual_equal(previous, merged):
+        return _res(
+            True,
+            "Không có thay đổi để lưu.",
+            noop=True,
+            rejected=rejected,
+            persisted={"entrustmentEvidence": dict(previous)},
+        )
+
+    head[ENTRUSTMENT_EVIDENCE_BLOCK] = merged
+    apply_financial_snapshot(shipment)
+    if not save_shipment_atomic(
+        shipment,
+        expected_version=shipment.get("version"),
+        actor=_actor(),
+    ):
+        return _res(False, get_last_db_error() or "Không lưu được bằng chứng ủy thác/bàn giao.")
+
+    fresh = read_shipment(sid) or {}
+    fresh_head = ((fresh.get("data") or {}).get("0.0") or {})
+    readback = _projection_for(fresh)
+    return _res(
+        True,
+        readback=readback,
+        rejected=rejected,
+        version=int(fresh.get("version") or 0),
+        persisted={
+            "entrustmentEvidence": dict(fresh_head.get(ENTRUSTMENT_EVIDENCE_BLOCK) or {}),
+            "entrustmentStages": (readback or {}).get("entrustmentStages") or {},
+        },
+        audit=_audit_trail(sid),
+    )
 
 def _handle_delivery_confirm(payload: Mapping[str, Any]) -> dict[str, Any]:
     """✅ XÁC NHẬN ĐÃ GIAO HÀNG → the canonical shipment writer + audit."""
@@ -5849,6 +6067,7 @@ _HANDLERS = {
     "work_module_step_complete": _handle_work_module_step_complete,
     "shipment_profile_save": _handle_shipment_profile_save,
     "shipment_commercial_flow_save": _handle_shipment_commercial_flow_save,
+    "entrustment_evidence_save": _handle_entrustment_evidence_save,
     "shipment_document_selection_save": _handle_shipment_document_selection_save,
     "delivery_confirm": _handle_delivery_confirm,
     "finance_actual_save": _handle_finance_actual_save,

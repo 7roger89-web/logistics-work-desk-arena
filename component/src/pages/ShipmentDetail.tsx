@@ -9,7 +9,7 @@ import ShipmentExecutionProfile from "../components/ShipmentExecutionProfile";
 import FinanceActualEntry from "../components/FinanceActualEntry";
 import ShipmentAttachments from "../components/ShipmentAttachments";
 import ShipmentDocumentPicker from "../components/ShipmentDocumentPicker";
-import ShipmentJourney, { SeaExportFacts, WorkModuleStepPanel } from "../components/ShipmentJourney";
+import ShipmentJourney, { EntrustmentEvidenceFacts, SeaExportFacts, WorkModuleStepPanel } from "../components/ShipmentJourney";
 import AttentionNow from "../components/AttentionNow";
 import ShipmentCompletionGoals from "../components/ShipmentCompletionGoals";
 import type {
@@ -174,8 +174,11 @@ export default function ShipmentDetail() {
   // typed backend event below and success is shown only after correlated
   // lastWrites confirmation.
   const [flowModeDraft, setFlowModeDraft] = useState("");
+  // The agent is the CONTRACT partner. The importer company is a separate
+  // legal identity resolved from authority_companies — never the agent id.
   const [flowAgentDraft, setFlowAgentDraft] = useState("");
   const [flowCompanyDraft, setFlowCompanyDraft] = useState("");
+  const [flowImporterCompanyDraft, setFlowImporterCompanyDraft] = useState("");
   const [flowPending, setFlowPending] = useState("");
   const [flowError, setFlowError] = useState("");
   // Issue #195 — CUSTOMER_SELF recovery: the backend identity gate stays
@@ -200,13 +203,23 @@ export default function ShipmentDetail() {
     setFlowModeDraft(String(flow?.mode || ""));
     setFlowAgentDraft(flow?.subAgentId || "");
     const companies = vm?.authority?.companies ?? [];
-    setFlowCompanyDraft(flow?.companyId || (companies.length === 1 ? companies[0].id : ""));
+    const signingCompanyId = flow?.companyId || (companies.length === 1 ? companies[0].id : "");
+    setFlowCompanyDraft(signingCompanyId);
+    // Historical TT_ENTRUSTED_SUB lots have no importer company link. They
+    // stay blank (UNKNOWN) instead of borrowing the agent or the signing
+    // company. A stored link that equals the signing company is also refused.
+    setFlowImporterCompanyDraft(
+      flow?.importerCompanyId && flow.importerCompanyId !== signingCompanyId
+        ? flow.importerCompanyId
+        : ""
+    );
     setFlowError("");
   }, [
     id,
     s?.commercialFlow?.mode,
     s?.commercialFlow?.subAgentId,
     s?.commercialFlow?.companyId,
+    s?.commercialFlow?.importerCompanyId,
     vm?.authority?.companies?.length,
   ]);
 
@@ -376,6 +389,16 @@ export default function ShipmentDetail() {
   const authorityCompanies = vm?.authority?.companies ?? [];
   const selectedFlowAgent = authorityAgents.find((a) => a.id === flowAgentDraft);
   const selectedFlowCompany = authorityCompanies.find((a) => a.id === flowCompanyDraft);
+  const signingCompanyId =
+    flowCompanyDraft || (authorityCompanies.length === 1 ? authorityCompanies[0].id : "");
+  // The importer of a sub-entrustment is a DIFFERENT legal entity from the
+  // Trường Thành company that signs the contract with the partner.
+  const flowImporterCompanyOptions = authorityCompanies.filter(
+    (company) => company.id !== signingCompanyId
+  );
+  const selectedFlowImporterCompany = authorityCompanies.find(
+    (company) => company.id === flowImporterCompanyDraft
+  );
   const shipmentAttention = useMemo(() => attention.filter((item) => item.shipmentId === id).slice(0, 5), [attention, id]);
 
   if (!s) return <div className="rounded-2xl bg-white border p-10 text-center max-w-[600px] mx-auto"><p className="font-extrabold text-[19px]">Không tìm thấy lô {id}</p><p className="text-slate-500 mt-1 text-[15px]">Mã lô có thể sai. Về danh sách để tìm lại.</p><Link to="/lo-hang" className="btn-press touch-target mt-4 inline-flex rounded-xl bg-[#0f2a4a] text-white font-bold px-6 min-h-[48px] items-center">Về danh sách lô</Link></div>;
@@ -433,16 +456,30 @@ export default function ShipmentDetail() {
       setFlowError("Gán khách hàng cho lô ở bước trên trước khi xác nhận hình thức nhập khẩu.");
       return;
     }
-    if (flowModeDraft === "TT_ENTRUSTED_SUB" && !flowAgentDraft) {
-      setFlowError("Chọn đơn vị đứng nhập khẩu hộ từ danh mục đối tác.");
-      return;
-    }
     const companyId =
       flowCompanyDraft || (authorityCompanies.length === 1 ? authorityCompanies[0].id : "");
+    if (flowModeDraft === "TT_ENTRUSTED_SUB" && !flowAgentDraft) {
+      setFlowError("Chọn đối tác hợp đồng nhận ủy thác từ danh mục đối tác.");
+      return;
+    }
+    if (flowModeDraft === "TT_ENTRUSTED_SUB" && !flowImporterCompanyDraft) {
+      setFlowError(
+        "Chọn pháp nhân thực tế đứng tên nhập khẩu hộ từ danh mục pháp nhân — đại lý không phải pháp nhân nhập khẩu."
+      );
+      return;
+    }
+    if (
+      flowModeDraft === "TT_ENTRUSTED_SUB" &&
+      companyId &&
+      flowImporterCompanyDraft === companyId
+    ) {
+      setFlowError("Pháp nhân đứng nhập khẩu hộ phải khác pháp nhân Trường Thành ký hợp đồng.");
+      return;
+    }
     if ((flowModeDraft === "TT_ENTRUSTED_DIRECT" || flowModeDraft === "TT_ENTRUSTED_SUB") && !companyId) {
       setFlowError(
         flowModeDraft === "TT_ENTRUSTED_SUB"
-          ? "Chọn pháp nhân Trường Thành sẽ ký với đơn vị nhập khẩu hộ."
+          ? "Chọn pháp nhân Trường Thành sẽ ký với đối tác."
           : "Chọn pháp nhân Trường Thành sẽ đứng tên nhập khẩu."
       );
       return;
@@ -456,6 +493,7 @@ export default function ShipmentDetail() {
       mode: flowModeDraft,
       companyId,
       subAgentId: flowModeDraft === "TT_ENTRUSTED_SUB" ? flowAgentDraft : "",
+      importerCompanyId: flowModeDraft === "TT_ENTRUSTED_SUB" ? flowImporterCompanyDraft : "",
     });
     if (!sent) {
       setFlowPending("");
@@ -1323,7 +1361,7 @@ export default function ShipmentDetail() {
             <span className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#1e5aa8] to-[#0a1f3a] grid place-items-center text-white font-extrabold text-[18px] shadow">T</span>
             <span className="leading-tight hidden sm:block">
               <span className="block font-extrabold text-[14.5px] text-[#0f2a4a]">TRƯỜNG THÀNH</span>
-              <span className="block text-[11.5px] text-slate-500 font-medium">{brandSub}</span>
+              <span className="block text-[12px] text-slate-500 font-medium">{brandSub}</span>
             </span>
           </Link>
           <span className="hidden md:block w-px self-stretch bg-slate-200" aria-hidden="true" />
@@ -1384,10 +1422,12 @@ export default function ShipmentDetail() {
         onOpen={openStageWorkspace} onGlobal={(target = "van-tai") => { if (target === "lay-hang" && exportTabLocked) { setExportLockNotice(true); return false; } setSp({ tab: target }); return true; }} runPrimary={runPrimaryAction}
         hasStageContent={Boolean(workspaceNode && workspaceWork === 'info' &&
           (Boolean(moduleStepNode) ||
-           (['si-vgm', 'gate-in', 'customs-export'].includes(workspaceNode.id) && Boolean(workspaceNode.factFields?.length))))}
+           Boolean(workspaceNode.factFields?.length)))}
         stageContent={<>
-      {workspaceNode && workspaceWork === "info" && !moduleStepNode && ["si-vgm", "gate-in", "customs-export"].includes(workspaceNode.id) &&
-        <SeaExportFacts key={`${s.id}-${workspaceNode.id}-${s.version}`} shipment={s} stageId={workspaceNode.id} />}
+      {workspaceNode && workspaceWork === "info" && !moduleStepNode && Boolean(workspaceNode.factFields?.length) &&
+        (workspaceNode.factSource === 'entrustment_evidence'
+          ? <EntrustmentEvidenceFacts key={`${s.id}-${workspaceNode.id}-${s.version}`} shipment={s} stageId={workspaceNode.id} />
+          : <SeaExportFacts key={`${s.id}-${workspaceNode.id}-${s.version}`} shipment={s} stageId={workspaceNode.id} />)}
       {workspaceNode && moduleStepNode && workspaceWork === "info" &&
         <WorkModuleStepPanel key={`${s.id}-${workspaceNode.id}`} shipment={s} node={workspaceNode} />}
         </>}
@@ -2105,8 +2145,15 @@ export default function ShipmentDetail() {
                 </p>
               </div>
               {s.commercialFlow?.confirmed && (
-                <span className="rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 px-3 py-1 text-[12.5px] font-extrabold">
-                  ✓ ĐÃ XÁC NHẬN
+                <span
+                  className={cx(
+                    "rounded-full border px-3 py-1 text-[12.5px] font-extrabold",
+                    s.commercialFlow.ready
+                      ? "bg-emerald-50 border-emerald-200 text-emerald-800"
+                      : "bg-amber-50 border-amber-300 text-amber-900"
+                  )}
+                >
+                  {s.commercialFlow.ready ? "✓ ĐÃ XÁC NHẬN" : "ĐÃ XÁC NHẬN · CHƯA ĐỦ HỒ SƠ"}
                 </span>
               )}
             </div>
@@ -2115,7 +2162,7 @@ export default function ShipmentDetail() {
               {[
                 ["CUSTOMER_SELF", "Khách hàng tự nhập", "HĐ vận chuyển · PXK Trường Thành không áp dụng"],
                 ["TT_ENTRUSTED_DIRECT", "Trường Thành nhận ủy thác", "Trường Thành trực tiếp đứng tên nhập khẩu"],
-                ["TT_ENTRUSTED_SUB", "Ủy thác tiếp qua đối tác", "Ví dụ Phú Anh đứng nhập khẩu hộ Trường Thành"],
+                ["TT_ENTRUSTED_SUB", "Ủy thác tiếp qua đối tác", "Trường Thành ký với đối tác; pháp nhân đứng nhập khẩu chọn từ danh mục pháp nhân"],
               ].map(([mode, title, desc]) => (
                 <label
                   key={mode}
@@ -2133,7 +2180,10 @@ export default function ShipmentDetail() {
                     onChange={() => {
                       setFlowModeDraft(mode);
                       setFlowError("");
-                      if (mode !== "TT_ENTRUSTED_SUB") setFlowAgentDraft("");
+                      if (mode !== "TT_ENTRUSTED_SUB") {
+                        setFlowAgentDraft("");
+                        setFlowImporterCompanyDraft("");
+                      }
                     }}
                     className="mt-1 h-5 w-5 accent-[#0f2a4a] shrink-0"
                   />
@@ -2203,39 +2253,82 @@ export default function ShipmentDetail() {
             )}
 
             {flowModeDraft === "TT_ENTRUSTED_SUB" && (
-              <div className="mt-3 grid md:grid-cols-2 gap-3">
-                <Field label="Đơn vị đứng nhập khẩu hộ" required={!flowAgentDraft}>
-                  <select
-                    value={flowAgentDraft}
-                    disabled={!!flowPending}
-                    onChange={(e) => { setFlowAgentDraft(e.target.value); setFlowError(""); }}
-                    className={inputCls(!flowAgentDraft ? "missing" : "ok")}
-                  >
-                    <option value="">— Chọn đối tác —</option>
-                    {authorityAgents.map((agent) => (
-                      <option key={agent.id} value={agent.id}>{agent.legalName || agent.id}</option>
-                    ))}
-                  </select>
-                </Field>
-                <div className="rounded-xl bg-slate-50 border border-slate-200 p-3">
-                  <p className="text-[12px] font-bold uppercase tracking-wide text-slate-400">Pháp nhân dự kiến đứng nhập khẩu</p>
-                  <p className="font-extrabold text-[14.5px] text-[#0f2a4a] mt-1">{selectedFlowAgent?.legalName || "Chưa chọn"}</p>
-                  <p className="text-[12.5px] text-slate-500">MST: {selectedFlowAgent?.legalCode || "—"}</p>
+              <>
+                <div className="mt-3 grid md:grid-cols-2 gap-3">
+                  <Field label="Đối tác hợp đồng nhận ủy thác" required={!flowAgentDraft}>
+                    <select
+                      value={flowAgentDraft}
+                      disabled={!!flowPending}
+                      onChange={(e) => { setFlowAgentDraft(e.target.value); setFlowError(""); }}
+                      className={inputCls(!flowAgentDraft ? "missing" : "ok")}
+                      data-testid="commercial-flow-contract-agent"
+                    >
+                      <option value="">— Chọn đối tác hợp đồng —</option>
+                      {authorityAgents.map((agent) => (
+                        <option key={agent.id} value={agent.id}>{agent.legalName || agent.id}</option>
+                      ))}
+                    </select>
+                    <p className="mt-1 text-[12.5px] text-slate-500">
+                      Chỉ là bên ký hợp đồng/công nợ với Trường Thành — không phải pháp nhân đứng tên nhập khẩu.
+                    </p>
+                  </Field>
+                  <Field label="Pháp nhân thực tế đứng tên nhập khẩu" required={!flowImporterCompanyDraft}>
+                    <select
+                      value={flowImporterCompanyDraft}
+                      disabled={!!flowPending}
+                      onChange={(e) => { setFlowImporterCompanyDraft(e.target.value); setFlowError(""); }}
+                      className={inputCls(!flowImporterCompanyDraft ? "missing" : "ok")}
+                      data-testid="commercial-flow-importer-company"
+                    >
+                      <option value="">— Chọn pháp nhân trong danh mục —</option>
+                      {flowImporterCompanyOptions.map((company) => (
+                        <option key={company.id} value={company.id}>
+                          {company.legalName || company.id}
+                          {company.legalCode ? ` · MST ${company.legalCode}` : ""}
+                        </option>
+                      ))}
+                    </select>
+                    {flowImporterCompanyOptions.length === 0 && (
+                      <p className="mt-1 rounded-lg bg-amber-50 border border-amber-300 px-2.5 py-1.5 text-[12.5px] font-semibold text-amber-900">
+                        Danh mục pháp nhân chưa có pháp nhân đứng nhập khẩu hộ hợp lệ
+                        (phải khác pháp nhân Trường Thành ký hợp đồng). Cần bổ sung
+                        authority_companies trước khi xác nhận.
+                      </p>
+                    )}
+                  </Field>
                 </div>
-              </div>
+                <div className="mt-3 rounded-xl bg-slate-50 border border-slate-200 p-3">
+                  <p className="text-[12px] font-bold uppercase tracking-wide text-slate-400">Pháp nhân đứng nhập khẩu hộ (authority_companies)</p>
+                  <p className="font-extrabold text-[14.5px] text-[#0f2a4a] mt-1">
+                    {selectedFlowImporterCompany?.legalName || "UNKNOWN — chưa chọn pháp nhân"}
+                  </p>
+                  <p className="text-[12.5px] text-slate-500">MST: {selectedFlowImporterCompany?.legalCode || "—"}</p>
+                  <p className="mt-1 text-[12.5px] text-slate-500">
+                    Đối tác hợp đồng: <b>{selectedFlowAgent?.legalName || "—"}</b> (không phải pháp nhân nhập khẩu)
+                  </p>
+                </div>
+              </>
             )}
 
             {(flowModeDraft === "TT_ENTRUSTED_DIRECT" || flowModeDraft === "TT_ENTRUSTED_SUB") && authorityCompanies.length > 1 && (
               <div className="mt-3 max-w-[560px]">
                 <Field
-                  label={flowModeDraft === "TT_ENTRUSTED_SUB" ? "Pháp nhân Trường Thành ký với đối tác" : "Pháp nhân Trường Thành đứng nhập khẩu"}
+                  label={flowModeDraft === "TT_ENTRUSTED_SUB" ? "Pháp nhân Trường Thành ký hợp đồng với đối tác" : "Pháp nhân Trường Thành đứng nhập khẩu"}
                   required={!flowCompanyDraft}
                 >
                   <select
                     value={flowCompanyDraft}
                     disabled={!!flowPending}
-                    onChange={(e) => { setFlowCompanyDraft(e.target.value); setFlowError(""); }}
+                    onChange={(e) => {
+                      const nextCompany = e.target.value;
+                      setFlowCompanyDraft(nextCompany);
+                      if (nextCompany && nextCompany === flowImporterCompanyDraft) {
+                        setFlowImporterCompanyDraft("");
+                      }
+                      setFlowError("");
+                    }}
                     className={inputCls(!flowCompanyDraft ? "missing" : "ok")}
+                    data-testid="commercial-flow-signing-company"
                   >
                     <option value="">— Chọn pháp nhân —</option>
                     {authorityCompanies.map((company) => (
@@ -2247,12 +2340,46 @@ export default function ShipmentDetail() {
             )}
 
             {s.commercialFlow?.confirmed && (
-              <div className="mt-3 rounded-xl bg-emerald-50 border border-emerald-200 p-3">
-                <p className="text-[12px] font-bold uppercase tracking-wide text-emerald-700">Người đứng tên nhập khẩu hiện tại</p>
-                <p className="font-extrabold text-[15px] text-emerald-900 mt-0.5">
-                  {s.commercialFlow.legalImporterName || "Thiếu hồ sơ pháp lý"}
+              <div
+                className={cx(
+                  "mt-3 rounded-xl border p-3",
+                  s.commercialFlow.ready
+                    ? "bg-emerald-50 border-emerald-200"
+                    : "bg-amber-50 border-amber-300"
+                )}
+                data-testid="commercial-flow-persisted-importer"
+              >
+                <p
+                  className={cx(
+                    "text-[12px] font-bold uppercase tracking-wide",
+                    s.commercialFlow.ready ? "text-emerald-700" : "text-amber-800"
+                  )}
+                >
+                  Người đứng tên nhập khẩu hiện tại
                 </p>
-                <p className="text-[12.5px] text-emerald-800">MST: {s.commercialFlow.legalImporterTaxCode || "—"}</p>
+                <p
+                  className={cx(
+                    "font-extrabold text-[15px] mt-0.5",
+                    s.commercialFlow.ready ? "text-emerald-900" : "text-amber-900"
+                  )}
+                >
+                  {s.commercialFlow.legalImporterName ||
+                    "UNKNOWN — thiếu hồ sơ pháp nhân đứng nhập khẩu"}
+                </p>
+                <p className="text-[12.5px] text-slate-600">
+                  MST: {s.commercialFlow.legalImporterTaxCode || "—"}
+                  {s.commercialFlow.legalImporterKind === "COMPANY"
+                    ? " · Pháp nhân từ authority_companies"
+                    : s.commercialFlow.legalImporterKind === "CUSTOMER"
+                      ? " · Khách hàng từ danh bạ"
+                      : ""}
+                </p>
+                {s.commercialFlow.mode === "TT_ENTRUSTED_SUB" && (
+                  <p className="text-[12.5px] text-slate-600">
+                    Đối tác hợp đồng: <b>{s.commercialFlow.subAgentName || "—"}</b>
+                    {" "}(không phải pháp nhân nhập khẩu)
+                  </p>
+                )}
                 {(s.commercialFlow.missing ?? []).length > 0 && (
                   <p className="text-[12.5px] font-semibold text-amber-800 mt-1">
                     Cần bổ sung: {(s.commercialFlow.missing ?? []).join(" · ")}
@@ -2263,7 +2390,10 @@ export default function ShipmentDetail() {
 
             {(flowModeDraft === "TT_ENTRUSTED_DIRECT" || flowModeDraft === "TT_ENTRUSTED_SUB") && authorityCompanies.length === 1 && (
               <p className="mt-2 text-[12.5px] text-slate-500">
-                Pháp nhân Trường Thành: <b>{selectedFlowCompany?.legalName || authorityCompanies[0]?.legalName}</b>
+                {flowModeDraft === "TT_ENTRUSTED_SUB"
+                  ? "Pháp nhân Trường Thành ký hợp đồng với đối tác: "
+                  : "Pháp nhân Trường Thành đứng nhập khẩu: "}
+                <b>{selectedFlowCompany?.legalName || authorityCompanies[0]?.legalName}</b>
               </p>
             )}
             {flowError && <p role="alert" className="mt-3 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-[13px] font-semibold text-red-700">{flowError}</p>}
@@ -2274,7 +2404,12 @@ export default function ShipmentDetail() {
             )}
             <PrimaryBtn
               onClick={saveCommercialFlow}
-              disabled={!!flowPending || (flowModeDraft === "CUSTOMER_SELF" && !s.customerId)}
+              disabled={
+                !!flowPending ||
+                (flowModeDraft === "CUSTOMER_SELF" && !s.customerId) ||
+                (flowModeDraft === "TT_ENTRUSTED_SUB" &&
+                  (!flowImporterCompanyDraft || flowImporterCompanyOptions.length === 0))
+              }
               className="mt-3 min-w-[220px]"
             >
               {flowPending ? "ĐANG LƯU…" : "XÁC NHẬN HÌNH THỨC NHẬP KHẨU"}

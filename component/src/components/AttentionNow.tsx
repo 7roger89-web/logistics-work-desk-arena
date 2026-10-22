@@ -16,7 +16,7 @@ const BAND_META: Record<
 
 function actionLabel(item: AttentionItem): string {
   if (item.sourceType === "WORK_MODULE") return "Mở quy trình";
-  if (item.sourceType === "TASK") return "Mở việc";
+  if (item.sourceType === "TASK") return "Mở lô";
   return "Mở xử lý";
 }
 
@@ -64,7 +64,7 @@ export default function AttentionNow({
             >
               <span className="sr-only">{BAND_META[primary.band].label} · {actionLabel(primary)}: </span>
               <p className="truncate text-[14px] font-extrabold text-red-700">{primary.action}</p>
-              {primary.reason && <p className="truncate text-[12.5px] text-red-600">{primary.reason}</p>}
+              {primary.reason && <p className={cx("text-[12.5px] text-red-600", primary.sourceType === "TASK" || primary.unknown ? "break-words" : "truncate")}>{primary.reason}</p>}
             </div>
             <Link
               to={primary.route}
@@ -75,7 +75,7 @@ export default function AttentionNow({
             </Link>
             {rest.length > 0 && (
               <div className="flex min-w-0 flex-wrap items-center gap-2">
-                <span className="shrink-0 text-[11px] font-extrabold tracking-wide text-slate-500">
+                <span className="shrink-0 text-[12px] font-extrabold tracking-wide text-slate-500">
                   ĐIỂM CHÚ Ý KHÁC
                 </span>
                 {rest.map((item) => (
@@ -137,7 +137,7 @@ export default function AttentionNow({
               >
                 <div className="flex flex-wrap items-start gap-2">
                   <span className={cx(
-                    "inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-[11.5px] font-extrabold shrink-0",
+                    "inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-[12px] font-extrabold shrink-0",
                     meta.cls
                   )}>
                     <Icon size={13} aria-hidden="true" /> {meta.label}

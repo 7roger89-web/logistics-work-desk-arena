@@ -23,6 +23,7 @@ Then: node tests/component/dom_acceptance_logi195_compact_journey_smooth.mjs /tm
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import pathlib
 import runpy
@@ -35,11 +36,25 @@ sys.path.insert(0, str(ROOT))
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--fixture", default="/tmp/logi195-dom.json")
+    # Opt-in: attach distinct metadata rows through the canonical writer so a
+    # DOM lane can challenge node-scoped document filtering with REAL
+    # documentIds computed by the same backend projection. Off by default so
+    # every existing fixture consumer keeps its old payload.
+    parser.add_argument("--with-attachments", action="store_true")
+    # Opt-in: add one TT_ENTRUSTED_SUB shipment whose legal importer is a real
+    # authority_companies row (A) while the contract agent is a different
+    # authority_agents row (B), plus its historical twin with no company link.
+    parser.add_argument("--entrusted-sub", action="store_true")
     args = parser.parse_args()
 
     import streamlit as st
 
-    from core.database import save_shipment_atomic
+    from core.database import (
+        save_authority_agent,
+        save_authority_company,
+        save_shipment_attachment,
+        save_shipment_atomic,
+    )
     from core.shipment_document_catalog import project_catalog
     from views import logi_sandbox
     from views import logi_view_model as vm
@@ -53,6 +68,25 @@ def main() -> int:
     doc.pop("version", None)
     assert save_shipment_atomic(doc, actor="issue195-browser-fixture")
 
+    attachment_ids: list[str] = []
+    if args.with_attachments:
+        for category in ("si", "vgm", "booking", "transport", "customs"):
+            attachment_id = f"fixture-{category}-199"
+            assert save_shipment_attachment({
+                "id": attachment_id,
+                "shipment_id": doc["id"],
+                "original_name": f"only-{category}-199.pdf",
+                "sha256": hashlib.sha256(category.encode()).hexdigest(),
+                "storage_file_id": f"fixture-storage-{category}",
+                "storage_backend": "gridfs",
+                "category": category,
+                "original_size": 100,
+                "stored_size": 100,
+                "uploaded_at": "2026-10-16T00:00:00Z",
+                "uploaded_by": "fixture",
+            }), category
+            attachment_ids.append(attachment_id)
+
     # The customer-less twin: identical journey shape, but only a typed name
     # with NO canonical customer_id — the real reachable state the CUSTOMER_SELF
     # identity gate guards (a typed name never becomes a legal identity).
@@ -62,6 +96,48 @@ def main() -> int:
     doc2.pop("customer_id", None)
     doc2["customer"] = "Khách lẻ chưa vào danh bạ"
     assert save_shipment_atomic(doc2, actor="issue195-browser-fixture")
+
+    if args.entrusted_sub:
+        # Explicit FIXTURE masters only — never claims about real companies.
+        assert save_authority_company({
+            "company_id": "FIX-TT",
+            "legal_name": "CÔNG TY TNHH TRƯỜNG THÀNH (FIXTURE)",
+            "tax_or_legal_code": "0109988776",
+        })
+        assert save_authority_company({
+            "company_id": "FIX-IMP-A",
+            "legal_name": "CÔNG TY TNHH ĐỐI TÁC NHẬP KHẨU HỘ A (FIXTURE)",
+            "tax_or_legal_code": "0317000001",
+        })
+        assert save_authority_agent({
+            "agent_id": "FIX-CONTRACT-B",
+            "legal_name": "CÔNG TY TNHH ĐẠI LÝ HỢP ĐỒNG B (FIXTURE)",
+            "legal_code": "0317000002",
+        })
+        from core import database as core_database
+
+        db = core_database.get_db()
+        for shipment_id, flow in (
+            ("SEA-160", {
+                "mode": "TT_ENTRUSTED_SUB",
+                "confirmed": True,
+                "company_id": "FIX-TT",
+                "sub_agent_id": "FIX-CONTRACT-B",
+                "importer_company_id": "FIX-IMP-A",
+            }),
+            # Historical shape: confirmed SUB, only the agent relation saved.
+            ("SEA-195", {
+                "mode": "TT_ENTRUSTED_SUB",
+                "confirmed": True,
+                "company_id": "FIX-TT",
+                "sub_agent_id": "FIX-CONTRACT-B",
+            }),
+        ):
+            stored = db["shipments"].find_one({"id": shipment_id})
+            assert stored is not None, shipment_id
+            stored.setdefault("data", {}).setdefault("0.0", {})["commercial_flow"] = flow
+            db["shipments"].replace_one({"id": shipment_id}, stored)
+
     st.session_state[vm.LAST_WRITES_KEY] = []
 
     model = vm.build_view_model()
@@ -89,6 +165,17 @@ def main() -> int:
             "noCustomerShipmentId": "SEA-195",
             "nodeIds": node_ids,
             "unavailableTemplateId": "PXK",
+            "attachmentIds": attachment_ids,
+            "entrustedSub": {
+                "shipmentId": "SEA-160",
+                "legacyShipmentId": "SEA-195",
+                "signingCompanyId": "FIX-TT",
+                "importerCompanyId": "FIX-IMP-A",
+                "importerName": "CÔNG TY TNHH ĐỐI TÁC NHẬP KHẨU HỘ A (FIXTURE)",
+                "importerTaxCode": "0317000001",
+                "contractAgentId": "FIX-CONTRACT-B",
+                "contractAgentName": "CÔNG TY TNHH ĐẠI LÝ HỢP ĐỒNG B (FIXTURE)",
+            } if args.entrusted_sub else {},
         },
     }
     pathlib.Path(args.fixture).write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
