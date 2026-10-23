@@ -1632,6 +1632,7 @@ class HexaTrialEnvironment:
                     "role": "",
                     "display_name": "Chưa xác thực",
                 },
+                "can_finance_write": False,
                 "default_shipment_id": SHIPMENT_A_ID,
             }
         entry = self.sessions[token]
@@ -1647,12 +1648,19 @@ class HexaTrialEnvironment:
                     "role": "",
                     "display_name": "Chưa xác thực",
                 },
+                "can_finance_write": False,
                 "default_shipment_id": SHIPMENT_A_ID,
             }
+        from core import auth as core_auth
+
+        perms = core_auth._role_permissions(str(principal.get("role") or "").strip().lower())
         return {
             "authenticated": True,
             "label": entry["label"],
             "principal": copy.deepcopy(principal),
+            # Drives the /tt finance desk visibility only; every action is re-checked
+            # server-side by ``_require_authorized_tt_finance_staff``.
+            "can_finance_write": bool("*" in perms or "finance_write" in perms),
             "default_shipment_id": entry["default_shipment_id"],
         }
 
@@ -1970,7 +1978,8 @@ class HexaTrialEnvironment:
         ]
         financial_obligations = list(
             db["financial_obligations"].find(
-                {"shipment_id": sid, "is_deleted": False},
+                # Ledger obligations carry no soft-delete flag; ``$ne: True`` keeps every live row.
+                {"shipment_id": sid, "is_deleted": {"$ne": True}},
                 {"_id": 0},
             )
         )
@@ -4065,6 +4074,24 @@ def render_trial_portal_html() -> str:
     @media (max-width: 720px) {
       .dash-table-desktop { display: none !important; }
       .dash-cards-mobile { display: grid !important; }
+      /* F2: the two-row mobile node grid is vertically centred, so the Fit / Đọc rõ controls
+         live in one compact bottom band that never covers a node and never overlaps itself. */
+      .journey-split.journey-map-first .journey-canvas {
+        height: clamp(470px, calc(100dvh - 236px), 560px);
+      }
+      .journey-split.journey-map-first .journey-zoom-bar {
+        top: auto;
+        bottom: 8px;
+        left: 8px;
+        right: 8px;
+        transform: none;
+        justify-content: center;
+        flex-wrap: nowrap;
+        gap: 4px;
+      }
+      .journey-split.journey-map-first .journey-zoom-bar .journey-zoom-btn { width: 36px; height: 36px; font-size: 15px; }
+      .journey-split.journey-map-first .journey-zoom-bar .journey-zoom-text { height: 36px; padding: 0 8px; font-size: 11px; }
+      .journey-split.journey-map-first .journey-map-hint { display: none; }
     }
   </style>
 </head>
@@ -4249,6 +4276,28 @@ def render_trial_portal_html() -> str:
   <script>
     const JOURNEY_NODE_W = 116;
     const JOURNEY_NODE_H = 66;
+    // F2: at 390x844 the seven-node single row (1080px canvas) cannot fit, and the old
+    // 0.65 fit clamp pushed Node 00/06 outside the viewport. Mobile therefore gets its own
+    // two-row geometry with near-1:1 scale instead of shrinking everything to unreadable text.
+    const JOURNEY_MOBILE_BREAKPOINT = 720;
+    const MOBILE_NODE_W = 82;
+    const MOBILE_NODE_H = 60;
+    const MOBILE_PITCH = 84;
+    const MOBILE_X0 = 4;
+    const MOBILE_ROW_Y = [170, 270];
+    const mobileCol = (c) => MOBILE_X0 + c * MOBILE_PITCH;
+    const MOBILE_POS = {
+      'plan':                   { x: mobileCol(0), y: MOBILE_ROW_Y[0] },
+      'pickup':                 { x: mobileCol(1), y: MOBILE_ROW_Y[0] },
+      'road-ltl':               { x: mobileCol(2), y: MOBILE_ROW_Y[0] },
+      'road-border':            { x: mobileCol(3), y: MOBILE_ROW_Y[0] },
+      'customs-import':         { x: mobileCol(3), y: MOBILE_ROW_Y[1] },
+      'delivery':               { x: mobileCol(2), y: MOBILE_ROW_Y[1] },
+      'finance-reconciliation': { x: mobileCol(1), y: MOBILE_ROW_Y[1] }
+    };
+    let journeyMobileLayout = false;
+    let journeyNodeW = JOURNEY_NODE_W;
+    let journeyNodeH = JOURNEY_NODE_H;
     const PITCH = 148;
     const PX = 24;
     const col = (c) => PX + c * PITCH;
@@ -4325,15 +4374,58 @@ def render_trial_portal_html() -> str:
     }
 
     function getNodePos(id, idx) {
+      if (journeyMobileLayout) {
+        if (MOBILE_POS[id]) return MOBILE_POS[id];
+        return {
+          x: mobileCol(idx % 4),
+          y: MOBILE_ROW_Y[Math.min(1, Math.floor(idx / 4))]
+        };
+      }
       if (DEMO_POS[id]) return DEMO_POS[id];
       return { x: PX + idx * PITCH, y: 205 };
     }
 
+    function getJourneyViewportMetrics() {
+      const vp = document.getElementById('journey-map-viewport');
+      const width = Number(vp && vp.clientWidth) || Number((typeof window !== 'undefined' && window.innerWidth) || 0);
+      const height = Number(vp && vp.clientHeight) || Number((typeof window !== 'undefined' && window.innerHeight) || 0);
+      return { width, height };
+    }
+
+    function applyJourneyLayoutMode(forceMobile) {
+      const metrics = getJourneyViewportMetrics();
+      journeyMobileLayout = typeof forceMobile === 'boolean'
+        ? forceMobile
+        : (metrics.width > 0 && metrics.width <= JOURNEY_MOBILE_BREAKPOINT);
+      journeyNodeW = journeyMobileLayout ? MOBILE_NODE_W : JOURNEY_NODE_W;
+      journeyNodeH = journeyMobileLayout ? MOBILE_NODE_H : JOURNEY_NODE_H;
+      return journeyMobileLayout;
+    }
+
     function journeyEdgePath(a, b) {
-      const x1 = a.x + JOURNEY_NODE_W;
-      const y1 = a.y + JOURNEY_NODE_H / 2;
+      const hw = journeyNodeW;
+      const hh = journeyNodeH;
+      if (b.x < a.x - 0.5) {
+        // Mobile serpentine row: the flow continues right-to-left.
+        const x1 = a.x;
+        const y1 = a.y + hh / 2;
+        const x2 = b.x + hw;
+        const y2 = b.y + hh / 2;
+        const dx = Math.max(28, Math.abs(x1 - x2) * 0.42);
+        return `M ${x1} ${y1} C ${x1 - dx} ${y1}, ${x2 + dx} ${y2}, ${x2} ${y2}`;
+      }
+      if (Math.abs(b.x - a.x) <= 0.5 && b.y > a.y) {
+        // Mobile row transition: straight down.
+        const x = a.x + hw / 2;
+        const y1 = a.y + hh;
+        const y2 = b.y;
+        const dy = Math.max(20, Math.abs(y2 - y1) * 0.45);
+        return `M ${x} ${y1} C ${x} ${y1 + dy}, ${x} ${y2 - dy}, ${x} ${y2}`;
+      }
+      const x1 = a.x + hw;
+      const y1 = a.y + hh / 2;
       const x2 = b.x;
-      const y2 = b.y + JOURNEY_NODE_H / 2;
+      const y2 = b.y + hh / 2;
       const dx = Math.max(40, Math.abs(x2 - x1) * 0.42);
       return `M ${x1} ${y1} C ${x1 + dx} ${y1}, ${x2 - dx} ${y2}, ${x2} ${y2}`;
     }
@@ -4361,6 +4453,7 @@ def render_trial_portal_html() -> str:
     }
 
     function resetReadable() {
+      applyJourneyLayoutMode();
       currentScale = 1;
       currentPan = { x: 0, y: 0 };
       applyTransform();
@@ -4373,17 +4466,21 @@ def render_trial_portal_html() -> str:
         resetReadable();
         return;
       }
+      applyJourneyLayoutMode();
       const positions = nodes.map((n, i) => getNodePos(n.id, i));
       const minX = Math.min(...positions.map(p => p.x));
-      const maxX = Math.max(...positions.map(p => p.x + JOURNEY_NODE_W));
+      const maxX = Math.max(...positions.map(p => p.x + journeyNodeW));
       const minY = Math.min(...positions.map(p => p.y));
-      const maxY = Math.max(...positions.map(p => p.y + JOURNEY_NODE_H));
-      const pad = 48;
-      const boxW = Math.max(240, maxX - minX + pad * 2);
-      const boxH = Math.max(180, maxY - minY + pad * 2);
+      const maxY = Math.max(...positions.map(p => p.y + journeyNodeH));
+      const pad = journeyMobileLayout ? 8 : 48;
+      const minBoxW = journeyMobileLayout ? 120 : 240;
+      const minBoxH = journeyMobileLayout ? 120 : 180;
+      const boxW = Math.max(minBoxW, maxX - minX + pad * 2);
+      const boxH = Math.max(minBoxH, maxY - minY + pad * 2);
       const vw = vp.clientWidth || 960;
       const vh = vp.clientHeight || 520;
-      const nextScale = Math.max(0.65, Math.min(1.25, Math.min(vw / boxW, vh / boxH)));
+      const minScale = journeyMobileLayout ? 0.5 : 0.65;
+      const nextScale = Math.max(minScale, Math.min(1.25, Math.min(vw / boxW, vh / boxH)));
       const cx = (minX + maxX) / 2;
       const cy = (minY + maxY) / 2;
       currentScale = Math.round(nextScale * 100) / 100;
@@ -4873,6 +4970,7 @@ def render_trial_portal_html() -> str:
     function renderJourneyMapForShipment(row, pub) {
       const zeroEl = document.getElementById('journey-zero-notice');
       if (zeroEl) zeroEl.classList.add('hidden');
+      applyJourneyLayoutMode();
 
       document.getElementById('toolbar-id').textContent = String(row.shipment_id || pub.reference || '');
       document.getElementById('toolbar-mode').textContent = String(row.transport_mode || pub.transport_mode || 'ROAD');
@@ -4933,8 +5031,8 @@ def render_trial_portal_html() -> str:
           btn.className = classes.join(' ');
           btn.style.left = `${p.x}px`;
           btn.style.top = `${p.y}px`;
-          btn.style.width = `${JOURNEY_NODE_W}px`;
-          btn.style.height = `${JOURNEY_NODE_H}px`;
+          btn.style.width = `${journeyNodeW}px`;
+          btn.style.height = `${journeyNodeH}px`;
 
           const topDiv = document.createElement('div');
           topDiv.className = 'journey-node-top';
@@ -4991,10 +5089,10 @@ def render_trial_portal_html() -> str:
       clearChildren(bubbleSlot);
       if (!node || !pos) return;
 
-      const bubbleW = 290;
-      const left = Math.max(18, Math.min(1080 - bubbleW - 18, pos.x + JOURNEY_NODE_W / 2 - bubbleW / 2));
-      const preferAbove = pos.y > 195;
-      const top = preferAbove ? Math.max(12, pos.y - 12) : pos.y + JOURNEY_NODE_H + 12;
+      const bubbleW = journeyMobileLayout ? 250 : 290;
+      const left = Math.max(18, Math.min(1080 - bubbleW - 18, pos.x + journeyNodeW / 2 - bubbleW / 2));
+      const preferAbove = journeyMobileLayout ? pos.y <= 200 : pos.y > 195;
+      const top = preferAbove ? Math.max(12, pos.y - 12) : pos.y + journeyNodeH + 12;
 
       const wrap = document.createElement('div');
       wrap.className = `journey-bubble ${preferAbove ? 'journey-bubble-above' : 'journey-bubble-below'}`;
@@ -5149,13 +5247,22 @@ def render_trial_portal_html() -> str:
       const grid = document.createElement('div');
       grid.className = 'readonly-grid';
 
+      const stageFinance = node.finance_detail || row.finance_detail || row.debt_summary || {};
+      const stageFinanceConfirmed = stageFinance.reconciliation_status === 'CONFIRMED' || stageFinance.status === 'CONFIRMED';
+      // Node 06 is the debt/reconciliation surface. A selling quote is NOT a debt, so the
+      // approved quote figure stays at Node 00 / Hồ sơ & Chứng từ and never appears at Node 06
+      // while the customer is not allowed to see finance (unapproved, revoked or stale source).
+      const showQuoteRow = !(stageId === 'finance-reconciliation' && !stageFinanceConfirmed);
+
       const items = [
         ['Trạng thái công đoạn', JOURNEY_NODE_STATUS[node.state] || 'CHƯA BẮT ĐẦU'],
         ['Thời điểm xác minh', String(node.occurred_at || 'Chưa xác nhận')],
         ['ETA kho đã xác minh', String(row.verified_warehouse_eta_label || 'Chưa xác minh')],
-        ['Đầu mối Trường Thành', String(row.contact_point || 'CSKH Trường Thành')],
-        ['Báo giá bán đã duyệt', quote ? `${formatVnd(quote.selling_total_vnd)} (${String(quote.id || '')} · v${String(quote.version || '')})` : 'Chưa công bố']
+        ['Đầu mối Trường Thành', String(row.contact_point || 'CSKH Trường Thành')]
       ];
+      if (showQuoteRow) {
+        items.push(['Báo giá bán đã duyệt', quote ? `${formatVnd(quote.selling_total_vnd)} (${String(quote.id || '')} · v${String(quote.version || '')})` : 'Chưa công bố']);
+      }
       items.forEach(([lbl, val]) => {
         const box = document.createElement('div');
         box.className = 'readonly-box';
@@ -5234,8 +5341,8 @@ def render_trial_portal_html() -> str:
 
       // Node 06 — THANH TOÁN & ĐỐI SOÁT (after delivery)
       if (stageId === 'finance-reconciliation') {
-        const fin = node.finance_detail || row.finance_detail || row.debt_summary || {};
-        const confirmed = fin.reconciliation_status === 'CONFIRMED' || fin.status === 'CONFIRMED';
+        const fin = stageFinance;
+        const confirmed = stageFinanceConfirmed;
         const cur = String(fin.currency || 'VND');
         const finSec = document.createElement('div');
         finSec.dataset.testid = 'stage-finance-detail';
@@ -5566,6 +5673,14 @@ def render_trial_portal_html() -> str:
       }
     }
 
+    function syncJourneyLayoutMode() {
+      const wasMobile = journeyMobileLayout;
+      const isMobile = applyJourneyLayoutMode();
+      if (wasMobile === isMobile || !activeShipmentRow) return;
+      renderJourneyMapForShipment(activeShipmentRow, activePublication);
+      fitJourney();
+    }
+
     window.addEventListener('DOMContentLoaded', async () => {
       const vp = document.getElementById('journey-map-viewport');
       if (vp && vp.addEventListener) {
@@ -5593,6 +5708,11 @@ def render_trial_portal_html() -> str:
           currentScale = Math.max(0.55, Math.min(1.85, Math.round((currentScale + delta) * 100) / 100));
           applyTransform();
         }, { passive: false });
+      }
+      syncJourneyLayoutMode();
+      if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+        window.addEventListener('resize', syncJourneyLayoutMode);
+        window.addEventListener('orientationchange', syncJourneyLayoutMode);
       }
       await loadSession();
     });
@@ -5683,6 +5803,15 @@ def render_tt_publish_desk_html() -> str:
     th, td { padding: 8px; border-bottom: 1px solid #e2e8f0; text-align: left; }
     button { cursor: pointer; padding: 7px 12px; border-radius: 6px; border: 1px solid #0f4c81; background: #0f4c81; color: #fff; font-weight: 600; }
     button.danger { background: #b91c1c; border-color: #b91c1c; }
+    .hidden { display: none !important; }
+    .fin-block { border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 12px; margin-bottom: 10px; }
+    .fin-block strong { font-size: 13px; }
+    .fin-block .fin-hint { font-size: 12px; color: #475569; margin: 4px 0 8px; }
+    .fin-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; }
+    .fin-row label { display: grid; gap: 3px; font-size: 11.5px; font-weight: 700; color: #334155; }
+    .fin-row input, .fin-row select { padding: 6px 8px; font-size: 12.5px; }
+    #tt-fin-status { margin-top: 8px; font-size: 12.5px; font-weight: 700; color: #0f4c81; }
+    #tt-finance-state { font-size: 12.5px; color: #475569; margin-bottom: 10px; }
   </style>
 </head>
 <body>
@@ -5699,9 +5828,44 @@ def render_tt_publish_desk_html() -> str:
     <div id="tt-status" style="margin-top:8px; font-weight:700;"></div>
     <table><thead><tr><th>Chọn</th><th>Mã mốc</th><th>Phiên bản</th><th>Công đoạn</th><th>Nội dung</th></tr></thead><tbody id="tt-events-tbody"></tbody></table>
     <table><thead><tr><th>Chọn</th><th>Mã chứng từ</th><th>Phiên bản</th><th>Loại</th><th>Tiêu đề</th></tr></thead><tbody id="tt-docs-tbody"></tbody></table>
+
+    <section id="tt-finance-section" class="hidden" data-testid="tt-finance-section" style="margin-top:18px; border-top:2px solid #cbd5e1; padding-top:14px;">
+      <h3 style="margin:0 0 6px; font-size:15px;">Đối soát tài chính &amp; công bố cho khách (chỉ nhân sự finance_write)</h3>
+      <div id="tt-finance-state" data-testid="tt-finance-state">—</div>
+
+      <div class="fin-block">
+        <strong>1. Xác nhận đã nhận tiền &amp; phân bổ vào đúng nghĩa vụ/lô</strong>
+        <div class="fin-hint">Khách gửi ủy nhiệm chi (UNC) chỉ là hồ sơ chờ xác minh — hệ thống KHÔNG tự ghi nhận thanh toán. Thao tác này ghi nhận tiền đã nhận, chưa công bố cho khách xem.</div>
+        <div class="fin-row">
+          <label>Mã giao dịch<input id="tt-fin-txn" type="text" placeholder="VD: UNC-20261023-01" /></label>
+          <label>Nghĩa vụ / lô<select id="tt-fin-obligation"></select></label>
+          <label>Số tiền<input id="tt-fin-amount" type="number" min="0" step="1" placeholder="0" /></label>
+          <label>Loại tiền<input id="tt-fin-currency" type="text" value="VND" size="5" /></label>
+          <label>Ngày nhận<input id="tt-fin-date" type="date" /></label>
+          <label>Chứng từ UNC (tuỳ chọn)<select id="tt-fin-doc"><option value="">—</option></select></label>
+          <label>Ghi chú<input id="tt-fin-note" type="text" placeholder="Đối soát sao kê / UNC" /></label>
+          <button type="button" data-testid="tt-finance-confirm" onclick="submitTtFinanceConfirm()">Xác nhận đã nhận tiền</button>
+        </div>
+      </div>
+
+      <div class="fin-block">
+        <strong>2. Duyệt cho khách xem</strong>
+        <div class="fin-hint">Chỉ công bố số liệu tài chính đã đối soát cho khách hàng của lô này. Khách chưa được duyệt sẽ chỉ thấy “Chưa đối soát”.</div>
+        <button type="button" data-testid="tt-finance-publish" onclick="submitTtFinancePublish()">Duyệt công bố số liệu tài chính</button>
+      </div>
+
+      <div class="fin-block">
+        <strong>3. Thu hồi công bố tài chính</strong>
+        <div class="fin-hint">Khách ngay lập tức không còn thấy số công nợ cho tới khi được duyệt lại.</div>
+        <button type="button" class="danger" data-testid="tt-finance-revoke" onclick="submitTtFinanceRevoke()">Thu hồi công bố tài chính</button>
+      </div>
+
+      <div id="tt-fin-status" data-testid="tt-finance-status"></div>
+    </section>
   </main>
   <script>
     let currentTtShipment = null;
+    let ttCanFinanceWrite = false;
     function getTtToken() {
       if (window.__HEXA_TT_TOKEN) return String(window.__HEXA_TT_TOKEN);
       try { if (typeof sessionStorage !== 'undefined') return sessionStorage.getItem('hexa_tt_token') || ''; } catch (_e) {}
@@ -5718,7 +5882,10 @@ def render_tt_publish_desk_html() -> str:
     async function loadTtShipment() {
       const sid = (document.getElementById('tt-shipment-input').value || '').trim();
       const res = await ttFetch(`/api/hexa/v0/tt/shipments/${encodeURIComponent(sid)}`);
-      if (!res.ok) return;
+      if (!res.ok) {
+        document.getElementById('tt-status').textContent = 'Không mở được hồ sơ lô (kiểm tra mã lô / quyền truy cập).';
+        return;
+      }
       currentTtShipment = await res.json();
       const pub = currentTtShipment.publication || {};
       const pubEvents = pub.event_versions || {};
@@ -5755,6 +5922,7 @@ def render_tt_publish_desk_html() -> str:
         tr.append(tdCk, tdId, tdVer, tdKind, tdTitle);
         docBody.appendChild(tr);
       });
+      renderTtFinancePanel(currentTtShipment);
     }
     async function submitTtPublish() {
       const sid = (document.getElementById('tt-shipment-input').value || '').trim();
@@ -5780,7 +5948,134 @@ def render_tt_publish_desk_html() -> str:
       document.getElementById('tt-status').textContent = res.ok ? `Đã thu hồi công bố lô ${sid}` : 'Lỗi thu hồi';
       await loadTtShipment();
     }
-    window.addEventListener('DOMContentLoaded', loadTtShipment);
+    function setTtFinStatus(msg) {
+      const el = document.getElementById('tt-fin-status');
+      if (el) el.textContent = String(msg || '');
+    }
+
+    async function loadTtSession() {
+      const res = await ttFetch('/api/hexa/v0/tt/session');
+      const body = res.ok ? await res.json() : {};
+      ttCanFinanceWrite = Boolean(body && body.can_finance_write === true);
+      const section = document.getElementById('tt-finance-section');
+      if (section) section.classList.toggle('hidden', !ttCanFinanceWrite);
+      return ttCanFinanceWrite;
+    }
+
+    async function initTtDesk() {
+      await loadTtSession();
+      await loadTtShipment();
+    }
+
+    function currentTtShipmentId() {
+      return String(document.getElementById('tt-shipment-input').value || '').trim();
+    }
+
+    function renderTtFinancePanel(detail) {
+      const section = document.getElementById('tt-finance-section');
+      if (!ttCanFinanceWrite || !section) return;
+      const obligations = Array.isArray(detail.financial_obligations) ? detail.financial_obligations : [];
+      const obSel = document.getElementById('tt-fin-obligation');
+      if (obSel) {
+        obSel.textContent = '';
+        obligations.forEach(o => {
+          const opt = document.createElement('option');
+          opt.value = String(o.id || '');
+          const lots = Array.isArray(o.shipment_ids) ? o.shipment_ids.join(',') : String(o.shipment_id || '');
+          opt.textContent = `${String(o.id || '')} · ${String(o.purpose || '')} · ${String(o.amount ?? '')} ${String(o.currency || '')} · lô ${lots}`;
+          obSel.appendChild(opt);
+        });
+      }
+      const docSel = document.getElementById('tt-fin-doc');
+      if (docSel) {
+        docSel.textContent = '';
+        const none = document.createElement('option');
+        none.value = '';
+        none.textContent = '—';
+        docSel.appendChild(none);
+        (detail.customer_submitted_documents || []).forEach(d => {
+          if (d.revoked) return;
+          const opt = document.createElement('option');
+          opt.value = String(d.id || '');
+          opt.textContent = `${String(d.id || '')} · ${String(d.kind || '')} · ${String(d.file_name || '')}`;
+          docSel.appendChild(opt);
+        });
+      }
+      const pub = detail.publication || {};
+      const stateEl = document.getElementById('tt-finance-state');
+      if (stateEl) {
+        stateEl.textContent = pub.finance_published === true
+          ? `Đang công bố số liệu tài chính cho khách · duyệt bởi ${String(pub.finance_approved_by || '—')} lúc ${String(pub.finance_approved_at || '—')}`
+          : 'Chưa công bố số liệu tài chính cho khách (khách chỉ thấy UNKNOWN / Chưa đối soát).';
+      }
+    }
+
+    async function submitTtFinanceConfirm() {
+      if (!ttCanFinanceWrite) { setTtFinStatus('Bạn không có quyền finance_write.'); return; }
+      const sid = currentTtShipmentId();
+      const payload = {
+        transaction_id: String(document.getElementById('tt-fin-txn').value || '').trim(),
+        obligation_id: String(document.getElementById('tt-fin-obligation').value || '').trim(),
+        amount: Number(document.getElementById('tt-fin-amount').value || '0'),
+        currency: String(document.getElementById('tt-fin-currency').value || 'VND').trim().toUpperCase(),
+        occurred_at: String(document.getElementById('tt-fin-date').value || '').trim(),
+        note: String(document.getElementById('tt-fin-note').value || '').trim(),
+        verified_document_id: String(document.getElementById('tt-fin-doc').value || '').trim()
+      };
+      if (!payload.transaction_id || !payload.obligation_id || !(payload.amount > 0) || !payload.occurred_at) {
+        setTtFinStatus('Nhập đủ mã giao dịch, nghĩa vụ, số tiền và ngày nhận.');
+        return;
+      }
+      const res = await ttFetch(`/api/hexa/v0/tt/shipments/${encodeURIComponent(sid)}/finance/confirm`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+      });
+      const body = res.ok ? {} : await res.json().catch(() => ({}));
+      setTtFinStatus(res.ok
+        ? `Đã xác nhận nhận tiền ${payload.transaction_id} (${payload.amount} ${payload.currency}). Chưa công bố cho khách xem.`
+        : `Bị từ chối: ${String(body.error || res.status)}`);
+      if (res.ok) await loadTtShipment();
+    }
+
+    async function submitTtFinancePublish() {
+      if (!ttCanFinanceWrite) { setTtFinStatus('Bạn không có quyền finance_write.'); return; }
+      const sid = currentTtShipmentId();
+      const pub = (currentTtShipment && currentTtShipment.publication) || {};
+      if (pub.state !== 'PUBLISHED') {
+        setTtFinStatus('Lô chưa được công bố hồ sơ — hãy duyệt công bố hồ sơ trước khi duyệt số liệu tài chính.');
+        return;
+      }
+      // Finance approval only; the current event/document/quote selection is preserved.
+      const res = await ttFetch(`/api/hexa/v0/tt/shipments/${encodeURIComponent(sid)}/publish`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          event_versions: pub.event_versions || {},
+          document_versions: pub.document_versions || {},
+          quote: pub.quote || null,
+          approve_finance: true
+        })
+      });
+      const body = res.ok ? {} : await res.json().catch(() => ({}));
+      setTtFinStatus(res.ok
+        ? `Đã duyệt công bố số liệu tài chính cho khách (lô ${sid}).`
+        : `Bị từ chối: ${String(body.error || res.status)}`);
+      if (res.ok) await loadTtShipment();
+    }
+
+    async function submitTtFinanceRevoke() {
+      if (!ttCanFinanceWrite) { setTtFinStatus('Bạn không có quyền finance_write.'); return; }
+      const sid = currentTtShipmentId();
+      const res = await ttFetch(`/api/hexa/v0/tt/shipments/${encodeURIComponent(sid)}/revoke`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ revoke_finance: true })
+      });
+      const body = res.ok ? {} : await res.json().catch(() => ({}));
+      setTtFinStatus(res.ok
+        ? `Đã thu hồi công bố tài chính (lô ${sid}).`
+        : `Bị từ chối: ${String(body.error || res.status)}`);
+      if (res.ok) await loadTtShipment();
+    }
+
+    window.addEventListener('DOMContentLoaded', initTtDesk);
   </script>
 </body>
 </html>
