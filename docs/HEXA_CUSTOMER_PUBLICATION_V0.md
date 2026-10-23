@@ -159,6 +159,23 @@ Nguồn dữ liệu nội bộ hiện tại trong repo **chưa có sẵn** các 
   - Đã gỡ bỏ hoàn toàn việc truyền `_hx_token` trên URL tải PDF và gỡ bỏ cơ chế đọc `_hx_token` từ query string trên server (`GET ...?_hx_token=...` trả `HTTP 403`) để tuyệt đối không làm lộ token phiên qua access log / lịch sử trình duyệt / Referer.
   - Việc gọi API và tải chứng từ PDF trong chế độ iframe chặn cookie dùng header `Authorization: Bearer <token>` trong `apiFetch()` kết hợp `res.blob()` + `URL.createObjectURL(blob)`.
 
+## 9. Bổ sung Kế hoạch (`00`), Công nợ (`06` + Dashboard) và Trao đổi Chứng từ theo Công đoạn (`HEXA-JOURNEY-PLAN-FINANCE-COLLAB-V1`)
+
+- **Hành trình 7 công đoạn (`00`..`06`) cho cổng khách hàng ROAD LTL**:
+  - Giữ nguyên 5 công đoạn vận chuyển đang có (`01` `pickup` — Lấy hàng, `02` `road-ltl` — Nhận & ghép hàng (LTL), `03` `road-border` — Vận chuyển đường bộ & qua biên, `04` `customs-import` — Khai báo & thông quan, `05` `delivery` — Giao hàng), bổ sung 2 công đoạn thương mại/tài chính ở hai đầu mà không gộp bớt chặng vận chuyển và không làm sai lệch trạng thái các chặng `01`..`05`:
+    - **Node `00` — `KẾ HOẠCH` (`plan`, trước Lấy hàng)**: hiển thị báo giá & tình trạng xác nhận báo giá (`quote_no`, `quote_confirmation_status`), hợp đồng & tình trạng ký kết (`contract_no`, `contract_status`), điều kiện thanh toán (`payment_terms`). Chỉ khi lô hàng thuộc diện **ủy thác nhập khẩu** (`entrusted_import=True`, ví dụ `ROAD-LG-002`) mới hiển thị điều kiện tiền hàng ứng trước (`goods_advance_required=200.000.000 VND`, `goods_advance_received=150.000.000 VND`, `goods_advance_remaining=50.000.000 VND`); các lô dịch vụ thông thường (`ROAD-LG-001`) không bị áp điều kiện tiền hàng ứng trước.
+    - **Node `06` — `THANH TOÁN & ĐỐI SOÁT` (`finance-reconciliation`, sau Giao hàng)**: hiển thị tổng phải thanh toán đã đối soát, tổng đã thanh toán & phân bổ đúng lô, số dư còn phải thanh toán, ngày cập nhật, trạng thái đối soát, cùng trao đổi & chứng từ thanh toán liên quan. Việc giao hàng xong không tự động có nghĩa đã thanh toán đủ; khách thanh toán trước khi giao hàng vẫn ghi nhận đúng ngày thực tế.
+- **Cột `"Công nợ"` trên Dashboard tổng quan (bảng Desktop & thẻ gọn Mobile)**:
+  - Hiển thị 3 dòng cho mỗi lô: `Tổng phải thanh toán`, `Đã thanh toán`, `Còn phải thanh toán`.
+  - Tái sử dụng trực tiếp `core/financial_ledger.py` (`derive_obligation_position`) trên các nghĩa vụ phải thu dịch vụ của khách với Trường Thành (`direction="RECEIVABLE_FROM_PARTY"`, `party_type="CUSTOMER"`, `purpose="LOGISTICS_SERVICE"`, `status="CONFIRMED"`). Tuyệt đối không dùng `shipment_partner_position()` (dành cho đối tác/NCC), không lấy tổng báo giá làm công nợ thực tế, và tách riêng khoản tiền hàng ủy thác (`purpose="ENTRUSTED_GOODS_ADVANCE"`).
+  - Khi chưa có nghĩa vụ phải thu đã xác nhận hoặc chưa đối soát (như `ROAD-LG-002`), hiển thị rõ `UNKNOWN / Chưa đối soát` (không tự hiển thị `0 VND`).
+  - **Ranh giới quyền hạn tài chính**: chỉ nhân sự nội bộ có quyền `finance_write` (ví dụ `tt.finance.truongthanh`, `role="support"`) mới được xác nhận bút toán thu tiền/phân bổ qua `POST /api/hexa/v0/tt/shipments/<id>/finance/confirm`; tài khoản chỉ có `operations_write` (`tt.ops.truongthanh`, `role="operations"`) bị chặn `HTTP 403`. Số liệu chỉ hiển thị cho khách khi lô được duyệt công bố và không bị thu hồi (`finance_revoked=False`).
+- **Trao đổi (`TRAO ĐỔI`) & Đính kèm chứng từ (`CHỨNG TỪ`) theo từng công đoạn**:
+  - Giữ nguyên bố cục `node → bubble → popup`. Bên trong popup mỗi công đoạn có 2 mục gọn:
+    1. **TRAO ĐỔI**: danh sách ghi chú gắn với `(shipment_id, stage_id)`, người gửi, thời điểm; chỉ hiển thị các trao đổi `visibility="CUSTOMER"` đã công bố (ghi chú nội bộ `visibility="TT"` của Trường Thành tuyệt đối không hiển thị cho khách).
+    2. **CHỨNG TỪ**: đính kèm, xem và tải tệp chứng từ công đoạn qua `core/shipment_attachments.py` + GridFS + kiểm tra loại tệp/dung lượng. Tệp khách tải lên (`source_side="CUSTOMER"`, `verified=False`, `"Hồ sơ khách đã nộp — Chờ TT xác minh"`) chỉ là hồ sơ khách nộp: không tự xác minh, không tự hoàn thành node, và không tự thay đổi số tiền đã thanh toán/còn phải thanh toán cho đến khi nhân sự có `finance_write` xác nhận và TT duyệt công bố. Khi TT thu hồi trao đổi hoặc chứng từ, khách không còn đọc hoặc tải được (`HTTP 403`, `0` lượt đọc GridFS).
+
+
 
 
 

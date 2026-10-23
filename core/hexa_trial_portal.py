@@ -47,8 +47,20 @@ INTERNAL_QA_HEADER = "X-Hexa-Internal-QA-Key"
 
 TT_STAFF_TRIAL_USERNAME = "tt.ops.truongthanh"
 TT_STAFF_TRIAL_PASSCODE = "TT-Trial-2026!"
+TT_FINANCE_TRIAL_USERNAME = "tt.finance.truongthanh"
+TT_FINANCE_TRIAL_PASSCODE = "TT-Finance-2026!"
 TT_VIEWER_TRIAL_USERNAME = "tt.viewer"
 TT_VIEWER_TRIAL_PASSCODE = "Viewer-Trial-2026!"
+
+CUSTOMER_JOURNEY_STAGE_IDS: tuple[str, ...] = (
+    "plan",
+    "pickup",
+    "road-ltl",
+    "road-border",
+    "customs-import",
+    "delivery",
+    "finance-reconciliation",
+)
 
 CUSTOMER_A_TRIAL_USERNAME = "lucgiac.trial"
 CUSTOMER_A_TRIAL_PASSCODE = "LG-Trial-2026!"
@@ -71,6 +83,7 @@ FORBIDDEN_SAMPLE_TOKENS: frozenset[str] = frozenset(
         "internal_viewer",
         "anonymous",
         TT_STAFF_TRIAL_USERNAME,
+        TT_FINANCE_TRIAL_USERNAME,
         TT_VIEWER_TRIAL_USERNAME,
         CUSTOMER_A_TRIAL_USERNAME,
         CUSTOMER_B_TRIAL_USERNAME,
@@ -372,10 +385,21 @@ class HexaTrialEnvironment:
             db["customers"].replace_one({"id": cust_doc["id"]}, cust_doc, upsert=True)
 
         # Seed TT internal staff accounts in db["users"] (reusing core.users & core.auth PBKDF2-SHA256)
+        # - tt.ops.truongthanh has role='operations' (operations_write only, NO finance_write)
+        # - tt.finance.truongthanh has role='support' (has finance_write + operations_write)
         tt_staff_doc = core_users.build_user_document(
             TT_STAFF_TRIAL_USERNAME,
             TT_STAFF_TRIAL_PASSCODE,
             "Điều vận Trường Thành (TT Ops)",
+            "support",
+            active=True,
+            created_by="system",
+        )
+        tt_staff_doc["role"] = "operations"
+        tt_finance_doc = core_users.build_user_document(
+            TT_FINANCE_TRIAL_USERNAME,
+            TT_FINANCE_TRIAL_PASSCODE,
+            "Kế toán Trường Thành (TT Finance)",
             "support",
             active=True,
             created_by="system",
@@ -391,6 +415,7 @@ class HexaTrialEnvironment:
             "created_by": "system",
         }
         db["users"].replace_one({"username": TT_STAFF_TRIAL_USERNAME}, tt_staff_doc, upsert=True)
+        db["users"].replace_one({"username": TT_FINANCE_TRIAL_USERNAME}, tt_finance_doc, upsert=True)
         db["users"].replace_one({"username": TT_VIEWER_TRIAL_USERNAME}, tt_viewer_doc, upsert=True)
 
         # Seed trial customer login accounts in db["hexa_trial_customer_accounts"]
@@ -876,6 +901,14 @@ class HexaTrialEnvironment:
                     "shared_truck_plate": SHARED_TRUCK_PLATE,
                     "transport_mode": "ROAD",
                     "quote_id": QUOTE_A_ID,
+                    "quote_no": "QT-20261022-LG01",
+                    "quote_confirmation_status": "ĐÃ XÁC NHẬN",
+                    "contract_no": "HDVC-LG-2026-01",
+                    "contract_status": "ĐÃ KÝ KẾT (2026-10-17)",
+                    "payment_terms": "Tạm ứng khi lấy hàng; đối soát & tất toán phần còn lại theo chứng từ giao hàng",
+                    "entrusted_import_applicable": False,
+                    "plan_verified": True,
+                    "plan_verified_at": "2026-10-17T16:00:00Z",
                     "cargo_summary": "Nội thất văn phòng — 18 kiện / 4.200 kg",
                     "route_summary": "Bằng Tường (Quảng Tây) → Hữu Nghị → Cầu Giấy, Hà Nội",
                     "internal_cost_vnd": 42000000,
@@ -891,6 +924,14 @@ class HexaTrialEnvironment:
                     "shared_truck_plate": "29H-912.34",
                     "transport_mode": "ROAD",
                     "quote_id": QUOTE_A2_ID,
+                    "quote_no": "QT-20261023-LG02",
+                    "quote_confirmation_status": "ĐÃ XÁC NHẬN",
+                    "contract_no": "HDUT-LG-2026-02",
+                    "contract_status": "ĐÃ KÝ KẾT — ỦY THÁC NHẬP KHẨU (2026-10-19)",
+                    "payment_terms": "Ứng trước tiền hàng ủy thác theo PI; phí dịch vụ & vận chuyển đối soát riêng khi giao hàng",
+                    "entrusted_import_applicable": True,
+                    "plan_verified": True,
+                    "plan_verified_at": "2026-10-19T11:00:00Z",
                     "cargo_summary": "Thiết bị chiếu sáng văn phòng — 10 pallet / 2.600 kg",
                     "route_summary": "Đông Hưng (Quảng Tây) → Móng Cái → Long Biên, Hà Nội",
                     "internal_cost_vnd": 27000000,
@@ -906,6 +947,14 @@ class HexaTrialEnvironment:
                     "shared_truck_plate": SHARED_TRUCK_PLATE,
                     "transport_mode": "ROAD",
                     "quote_id": QUOTE_B_ID,
+                    "quote_no": "QT-20261022-MD02",
+                    "quote_confirmation_status": "ĐÃ XÁC NHẬN",
+                    "contract_no": "HDVC-MD-2026-01",
+                    "contract_status": "ĐÃ KÝ KẾT",
+                    "payment_terms": "Thanh toán theo đối soát lô",
+                    "entrusted_import_applicable": False,
+                    "plan_verified": True,
+                    "plan_verified_at": "2026-10-18T09:00:00Z",
                     "cargo_summary": "Linh kiện cơ khí — 22 kiện / 5.800 kg",
                     "route_summary": "Bằng Tường (Quảng Tây) → Hữu Nghị → KCN Yên Phong, Bắc Ninh",
                     "internal_cost_vnd": 29000000,
@@ -921,6 +970,14 @@ class HexaTrialEnvironment:
                     "shared_truck_plate": "15H-339.12",
                     "transport_mode": "ROAD",
                     "quote_id": QUOTE_C_ID,
+                    "quote_no": "QT-20261022-AP03",
+                    "quote_confirmation_status": "Chưa xác nhận",
+                    "contract_no": "HDMB-AP-2026",
+                    "contract_status": "Chưa xác nhận",
+                    "payment_terms": "Chưa xác nhận",
+                    "entrusted_import_applicable": False,
+                    "plan_verified": False,
+                    "plan_verified_at": "",
                     "cargo_summary": "Thiết bị điện công nghiệp — 12 pallet / 3.100 kg",
                     "route_summary": "Đông Hưng (Quảng Tây) → Móng Cái → KCN Đình Vũ, Hải Phòng",
                     "internal_cost_vnd": 24000000,
@@ -1203,6 +1260,182 @@ class HexaTrialEnvironment:
                     "file_name": "Packing-List-An-Phat-v1.pdf",
                     "attachment_id": att_ap_pl_v1["id"],
                     "attachment_shipment_id": SHIPMENT_C_ID,
+                },
+            ]
+        )
+
+        # 7. Seed canonical financial ledger records in SANDBOX_STAGING (core.financial_ledger collections:
+        #    financial_obligations, financial_transactions, financial_allocations).
+        #    - ROAD-LG-001 (normal service): confirmed LOGISTICS_SERVICE receivable 57,240,000 VND,
+        #      confirmed advance payment 30,000,000 VND on 2026-10-20 (before delivery), remaining 27,240,000 VND.
+        #      Also includes an internal partner payable (42,000,000 VND) that must NEVER leak to the customer portal.
+        #    - ROAD-LG-002 (entrusted import): confirmed ENTRUSTED_GOODS_ADVANCE obligation 200,000,000 VND,
+        #      confirmed received 150,000,000 VND, shortfall 50,000,000 VND; NO confirmed LOGISTICS_SERVICE obligation
+        #      yet -> proves Node 06 & Dashboard show UNKNOWN / Chưa đối soát (never 0, never copying quote total!).
+        from core.financial_ledger import ALLOCATIONS, CONFIRMED, OBLIGATIONS, TRANSACTIONS
+
+        db[OBLIGATIONS].delete_many({})
+        db[TRANSACTIONS].delete_many({})
+        db[ALLOCATIONS].delete_many({})
+        db["hexa_trial_stage_comments"].delete_many({})
+
+        cust_a_party = {"party_type": "customer", "party_id": CUSTOMER_A_ID, "name": "Công ty TNHH Lục Giác (HEXA)"}
+        tt_company_party = {"party_type": "company", "party_id": "TT-COMPANY", "name": "Công ty Trường Thành Logistics"}
+        internal_partner_party = {
+            "party_type": "partner",
+            "party_id": "PARTNER-FOSHAN",
+            "name": f"Foshan Hexa Furniture Factory ({SENTINEL_TT_PRIVATE_SUPPLIER})",
+        }
+
+        db[OBLIGATIONS].insert_many(
+            [
+                {
+                    "id": "OBL-LG01-SVC-01",
+                    "record_type": "obligation",
+                    "from_party": cust_a_party,
+                    "from_party_key": f"customer:{CUSTOMER_A_ID}",
+                    "to_party": tt_company_party,
+                    "to_party_key": "company:TT-COMPANY",
+                    "shipment_ids": [SHIPMENT_A_ID],
+                    "shipment_id": SHIPMENT_A_ID,
+                    "purpose": "LOGISTICS_SERVICE",
+                    "amount": 57240000.0,
+                    "currency": "VND",
+                    "status": "active",
+                    "review_status": CONFIRMED,
+                    "confirmed_by": TT_FINANCE_TRIAL_USERNAME,
+                    "confirmed_by_role": "support",
+                    "confirmed_by_finance_write": True,
+                    "created_at": "2026-10-18T10:00:00Z",
+                    "updated_at": "2026-10-20T15:00:00Z",
+                    "note": "Nghĩa vụ phải thu cước & thủ tục đường bộ lô ROAD-LG-001 đã đối soát",
+                },
+                # Internal partner payable (used by shipment_partner_position — MUST NEVER leak to customer portal!)
+                {
+                    "id": "OBL-LG01-PARTNER-INTERNAL",
+                    "record_type": "obligation",
+                    "from_party": tt_company_party,
+                    "from_party_key": "company:TT-COMPANY",
+                    "to_party": internal_partner_party,
+                    "to_party_key": "partner:PARTNER-FOSHAN",
+                    "shipment_ids": [SHIPMENT_A_ID],
+                    "shipment_id": SHIPMENT_A_ID,
+                    "purpose": "SUPPLIER_PAYABLE",
+                    "amount": 42000000.0,
+                    "currency": "VND",
+                    "status": "active",
+                    "review_status": CONFIRMED,
+                    "confirmed_by": TT_FINANCE_TRIAL_USERNAME,
+                    "confirmed_by_role": "support",
+                    "confirmed_by_finance_write": True,
+                    "created_at": "2026-10-18T10:00:00Z",
+                    "note": f"Công nợ nhà cung cấp nội bộ TT ({SENTINEL_TT_INTERNAL_COST})",
+                },
+                # Entrusted import goods advance for ROAD-LG-002 (separate from service receivable!)
+                {
+                    "id": "OBL-LG02-GOODS-ADV",
+                    "record_type": "obligation",
+                    "from_party": cust_a_party,
+                    "from_party_key": f"customer:{CUSTOMER_A_ID}",
+                    "to_party": tt_company_party,
+                    "to_party_key": "company:TT-COMPANY",
+                    "shipment_ids": [SHIPMENT_A2_ID],
+                    "shipment_id": SHIPMENT_A2_ID,
+                    "purpose": "ENTRUSTED_GOODS_ADVANCE",
+                    "amount": 200000000.0,
+                    "currency": "VND",
+                    "status": "active",
+                    "review_status": CONFIRMED,
+                    "confirmed_by": TT_FINANCE_TRIAL_USERNAME,
+                    "confirmed_by_role": "support",
+                    "confirmed_by_finance_write": True,
+                    "created_at": "2026-10-19T11:30:00Z",
+                    "updated_at": "2026-10-21T10:00:00Z",
+                    "note": "Tiền hàng cần ứng trước theo hợp đồng ủy thác nhập khẩu HDUT-LG-2026-02",
+                },
+            ]
+        )
+
+        db[TRANSACTIONS].insert_many(
+            [
+                {
+                    "id": "TXN-LG01-PAY-01",
+                    "record_type": "transaction",
+                    "transaction_kind": "customer_payment",
+                    "source_party": cust_a_party,
+                    "source_party_key": f"customer:{CUSTOMER_A_ID}",
+                    "holder_party": tt_company_party,
+                    "holder_party_key": "company:TT-COMPANY",
+                    "shipment_ids": [SHIPMENT_A_ID],
+                    "shipment_id": SHIPMENT_A_ID,
+                    "amount": 30000000.0,
+                    "currency": "VND",
+                    "occurred_at": "2026-10-20",
+                    "classification_status": CONFIRMED,
+                    "restriction": {"status": "NONE"},
+                    "status": "active",
+                    "confirmed_by": TT_FINANCE_TRIAL_USERNAME,
+                    "confirmed_by_role": "support",
+                    "confirmed_by_finance_write": True,
+                    "created_at": "2026-10-20T15:00:00Z",
+                    "note": "Lục Giác tạm ứng đợt 1 trước ngày giao hàng",
+                },
+                {
+                    "id": "TXN-LG02-GOODS-01",
+                    "record_type": "transaction",
+                    "transaction_kind": "received_on_behalf",
+                    "source_party": cust_a_party,
+                    "source_party_key": f"customer:{CUSTOMER_A_ID}",
+                    "holder_party": tt_company_party,
+                    "holder_party_key": "company:TT-COMPANY",
+                    "shipment_ids": [SHIPMENT_A2_ID],
+                    "shipment_id": SHIPMENT_A2_ID,
+                    "amount": 150000000.0,
+                    "currency": "VND",
+                    "occurred_at": "2026-10-21",
+                    "classification_status": CONFIRMED,
+                    "restriction": {"status": "NONE"},
+                    "status": "active",
+                    "confirmed_by": TT_FINANCE_TRIAL_USERNAME,
+                    "confirmed_by_role": "support",
+                    "confirmed_by_finance_write": True,
+                    "created_at": "2026-10-21T10:00:00Z",
+                    "note": "Lục Giác chuyển ứng trước tiền hàng ủy thác đợt 1",
+                },
+            ]
+        )
+
+        db[ALLOCATIONS].insert_many(
+            [
+                {
+                    "id": "ALC-LG01-01",
+                    "record_type": "allocation",
+                    "transaction_id": "TXN-LG01-PAY-01",
+                    "obligation_id": "OBL-LG01-SVC-01",
+                    "shipment_ids": [SHIPMENT_A_ID],
+                    "shipment_id": SHIPMENT_A_ID,
+                    "amount": 30000000.0,
+                    "currency": "VND",
+                    "status": "active",
+                    "confirmed_by": TT_FINANCE_TRIAL_USERNAME,
+                    "confirmed_by_role": "support",
+                    "confirmed_by_finance_write": True,
+                    "created_at": "2026-10-20T15:00:00Z",
+                },
+                {
+                    "id": "ALC-LG02-GOODS-01",
+                    "record_type": "allocation",
+                    "transaction_id": "TXN-LG02-GOODS-01",
+                    "obligation_id": "OBL-LG02-GOODS-ADV",
+                    "shipment_ids": [SHIPMENT_A2_ID],
+                    "shipment_id": SHIPMENT_A2_ID,
+                    "amount": 150000000.0,
+                    "currency": "VND",
+                    "status": "active",
+                    "confirmed_by": TT_FINANCE_TRIAL_USERNAME,
+                    "confirmed_by_role": "support",
+                    "confirmed_by_finance_write": True,
+                    "created_at": "2026-10-21T10:00:00Z",
                 },
             ]
         )
@@ -1566,7 +1799,7 @@ class HexaTrialEnvironment:
             self.sessions.pop(token, None)
 
     def _require_authorized_tt_staff(self, session_token: str | None) -> dict[str, Any]:
-        """Verify caller holds an authenticated TT staff session with ``operations_write``."""
+        """Verify caller holds an authenticated TT staff session with ``operations_write`` or ``finance_write``."""
         from core import auth as core_auth
 
         self.ensure_seeded()
@@ -1580,10 +1813,24 @@ class HexaTrialEnvironment:
             principal.get("authenticated") is True
             and principal.get("kind") == "tt_staff"
             and str(principal.get("username") or "").strip()
-            and ("*" in perms or "operations_write" in perms)
+            and ("*" in perms or "operations_write" in perms or "finance_write" in perms)
         ):
             raise PublicationDenied()
         return copy.deepcopy(principal)
+
+    def _require_authorized_tt_finance_staff(self, session_token: str | None) -> dict[str, Any]:
+        """Verify caller holds an authenticated TT staff session with ``finance_write`` permission.
+
+        ``operations_write`` does NOT substitute for ``finance_write``.
+        """
+        from core import auth as core_auth
+
+        principal = self._require_authorized_tt_staff(session_token)
+        role = str(principal.get("role") or "").strip().lower()
+        perms = core_auth._role_permissions(role)
+        if not ("*" in perms or "finance_write" in perms):
+            raise PublicationDenied()
+        return principal
 
     def inspect_shipment_for_tt_staff(
         self,
@@ -1692,6 +1939,34 @@ class HexaTrialEnvironment:
             }
         )
 
+        stage_comments = list(
+            db["hexa_trial_stage_comments"].find(
+                {"shipment_id": sid, "customer_id": cust_id},
+                {"_id": 0},
+            )
+        )
+        customer_submitted_documents = [
+            {
+                "id": str(doc.get("id") or ""),
+                "version": str(doc.get("version") or ""),
+                "stage_id": str(doc.get("stage_id") or ""),
+                "kind": str(doc.get("kind") or ""),
+                "public_title": str(doc.get("public_title") or ""),
+                "file_name": str(doc.get("file_name") or ""),
+                "verified": bool(doc.get("verified")),
+                "verification_status": str(doc.get("verification_status") or ""),
+                "revoked": bool(doc.get("revoked", False)),
+            }
+            for doc in raw_docs
+            if doc.get("source_side") == "CUSTOMER"
+        ]
+        financial_obligations = list(
+            db["financial_obligations"].find(
+                {"shipment_id": sid, "is_deleted": False},
+                {"_id": 0},
+            )
+        )
+
         return {
             "shipment": {
                 "shipment_id": sid,
@@ -1708,6 +1983,9 @@ class HexaTrialEnvironment:
             },
             "candidate_events": candidate_events,
             "candidate_documents": candidate_documents,
+            "stage_comments": stage_comments,
+            "customer_submitted_documents": customer_submitted_documents,
+            "financial_obligations": financial_obligations,
             "candidate_quote": (
                 {
                     "id": str(quote.get("id") or ""),
@@ -1870,9 +2148,11 @@ class HexaTrialEnvironment:
         shipment_id: str,
         document_ids: Sequence[str] | None = None,
         event_ids: Sequence[str] | None = None,
+        comment_ids: Sequence[str] | None = None,
         revoke_quote: bool = False,
+        revoke_finance: bool = False,
     ) -> dict[str, Any]:
-        """Revoke either specific published documents/events/quote or the entire shipment publication."""
+        """Revoke either specific published documents/events/comments/quote/finance or the entire shipment publication."""
         from core import database as core_db
 
         self.ensure_seeded()
@@ -1911,18 +2191,33 @@ class HexaTrialEnvironment:
 
         doc_list = [str(x).strip() for x in (document_ids or []) if str(x).strip()]
         ev_list = [str(x).strip() for x in (event_ids or []) if str(x).strip()]
-        is_partial = bool(doc_list or ev_list or revoke_quote)
+        cmt_list = [str(x).strip() for x in (comment_ids or []) if str(x).strip()]
+        is_partial = bool(doc_list or ev_list or cmt_list or revoke_quote or revoke_finance)
+
+        for d_id in doc_list:
+            db["hexa_trial_documents"].update_many(
+                {"shipment_id": sid, "customer_id": cust_id, "id": d_id},
+                {"$set": {"revoked": True, "revoked_by": actor, "revoked_at": now_iso}},
+            )
+        for c_id in cmt_list:
+            db["hexa_trial_stage_comments"].update_many(
+                {"shipment_id": sid, "customer_id": cust_id, "id": c_id},
+                {"$set": {"revoked": True, "revoked_by": actor, "revoked_at": now_iso}},
+            )
 
         if is_partial and existing.get("state") == "PUBLISHED":
             cur_events = dict(existing.get("event_versions") or {})
             cur_docs = dict(existing.get("document_versions") or {})
             cur_quote = copy.deepcopy(existing.get("quote"))
+            cur_fin_pub = bool(existing.get("finance_published", True))
             for d_id in doc_list:
                 cur_docs.pop(d_id, None)
             for e_id in ev_list:
                 cur_events.pop(e_id, None)
             if revoke_quote:
                 cur_quote = None
+            if revoke_finance:
+                cur_fin_pub = False
             next_state = "PUBLISHED" if (cur_events or cur_docs or cur_quote) else "REVOKED"
             history.append(
                 {
@@ -1932,7 +2227,9 @@ class HexaTrialEnvironment:
                     "at": now_iso,
                     "revoked_documents": doc_list,
                     "revoked_events": ev_list,
+                    "revoked_comments": cmt_list,
                     "revoked_quote": bool(revoke_quote),
+                    "revoked_finance": bool(revoke_finance),
                     "event_versions": dict(cur_events),
                     "document_versions": dict(cur_docs),
                     "quote": copy.deepcopy(cur_quote),
@@ -1949,6 +2246,7 @@ class HexaTrialEnvironment:
                 "event_versions": cur_events,
                 "document_versions": cur_docs,
                 "quote": cur_quote,
+                "finance_published": cur_fin_pub,
                 "history": history[-25:],
             }
         else:
@@ -1974,6 +2272,7 @@ class HexaTrialEnvironment:
                 "event_versions": {},
                 "document_versions": {},
                 "quote": None,
+                "finance_published": False,
                 "history": history[-25:],
             }
 
@@ -1987,9 +2286,517 @@ class HexaTrialEnvironment:
             principal=principal,
             shipment_id=sid,
             allowed=True,
-            detail=f"revoked_by={actor} state={pub_doc['state']} docs={doc_list or 'ALL'}",
+            detail=f"revoked_by={actor} state={pub_doc['state']} docs={doc_list or 'ALL'} comments={cmt_list}",
         )
         return {"ok": True, "publication": pub_doc}
+
+    def submit_customer_stage_collaboration(
+        self,
+        *,
+        session_token: str | None,
+        shipment_id: str,
+        stage_id: str,
+        comment: str = "",
+        file_name: str = "",
+        mime: str = "",
+        file_base64: str = "",
+    ) -> dict[str, Any]:
+        """Customer posts a comment and/or uploads a stage attachment on their own PUBLISHED shipment.
+
+        Security & business rules:
+        - Caller must be an authenticated customer owning ``shipment_id`` and the shipment must be PUBLISHED.
+        - Uploaded file is validated & stored via ``core.shipment_attachments.upload_attachment`` in GridFS.
+        - Uploaded file is recorded with ``verified=False`` and ``verification_status='SUBMITTED_UNVERIFIED'``
+          ('Hồ sơ khách đã nộp — Chờ TT xác minh'): it NEVER auto-completes a stage and NEVER changes
+          ``total_paid`` or ``remaining_balance``.
+        """
+        import base64
+        from core import database as core_db
+        from core import shipment_attachments as core_att
+
+        self.ensure_seeded()
+        principal = self.resolve_principal(session_token)
+        cust_id = str(principal.get("customer_id") or "").strip()
+        sid = str(shipment_id or "").strip()
+        st_id = str(stage_id or "").strip()
+
+        # Verify customer owns shipment and shipment is PUBLISHED (raises PublicationDenied otherwise)
+        self.read_customer_publication(session_token=session_token, shipment_id=sid)
+
+        if st_id not in CUSTOMER_JOURNEY_STAGE_IDS:
+            raise PublicationDenied()
+
+        db = core_db.get_db()
+        if db is None:
+            raise PublicationDenied()
+
+        now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        clean_comment = str(comment or "").strip()
+        clean_fname = str(file_name or "").strip()
+        clean_b64 = str(file_base64 or "").strip()
+
+        if not clean_comment and not (clean_fname and clean_b64):
+            raise PublicationDenied()
+
+        created_comment: dict[str, Any] | None = None
+        if clean_comment:
+            cmt_id = f"CMT-{secrets.token_hex(4).upper()}"
+            created_comment = {
+                "id": cmt_id,
+                "shipment_id": sid,
+                "customer_id": cust_id,
+                "stage_id": st_id,
+                "author_side": "CUSTOMER",
+                "author_display": str(principal.get("display_name") or cust_id),
+                "comment": clean_comment[:2000],
+                "visibility": "CUSTOMER",
+                "published": True,
+                "revoked": False,
+                "created_at": now_iso,
+            }
+            db["hexa_trial_stage_comments"].insert_one(dict(created_comment))
+
+        created_doc: dict[str, Any] | None = None
+        if clean_fname and clean_b64:
+            try:
+                raw_bytes = base64.b64decode(clean_b64, validate=True)
+            except Exception as exc:  # noqa: BLE001
+                raise PublicationDenied() from exc
+
+            upload_res = core_att.upload_attachment(
+                shipment_id=sid,
+                category="other",
+                file_name=clean_fname,
+                mime=str(mime or "application/pdf"),
+                data=raw_bytes,
+                uploaded_by=str(principal.get("username") or cust_id),
+                storage_backend="gridfs",
+            )
+            if not upload_res.get("ok"):
+                raise PublicationDenied()
+
+            att_rec = dict(upload_res["record"])
+            doc_id = f"SUBDOC-{secrets.token_hex(4).upper()}"
+            created_doc = {
+                "id": doc_id,
+                "version": "v1",
+                "customer_id": cust_id,
+                "shipment_id": sid,
+                "stage_id": st_id,
+                "kind": "PAYMENT_REQUEST" if st_id == "finance-reconciliation" else "CUSTOMS",
+                "status": "AVAILABLE",
+                "visibility": "CUSTOMER",
+                "source_side": "CUSTOMER",
+                "verified": False,
+                "verification_status": "SUBMITTED_UNVERIFIED",
+                "verification_label": "Hồ sơ khách đã nộp — Chờ TT xác minh",
+                "revoked": False,
+                "public_title": f"[Khách nộp] {clean_fname}",
+                "file_name": clean_fname,
+                "attachment_id": att_rec["id"],
+                "attachment_shipment_id": sid,
+                "uploaded_at": now_iso,
+            }
+            db["hexa_trial_documents"].insert_one(dict(created_doc))
+
+        self._record_audit(
+            action="CUSTOMER_STAGE_SUBMISSION",
+            principal=principal,
+            shipment_id=sid,
+            allowed=True,
+            detail=f"stage={st_id} comment={bool(created_comment)} doc={(created_doc or {}).get('id')}",
+        )
+        return {
+            "ok": True,
+            "submission": {
+                "shipment_id": sid,
+                "stage_id": st_id,
+                "comment": created_comment,
+                "document": created_doc,
+            },
+        }
+
+    def post_tt_stage_comment(
+        self,
+        *,
+        session_token: str | None,
+        shipment_id: str,
+        stage_id: str,
+        comment: str,
+        visibility: str = "TT",
+    ) -> dict[str, Any]:
+        """Authorized TT staff posts a stage comment (internal 'TT' note or customer-published 'CUSTOMER' reply)."""
+        from core import database as core_db
+
+        self.ensure_seeded()
+        principal = self._require_authorized_tt_staff(session_token)
+        db = core_db.get_db()
+        if db is None:
+            raise PublicationDenied()
+
+        sid = str(shipment_id or "").strip()
+        st_id = str(stage_id or "").strip()
+        shipment = self._load_adapted_shipment(db, sid)
+        if not shipment or st_id not in CUSTOMER_JOURNEY_STAGE_IDS:
+            raise PublicationDenied()
+        cust_id = shipment["customer_id"]
+        clean_comment = str(comment or "").strip()
+        if not clean_comment:
+            raise PublicationDenied()
+
+        vis = "CUSTOMER" if str(visibility or "TT").strip().upper() == "CUSTOMER" else "TT"
+        now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        cmt_doc = {
+            "id": f"CMT-TT-{secrets.token_hex(4).upper()}",
+            "shipment_id": sid,
+            "customer_id": cust_id,
+            "stage_id": st_id,
+            "author_side": "TT",
+            "author_display": f"{principal.get('display_name') or principal.get('username')} (Trường Thành)",
+            "comment": clean_comment[:2000],
+            "visibility": vis,
+            "published": vis == "CUSTOMER",
+            "revoked": False,
+            "created_at": now_iso,
+            "created_by": str(principal.get("username") or ""),
+        }
+        db["hexa_trial_stage_comments"].insert_one(dict(cmt_doc))
+        self._record_audit(
+            action="TT_STAGE_COMMENT",
+            principal=principal,
+            shipment_id=sid,
+            allowed=True,
+            detail=f"stage={st_id} visibility={vis} id={cmt_doc['id']}",
+        )
+        return {"ok": True, "comment": cmt_doc}
+
+    def confirm_tt_shipment_finance(
+        self,
+        *,
+        session_token: str | None,
+        shipment_id: str,
+        transaction_id: str,
+        obligation_id: str,
+        amount: float,
+        currency: str = "VND",
+        occurred_at: str = "",
+        note: str = "",
+        verified_document_id: str = "",
+    ) -> dict[str, Any]:
+        """Confirm a customer payment & allocation on a shipment.
+
+        STRICT AUTHORITY RULE:
+        Requires ``finance_write`` permission in ``core.auth.ROLE_PERMISSIONS``.
+        ``operations_write`` (e.g. ``tt.ops.truongthanh``) is rejected with ``PublicationDenied`` (HTTP 403).
+        """
+        from core import database as core_db
+        from core.financial_ledger import ALLOCATIONS, CONFIRMED, OBLIGATIONS, TRANSACTIONS
+
+        self.ensure_seeded()
+        try:
+            principal = self._require_authorized_tt_finance_staff(session_token)
+        except PublicationDenied:
+            self._record_audit(
+                action="TT_CONFIRM_FINANCE",
+                principal=self.resolve_principal(session_token),
+                shipment_id=str(shipment_id or ""),
+                allowed=False,
+                detail="denied: caller lacks finance_write permission",
+            )
+            raise
+
+        db = core_db.get_db()
+        if db is None:
+            raise PublicationDenied()
+
+        sid = str(shipment_id or "").strip()
+        shipment = self._load_adapted_shipment(db, sid)
+        if not shipment:
+            raise PublicationDenied()
+        cust_id = shipment["customer_id"]
+        obl_id = str(obligation_id or "").strip()
+        txn_id = str(transaction_id or f"TXN-{secrets.token_hex(4).upper()}").strip()
+        amt = float(amount)
+        curr = str(currency or "VND").strip().upper()
+        if amt <= 0 or not obl_id:
+            raise PublicationDenied()
+
+        obl = db[OBLIGATIONS].find_one({"id": obl_id, "shipment_id": sid}, {"_id": 0})
+        if not obl:
+            raise PublicationDenied()
+
+        now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        pay_date = str(occurred_at or now_iso[:10]).strip()
+        cust_party = {"party_type": "customer", "party_id": cust_id, "name": cust_id}
+        tt_party = {"party_type": "company", "party_id": "TT-COMPANY", "name": "Công ty Trường Thành Logistics"}
+
+        txn_doc = {
+            "id": txn_id,
+            "record_type": "transaction",
+            "transaction_kind": "customer_payment",
+            "source_party": cust_party,
+            "source_party_key": f"customer:{cust_id}",
+            "holder_party": tt_party,
+            "holder_party_key": "company:TT-COMPANY",
+            "shipment_ids": [sid],
+            "shipment_id": sid,
+            "amount": amt,
+            "currency": curr,
+            "occurred_at": pay_date,
+            "classification_status": CONFIRMED,
+            "restriction": {"status": "NONE"},
+            "status": "active",
+            "confirmed_by": str(principal["username"]),
+            "confirmed_by_role": str(principal["role"]),
+            "confirmed_by_finance_write": True,
+            "created_at": now_iso,
+            "note": str(note or "Khoản thanh toán đã được Kế toán TT đối soát"),
+        }
+        db[TRANSACTIONS].replace_one({"id": txn_id}, txn_doc, upsert=True)
+
+        alloc_id = f"ALC-{txn_id}"
+        alloc_doc = {
+            "id": alloc_id,
+            "record_type": "allocation",
+            "transaction_id": txn_id,
+            "obligation_id": obl_id,
+            "shipment_ids": [sid],
+            "shipment_id": sid,
+            "amount": amt,
+            "currency": curr,
+            "status": "active",
+            "confirmed_by": str(principal["username"]),
+            "confirmed_by_role": str(principal["role"]),
+            "confirmed_by_finance_write": True,
+            "created_at": now_iso,
+        }
+        db[ALLOCATIONS].replace_one({"id": alloc_id}, alloc_doc, upsert=True)
+
+        ver_doc_id = str(verified_document_id or "").strip()
+        if ver_doc_id:
+            db["hexa_trial_documents"].update_many(
+                {"shipment_id": sid, "customer_id": cust_id, "id": ver_doc_id},
+                {
+                    "$set": {
+                        "verified": True,
+                        "verification_status": "VERIFIED_BY_FINANCE",
+                        "verification_label": "Đã được Kế toán TT đối soát & xác nhận",
+                    }
+                },
+            )
+            pub_existing = db["hexa_trial_publications"].find_one(
+                {"shipment_id": sid, "customer_id": cust_id},
+                {"_id": 0},
+            )
+            if pub_existing and pub_existing.get("state") == "PUBLISHED":
+                doc_vers = dict(pub_existing.get("document_versions") or {})
+                doc_vers[ver_doc_id] = "v1"
+                db["hexa_trial_publications"].update_one(
+                    {"shipment_id": sid, "customer_id": cust_id},
+                    {"$set": {"document_versions": doc_vers, "finance_published": True}},
+                )
+
+        self._record_audit(
+            action="TT_CONFIRM_FINANCE",
+            principal=principal,
+            shipment_id=sid,
+            allowed=True,
+            detail=f"confirmed_by={principal['username']} txn={txn_id} obl={obl_id} amount={amt} {curr}",
+        )
+        return {"ok": True, "transaction": txn_doc, "allocation": alloc_doc}
+
+    def _project_customer_finance_and_plan(
+        self,
+        db: Any,
+        *,
+        shipment_id: str,
+        customer_id: str,
+        link: Mapping[str, Any],
+        pub_payload: Mapping[str, Any],
+        publication: Mapping[str, Any],
+    ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
+        """Derive Node 00 (plan_detail), Node 06 (finance_detail), and Dashboard (debt_summary)
+        strictly from customer-scoped canonical financial obligations & allocations.
+
+        Never uses ``shipment_partner_position()`` (which projects partner payables)
+        and never substitutes ``0`` or ``quote.selling_total_vnd`` when confirmed
+        service receivable obligations are absent.
+        """
+        from core.financial_ledger import (
+            ALLOCATIONS,
+            CONFIRMED,
+            OBLIGATIONS,
+            TRANSACTIONS,
+            derive_obligation_position,
+            party_key,
+        )
+
+        cust_party_key = f"customer:{customer_id.strip().upper()}"
+        tt_party_key = "company:TT-COMPANY"
+        finance_published = bool(publication.get("finance_published", True)) and (
+            publication.get("state") == "PUBLISHED"
+        )
+
+        raw_obls = list(db[OBLIGATIONS].find({"shipment_id": shipment_id}, {"_id": 0}))
+        raw_txns = list(db[TRANSACTIONS].find({"shipment_id": shipment_id}, {"_id": 0}))
+        raw_allocs = list(db[ALLOCATIONS].find({"shipment_id": shipment_id}, {"_id": 0}))
+
+        confirmed_allocs = [
+            a
+            for a in raw_allocs
+            if a.get("status") == "active" and a.get("confirmed_by_finance_write") is True
+        ]
+        txn_by_id = {
+            str(t.get("id") or ""): t
+            for t in raw_txns
+            if t.get("status") == "active" and t.get("confirmed_by_finance_write") is True
+        }
+
+        def _derive_for_purpose(purpose: str) -> dict[str, Any]:
+            if not finance_published:
+                return {
+                    "status": "UNKNOWN",
+                    "status_label": "UNKNOWN / Chưa đối soát",
+                    "currency": None,
+                    "total_payable": None,
+                    "total_paid": None,
+                    "remaining_balance": None,
+                    "updated_at": None,
+                }
+            matched = [
+                o
+                for o in raw_obls
+                if o.get("status") == "active"
+                and o.get("review_status") == CONFIRMED
+                and o.get("confirmed_by_finance_write") is True
+                and party_key(o.get("from_party")) == cust_party_key
+                and party_key(o.get("to_party")) == tt_party_key
+                and str(o.get("purpose") or "") == purpose
+            ]
+            if not matched:
+                return {
+                    "status": "UNKNOWN",
+                    "status_label": "UNKNOWN / Chưa đối soát",
+                    "currency": None,
+                    "total_payable": None,
+                    "total_paid": None,
+                    "remaining_balance": None,
+                    "updated_at": None,
+                }
+            positions = [derive_obligation_position(o, confirmed_allocs) for o in matched]
+            currencies = {str(p.get("currency") or "").upper() for p in positions if p.get("currency")}
+            if len(currencies) != 1 or any(p.get("status") != CONFIRMED for p in positions):
+                return {
+                    "status": "UNKNOWN",
+                    "status_label": "UNKNOWN / Chưa đối soát (khác loại tiền hoặc cần rà soát)",
+                    "currency": None,
+                    "total_payable": None,
+                    "total_paid": None,
+                    "remaining_balance": None,
+                    "updated_at": None,
+                }
+            curr = next(iter(currencies))
+            payable = sum(float(p["amount"]) for p in positions)
+            paid = sum(float(p["allocated"]) for p in positions)
+            remaining = sum(float(p["outstanding"]) for p in positions)
+
+            alloc_ids = [aid for p in positions for aid in (p.get("allocation_ids") or [])]
+            pay_dates: list[str] = []
+            for a in confirmed_allocs:
+                if str(a.get("id") or "") in alloc_ids:
+                    t = txn_by_id.get(str(a.get("transaction_id") or ""))
+                    if t and str(t.get("occurred_at") or "").strip():
+                        pay_dates.append(str(t["occurred_at"]).strip())
+            latest_date = max(pay_dates) if pay_dates else str(matched[0].get("updated_at") or "")[:10]
+            status_label = (
+                "Đã đối soát — Hoàn tất thanh toán"
+                if remaining <= 0
+                else "Đã đối soát — Còn công nợ"
+            )
+            return {
+                "status": "CONFIRMED",
+                "status_label": status_label,
+                "currency": curr,
+                "total_payable": payable,
+                "total_paid": paid,
+                "remaining_balance": remaining,
+                "updated_at": latest_date or None,
+            }
+
+        debt_summary = _derive_for_purpose("LOGISTICS_SERVICE")
+
+        quote = pub_payload.get("quote")
+        entrusted_applicable = bool(link.get("entrusted_import_applicable", False))
+        if entrusted_applicable:
+            goods_pos = _derive_for_purpose("ENTRUSTED_GOODS_ADVANCE")
+            req_amt = goods_pos["total_payable"]
+            rec_amt = goods_pos["total_paid"]
+            shortfall = goods_pos["remaining_balance"]
+            entrusted_info = {
+                "applicable": True,
+                "currency": goods_pos["currency"] or "VND",
+                "goods_advance_required": req_amt,
+                "goods_advance_received": rec_amt,
+                "goods_advance_shortfall": shortfall,
+                "status_label": (
+                    "Đã nhận đủ tiền hàng ứng trước"
+                    if (req_amt is not None and shortfall is not None and shortfall <= 0)
+                    else (
+                        "Còn thiếu tiền hàng ứng trước"
+                        if (req_amt is not None and shortfall is not None and shortfall > 0)
+                        else "Chưa xác nhận"
+                    )
+                ),
+            }
+        else:
+            entrusted_info = {
+                "applicable": False,
+                "currency": None,
+                "goods_advance_required": None,
+                "goods_advance_received": None,
+                "goods_advance_shortfall": None,
+                "status_label": "Không áp dụng (Khách hàng sử dụng dịch vụ thông thường)",
+            }
+
+        plan_verified = bool(link.get("plan_verified", False)) and (quote is not None)
+        if entrusted_applicable:
+            plan_completed = bool(
+                plan_verified
+                and entrusted_info["goods_advance_shortfall"] is not None
+                and entrusted_info["goods_advance_shortfall"] <= 0
+            )
+        else:
+            plan_completed = plan_verified
+
+        plan_detail = {
+            "quote_id": str((quote or {}).get("id") or link.get("quote_id") or ""),
+            "quote_no": str(link.get("quote_no") or (quote or {}).get("id") or "Chưa xác nhận"),
+            "quote_selling_total_vnd": (quote or {}).get("selling_total_vnd") if quote else None,
+            "quote_confirmation_status": (
+                str(link.get("quote_confirmation_status") or "ĐÃ XÁC NHẬN")
+                if quote
+                else "Chưa xác nhận"
+            ),
+            "contract_no": str(link.get("contract_no") or "Chưa xác nhận"),
+            "contract_status": str(link.get("contract_status") or "Chưa xác nhận"),
+            "payment_terms": str(link.get("payment_terms") or "Chưa xác nhận"),
+            "entrusted_import": entrusted_info,
+            "verified": plan_completed,
+            "verified_at": str(link.get("plan_verified_at") or "") if plan_verified else "",
+        }
+
+        finance_detail = {
+            **debt_summary,
+            "reconciliation_status_label": debt_summary["status_label"],
+            "completed": bool(
+                debt_summary["status"] == "CONFIRMED"
+                and debt_summary["total_payable"] is not None
+                and debt_summary["total_payable"] > 0
+                and debt_summary["remaining_balance"] is not None
+                and debt_summary["remaining_balance"] <= 0
+            ),
+        }
+        return debt_summary, plan_detail, finance_detail
 
     def _load_adapted_shipment(self, db: Any, shipment_id: str) -> dict[str, Any]:
         sid = str(shipment_id or "").strip()
@@ -2206,9 +3013,145 @@ class HexaTrialEnvironment:
                     verified_warehouse_eta = str(ev_doc["verified_warehouse_eta"]).strip()
                     break
 
+            publication = (
+                db["hexa_trial_publications"].find_one(
+                    {"shipment_id": sid, "customer_id": cust_id},
+                    {"_id": 0},
+                )
+                or {}
+            )
+            debt_summary, plan_detail, finance_detail = self._project_customer_finance_and_plan(
+                db,
+                shipment_id=sid,
+                customer_id=cust_id,
+                link=link,
+                pub_payload=pub_payload,
+                publication=publication,
+            )
+
+            # Query customer-visible stage comments (NEVER include internal TT comments where visibility != 'CUSTOMER')
+            raw_comments = list(
+                db["hexa_trial_stage_comments"].find(
+                    {
+                        "shipment_id": sid,
+                        "customer_id": cust_id,
+                        "visibility": "CUSTOMER",
+                        "published": True,
+                        "revoked": {"$ne": True},
+                    },
+                    {"_id": 0},
+                )
+            )
+            comments_by_stage: dict[str, list[dict[str, Any]]] = {}
+            for cmt in raw_comments:
+                st_c = str(cmt.get("stage_id") or "").strip()
+                if st_c:
+                    comments_by_stage.setdefault(st_c, []).append(
+                        {
+                            "id": str(cmt.get("id") or ""),
+                            "stage_id": st_c,
+                            "author_side": str(cmt.get("author_side") or ""),
+                            "author_display": str(cmt.get("author_display") or ""),
+                            "comment": str(cmt.get("comment") or ""),
+                            "created_at": str(cmt.get("created_at") or ""),
+                        }
+                    )
+
+            docs = list(pub_payload.get("documents") or [])
+            quote = pub_payload.get("quote")
+
+            # Also include customer-submitted stage documents (verified=False, SUBMITTED_UNVERIFIED) that belong to this customer and are not revoked
+            raw_cust_sub_docs = list(
+                db["hexa_trial_documents"].find(
+                    {
+                        "shipment_id": sid,
+                        "customer_id": cust_id,
+                        "source_side": "CUSTOMER",
+                        "revoked": {"$ne": True},
+                    },
+                    {"_id": 0},
+                )
+            )
+            pub_doc_ids = {str(d.get("id") or "") for d in docs}
+            stage_docs_by_stage: dict[str, list[dict[str, Any]]] = {}
+            for d in docs:
+                doc_meta = (
+                    db["hexa_trial_documents"].find_one(
+                        {"shipment_id": sid, "customer_id": cust_id, "id": d.get("id")},
+                        {"_id": 0},
+                    )
+                    or {}
+                )
+                if doc_meta.get("revoked") is True:
+                    continue
+                st_d = str(doc_meta.get("stage_id") or "pickup").strip()
+                enriched_doc = {
+                    **d,
+                    "stage_id": st_d,
+                    "source_side": str(doc_meta.get("source_side") or "TT"),
+                    "verified": True,
+                    "verification_status": str(doc_meta.get("verification_status") or "VERIFIED_BY_TT"),
+                    "verification_label": str(doc_meta.get("verification_label") or "Đã xác minh & công bố"),
+                }
+                stage_docs_by_stage.setdefault(st_d, []).append(enriched_doc)
+
+            for cdoc in raw_cust_sub_docs:
+                cid = str(cdoc.get("id") or "")
+                if cid in pub_doc_ids:
+                    continue
+                st_d = str(cdoc.get("stage_id") or "finance-reconciliation").strip()
+                sub_entry = {
+                    "id": cid,
+                    "version": str(cdoc.get("version") or "v1"),
+                    "kind": str(cdoc.get("kind") or "PAYMENT_REQUEST"),
+                    "title": str(cdoc.get("public_title") or cdoc.get("file_name") or cid),
+                    "stage_id": st_d,
+                    "source_side": "CUSTOMER",
+                    "verified": bool(cdoc.get("verified", False)),
+                    "verification_status": str(cdoc.get("verification_status") or "SUBMITTED_UNVERIFIED"),
+                    "verification_label": str(
+                        cdoc.get("verification_label") or "Hồ sơ khách đã nộp — Chờ TT xác minh"
+                    ),
+                }
+                stage_docs_by_stage.setdefault(st_d, []).append(sub_entry)
+
             customer_nodes: list[dict[str, Any]] = []
             verified_stage_label = "Chưa xác minh"
             is_complete = "delivery" in events_by_stage
+
+            # Node 00 — KẾ HOẠCH (before pickup)
+            plan_done = bool(plan_detail["verified"])
+            plan_ent = plan_detail["entrusted_import"]
+            if plan_ent["applicable"]:
+                plan_state = "COMPLETED" if plan_done else "WAITING"
+                plan_evidence = (
+                    f"HĐ {plan_detail['contract_no']} · Báo giá {plan_detail['quote_no']} · {plan_ent['status_label']}"
+                )
+            else:
+                plan_state = "COMPLETED" if plan_done else "UPCOMING"
+                plan_evidence = (
+                    f"HĐ {plan_detail['contract_no']} · Báo giá {plan_detail['quote_no']} ({plan_detail['quote_confirmation_status']})"
+                    if plan_done
+                    else "Chưa xác nhận kế hoạch thương mại"
+                )
+            customer_nodes.append(
+                {
+                    "id": "plan",
+                    "index": "00",
+                    "label": "KẾ HOẠCH",
+                    "completed": plan_done,
+                    "current": False,
+                    "state": plan_state,
+                    "evidence": plan_evidence,
+                    "occurred_at": str(plan_detail.get("verified_at") or ""),
+                    "plan_detail": plan_detail,
+                    "stage_comments": comments_by_stage.get("plan", []),
+                    "stage_documents": stage_docs_by_stage.get("plan", []),
+                }
+            )
+
+            # Nodes 01..05 — 5 ROAD LTL transport stages (unchanged logic & labels)
+            transport_idx = 1
             for raw_node in internal_journey.get("nodes") or []:
                 n_id = str(raw_node.get("id") or "")
                 if n_id == "MAIN_CARRIAGE":
@@ -2225,6 +3168,7 @@ class HexaTrialEnvironment:
                 customer_nodes.append(
                     {
                         "id": n_id,
+                        "index": f"{transport_idx:02d}",
                         "label": n_label,
                         "completed": is_done,
                         "current": is_current,
@@ -2239,8 +3183,35 @@ class HexaTrialEnvironment:
                             else "Chưa có mốc xác minh được công bố"
                         ),
                         "occurred_at": str(matched_ev.get("occurred_at") or "") if matched_ev else "",
+                        "stage_comments": comments_by_stage.get(n_id, []),
+                        "stage_documents": stage_docs_by_stage.get(n_id, []),
                     }
                 )
+                transport_idx += 1
+
+            # Node 06 — THANH TOÁN & ĐỐI SOÁT (after delivery; independent of delivery completion!)
+            fin_done = bool(finance_detail["completed"])
+            if fin_done:
+                fin_state = "COMPLETED"
+            elif debt_summary["status"] == "CONFIRMED":
+                fin_state = "WAITING"
+            else:
+                fin_state = "UPCOMING"
+            customer_nodes.append(
+                {
+                    "id": "finance-reconciliation",
+                    "index": "06",
+                    "label": "THANH TOÁN & ĐỐI SOÁT",
+                    "completed": fin_done,
+                    "current": False,
+                    "state": fin_state,
+                    "evidence": str(debt_summary["status_label"]),
+                    "occurred_at": str(debt_summary.get("updated_at") or ""),
+                    "finance_detail": finance_detail,
+                    "stage_comments": comments_by_stage.get("finance-reconciliation", []),
+                    "stage_documents": stage_docs_by_stage.get("finance-reconciliation", []),
+                }
+            )
 
             customer_edges: list[dict[str, str]] = [
                 {"from": customer_nodes[i]["id"], "to": customer_nodes[i + 1]["id"]}
@@ -2249,9 +3220,6 @@ class HexaTrialEnvironment:
 
             if verified_stage_id and verified_stage_label == "Chưa xác minh":
                 verified_stage_label = verified_stage_id
-
-            docs = list(pub_payload.get("documents") or [])
-            quote = pub_payload.get("quote")
 
             # HEXA-DASHBOARD-CUSTOMER-ACTION-BOUNDARY:
             # 1. Never read internal shipment['tasks'] or unapproved link['customer_actions'].
@@ -2295,6 +3263,9 @@ class HexaTrialEnvironment:
                     "customer_action": customer_action,
                     "next_step": next_step,
                     "contact_point": contact_point,
+                    "debt_summary": debt_summary,
+                    "plan_detail": plan_detail,
+                    "finance_detail": finance_detail,
                     "journey": {
                         "current_stage_id": verified_stage_id or "",
                         "nodes": customer_nodes,
@@ -2409,25 +3380,51 @@ class HexaTrialEnvironment:
         if att_meta is not None:
             candidate_doc["status"] = str(att_meta.get("status") or "")
 
-        try:
-            authorize_document_download(
-                shipment=shipment,
-                principal=principal,
-                publication=publication,
-                document=candidate_doc,
-                requested_id=doc_id,
-                requested_version=ver,
-            )
-        except PublicationDenied:
+        if doc_row.get("revoked") is True:
             self.denied_before_storage_reads += 1
             self._record_audit(
                 action="DOWNLOAD_DOCUMENT",
                 principal=principal,
                 shipment_id=sid,
                 allowed=False,
-                detail=f"doc={doc_id}@{ver} denied BEFORE storage read (storage_reads={self.storage_read_attempts})",
+                detail=f"doc={doc_id}@{ver} revoked BEFORE storage read",
             )
-            raise
+            raise PublicationDenied()
+
+        # Customer-submitted stage documents (source_side='CUSTOMER', verified=False) can be downloaded
+        # ONLY by the owning customer while the shipment is PUBLISHED and the document is not revoked.
+        is_own_customer_submission = bool(
+            doc_row.get("source_side") == "CUSTOMER"
+            and principal.get("authenticated") is True
+            and principal.get("kind") == "customer"
+            and cust_id
+            and str(doc_row.get("customer_id") or "") == cust_id
+            and str(doc_row.get("shipment_id") or "") == sid
+            and str(doc_row.get("version") or "") == ver
+            and publication.get("state") == "PUBLISHED"
+            and candidate_doc.get("status") == "AVAILABLE"
+        )
+
+        if not is_own_customer_submission:
+            try:
+                authorize_document_download(
+                    shipment=shipment,
+                    principal=principal,
+                    publication=publication,
+                    document=candidate_doc,
+                    requested_id=doc_id,
+                    requested_version=ver,
+                )
+            except PublicationDenied:
+                self.denied_before_storage_reads += 1
+                self._record_audit(
+                    action="DOWNLOAD_DOCUMENT",
+                    principal=principal,
+                    shipment_id=sid,
+                    allowed=False,
+                    detail=f"doc={doc_id}@{ver} denied BEFORE storage read (storage_reads={self.storage_read_attempts})",
+                )
+                raise
 
         # Permission check passed -> now and only now read bytes from GridFS.
         self.storage_read_attempts += 1
@@ -2943,6 +3940,7 @@ def render_trial_portal_html() -> str:
               <th>Phương thức</th>
               <th>Chặng xác minh</th>
               <th>ETA được xác minh</th>
+              <th>Công nợ</th>
               <th>Cập nhật cuối</th>
               <th>Hành trình</th>
             </tr>
@@ -3060,15 +4058,17 @@ def render_trial_portal_html() -> str:
   <script>
     const JOURNEY_NODE_W = 116;
     const JOURNEY_NODE_H = 66;
-    const PITCH = 140;
-    const PX = 42;
+    const PITCH = 148;
+    const PX = 24;
     const col = (c) => PX + c * PITCH;
     const DEMO_POS = {
-      'pickup':         { x: col(0), y: 205 },
-      'road-ltl':       { x: col(1), y: 205 },
-      'road-border':    { x: col(2), y: 205 },
-      'customs-import': { x: col(4), y: 205 },
-      'delivery':       { x: col(5), y: 205 }
+      'plan':                   { x: col(0), y: 205 },
+      'pickup':                 { x: col(1), y: 205 },
+      'road-ltl':               { x: col(2), y: 205 },
+      'road-border':            { x: col(3), y: 205 },
+      'customs-import':         { x: col(4), y: 205 },
+      'delivery':               { x: col(5), y: 205 },
+      'finance-reconciliation': { x: col(6), y: 205 }
     };
     const JOURNEY_NODE_STATUS = {
       COMPLETED: 'CÓ BẰNG CHỨNG',
@@ -3077,6 +4077,20 @@ def render_trial_portal_html() -> str:
       PROBLEM:   'CẦN XỬ LÝ',
       UPCOMING:  'CHƯA BẮT ĐẦU'
     };
+
+    function clearChildren(el) {
+      if (!el) return;
+      while (el.firstChild) {
+        el.removeChild(el.firstChild);
+      }
+      el.textContent = '';
+    }
+
+    function formatMoney(amount, currency) {
+      if (typeof amount !== 'number' || Number.isNaN(amount)) return 'UNKNOWN / Chưa đối soát';
+      const cur = String(currency || 'VND');
+      return new Intl.NumberFormat('vi-VN').format(amount) + ' ' + cur;
+    }
 
     let currentSession = { authenticated: false, principal: {}, default_shipment_id: '' };
     let activeAuthToken = '';
@@ -3304,9 +4318,9 @@ def render_trial_portal_html() -> str:
       const edgesSvg = document.getElementById('journey-edges-svg');
       const bubbleSlot = document.getElementById('journey-bubble-slot');
 
-      if (nodesLayer) nodesLayer.innerHTML = '';
-      if (edgesSvg) edgesSvg.innerHTML = '';
-      if (bubbleSlot) bubbleSlot.innerHTML = '';
+      if (nodesLayer) clearChildren(nodesLayer);
+      if (edgesSvg) clearChildren(edgesSvg);
+      if (bubbleSlot) clearChildren(bubbleSlot);
 
       if (zeroTitle) zeroTitle.textContent = 'Trường Thành chưa công bố thông tin cho lô này';
       if (zeroSummary) {
@@ -3328,14 +4342,46 @@ def render_trial_portal_html() -> str:
       document.getElementById('toolbar-next').textContent = 'Chờ Trường Thành công bố mốc xác minh';
     }
 
+    function buildDebtLinesDom(debtSummary) {
+      const wrap = document.createElement('div');
+      wrap.style.fontSize = '11.5px';
+      wrap.style.lineHeight = '1.38';
+      const debt = debtSummary || {};
+      const confirmed = debt.status === 'CONFIRMED' && typeof debt.total_payable === 'number';
+      const cur = String(debt.currency || 'VND');
+
+      const l1 = document.createElement('div');
+      l1.textContent = confirmed
+        ? `Tổng phải thanh toán: ${formatMoney(debt.total_payable, cur)}`
+        : 'Tổng phải thanh toán: UNKNOWN / Chưa đối soát';
+
+      const l2 = document.createElement('div');
+      l2.style.color = confirmed ? '#15803d' : '#64748b';
+      l2.textContent = confirmed
+        ? `Đã thanh toán: ${formatMoney(debt.total_paid, cur)}`
+        : 'Đã thanh toán: UNKNOWN / Chưa đối soát';
+
+      const l3 = document.createElement('div');
+      l3.style.fontWeight = '700';
+      l3.style.color = confirmed ? (debt.remaining_balance > 0 ? '#b45309' : '#0f766e') : '#64748b';
+      l3.textContent = confirmed
+        ? `Còn phải thanh toán: ${formatMoney(debt.remaining_balance, cur)}`
+        : 'Còn phải thanh toán: UNKNOWN / Chưa đối soát';
+
+      wrap.appendChild(l1);
+      wrap.appendChild(l2);
+      wrap.appendChild(l3);
+      return wrap;
+    }
+
     async function renderDashboardData(body) {
       const tbody = document.getElementById('dash-shipments-tbody');
       const cardsBox = document.getElementById('dash-shipments-cards');
       const selectorBox = document.getElementById('customer-shipment-selector');
       const journeyView = document.getElementById('shipment-journey-view');
       const backBtn = document.getElementById('btn-back-to-dashboard');
-      if (tbody) tbody.innerHTML = '';
-      if (cardsBox) cardsBox.innerHTML = '';
+      if (tbody) clearChildren(tbody);
+      if (cardsBox) clearChildren(cardsBox);
 
       const summary = (body && body.summary) || {};
       const brandTitle = document.getElementById('customer-brand-title');
@@ -3407,6 +4453,10 @@ def render_trial_portal_html() -> str:
         const tdEta = document.createElement('td');
         tdEta.textContent = etaLabel;
 
+        const tdDebt = document.createElement('td');
+        tdDebt.dataset.testid = `shipment-debt-${sid}`;
+        tdDebt.appendChild(buildDebtLinesDom(row.debt_summary));
+
         const tdUpdated = document.createElement('td');
         const divUpdated = document.createElement('div');
         divUpdated.textContent = updatedLabel;
@@ -3434,6 +4484,7 @@ def render_trial_portal_html() -> str:
         tr.appendChild(tdMode);
         tr.appendChild(tdStage);
         tr.appendChild(tdEta);
+        tr.appendChild(tdDebt);
         tr.appendChild(tdUpdated);
         tr.appendChild(tdBtn);
         if (tbody) tbody.appendChild(tr);
@@ -3483,6 +4534,13 @@ def render_trial_portal_html() -> str:
         cardMeta.appendChild(metaEta);
         cardMeta.appendChild(metaUpdated);
 
+        const cardDebt = document.createElement('div');
+        cardDebt.style.background = '#f8fafc';
+        cardDebt.style.padding = '7px 9px';
+        cardDebt.style.borderRadius = '6px';
+        cardDebt.style.border = '1px solid #e2e8f0';
+        cardDebt.appendChild(buildDebtLinesDom(row.debt_summary));
+
         const cardBtn = document.createElement('button');
         cardBtn.type = 'button';
         cardBtn.className = 'btn-primary';
@@ -3497,6 +4555,7 @@ def render_trial_portal_html() -> str:
         card.appendChild(cardCargo);
         card.appendChild(cardRoute);
         card.appendChild(cardMeta);
+        card.appendChild(cardDebt);
         card.appendChild(cardBtn);
         if (cardsBox) cardsBox.appendChild(card);
       });
@@ -3530,8 +4589,8 @@ def render_trial_portal_html() -> str:
       const selectorBox = document.getElementById('customer-shipment-selector');
       const journeyView = document.getElementById('shipment-journey-view');
       const backBtn = document.getElementById('btn-back-to-dashboard');
-      if (tbody) tbody.innerHTML = '';
-      if (cardsBox) cardsBox.innerHTML = '';
+      if (tbody) clearChildren(tbody);
+      if (cardsBox) clearChildren(cardsBox);
 
       const res = await apiFetch('/api/hexa/v0/dashboard');
       if (!res.ok) {
@@ -3652,7 +4711,7 @@ def render_trial_portal_html() -> str:
 
       const edgesSvg = document.getElementById('journey-edges-svg');
       if (edgesSvg) {
-        edgesSvg.innerHTML = '';
+        clearChildren(edgesSvg);
         edges.forEach(e => {
           const a = posById[e.from];
           const b = posById[e.to];
@@ -3670,7 +4729,7 @@ def render_trial_portal_html() -> str:
 
       const nodesLayer = document.getElementById('journey-nodes-layer');
       if (nodesLayer) {
-        nodesLayer.innerHTML = '';
+        clearChildren(nodesLayer);
         nodes.forEach((n, idx) => {
           const p = posById[n.id];
           const btn = document.createElement('button');
@@ -3690,7 +4749,7 @@ def render_trial_portal_html() -> str:
           topDiv.className = 'journey-node-top';
           const idxSpan = document.createElement('span');
           idxSpan.className = 'journey-node-idx';
-          idxSpan.textContent = String(idx + 1).padStart(2, '0');
+          idxSpan.textContent = String(n.index !== undefined ? n.index : idx).padStart(2, '0');
           topDiv.appendChild(idxSpan);
 
           const titleDiv = document.createElement('div');
@@ -3704,10 +4763,12 @@ def render_trial_portal_html() -> str:
           stSpan.textContent = JOURNEY_NODE_STATUS[n.state] || 'CHƯA BẮT ĐẦU';
           footDiv.appendChild(stSpan);
 
-          if ((n.completed || n.current) && docs.length > 0) {
+          const stageDocs = Array.isArray(n.stage_documents) ? n.stage_documents : [];
+          const stageCmts = Array.isArray(n.stage_comments) ? n.stage_comments : [];
+          if (stageDocs.length > 0 || stageCmts.length > 0) {
             const cntSpan = document.createElement('span');
             cntSpan.className = 'journey-node-count';
-            cntSpan.textContent = `📎${docs.length}`;
+            cntSpan.textContent = `📎${stageDocs.length} 💬${stageCmts.length}`;
             footDiv.appendChild(cntSpan);
           }
 
@@ -3723,7 +4784,7 @@ def render_trial_portal_html() -> str:
         renderNodeBubble(nodeById[selectedNodeId], posById[selectedNodeId], docs);
       } else {
         const bubbleSlot = document.getElementById('journey-bubble-slot');
-        if (bubbleSlot) bubbleSlot.innerHTML = '';
+        if (bubbleSlot) clearChildren(bubbleSlot);
       }
     }
 
@@ -3736,7 +4797,7 @@ def render_trial_portal_html() -> str:
     function renderNodeBubble(node, pos, docs) {
       const bubbleSlot = document.getElementById('journey-bubble-slot');
       if (!bubbleSlot) return;
-      bubbleSlot.innerHTML = '';
+      clearChildren(bubbleSlot);
       if (!node || !pos) return;
 
       const bubbleW = 290;
@@ -3884,20 +4945,22 @@ def render_trial_portal_html() -> str:
     function renderReadonlyModalBody(node, activeTab) {
       const container = document.getElementById('journey-modal-body');
       if (!container) return;
-      container.innerHTML = '';
+      clearChildren(container);
 
       const row = activeShipmentRow || {};
       const pub = activePublication || {};
+      const sid = String(row.shipment_id || pub.reference || '');
       const docs = Array.isArray(pub.documents) ? pub.documents : (row.documents || []);
       const timeline = Array.isArray(pub.timeline) ? pub.timeline : (row.timeline || []);
       const quote = pub.quote || row.quote || null;
+      const stageId = String(node.id || 'pickup');
 
       const grid = document.createElement('div');
       grid.className = 'readonly-grid';
 
       const items = [
         ['Trạng thái công đoạn', JOURNEY_NODE_STATUS[node.state] || 'CHƯA BẮT ĐẦU'],
-        ['Thời điểm xác minh', String(node.occurred_at || 'Chưa có mốc xác minh')],
+        ['Thời điểm xác minh', String(node.occurred_at || 'Chưa xác nhận')],
         ['ETA kho đã xác minh', String(row.verified_warehouse_eta_label || 'Chưa xác minh')],
         ['Đầu mối Trường Thành', String(row.contact_point || 'CSKH Trường Thành')],
         ['Báo giá bán đã duyệt', quote ? `${formatVnd(quote.selling_total_vnd)} (${String(quote.id || '')} · v${String(quote.version || '')})` : 'Chưa công bố']
@@ -3930,8 +4993,270 @@ def render_trial_portal_html() -> str:
       evBox.appendChild(evVal);
       container.appendChild(evBox);
 
+      // Node 00 — KẾ HOẠCH (before pickup)
+      if (stageId === 'plan') {
+        const plan = node.plan_detail || row.plan_detail || {};
+        const ent = plan.entrusted_import || { applicable: false };
+        const planSec = document.createElement('div');
+        planSec.dataset.testid = 'stage-plan-detail';
+        planSec.style.marginBottom = '14px';
+
+        const planTitle = document.createElement('h4');
+        planTitle.style.margin = '12px 0 6px';
+        planTitle.style.fontSize = '13px';
+        planTitle.textContent = '00 · KẾ HOẠCH THƯƠNG MẠI & ĐIỀU KIỆN TRƯỚC VẬN CHUYỂN';
+        planSec.appendChild(planTitle);
+
+        const planGrid = document.createElement('div');
+        planGrid.className = 'readonly-grid';
+        const planRows = [
+          ['Báo giá & Xác nhận báo giá', `${String(plan.quote_no || 'Chưa công bố')} — ${String(plan.quote_confirmation_status || 'Chưa xác nhận')}`],
+          ['Hợp đồng & Tình trạng ký kết', `${String(plan.contract_no || 'Chưa xác nhận')} — ${String(plan.contract_status || 'Chưa xác nhận')}`],
+          ['Điều kiện thanh toán', String(plan.payment_terms || 'Chưa xác nhận')],
+          ['Phân loại dịch vụ', ent.applicable ? 'Ủy thác nhập khẩu (có điều kiện tiền hàng ứng trước)' : 'Dịch vụ vận chuyển thông thường (Không áp dụng tiền hàng ủy thác)']
+        ];
+        if (ent.applicable) {
+          const reqAmt = ent.goods_advance_required !== undefined ? ent.goods_advance_required : ent.required_amount;
+          const recAmt = ent.goods_advance_received !== undefined ? ent.goods_advance_received : ent.confirmed_received_amount;
+          const remAmt = ent.goods_advance_remaining !== undefined ? ent.goods_advance_remaining : ent.remaining_shortfall;
+          planRows.push(['Tiền hàng cần ứng trước cho Trường Thành', formatMoney(reqAmt, ent.currency)]);
+          planRows.push(['Số tiền hàng Trường Thành đã xác nhận nhận', formatMoney(recAmt, ent.currency)]);
+          planRows.push(['Số tiền hàng còn thiếu', formatMoney(remAmt, ent.currency)]);
+          planRows.push(['Trạng thái xác nhận tiền hàng', String(ent.status_label || 'Chưa xác nhận')]);
+        }
+        planRows.forEach(([pl, pv]) => {
+          const pbox = document.createElement('div');
+          pbox.className = 'readonly-box';
+          const lEl = document.createElement('div');
+          lEl.className = 'lbl';
+          lEl.textContent = pl;
+          const vEl = document.createElement('div');
+          vEl.className = 'val';
+          vEl.textContent = pv;
+          pbox.appendChild(lEl);
+          pbox.appendChild(vEl);
+          planGrid.appendChild(pbox);
+        });
+        planSec.appendChild(planGrid);
+        container.appendChild(planSec);
+      }
+
+      // Node 06 — THANH TOÁN & ĐỐI SOÁT (after delivery)
+      if (stageId === 'finance-reconciliation') {
+        const fin = node.finance_detail || row.finance_detail || row.debt_summary || {};
+        const confirmed = fin.reconciliation_status === 'CONFIRMED' || fin.status === 'CONFIRMED';
+        const cur = String(fin.currency || 'VND');
+        const finSec = document.createElement('div');
+        finSec.dataset.testid = 'stage-finance-detail';
+        finSec.style.marginBottom = '14px';
+
+        const finTitle = document.createElement('h4');
+        finTitle.style.margin = '12px 0 6px';
+        finTitle.style.fontSize = '13px';
+        finTitle.textContent = '06 · THANH TOÁN & ĐỐI SOÁT CÔNG NỢ DỊCH VỤ';
+        finSec.appendChild(finTitle);
+
+        const finGrid = document.createElement('div');
+        finGrid.className = 'readonly-grid';
+        const finRows = [
+          ['Tổng phải thanh toán (đã đối soát)', confirmed ? formatMoney(fin.total_payable, cur) : 'UNKNOWN / Chưa đối soát'],
+          ['Tổng đã thanh toán & phân bổ đúng lô', confirmed ? formatMoney(fin.total_paid, cur) : 'UNKNOWN / Chưa đối soát'],
+          ['Còn phải thanh toán', confirmed ? formatMoney(fin.remaining_balance, cur) : 'UNKNOWN / Chưa đối soát'],
+          ['Ngày cập nhật & Trạng thái đối soát', `${String(fin.updated_at || 'Chưa xác nhận')} · ${String(fin.reconciliation_status_label || fin.status_label || 'UNKNOWN / Chưa đối soát')}`]
+        ];
+        finRows.forEach(([fl, fv]) => {
+          const fbox = document.createElement('div');
+          fbox.className = 'readonly-box';
+          const lEl = document.createElement('div');
+          lEl.className = 'lbl';
+          lEl.textContent = fl;
+          const vEl = document.createElement('div');
+          vEl.className = 'val';
+          vEl.textContent = fv;
+          fbox.appendChild(lEl);
+          fbox.appendChild(vEl);
+          finGrid.appendChild(fbox);
+        });
+        finSec.appendChild(finGrid);
+        container.appendChild(finSec);
+      }
+
+      // Section 1: TRAO ĐỔI (Stage-scoped comments between Customer and TT)
+      const cmtSec = document.createElement('div');
+      cmtSec.dataset.testid = 'stage-comments-section';
+      cmtSec.style.marginBottom = '14px';
+
+      const cmtTitle = document.createElement('h4');
+      cmtTitle.style.margin = '12px 0 6px';
+      cmtTitle.style.fontSize = '13px';
+      cmtTitle.textContent = `TRAO ĐỔI CÔNG ĐOẠN (${String(node.label || stageId)})`;
+      cmtSec.appendChild(cmtTitle);
+
+      const stageComments = Array.isArray(node.stage_comments) ? node.stage_comments : [];
+      const cmtList = document.createElement('div');
+      cmtList.style.display = 'grid';
+      cmtList.style.gap = '6px';
+      cmtList.style.marginBottom = '8px';
+      if (stageComments.length === 0) {
+        const emptyCmt = document.createElement('div');
+        emptyCmt.className = 'readonly-box';
+        emptyCmt.textContent = 'Chưa có trao đổi nào tại công đoạn này.';
+        cmtList.appendChild(emptyCmt);
+      } else {
+        stageComments.forEach(c => {
+          const cbox = document.createElement('div');
+          cbox.className = 'readonly-box';
+          const cHead = document.createElement('div');
+          cHead.className = 'lbl';
+          cHead.textContent = `${String(c.author_display || c.author_side || '')} · ${String(c.created_at || '')}`;
+          const cBody = document.createElement('div');
+          cBody.className = 'val';
+          cBody.textContent = String(c.comment || '');
+          cbox.appendChild(cHead);
+          cbox.appendChild(cBody);
+          cmtList.appendChild(cbox);
+        });
+      }
+      cmtSec.appendChild(cmtList);
+
+      const formBox = document.createElement('div');
+      formBox.className = 'readonly-box';
+      formBox.style.display = 'grid';
+      formBox.style.gap = '6px';
+
+      const formLbl = document.createElement('div');
+      formLbl.className = 'lbl';
+      formLbl.textContent = 'Gửi ghi chú trao đổi hoặc đính kèm chứng từ/ủy nhiệm chi cho công đoạn này (Chờ TT xác minh)';
+      formBox.appendChild(formLbl);
+
+      const cmtInput = document.createElement('input');
+      cmtInput.type = 'text';
+      cmtInput.id = 'stage-comment-input';
+      cmtInput.placeholder = 'Nhập nội dung trao đổi tại công đoạn này...';
+      cmtInput.style.width = '100%';
+      cmtInput.style.padding = '7px 9px';
+      cmtInput.style.border = '1px solid #cbd5e1';
+      cmtInput.style.borderRadius = '6px';
+      cmtInput.style.boxSizing = 'border-box';
+      formBox.appendChild(cmtInput);
+
+      const fileRow = document.createElement('div');
+      fileRow.style.display = 'flex';
+      fileRow.style.gap = '8px';
+      fileRow.style.alignItems = 'center';
+      fileRow.style.flexWrap = 'wrap';
+
+      const fileInput = document.createElement('input');
+      fileInput.type = 'file';
+      fileInput.id = 'stage-file-input';
+      fileInput.accept = '.pdf,.png,.jpg,.jpeg,.webp';
+      fileInput.style.fontSize = '11.5px';
+      fileRow.appendChild(fileInput);
+
+      const btnSubmitCollab = document.createElement('button');
+      btnSubmitCollab.type = 'button';
+      btnSubmitCollab.id = 'btn-submit-stage-collab';
+      btnSubmitCollab.className = 'btn-primary';
+      btnSubmitCollab.style.padding = '6px 12px';
+      btnSubmitCollab.style.fontSize = '12px';
+      btnSubmitCollab.textContent = 'Gửi trao đổi / Đính chứng từ';
+      btnSubmitCollab.addEventListener('click', () => submitStageCollaboration(sid, stageId));
+      fileRow.appendChild(btnSubmitCollab);
+
+      const statusSpan = document.createElement('div');
+      statusSpan.id = 'stage-collab-status';
+      statusSpan.style.fontSize = '11.5px';
+      statusSpan.style.color = '#1d4ed8';
+
+      formBox.appendChild(fileRow);
+      formBox.appendChild(statusSpan);
+      cmtSec.appendChild(formBox);
+      container.appendChild(cmtSec);
+
+      // Section 2: CHỨNG TỪ (Stage documents + published shipment documents)
+      const docHeading = document.createElement('h4');
+      docHeading.style.margin = '14px 0 6px';
+      docHeading.style.fontSize = '13px';
+      docHeading.textContent = 'CHỨNG TỪ CÔNG ĐOẠN & HỒ SƠ ĐƯỢC PHÉP TẢI';
+      container.appendChild(docHeading);
+
+      const stageDocs = Array.isArray(node.stage_documents) ? node.stage_documents : [];
+      const combinedDocs = [];
+      const seenDocIds = {};
+      stageDocs.forEach(d => {
+        const did = String(d.id || '');
+        if (did && !seenDocIds[did]) {
+          seenDocIds[did] = true;
+          combinedDocs.push(d);
+        }
+      });
+      docs.forEach(d => {
+        const did = String(d.id || '');
+        if (did && !seenDocIds[did]) {
+          seenDocIds[did] = true;
+          combinedDocs.push(Object.assign({ verification_label: 'Đã xác minh & công bố' }, d));
+        }
+      });
+
+      const table = document.createElement('table');
+      table.className = 'doc-list-table';
+      table.dataset.testid = 'stage-documents-section';
+      const thead = document.createElement('thead');
+      const htr = document.createElement('tr');
+      ['Mã chứng từ', 'Loại', 'Tên chứng từ', 'Trạng thái xác minh', 'Tải tệp'].forEach(h => {
+        const th = document.createElement('th');
+        th.textContent = h;
+        htr.appendChild(th);
+      });
+      thead.appendChild(htr);
+      table.appendChild(thead);
+
+      const tbody = document.createElement('tbody');
+      if (combinedDocs.length === 0) {
+        const tr = document.createElement('tr');
+        const td = document.createElement('td');
+        td.colSpan = 5;
+        td.textContent = 'Chưa có chứng từ được công bố tại công đoạn này.';
+        tr.appendChild(td);
+        tbody.appendChild(tr);
+      } else {
+        combinedDocs.forEach(doc => {
+          const tr = document.createElement('tr');
+          const tdId = document.createElement('td');
+          tdId.textContent = String(doc.id || '');
+          const tdKind = document.createElement('td');
+          tdKind.textContent = String(doc.kind || '');
+          const tdTitle = document.createElement('td');
+          tdTitle.textContent = String(doc.title || '');
+          const tdVer = document.createElement('td');
+          tdVer.textContent = String(doc.verification_label || doc.version || 'Đã xác minh & công bố');
+          const tdDl = document.createElement('td');
+          const btnDl = document.createElement('button');
+          btnDl.type = 'button';
+          btnDl.className = 'btn-primary';
+          btnDl.style.padding = '5px 10px';
+          btnDl.style.fontSize = '12px';
+          btnDl.textContent = '⬇ Tải PDF';
+          btnDl.addEventListener('click', () => triggerDownload(
+            sid,
+            String(doc.id || ''),
+            String(doc.version || 'v1')
+          ));
+          tdDl.appendChild(btnDl);
+
+          tr.appendChild(tdId);
+          tr.appendChild(tdKind);
+          tr.appendChild(tdTitle);
+          tr.appendChild(tdVer);
+          tr.appendChild(tdDl);
+          tbody.appendChild(tr);
+        });
+      }
+      table.appendChild(tbody);
+      container.appendChild(table);
+
       const tlTitle = document.createElement('h4');
-      tlTitle.style.margin = '12px 0 6px';
+      tlTitle.style.margin = '14px 0 6px';
       tlTitle.style.fontSize = '13px';
       tlTitle.textContent = 'Nhật ký mốc tiến độ Trường Thành đã xác minh & công bố';
       container.appendChild(tlTitle);
@@ -3960,68 +5285,71 @@ def render_trial_portal_html() -> str:
         });
       }
       container.appendChild(tlList);
+    }
 
-      const docHeading = document.createElement('h4');
-      docHeading.style.margin = '16px 0 6px';
-      docHeading.style.fontSize = '13px';
-      docHeading.textContent = 'Chứng từ được phép tải (đúng phiên bản đã duyệt)';
-      container.appendChild(docHeading);
-
-      const table = document.createElement('table');
-      table.className = 'doc-list-table';
-      const thead = document.createElement('thead');
-      const htr = document.createElement('tr');
-      ['Mã chứng từ', 'Loại', 'Tên chứng từ đã công bố', 'Phiên bản', 'Tải tệp'].forEach(h => {
-        const th = document.createElement('th');
-        th.textContent = h;
-        htr.appendChild(th);
+    function readFileAsBase64(file) {
+      return new Promise((resolve, reject) => {
+        if (!file || typeof FileReader === 'undefined') {
+          resolve('');
+          return;
+        }
+        const reader = new FileReader();
+        reader.onload = () => {
+          const result = String(reader.result || '');
+          const commaIdx = result.indexOf(',');
+          resolve(commaIdx >= 0 ? result.slice(commaIdx + 1) : result);
+        };
+        reader.onerror = () => reject(new Error('READ_ERROR'));
+        reader.readAsDataURL(file);
       });
-      thead.appendChild(htr);
-      table.appendChild(thead);
+    }
 
-      const tbody = document.createElement('tbody');
-      if (docs.length === 0) {
-        const tr = document.createElement('tr');
-        const td = document.createElement('td');
-        td.colSpan = 5;
-        td.textContent = 'Chưa có chứng từ được công bố.';
-        tr.appendChild(td);
-        tbody.appendChild(tr);
-      } else {
-        docs.forEach(doc => {
-          const tr = document.createElement('tr');
-          const tdId = document.createElement('td');
-          tdId.textContent = String(doc.id || '');
-          const tdKind = document.createElement('td');
-          tdKind.textContent = String(doc.kind || '');
-          const tdTitle = document.createElement('td');
-          tdTitle.textContent = String(doc.title || '');
-          const tdVer = document.createElement('td');
-          tdVer.textContent = String(doc.version || '');
-          const tdDl = document.createElement('td');
-          const btnDl = document.createElement('button');
-          btnDl.type = 'button';
-          btnDl.className = 'btn-primary';
-          btnDl.style.padding = '5px 10px';
-          btnDl.style.fontSize = '12px';
-          btnDl.textContent = '⬇ Tải PDF';
-          btnDl.addEventListener('click', () => triggerDownload(
-            String(row.shipment_id || pub.reference || ''),
-            String(doc.id || ''),
-            String(doc.version || '')
-          ));
-          tdDl.appendChild(btnDl);
-
-          tr.appendChild(tdId);
-          tr.appendChild(tdKind);
-          tr.appendChild(tdTitle);
-          tr.appendChild(tdVer);
-          tr.appendChild(tdDl);
-          tbody.appendChild(tr);
-        });
+    async function submitStageCollaboration(shipmentId, stageId) {
+      const cmtInp = document.getElementById('stage-comment-input');
+      const fileInp = document.getElementById('stage-file-input');
+      const statusEl = document.getElementById('stage-collab-status');
+      const comment = cmtInp ? String(cmtInp.value || '').trim() : '';
+      const fileObj = (fileInp && fileInp.files && fileInp.files[0]) ? fileInp.files[0] : null;
+      if (!comment && !fileObj) {
+        if (statusEl) statusEl.textContent = 'Vui lòng nhập nội dung trao đổi hoặc chọn tệp chứng từ.';
+        return;
       }
-      table.appendChild(tbody);
-      container.appendChild(table);
+      if (statusEl) statusEl.textContent = 'Đang gửi thông tin...';
+      let fileBase64 = '';
+      let fileName = '';
+      let mime = 'application/pdf';
+      if (fileObj) {
+        fileName = String(fileObj.name || 'customer-upload.pdf');
+        mime = String(fileObj.type || 'application/pdf');
+        fileBase64 = await readFileAsBase64(fileObj);
+      }
+      const res = await apiFetch(
+        `/api/hexa/v0/shipments/${encodeURIComponent(shipmentId)}/stages/${encodeURIComponent(stageId)}/submissions`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ comment, file_name: fileName, mime, file_base64: fileBase64 })
+        }
+      );
+      if (!res.ok) {
+        if (statusEl) statusEl.textContent = 'Không thể gửi thông tin (tệp không hợp lệ hoặc phiên hết hạn).';
+        return;
+      }
+      if (cmtInp) cmtInp.value = '';
+      if (fileInp) fileInp.value = '';
+      if (statusEl) statusEl.textContent = 'Đã ghi nhận hồ sơ khách nộp (Chờ Trường Thành xác minh).';
+      const dashRes = await apiFetch('/api/hexa/v0/dashboard');
+      if (dashRes.ok) {
+        const dashBody = await dashRes.json();
+        dashboardRows = Array.isArray(dashBody.shipments) ? dashBody.shipments : [];
+        const updatedRow = dashboardRows.find(r => String(r.shipment_id) === String(shipmentId)) || null;
+        if (updatedRow) {
+          activeShipmentRow = updatedRow;
+          activePublication = updatedRow;
+          renderJourneyMapForShipment(updatedRow, updatedRow);
+          openStageModal(stageId, 'info');
+        }
+      }
     }
 
     async function triggerDownload(shipmentId, docId, version) {
@@ -4205,7 +5533,7 @@ def render_tt_publish_desk_html() -> str:
       const pubEvents = pub.event_versions || {};
       const pubDocs = pub.document_versions || {};
       const evBody = document.getElementById('tt-events-tbody');
-      evBody.innerHTML = '';
+      evBody.textContent = '';
       (currentTtShipment.candidate_events || []).forEach(ev => {
         const tr = document.createElement('tr');
         const tdCk = document.createElement('td');
@@ -4221,7 +5549,7 @@ def render_tt_publish_desk_html() -> str:
         evBody.appendChild(tr);
       });
       const docBody = document.getElementById('tt-docs-tbody');
-      docBody.innerHTML = '';
+      docBody.textContent = '';
       (currentTtShipment.candidate_documents || []).forEach(doc => {
         const tr = document.createElement('tr');
         const tdCk = document.createElement('td');
@@ -4600,6 +5928,80 @@ class HexaTrialRequestHandler(BaseHTTPRequestHandler):
             )
             return
 
+        # Route: POST /api/hexa/v0/shipments/<shipment_id>/stages/<stage_id>/submissions (or /comments)
+        if (
+            len(parts) == 8
+            and parts[:4] == ["api", "hexa", "v0", "shipments"]
+            and parts[5] == "stages"
+            and parts[7] in {"submissions", "comments"}
+        ):
+            shipment_id = parts[4]
+            stage_id = parts[6]
+            body = self._read_json_body()
+            try:
+                result = self.env.submit_customer_stage_collaboration(
+                    session_token=self._current_token(),
+                    shipment_id=shipment_id,
+                    stage_id=stage_id,
+                    comment=str(body.get("comment") or ""),
+                    file_name=str(body.get("file_name") or ""),
+                    mime=str(body.get("mime") or "application/pdf"),
+                    file_base64=str(body.get("file_base64") or ""),
+                )
+                self._send_json(HTTPStatus.OK, result)
+            except PublicationDenied as exc:
+                self._send_json(HTTPStatus.FORBIDDEN, {"error": str(exc)})
+            return
+
+        # Route: POST /api/hexa/v0/tt/shipments/<shipment_id>/stages/<stage_id>/comments
+        if (
+            len(parts) == 9
+            and parts[:5] == ["api", "hexa", "v0", "tt", "shipments"]
+            and parts[6] == "stages"
+            and parts[8] == "comments"
+        ):
+            shipment_id = parts[5]
+            stage_id = parts[7]
+            body = self._read_json_body()
+            try:
+                result = self.env.post_tt_stage_comment(
+                    session_token=self._current_tt_token(),
+                    shipment_id=shipment_id,
+                    stage_id=stage_id,
+                    comment=str(body.get("comment") or ""),
+                    visibility=str(body.get("visibility") or "TT"),
+                )
+                self._send_json(HTTPStatus.OK, result)
+            except PublicationDenied as exc:
+                self._send_json(HTTPStatus.FORBIDDEN, {"error": str(exc)})
+            return
+
+        # Route: POST /api/hexa/v0/tt/shipments/<shipment_id>/finance/confirm (requires finance_write)
+        if (
+            len(parts) == 8
+            and parts[:5] == ["api", "hexa", "v0", "tt", "shipments"]
+            and parts[6] == "finance"
+            and parts[7] == "confirm"
+        ):
+            shipment_id = parts[5]
+            body = self._read_json_body()
+            try:
+                result = self.env.confirm_tt_shipment_finance(
+                    session_token=self._current_tt_token(),
+                    shipment_id=shipment_id,
+                    transaction_id=str(body.get("transaction_id") or ""),
+                    obligation_id=str(body.get("obligation_id") or ""),
+                    amount=float(body.get("amount") or 0),
+                    currency=str(body.get("currency") or "VND"),
+                    occurred_at=str(body.get("occurred_at") or ""),
+                    note=str(body.get("note") or ""),
+                    verified_document_id=str(body.get("verified_document_id") or ""),
+                )
+                self._send_json(HTTPStatus.OK, result)
+            except (PublicationDenied, ValueError, TypeError) as exc:
+                self._send_json(HTTPStatus.FORBIDDEN, {"error": str(exc)})
+            return
+
         # Route: POST /api/hexa/v0/tt/shipments/<shipment_id>/publish
         if (
             len(parts) == 7
@@ -4631,14 +6033,18 @@ class HexaTrialRequestHandler(BaseHTTPRequestHandler):
             body = self._read_json_body()
             doc_ids = body.get("document_ids") if isinstance(body.get("document_ids"), list) else None
             ev_ids = body.get("event_ids") if isinstance(body.get("event_ids"), list) else None
+            cmt_ids = body.get("comment_ids") if isinstance(body.get("comment_ids"), list) else None
             rev_quote = bool(body.get("revoke_quote", False))
+            rev_finance = bool(body.get("revoke_finance", False))
             try:
                 result = self.env.revoke_shipment_publication(
                     session_token=self._current_tt_token(),
                     shipment_id=shipment_id,
                     document_ids=doc_ids,
                     event_ids=ev_ids,
+                    comment_ids=cmt_ids,
                     revoke_quote=rev_quote,
+                    revoke_finance=rev_finance,
                 )
                 self._send_json(HTTPStatus.OK, result)
             except PublicationDenied as exc:

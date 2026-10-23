@@ -1670,7 +1670,7 @@ def test_journey_ui_fidelity_pickup_does_not_mark_road_ltl_completed_and_stage_t
     assert nodes_2["customs-import"]["state"] == "UPCOMING"
     assert nodes_2["delivery"]["completed"] is False
     assert nodes_2["delivery"]["state"] == "UPCOMING"
-    assert len(journey_2.get("edges") or []) == 4
+    assert len(journey_2.get("edges") or []) == 6
 
 
 def test_customer_html_strict_separation_and_reused_journey_assets(
@@ -2550,6 +2550,455 @@ vm.runInContext(scriptMatch[1], sandbox);
     dash_after_rev = json.loads(raw_dash_after_rev.decode("utf-8"))
     remaining_ids = [s["shipment_id"] for s in (dash_after_rev.get("shipments") or [])]
     assert remaining_ids == ["ROAD-LG-001"]
+
+
+def test_journey_plan_finance_and_stage_collaboration_v1(trial_server) -> None:
+    """HEXA-JOURNEY-PLAN-FINANCE-COLLAB-V1:
+    1. 7-node ROAD LTL Journey numbered 00..06:
+       - 00: plan (KẾ HOẠCH) before pickup
+       - 01..05: pickup, road-ltl, road-border, customs-import, delivery (unchanged)
+       - 06: finance-reconciliation (THANH TOÁN & ĐỐI SOÁT) after delivery
+    2. Node 00:
+       - ROAD-LG-001 (normal service): shows quote, contract, payment terms; does NOT apply entrusted goods advance.
+       - ROAD-LG-002 (entrusted import): shows quote, contract, payment terms AND entrusted goods advance
+         (required=200,000,000 VND, received=150,000,000 VND, shortfall=50,000,000 VND).
+    3. Node 06 & Dashboard 'Công nợ' column:
+       - ROAD-LG-001: confirmed service receivable 57,240,000 VND, paid 30,000,000 VND (2026-10-20), remaining 27,240,000 VND.
+       - ROAD-LG-002: has quote (37,800,000 VND) and entrusted goods advance (200,000,000 VND), but NO confirmed
+         service receivable obligation -> shows UNKNOWN / Chưa đối soát (total_payable=None, total_paid=None, remaining_balance=None),
+         never 0 and never copying quote selling total!
+    4. Finance authority boundary:
+       - tt.ops.truongthanh (role='operations', only operations_write, no finance_write) CANNOT confirm financial entries (403).
+       - tt.finance.truongthanh (role='support', has finance_write) CAN confirm financial entries.
+    5. Stage-bound collaboration (TRAO ĐỔI & CHỨNG TỪ):
+       - Customer Lục Giác submits a comment + bank transfer PDF (UNC) on stage 'finance-reconciliation' of ROAD-LG-001.
+       - Stored in GridFS via upload_attachment, marked verified=False ('Hồ sơ khách đã nộp — Chờ TT xác minh').
+       - Does NOT auto-complete Node 06 and does NOT change total_paid (30,000,000) or remaining_balance (27,240,000).
+       - TT receives the comment & attachment; TT internal note (visibility='TT') is NEVER visible to customer;
+         TT published reply (visibility='CUSTOMER') IS visible to customer.
+       - After tt.finance.truongthanh confirms the 27,240,000 VND payment allocation and TT publishes,
+         Node 06 & Dashboard update to total_paid=57,240,000 VND, remaining_balance=0 VND.
+       - When TT revokes a published TT comment or document, customer can no longer read/download it (403, 0 GridFS reads).
+    """
+    import base64
+    import subprocess
+    import tempfile
+    from core.hexa_trial_portal import (
+        SENTINEL_TT_INTERNAL_COST,
+        SENTINEL_TT_MARGIN,
+        SENTINEL_TT_PRIVATE_SUPPLIER,
+        seed_live_preview_publications,
+    )
+
+    base_url, env = trial_server
+    seed_live_preview_publications(env)
+
+    # Login as Lục Giác
+    st_lg, _, raw_lg = _http_request(
+        base_url,
+        "/api/hexa/v0/auth/login",
+        method="POST",
+        json_body={"username": "lucgiac.trial", "passcode": "LG-Trial-2026!"},
+    )
+    assert st_lg == 200
+    lg_login = json.loads(raw_lg.decode("utf-8"))
+    lg_token = lg_login["session_token"]
+    shipments = {s["shipment_id"]: s for s in lg_login["dashboard"]["shipments"]}
+    assert set(shipments.keys()) == {"ROAD-LG-001", "ROAD-LG-002"}
+
+    # 1. Verify 7 nodes numbered 00..06 on both ROAD-LG-001 and ROAD-LG-002
+    s_lg01 = shipments["ROAD-LG-001"]
+    nodes_01 = s_lg01["journey"]["nodes"]
+    assert [n["id"] for n in nodes_01] == [
+        "plan",
+        "pickup",
+        "road-ltl",
+        "road-border",
+        "customs-import",
+        "delivery",
+        "finance-reconciliation",
+    ]
+    assert [n["index"] for n in nodes_01] == ["00", "01", "02", "03", "04", "05", "06"]
+    # Transport current stage is still road-border (not hijacked by plan or finance-reconciliation)
+    assert s_lg01["verified_stage_id"] == "road-border"
+    assert s_lg01["is_complete"] is False
+
+    # 2. Verify Node 00 (KẾ HOẠCH): normal service (ROAD-LG-001) vs entrusted import (ROAD-LG-002)
+    plan_01 = nodes_01[0]["plan_detail"]
+    assert plan_01["quote_no"] == "QT-20261022-LG01"
+    assert plan_01["contract_no"] == "HDVC-LG-2026-01"
+    assert plan_01["entrusted_import"]["applicable"] is False
+    assert plan_01["entrusted_import"]["goods_advance_required"] is None
+
+    s_lg02 = shipments["ROAD-LG-002"]
+    nodes_02 = s_lg02["journey"]["nodes"]
+    plan_02 = nodes_02[0]["plan_detail"]
+    assert plan_02["contract_no"] == "HDUT-LG-2026-02"
+    assert plan_02["entrusted_import"]["applicable"] is True
+    assert plan_02["entrusted_import"]["goods_advance_required"] == 200000000.0
+    assert plan_02["entrusted_import"]["goods_advance_received"] == 150000000.0
+    assert plan_02["entrusted_import"]["goods_advance_shortfall"] == 50000000.0
+
+    # 3. Verify Node 06 & Dashboard 'debt_summary':
+    # ROAD-LG-001 has confirmed receivable 57,240,000, paid 30,000,000, remaining 27,240,000
+    debt_01 = s_lg01["debt_summary"]
+    assert debt_01["status"] == "CONFIRMED"
+    assert debt_01["total_payable"] == 57240000.0
+    assert debt_01["total_paid"] == 30000000.0
+    assert debt_01["remaining_balance"] == 27240000.0
+    assert debt_01["currency"] == "VND"
+    assert debt_01["updated_at"] == "2026-10-20"
+    assert nodes_01[6]["completed"] is False
+
+    # ROAD-LG-002 has NO confirmed service receivable obligation -> UNKNOWN / Chưa đối soát (never 0, never quote total!)
+    debt_02 = s_lg02["debt_summary"]
+    assert debt_02["status"] == "UNKNOWN"
+    assert debt_02["total_payable"] is None
+    assert debt_02["total_paid"] is None
+    assert debt_02["remaining_balance"] is None
+    assert "UNKNOWN" in debt_02["status_label"] or "Chưa đối soát" in debt_02["status_label"]
+
+    # 4. Stage collaboration: Customer submits comment + bank transfer PDF (UNC) on stage 'finance-reconciliation'
+    unc_pdf_bytes = b"%PDF-1.4\n1 0 obj\n<< /Type /Catalog >>\nendobj\n%%EOF\n"
+    st_sub, _, raw_sub = _http_request(
+        base_url,
+        "/api/hexa/v0/shipments/ROAD-LG-001/stages/finance-reconciliation/submissions",
+        method="POST",
+        headers={"Authorization": f"Bearer {lg_token}"},
+        json_body={
+            "comment": "Lục Giác gửi ủy nhiệm chi thanh toán nốt 27.240.000 VND cho lô ROAD-LG-001.",
+            "file_name": "UNC-Luc-Giac-27240000.pdf",
+            "mime": "application/pdf",
+            "file_base64": base64.b64encode(unc_pdf_bytes).decode("ascii"),
+        },
+    )
+    assert st_sub == 200
+    sub_resp = json.loads(raw_sub.decode("utf-8"))
+    assert sub_resp["ok"] is True
+    cust_doc_id = sub_resp["submission"]["document"]["id"]
+    assert sub_resp["submission"]["document"]["verified"] is False
+    assert sub_resp["submission"]["document"]["verification_status"] == "SUBMITTED_UNVERIFIED"
+
+    # Verify customer submission did NOT change debt and did NOT mark Node 06 completed!
+    st_dash_after_sub, _, raw_dash_after_sub = _http_request(
+        base_url,
+        "/api/hexa/v0/dashboard",
+        headers={"Authorization": f"Bearer {lg_token}"},
+    )
+    assert st_dash_after_sub == 200
+    dash_after_sub = json.loads(raw_dash_after_sub.decode("utf-8"))
+    s01_after_sub = next(s for s in dash_after_sub["shipments"] if s["shipment_id"] == "ROAD-LG-001")
+    assert s01_after_sub["debt_summary"]["total_paid"] == 30000000.0
+    assert s01_after_sub["debt_summary"]["remaining_balance"] == 27240000.0
+    fin_node_after_sub = next(n for n in s01_after_sub["journey"]["nodes"] if n["id"] == "finance-reconciliation")
+    assert fin_node_after_sub["completed"] is False
+
+    # 5. Foreign customer (Minh Đức) CANNOT read or post comments/submissions on ROAD-LG-001 (403)
+    st_md, _, raw_md = _http_request(
+        base_url,
+        "/api/hexa/v0/auth/login",
+        method="POST",
+        json_body={"username": "minhduc.trial", "passcode": "MD-Trial-2026!"},
+    )
+    assert st_md == 200
+    md_token = json.loads(raw_md.decode("utf-8"))["session_token"]
+
+    st_md_post_forbid, _, _ = _http_request(
+        base_url,
+        "/api/hexa/v0/shipments/ROAD-LG-001/stages/finance-reconciliation/submissions",
+        method="POST",
+        headers={"Authorization": f"Bearer {md_token}"},
+        json_body={"comment": "Intruder comment"},
+    )
+    assert st_md_post_forbid == 403
+
+    st_md_dl_forbid, _, _ = _http_request(
+        base_url,
+        f"/api/hexa/v0/shipments/ROAD-LG-001/documents/{cust_doc_id}/download?version=v1",
+        headers={"Authorization": f"Bearer {md_token}"},
+    )
+    assert st_md_dl_forbid == 403
+
+    # 6. TT Ops staff (operations_write only, NO finance_write) can view customer submission and post
+    #    both an internal TT note (visibility='TT') and a published customer reply (visibility='CUSTOMER'),
+    #    but CANNOT confirm financial payment/allocation (403)!
+    st_tt_ops, _, raw_tt_ops = _http_request(
+        base_url,
+        "/api/hexa/v0/tt/auth/login",
+        method="POST",
+        json_body={"username": "tt.ops.truongthanh", "passcode": "TT-Trial-2026!"},
+    )
+    assert st_tt_ops == 200
+    tt_ops_token = json.loads(raw_tt_ops.decode("utf-8"))["session_token"]
+
+    # Ops staff posts internal note (visibility='TT') -> must NEVER leak to customer
+    st_internal_note, _, _ = _http_request(
+        base_url,
+        "/api/hexa/v0/tt/shipments/ROAD-LG-001/stages/finance-reconciliation/comments",
+        method="POST",
+        headers={"Authorization": f"Bearer {tt_ops_token}"},
+        json_body={
+            "comment": f"Ghi chú nội bộ TT: chờ kế toán kiểm tra sao kê ({SENTINEL_TT_INTERNAL_COST})",
+            "visibility": "TT",
+        },
+    )
+    assert st_internal_note == 200
+
+    # Ops staff posts customer-visible reply (visibility='CUSTOMER')
+    st_pub_reply, _, raw_pub_reply = _http_request(
+        base_url,
+        "/api/hexa/v0/tt/shipments/ROAD-LG-001/stages/finance-reconciliation/comments",
+        method="POST",
+        headers={"Authorization": f"Bearer {tt_ops_token}"},
+        json_body={
+            "comment": "Trường Thành đã nhận tệp UNC của Lục Giác, bộ phận Kế toán đang đối soát ngân hàng.",
+            "visibility": "CUSTOMER",
+        },
+    )
+    assert st_pub_reply == 200
+    tt_reply_id = json.loads(raw_pub_reply.decode("utf-8"))["comment"]["id"]
+
+    # Ops staff attempts to confirm finance -> MUST BE REJECTED (403) because operations_write != finance_write
+    st_ops_fin_forbid, _, _ = _http_request(
+        base_url,
+        "/api/hexa/v0/tt/shipments/ROAD-LG-001/finance/confirm",
+        method="POST",
+        headers={"Authorization": f"Bearer {tt_ops_token}"},
+        json_body={
+            "transaction_id": "TXN-LG01-PAY-02",
+            "obligation_id": "OBL-LG01-SVC-01",
+            "amount": 27240000,
+            "currency": "VND",
+            "occurred_at": "2026-10-23",
+            "note": "Ops trying to confirm payment without finance_write",
+        },
+    )
+    assert st_ops_fin_forbid == 403
+
+    # 7. TT Finance staff (tt.finance.truongthanh, has finance_write) confirms the 27,240,000 VND payment allocation
+    st_tt_fin, _, raw_tt_fin = _http_request(
+        base_url,
+        "/api/hexa/v0/tt/auth/login",
+        method="POST",
+        json_body={"username": "tt.finance.truongthanh", "passcode": "TT-Finance-2026!"},
+    )
+    assert st_tt_fin == 200
+    tt_fin_token = json.loads(raw_tt_fin.decode("utf-8"))["session_token"]
+
+    st_fin_ok, _, raw_fin_ok = _http_request(
+        base_url,
+        "/api/hexa/v0/tt/shipments/ROAD-LG-001/finance/confirm",
+        method="POST",
+        headers={"Authorization": f"Bearer {tt_fin_token}"},
+        json_body={
+            "transaction_id": "TXN-LG01-PAY-02",
+            "obligation_id": "OBL-LG01-SVC-01",
+            "amount": 27240000,
+            "currency": "VND",
+            "occurred_at": "2026-10-23",
+            "note": "Kế toán TT xác nhận nhận đủ 27.240.000 VND theo UNC khách gửi",
+            "verified_document_id": cust_doc_id,
+        },
+    )
+    assert st_fin_ok == 200
+
+    # Check Lục Giác dashboard after finance confirmation:
+    # - debt_summary now shows paid=57,240,000, remaining=0, Node 06 completed=True (while delivery Node 05 is STILL False!)
+    # - internal note is NOT present; TT published reply IS present
+    st_dash_reconciled, _, raw_dash_reconciled = _http_request(
+        base_url,
+        "/api/hexa/v0/dashboard",
+        headers={"Authorization": f"Bearer {lg_token}"},
+    )
+    assert st_dash_reconciled == 200
+    raw_dash_text = raw_dash_reconciled.decode("utf-8")
+    for sentinel in (SENTINEL_TT_INTERNAL_COST, SENTINEL_TT_MARGIN, SENTINEL_TT_PRIVATE_SUPPLIER, "Ghi chú nội bộ TT"):
+        assert sentinel not in raw_dash_text
+
+    dash_rec = json.loads(raw_dash_text)
+    s01_rec = next(s for s in dash_rec["shipments"] if s["shipment_id"] == "ROAD-LG-001")
+    assert s01_rec["debt_summary"]["total_payable"] == 57240000.0
+    assert s01_rec["debt_summary"]["total_paid"] == 57240000.0
+    assert s01_rec["debt_summary"]["remaining_balance"] == 0.0
+    assert s01_rec["is_complete"] is False  # Delivery is still not complete!
+    fin_node_rec = next(n for n in s01_rec["journey"]["nodes"] if n["id"] == "finance-reconciliation")
+    assert fin_node_rec["completed"] is True
+    stage_comments = [c["comment"] for c in fin_node_rec["stage_comments"]]
+    assert any("Lục Giác gửi ủy nhiệm chi" in c for c in stage_comments)
+    assert any("Trường Thành đã nhận tệp UNC" in c for c in stage_comments)
+
+    # 8. Revoke the published TT comment and the verified document -> customer can no longer read/download them
+    reads_before = env.storage_read_attempts
+    st_rev_items, _, _ = _http_request(
+        base_url,
+        "/api/hexa/v0/tt/shipments/ROAD-LG-001/revoke",
+        method="POST",
+        headers={"Authorization": f"Bearer {tt_ops_token}"},
+        json_body={
+            "comment_ids": [tt_reply_id],
+            "document_ids": [cust_doc_id],
+        },
+    )
+    assert st_rev_items == 200
+
+    st_dash_after_item_rev, _, raw_dash_after_item_rev = _http_request(
+        base_url,
+        "/api/hexa/v0/dashboard",
+        headers={"Authorization": f"Bearer {lg_token}"},
+    )
+    assert st_dash_after_item_rev == 200
+    assert "Trường Thành đã nhận tệp UNC" not in raw_dash_after_item_rev.decode("utf-8")
+
+    st_dl_revoked_doc, _, _ = _http_request(
+        base_url,
+        f"/api/hexa/v0/shipments/ROAD-LG-001/documents/{cust_doc_id}/download?version=v1",
+        headers={"Authorization": f"Bearer {lg_token}"},
+    )
+    assert st_dl_revoked_doc == 403
+    assert env.storage_read_attempts == reads_before
+
+    # 9. Verify DOM rendering of 00..06 nodes, Dashboard 'Công nợ' column, Node 00/06 details, and TRAO ĐỔI / CHỨNG TỪ in popup
+    st_html, _, raw_html = _http_request(base_url, "/")
+    assert st_html == 200
+    html_text = raw_html.decode("utf-8")
+
+    node_dom_script = r"""
+const fs = require('fs');
+const vm = require('vm');
+const html = fs.readFileSync(process.env.HTML_PATH, 'utf8');
+const dashData = JSON.parse(process.env.DASH_JSON);
+const scriptMatch = html.match(/<script>([\s\S]*?)<\/script>/);
+if (!scriptMatch) { console.error('NO_SCRIPT'); process.exit(2); }
+
+function makeEl(tag) {
+  let _text = '';
+  const classes = new Set();
+  const el = {
+    tagName: (tag || 'div').toUpperCase(),
+    style: {},
+    dataset: {},
+    attrs: {},
+    value: '',
+    children: [],
+    className: '',
+    classList: {
+      add(...cs) { cs.forEach(c => classes.add(c)); el.className = Array.from(classes).join(' '); },
+      remove(...cs) { cs.forEach(c => classes.delete(c)); el.className = Array.from(classes).join(' '); },
+      toggle(c, force) {
+        if (force === undefined) { classes.has(c) ? classes.delete(c) : classes.add(c); }
+        else if (force) { classes.add(c); } else { classes.delete(c); }
+        el.className = Array.from(classes).join(' ');
+      },
+      contains(c) { return classes.has(c); }
+    },
+    appendChild(child) { this.children.push(child); return child; },
+    addEventListener(ev, fn) { this['on' + ev] = fn; },
+    setAttribute(k, v) { this.attrs[k] = String(v); if (k === 'class') this.className = String(v); },
+    getAttribute(k) { return this.attrs[k]; },
+    getBoundingClientRect() { return { width: 1280, height: 640, left: 0, top: 0 }; },
+    get clientWidth() { return 1280; },
+    get clientHeight() { return 640; },
+    get textContent() {
+      if (this.children.length > 0) return _text + this.children.map(c => c.textContent).join(' ');
+      return _text;
+    },
+    set textContent(v) { _text = String(v ?? ''); this.children = []; },
+    set innerHTML(v) { if (v === '') { this.children = []; _text = ''; } }
+  };
+  return el;
+}
+
+const elements = {};
+const document = {
+  getElementById(id) {
+    if (!elements[id]) elements[id] = makeEl('div');
+    return elements[id];
+  },
+  createElement(tag) { return makeEl(tag); },
+  createElementNS(_ns, tag) { return makeEl(tag); },
+  querySelectorAll() { return []; },
+  body: makeEl('body')
+};
+
+const sandbox = {
+  document,
+  window: { addEventListener() {}, open() {} },
+  Intl,
+  encodeURIComponent,
+  Math,
+  Number,
+  JSON,
+  String,
+  Array,
+  Object,
+  console,
+  fetch: async () => ({ ok: true, status: 200, json: async () => dashData })
+};
+vm.createContext(sandbox);
+vm.runInContext(scriptMatch[1], sandbox);
+
+(async () => {
+  await sandbox.renderDashboardData(dashData);
+  const tableText = document.getElementById('dash-shipments-tbody').textContent;
+  const cardsText = document.getElementById('dash-shipments-cards').textContent;
+  for (const token of ['57.240.000 VND', '0 VND', 'UNKNOWN / Chưa đối soát']) {
+    if (!tableText.includes(token)) throw new Error('Desktop table missing debt token: ' + token);
+    if (!cardsText.includes(token)) throw new Error('Mobile card missing debt token: ' + token);
+  }
+
+  await sandbox.selectShipmentForJourney('ROAD-LG-001');
+  const nodesLayer = document.getElementById('journey-nodes-layer');
+  if (nodesLayer.children.length !== 7) {
+    throw new Error('Expected 7 nodes (00..06), got ' + nodesLayer.children.length);
+  }
+  const nodeText = nodesLayer.textContent;
+  for (const token of ['00', 'KẾ HOẠCH', '01', '05', '06', 'THANH TOÁN & ĐỐI SOÁT']) {
+    if (!nodeText.includes(token)) throw new Error('Journey canvas missing node token: ' + token);
+  }
+
+  // Open Node 00 (plan) popup
+  sandbox.openStageModal('plan', 'info');
+  const modalPlanText = document.getElementById('journey-modal-body').textContent;
+  for (const token of ['QT-20261022-LG01', 'HDVC-LG-2026-01', 'Không áp dụng', 'TRAO ĐỔI', 'CHỨNG TỪ']) {
+    if (!modalPlanText.includes(token)) throw new Error('Node 00 modal missing token: ' + token);
+  }
+
+  // Open Node 06 (finance-reconciliation) popup
+  sandbox.openStageModal('finance-reconciliation', 'info');
+  const modalFinText = document.getElementById('journey-modal-body').textContent;
+  for (const token of ['57.240.000 VND', '0 VND', 'Lục Giác gửi ủy nhiệm chi', 'TRAO ĐỔI', 'CHỨNG TỪ']) {
+    if (!modalFinText.includes(token)) throw new Error('Node 06 modal missing token: ' + token);
+  }
+
+  // Open ROAD-LG-002 Node 00 (entrusted import)
+  await sandbox.selectShipmentForJourney('ROAD-LG-002');
+  sandbox.openStageModal('plan', 'info');
+  const modalEntrustedText = document.getElementById('journey-modal-body').textContent;
+  for (const token of ['HDUT-LG-2026-02', '200.000.000 VND', '150.000.000 VND', '50.000.000 VND']) {
+    if (!modalEntrustedText.includes(token)) throw new Error('Entrusted Node 00 modal missing token: ' + token);
+  }
+
+  console.log('PLAN_FINANCE_COLLAB_DOM_OK');
+})();
+"""
+    with tempfile.NamedTemporaryFile("w", encoding="utf-8", suffix=".html", delete=False) as fh_html:
+        fh_html.write(html_text)
+        html_path = fh_html.name
+
+    proc = subprocess.run(
+        ["node", "-e", node_dom_script],
+        env={
+            "PATH": "/usr/local/bin:/usr/bin:/bin",
+            "HTML_PATH": html_path,
+            "DASH_JSON": json.dumps(dash_rec),
+        },
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert proc.returncode == 0, f"DOM check failed: {proc.stdout} {proc.stderr}"
+    assert "PLAN_FINANCE_COLLAB_DOM_OK" in proc.stdout
+
 
 
 
