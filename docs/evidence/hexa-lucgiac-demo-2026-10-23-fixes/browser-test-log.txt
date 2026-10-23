@@ -1,0 +1,44 @@
+=== desktop 1440x900 ===
+DEMO_BADGE: DEMO — DỮ LIỆU MINH HỌA
+DASH_ROWS: 2
+DEBT_ROWS: ["Tổng phải thanh toán: 53.400.000 VND Đã thanh toán: 30.000.000 VND Còn phải thanh toán: 23.400.000 VND","Tổng phải thanh toán: UNKNOWN / Chưa đối soát Đã thanh toán: UNKNOWN / Chưa đối soát Còn phải thanh toán: UNKNOWN / Chưa đối soát"]
+NO_HSCROLL: true
+JOURNEY_VISIBLE: true
+NODES: 7
+NODE_OUT_OF_VIEWPORT: 0
+NODE_TEXT_CLIPPED: 0
+ZOOM_SCALE_BEFORE: 122%
+ZOOM_SCALE_AFTER_IN: 137%
+ZOOM_SCALE_AFTER_OUT: 122%
+ZOOM_SCALE_AFTER_READABLE: 100%
+FIN_BUBBLE_IN_VP: true
+FIN_BUBBLE: THANH TOÁN ĐANG XỬ LÝ × · Công nợ dịch vụ đã đối soát — Còn 23.400.000 VND phải thanh toán (DEMO) Xác minh: 20/10/2026 15:00 ▤ Chứng từ được phép tải (3 tệp) Nhấn để xem chi tiết chỉ-đọc và tải minh họa Xem chi tiết chỉ-đọc →
+MODAL_TITLE: Thanh toán
+FINANCE_RECON: ĐỐI CHIẾU BÁO GIÁ ↔ CÔNG NỢ DỊCH VỤ Báo giá đã xác nhận 53.400.000 VND · Công nợ đã đối soát 53.400.000 VND · Chênh lệch 0 VND — công nợ khớp báo giá, không có phụ phí.
+FINANCE_SECTION: 06 · THANH TOÁN & ĐỐI SOÁT CÔNG NỢ DỊCH VỤ TỔNG PHẢI THANH TOÁN (ĐÃ ĐỐI SOÁT) 53.400.000 VND TỔNG ĐÃ THANH TOÁN & PHÂN BỔ ĐÚNG LÔ 30.000.000 VND CÒN PHẢI THANH TOÁN 23.400.000 VND NGÀY CẬP NHẬT & TRẠNG THÁI ĐỐI SOÁT 20/10/2026 · Đã đối soát ĐỐI CHIẾU BÁO GIÁ ↔ CÔNG NỢ DỊCH VỤ Báo giá đã xác nhận 53.400.000 VND · Công nợ đã đối soát 53.400.000 VND · Chênh lệch 0 VND — công nợ khớp báo giá, không có phụ phí.
+QUOTE_ROW: ["BÁO GIÁ BÁN ĐÃ DUYỆT 53.400.000 VND (QT-20261022-LG01 · v1)"]
+DOWNLOAD_BUTTONS: 4
+INLINE_DOC_STATUS: Đã tải DOC-LG-INV-v1-DEMO.pdf (154 KB) — PDF minh họa hợp lệ, không phải chứng từ thật. | hidden=false
+PAGE_BANNER: Đã tải DOC-LG-INV-v1-DEMO.pdf (154 KB) — PDF minh họa hợp lệ, không phải chứng từ thật, không có giá trị pháp lý.
+BACK_TO_MAP_BUBBLE_REOPENED: true
+ESC_CLOSES_BUBBLE: true
+BACK_TO_DASH: true
+SHIP2_FIN_BUBBLE: THANH TOÁN CHỜ THÔNG TIN × · Chưa đối soát công nợ dịch vụ — Không tự lấy số báo giá làm công nợ (DEMO) Chưa có mốc thời gian xác minh ▤ Chứng từ được phép tải (2 tệp) Nhấn để xem chi tiết chỉ-đọc và tải minh họa Xem chi tiết chỉ-đọc →
+EXT: [] ERRORS: []
+=== mobile 390x844 ===
+MOBILE_CARDS: 2
+MOBILE_DEBT: ["Tổng phải thanh toán: 53.400.000 VND Đã thanh toán: 30.000.000 VND Còn phải thanh toán: 23.400.000 VND","Tổng phải thanh toán: UNKNOWN / Chưa đối soát Đã thanh toán: UNKNOWN / Chưa đối soát Còn phải thanh toán: UNKNOWN / Chưa đối soát"]
+NO_HSCROLL: true
+MOBILE_NODES: 7 OUT_VP: 0
+MOBILE_FIN_BUBBLE_IN_VP: true
+MOBILE_FINANCE_RECON: ĐỐI CHIẾU BÁO GIÁ ↔ CÔNG NỢ DỊCH VỤ Báo giá đã xác nhận 53.400.000 VND · Công nợ đã đối soát 53.400.000 VND · Chênh lệch 0 VND — công nợ khớp báo giá, không có phụ phí.
+MOBILE_DOWNLOAD_BUTTONS: 4
+MOBILE_DOC_TABLE_WIDTHS: {"tableW":327,"bodyW":359,"vpW":390,"buttons":[{"w":140,"h":26,"inVp":true},{"w":140,"h":26,"inVp":true},{"w":140,"h":26,"inVp":true},{"w":140,"h":26,"inVp":true}]}
+MOBILE_INLINE_DOC_STATUS: Đã tải DOC-LG-QUOTE-v1-DEMO.pdf (157 KB) — PDF minh họa hợp lệ, không phải chứng từ thật. | hidden=false
+MOBILE_EXT: [] ERRORS: []
+=== downloaded artifacts ===
+PDF_FILES: 4 ["DOC-LG-BKG-v1-DEMO.pdf","DOC-LG-INV-v1-DEMO.pdf","DOC-LG-PL-v1-DEMO.pdf","DOC-LG-QUOTE-v1-DEMO.pdf"]
+PDF DOC-LG-BKG-v1-DEMO.pdf: size=153374 head="%PDF-1.4" tail="%%EOF\n"
+PDF DOC-LG-INV-v1-DEMO.pdf: size=158159 head="%PDF-1.4" tail="%%EOF\n"
+PDF DOC-LG-PL-v1-DEMO.pdf: size=149732 head="%PDF-1.4" tail="%%EOF\n"
+PDF DOC-LG-QUOTE-v1-DEMO.pdf: size=160392 head="%PDF-1.4" tail="%%EOF\n"
