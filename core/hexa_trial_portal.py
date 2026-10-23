@@ -2250,7 +2250,15 @@ class HexaTrialEnvironment:
         revoke_quote: bool = False,
         revoke_finance: bool = False,
     ) -> dict[str, Any]:
-        """Revoke either specific published documents/events/comments/quote/finance or the entire shipment publication."""
+        """Revoke either specific published documents/events/comments/quote/finance or the entire shipment publication.
+
+        Authority is split by scope:
+
+        - revoking documents/events/comments/quote, and withdrawing the whole lot,
+          stay on ``operations_write`` (unchanged policy);
+        - ``revoke_finance`` withdraws the customer-facing financial disclosure, so it
+          requires ``finance_write`` on its own, even when mixed into a larger payload.
+        """
         from core import database as core_db
 
         self.ensure_seeded()
@@ -2265,6 +2273,20 @@ class HexaTrialEnvironment:
                 detail="unauthorized caller attempted revoke",
             )
             raise
+
+        if revoke_finance:
+            # Checked before any write so a denied request cannot half-apply a mixed payload.
+            try:
+                principal = self._require_authorized_tt_finance_staff(session_token)
+            except PublicationDenied:
+                self._record_audit(
+                    action="REVOKE_FINANCE",
+                    principal=principal,
+                    shipment_id=str(shipment_id or ""),
+                    allowed=False,
+                    detail="denied: caller lacks finance_write permission to revoke financial publication",
+                )
+                raise
 
         db = core_db.get_db()
         if db is None:
@@ -2400,7 +2422,7 @@ class HexaTrialEnvironment:
             principal=principal,
             shipment_id=sid,
             allowed=True,
-            detail=f"revoked_by={actor} state={pub_doc['state']} docs={doc_list or 'ALL'} comments={cmt_list}",
+            detail=f"revoked_by={actor} state={pub_doc['state']} docs={doc_list or 'ALL'} comments={cmt_list} finance={bool(revoke_finance)}",
         )
         return {"ok": True, "publication": pub_doc}
 

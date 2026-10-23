@@ -3305,9 +3305,19 @@ def test_finance_publication_requires_reapproval_after_source_change_and_revocat
     assert refreshed["total_paid"] == 35_000_000.0
     assert refreshed["remaining_balance"] == 22_240_000.0
 
-    # Revoking finance and then republishing the shipment must leave the finance gate closed.
+    # Revoking the financial disclosure requires finance_write; operations is denied and the
+    # disclosure stays published (the old ops token here was this very defect).
+    with pytest.raises(PublicationDenied):
+        env.revoke_shipment_publication(
+            session_token=tt_ops_token,
+            shipment_id=SHIPMENT_A_ID,
+            revoke_finance=True,
+        )
+    assert current_publication().get("finance_published") is True
+
+    # Finance revokes it, and republishing the shipment must leave the finance gate closed.
     env.revoke_shipment_publication(
-        session_token=tt_ops_token,
+        session_token=tt_fin_token,
         shipment_id=SHIPMENT_A_ID,
         revoke_finance=True,
     )
