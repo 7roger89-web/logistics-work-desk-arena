@@ -2096,32 +2096,17 @@ class HexaTrialEnvironment:
             docs = list(pub_payload.get("documents") or [])
             quote = pub_payload.get("quote")
 
-            # Việc 1: Only count needs_customer_action=True when an explicit, verified, OPEN customer action
-            # requirement exists with both responsible_party and action_text. Never infer from docs/quote!
+            # HEXA-DASHBOARD-CUSTOMER-ACTION-BOUNDARY:
+            # 1. Never read internal shipment['tasks'] or unapproved link['customer_actions'].
+            # 2. TT staff work (responsible_side != 'CUSTOMER') and other customers' items are never customer actions.
+            # 3. Because V1 has no separate TT publication approval mechanism for customer actions
+            #    (build_customer_publication only approves event_versions, document_versions, and quote),
+            #    keep customer_action=None, needs_customer_action=False, KPI=0, and label='Chưa có yêu cầu được xác nhận'.
             customer_action: dict[str, str] | None = None
-            raw_actions = link.get("customer_actions")
-            if not is_complete and isinstance(raw_actions, list):
-                for item in raw_actions:
-                    if not isinstance(item, Mapping):
-                        continue
-                    act_status = str(item.get("status") or "").strip().upper()
-                    act_verified = item.get("verified") is True
-                    act_party = str(item.get("responsible_party") or "").strip()
-                    act_text = str(item.get("action_text") or "").strip()
-                    if act_status == "OPEN" and act_verified and act_party and act_text:
-                        customer_action = {
-                            "id": str(item.get("id") or ""),
-                            "status": "OPEN",
-                            "responsible_party": act_party,
-                            "action_text": act_text,
-                        }
-                        break
-            needs_customer_action = customer_action is not None
+            needs_customer_action = False
 
             if is_complete:
                 next_step = "Đã giao hàng (xác minh hoàn tất)"
-            elif customer_action is not None:
-                next_step = f"Cần khách xử lý ({customer_action['responsible_party']}): {customer_action['action_text']}"
             elif verified_warehouse_eta:
                 next_step = f"Theo dõi lịch giao kho đã xác minh ({verified_warehouse_eta}) — Chưa có yêu cầu được xác nhận"
             elif timeline:

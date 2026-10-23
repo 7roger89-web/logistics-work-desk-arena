@@ -1323,34 +1323,58 @@ def test_dashboard_v1_kpi_truth_and_safe_dom_rendering_against_html_script_injec
     assert row_1["needs_customer_action"] is False
     assert row_1["customer_action"] is None
 
-    # 2. Unverified or closed or incomplete customer_actions on the link must NOT increment customer_action_needed
+    # 2. Internal TT tasks (on shipment.tasks or link.customer_actions assigned to TT staff),
+    # cross-customer actions, and unapproved/unpublished customer_actions MUST NEVER appear or increment KPI!
     db = core_db.get_db()
     assert db is not None
+    db["shipments"].update_one(
+        {"id": SHIPMENT_A_ID},
+        {
+            "$set": {
+                "tasks": [
+                    {
+                        "id": "TSK-TT-INTERNAL-01",
+                        "status": "OPEN",
+                        "verified": True,
+                        "assignee": "tt.ops.truongthanh",
+                        "responsible_party": "Nhân sự điều vận Trường Thành",
+                        "content": "INTERNAL_TT_TASK_MUST_NEVER_LEAK",
+                    }
+                ]
+            }
+        },
+    )
     db["hexa_trial_shipment_links"].update_one(
         {"shipment_id": SHIPMENT_A_ID, "customer_id": CUSTOMER_A_ID},
         {
             "$set": {
                 "customer_actions": [
                     {
-                        "id": "ACT-UNVERIFIED",
-                        "status": "OPEN",
-                        "verified": False,
-                        "responsible_party": "Khách hàng Lục Giác",
-                        "action_text": "Yêu cầu chưa xác nhận không được tính",
-                    },
-                    {
-                        "id": "ACT-CLOSED",
-                        "status": "CLOSED",
-                        "verified": True,
-                        "responsible_party": "Khách hàng Lục Giác",
-                        "action_text": "Yêu cầu đã đóng không được tính",
-                    },
-                    {
-                        "id": "ACT-MISSING-PARTY",
+                        "id": "ACT-TT-STAFF-01",
                         "status": "OPEN",
                         "verified": True,
-                        "responsible_party": "",
-                        "action_text": "Thiếu người chịu trách nhiệm không được tính",
+                        "customer_id": CUSTOMER_A_ID,
+                        "responsible_side": "TT",
+                        "responsible_party": "Nhân sự chứng từ Trường Thành (tt.ops.truongthanh)",
+                        "action_text": "INTERNAL_TT_ACTION_MUST_NEVER_LEAK",
+                    },
+                    {
+                        "id": "ACT-OTHER-CUST-01",
+                        "status": "OPEN",
+                        "verified": True,
+                        "customer_id": CUSTOMER_B_ID,
+                        "responsible_side": "CUSTOMER",
+                        "responsible_party": "Khách hàng Minh Đức",
+                        "action_text": "FOREIGN_CUSTOMER_ACTION_MUST_NEVER_LEAK",
+                    },
+                    {
+                        "id": "ACT-LG-UNPUBLISHED-01",
+                        "status": "OPEN",
+                        "verified": True,
+                        "customer_id": CUSTOMER_A_ID,
+                        "responsible_side": "CUSTOMER",
+                        "responsible_party": "Bộ phận XNK Lục Giác",
+                        "action_text": "UNPUBLISHED_CUSTOMER_ACTION_MUST_NEVER_LEAK",
                     },
                 ]
             }
@@ -1358,40 +1382,19 @@ def test_dashboard_v1_kpi_truth_and_safe_dom_rendering_against_html_script_injec
     )
     st_d2, _, raw_d2 = _http_request(base_url, "/api/hexa/v0/dashboard", session_token=lg_token)
     assert st_d2 == 200
-    d2 = json.loads(raw_d2.decode("utf-8"))
+    d2_text = raw_d2.decode("utf-8")
+    d2 = json.loads(d2_text)
     assert d2["summary"]["customer_action_needed"] == 0
+    assert d2["summary"]["customer_action_status_label"] == "Chưa có yêu cầu được xác nhận"
     assert d2["shipments"][0]["needs_customer_action"] is False
+    assert d2["shipments"][0]["customer_action"] is None
+    assert "INTERNAL_TT_TASK_MUST_NEVER_LEAK" not in d2_text
+    assert "INTERNAL_TT_ACTION_MUST_NEVER_LEAK" not in d2_text
+    assert "FOREIGN_CUSTOMER_ACTION_MUST_NEVER_LEAK" not in d2_text
+    assert "UNPUBLISHED_CUSTOMER_ACTION_MUST_NEVER_LEAK" not in d2_text
 
-    # 3. Only when a real, open, verified customer action requirement with responsible_party & action_text exists:
-    db["hexa_trial_shipment_links"].update_one(
-        {"shipment_id": SHIPMENT_A_ID, "customer_id": CUSTOMER_A_ID},
-        {
-            "$set": {
-                "customer_actions": [
-                    {
-                        "id": "ACT-LG-01",
-                        "status": "OPEN",
-                        "verified": True,
-                        "responsible_party": "Bộ phận XNK Lục Giác",
-                        "action_text": "Xác nhận thông tin người nhận hàng tại kho Hà Nội",
-                    }
-                ]
-            }
-        },
-    )
-    st_d3, _, raw_d3 = _http_request(base_url, "/api/hexa/v0/dashboard", session_token=lg_token)
-    assert st_d3 == 200
-    d3 = json.loads(raw_d3.decode("utf-8"))
-    assert d3["summary"]["customer_action_needed"] == 1
-    assert d3["shipments"][0]["needs_customer_action"] is True
-    assert d3["shipments"][0]["customer_action"] == {
-        "id": "ACT-LG-01",
-        "status": "OPEN",
-        "responsible_party": "Bộ phận XNK Lục Giác",
-        "action_text": "Xác nhận thông tin người nhận hàng tại kho Hà Nội",
-    }
-
-    # Restore clean V1 state (no fake customer actions)
+    # Restore clean V1 state
+    db["shipments"].update_one({"id": SHIPMENT_A_ID}, {"$unset": {"tasks": ""}})
     db["hexa_trial_shipment_links"].update_one(
         {"shipment_id": SHIPMENT_A_ID, "customer_id": CUSTOMER_A_ID},
         {"$unset": {"customer_actions": ""}},
