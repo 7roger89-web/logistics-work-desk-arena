@@ -3997,10 +3997,18 @@ def render_trial_portal_html() -> str:
       z-index: 10;
       --stripe: #94A3B8;
     }
+    .journey-bubble-layer {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 30;
+    }
     .journey-bubble {
       position: absolute;
       z-index: 35;
       pointer-events: auto;
+      display: flex;
+      flex-direction: column;
       background: #fff;
       border: 1px solid #C9D4DF;
       border-radius: 12px;
@@ -4009,7 +4017,10 @@ def render_trial_portal_html() -> str:
       color: #10263C;
       box-shadow: 0 18px 36px -14px rgba(16,38,60,.38);
     }
-    .journey-bubble-above { transform: translateY(-100%); }
+    .journey-bubble-above { transform: none; }
+    .journey-bubble-head { flex-shrink: 0; }
+    .journey-bubble-list { flex: 1 1 auto; min-height: 0; max-height: none; overflow-y: auto; }
+    .journey-bubble-foot { flex-shrink: 0; }
     .journey-bubble-dot {
       display: inline-grid;
       place-items: center;
@@ -4099,8 +4110,11 @@ def render_trial_portal_html() -> str:
       /* F2: the two-row mobile node grid is vertically centred, so the Fit / Đọc rõ controls
          live in one compact bottom band that never covers a node and never overlaps itself. */
       .journey-split.journey-map-first .journey-canvas {
-        height: clamp(470px, calc(100dvh - 236px), 560px);
+        height: clamp(560px, calc(100dvh - 224px), 620px);
+        min-height: 560px;
+        touch-action: pan-y pinch-zoom;
       }
+      .journey-bubble-close { min-width: 34px; min-height: 34px; display: inline-grid; place-items: center; }
       .journey-split.journey-map-first .journey-zoom-bar {
         top: auto;
         bottom: 8px;
@@ -4148,7 +4162,7 @@ def render_trial_portal_html() -> str:
           <input id="cust-passcode" type="password" autocomplete="current-password" placeholder="Nhập mật khẩu" />
         </div>
         <div style="display:flex; gap:10px; align-items:center; margin-top:14px;">
-          <button id="btn-customer-login" type="submit" class="btn-primary" onclick="loginCustomer()">Đăng nhập</button>
+          <button id="btn-customer-login" type="submit" class="btn-primary">Đăng nhập</button>
         </div>
       </form>
       <div id="customer-auth-note" class="status-note">Đăng nhập để mở bản đồ hành trình lô hàng của quý khách.</div>
@@ -4208,13 +4222,13 @@ def render_trial_portal_html() -> str:
         </div>
 
         <div class="journey-split journey-map-first">
-          <div id="journey-map-viewport" class="journey-canvas" data-testid="journey-map-viewport" style="min-height:540px; cursor:grab; user-select:none;">
+          <div id="journey-map-viewport" class="journey-canvas" data-testid="journey-map-viewport" style="cursor:grab; user-select:none;">
             <div class="journey-sea-chart" data-testid="journey-sea-chart" aria-hidden="true" style="background-image:url('/assets/journey/vietnam-east-sea-chart.webp');"></div>
             <div data-testid="journey-map-texture" aria-hidden="true" style="position:absolute; inset:0; background-image:url('/assets/journey/chart-paper.jpg'); background-size:460px 460px; background-repeat:repeat; opacity:0.16; mix-blend-mode:multiply; pointer-events:none; z-index:0;"></div>
             <div data-testid="journey-map-grid" aria-hidden="true" style="position:absolute; inset:0; background-image:linear-gradient(to right, rgba(20, 55, 85, 0.045) 1px, transparent 1px), linear-gradient(to bottom, rgba(20, 55, 85, 0.045) 1px, transparent 1px); background-size:52px 52px; pointer-events:none; z-index:0;"></div>
 
-            <div style="position:absolute; top:12px; right:12px; z-index:18; pointer-events:auto;">
-              <button type="button" data-testid="journey-utility-trigger" onclick="toggleUtilityBubble()" style="display:inline-flex; align-items:center; gap:7px; padding:6px 11px; border-radius:6px; border:1px solid rgba(26, 75, 117, 0.42); background:rgba(255, 255, 255, 0.94); color:#0f2236; font-size:11.5px; font-weight:800; cursor:pointer;">
+            <div id="journey-utility-anchor" class="journey-utility-anchor" style="position:absolute; top:12px; right:12px; z-index:18; pointer-events:auto;">
+              <button id="journey-utility-trigger" type="button" data-testid="journey-utility-trigger" onclick="toggleUtilityBubble()" style="display:inline-flex; align-items:center; gap:7px; padding:6px 11px; border-radius:6px; border:1px solid rgba(26, 75, 117, 0.42); background:rgba(255, 255, 255, 0.94); color:#0f2236; font-size:11.5px; font-weight:800; cursor:pointer;">
                 <span>▤ Hồ sơ &amp; Chứng từ</span>
                 <span id="utility-doc-count" style="padding:1px 6px; border-radius:4px; background:#eff6ff; color:#1d4ed8; font-family:var(--mono); font-size:10.5px; font-weight:800;">0 tệp</span>
               </button>
@@ -4245,10 +4259,9 @@ def render_trial_portal_html() -> str:
             <div id="journey-map-transform" data-testid="journey-map-transform" style="position:relative; width:1080px; height:520px; transform:translate(0px, 0px) scale(1); transform-origin:0 0; z-index:2;">
               <svg id="journey-edges-svg" class="journey-edges" viewBox="0 0 1080 520" preserveAspectRatio="none"></svg>
               <div id="journey-nodes-layer"></div>
-              <div id="journey-bubble-slot"></div>
             </div>
 
-            <div class="journey-map-hint" data-testid="journey-status-legend">
+            <div id="journey-map-hint" class="journey-map-hint" data-testid="journey-status-legend">
               <span><b>✓</b> Có bằng chứng</span>
               <span class="sep">·</span>
               <span><b>◐</b> Đang xử lý</span>
@@ -4260,13 +4273,15 @@ def render_trial_portal_html() -> str:
               <span id="journey-zoom-pct">100%</span>
             </div>
 
-            <div class="journey-zoom-bar">
+            <div id="journey-zoom-bar" class="journey-zoom-bar">
               <button type="button" class="journey-zoom-btn" data-testid="journey-zoom-in" onclick="zoomIn()" title="Phóng to">+</button>
               <button type="button" class="journey-zoom-btn" data-testid="journey-zoom-out" onclick="zoomOut()" title="Thu nhỏ">−</button>
               <div id="journey-zoom-level" class="journey-zoom-level" data-testid="journey-zoom-level">100%</div>
               <button type="button" class="journey-zoom-btn journey-zoom-text" data-testid="journey-zoom-fit" onclick="fitJourney()">⤢ Fit Journey</button>
               <button type="button" class="journey-zoom-btn journey-zoom-text" data-testid="journey-zoom-readable" onclick="resetReadable()">↺ Đọc rõ</button>
             </div>
+
+            <div id="journey-bubble-slot" class="journey-bubble-layer"></div>
           </div>
 
           <div id="journey-modal-layer" class="journey-modal-layer hidden" data-testid="journey-modal" role="dialog" aria-modal="true">
@@ -4452,6 +4467,134 @@ def render_trial_portal_html() -> str:
       return `M ${x1} ${y1} C ${x1 + dx} ${y1}, ${x2 - dx} ${y2}, ${x2} ${y2}`;
     }
 
+    let activeBubblePos = null;
+
+    function getRealRect(el, vpW, vpH) {
+      if (!el || typeof el.getBoundingClientRect !== 'function') return null;
+      const r = el.getBoundingClientRect();
+      if (!r || !(r.width > 0) || !(r.height > 0)) return null;
+      if (r.width >= vpW && r.height >= vpH) return null;
+      return {
+        left: r.left,
+        top: r.top,
+        right: typeof r.right === 'number' ? r.right : r.left + r.width,
+        bottom: typeof r.bottom === 'number' ? r.bottom : r.top + r.height,
+        width: r.width,
+        height: r.height
+      };
+    }
+
+    function positionBubbleElement(wrap, pos) {
+      if (!wrap || !pos) return;
+      const vp = document.getElementById('journey-map-viewport');
+      const vpW = (vp && vp.clientWidth) ? vp.clientWidth : (journeyMobileLayout ? 356 : 960);
+      const vpH = (vp && vp.clientHeight) ? vp.clientHeight : (journeyMobileLayout ? 560 : 540);
+      const pad = journeyMobileLayout ? 8 : 12;
+      const targetW = journeyMobileLayout ? 250 : 290;
+      const bubbleW = Math.min(targetW, Math.max(180, vpW - pad * 2));
+      wrap.style.width = `${bubbleW}px`;
+      wrap.style.maxHeight = '';
+
+      const nodeLeft = currentPan.x + pos.x * currentScale;
+      const nodeTop = currentPan.y + pos.y * currentScale;
+      const nodeW = journeyNodeW * currentScale;
+      const nodeH = journeyNodeH * currentScale;
+      const nodeBottom = nodeTop + nodeH;
+      const nodeCenterX = nodeLeft + nodeW / 2;
+
+      const left = Math.round(Math.max(pad, Math.min(vpW - pad - bubbleW, nodeCenterX - bubbleW / 2)));
+      const right = left + bubbleW;
+
+      const vpRect = (vp && typeof vp.getBoundingClientRect === 'function') ? vp.getBoundingClientRect() : null;
+      const vpOriginX = vpRect ? vpRect.left + 1 : 0;
+      const vpOriginY = vpRect ? vpRect.top + 1 : 0;
+
+      function overlayBox(id, fallback) {
+        const el = document.getElementById(id);
+        if (!el || (el.classList && el.classList.contains('hidden'))) return null;
+        const r = getRealRect(el, vpW, vpH);
+        if (!r || !vpRect) return fallback;
+        return {
+          left: r.left - vpOriginX,
+          top: r.top - vpOriginY,
+          right: r.right - vpOriginX,
+          bottom: r.bottom - vpOriginY
+        };
+      }
+
+      const utilBox = overlayBox('journey-utility-trigger', {
+        left: vpW - 12 - (journeyMobileLayout ? 168 : 182),
+        top: 12,
+        right: vpW - 12,
+        bottom: 43
+      });
+      const zoomBox = overlayBox('journey-zoom-bar', journeyMobileLayout
+        ? { left: 8, top: vpH - 52, right: vpW - 8, bottom: vpH - 8 }
+        : { left: vpW - 316, top: vpH - 54, right: vpW - 12, bottom: vpH - 12 }
+      );
+      const hintBox = journeyMobileLayout ? null : overlayBox('journey-map-hint', {
+        left: 12,
+        top: vpH - 46,
+        right: 402,
+        bottom: vpH - 12
+      });
+
+      let safeTop = pad;
+      let safeBottom = vpH - pad;
+      if (utilBox && right > utilBox.left - 4 && left < utilBox.right + 4) {
+        safeTop = Math.max(safeTop, Math.ceil(utilBox.bottom + 6));
+      }
+      if (zoomBox && right > zoomBox.left - 4 && left < zoomBox.right + 4) {
+        safeBottom = Math.min(safeBottom, Math.floor(zoomBox.top - 6));
+      }
+      if (hintBox && right > hintBox.left - 4 && left < hintBox.right + 4) {
+        safeBottom = Math.min(safeBottom, Math.floor(hintBox.top - 6));
+      }
+      if (safeBottom - safeTop < 150) {
+        safeTop = pad;
+        safeBottom = vpH - pad;
+      }
+
+      const measured = getRealRect(wrap, vpW, vpH);
+      const naturalH = measured ? Math.ceil(measured.height) : 212;
+      const gap = 10;
+      const spaceAbove = (nodeTop - gap) - safeTop;
+      const spaceBelow = safeBottom - (nodeBottom + gap);
+
+      let placeAbove;
+      if (!journeyMobileLayout && spaceAbove >= naturalH) {
+        placeAbove = true;
+      } else if (spaceBelow >= naturalH && spaceAbove < naturalH) {
+        placeAbove = false;
+      } else if (spaceAbove >= naturalH && spaceBelow < naturalH) {
+        placeAbove = true;
+      } else {
+        placeAbove = spaceAbove >= spaceBelow;
+      }
+
+      const chosenSpace = placeAbove ? spaceAbove : spaceBelow;
+      const maxH = Math.max(152, Math.min(safeBottom - safeTop, Math.max(chosenSpace, 152)));
+      if (naturalH > maxH) {
+        wrap.style.maxHeight = `${Math.floor(maxH)}px`;
+      }
+      const finalH = Math.min(naturalH, Math.floor(maxH));
+      const desiredTop = placeAbove ? (nodeTop - gap - finalH) : (nodeBottom + gap);
+      const top = Math.round(Math.max(safeTop, Math.min(safeBottom - finalH, desiredTop)));
+
+      wrap.classList.toggle('journey-bubble-above', placeAbove);
+      wrap.classList.toggle('journey-bubble-below', !placeAbove);
+      wrap.style.left = `${left}px`;
+      wrap.style.top = `${top}px`;
+    }
+
+    function repositionOpenBubble() {
+      const bubbleSlot = document.getElementById('journey-bubble-slot');
+      const wrap = bubbleSlot && bubbleSlot.firstChild;
+      if (wrap && activeBubblePos) {
+        positionBubbleElement(wrap, activeBubblePos);
+      }
+    }
+
     function applyTransform() {
       const tf = document.getElementById('journey-map-transform');
       if (tf && tf.style) {
@@ -4462,6 +4605,7 @@ def render_trial_portal_html() -> str:
       if (zl) zl.textContent = pct;
       const zp = document.getElementById('journey-zoom-pct');
       if (zp) zp.textContent = pct;
+      repositionOpenBubble();
     }
 
     function zoomIn() {
@@ -4516,10 +4660,12 @@ def render_trial_portal_html() -> str:
     function toggleUtilityBubble(force) {
       const el = document.getElementById('journey-utility-bubble');
       if (!el) return;
-      if (typeof force === 'boolean') {
-        el.classList.toggle('hidden', !force);
-      } else {
-        el.classList.toggle('hidden');
+      const nextOpen = (typeof force === 'boolean') ? force : el.classList.contains('hidden');
+      el.classList.toggle('hidden', !nextOpen);
+      if (nextOpen && selectedNodeId) {
+        selectedNodeId = null;
+        activeBubblePos = null;
+        if (activeShipmentRow) renderJourneyMapForShipment(activeShipmentRow, activePublication);
       }
     }
 
@@ -4941,7 +5087,8 @@ def render_trial_portal_html() -> str:
       activeShipmentRow = matched;
       if (matched && matched.journey && Array.isArray(matched.journey.nodes) && matched.journey.nodes.length > 0) {
         activePublication = matched;
-        selectedNodeId = String(matched.journey.current_stage_id || matched.journey.nodes[0].id || '');
+        selectedNodeId = null;
+        activeBubblePos = null;
         renderJourneyMapForShipment(matched, matched);
         fitJourney();
         return;
@@ -5094,6 +5241,7 @@ def render_trial_portal_html() -> str:
       if (selectedNodeId && nodeById[selectedNodeId]) {
         renderNodeBubble(nodeById[selectedNodeId], posById[selectedNodeId], docs);
       } else {
+        activeBubblePos = null;
         const bubbleSlot = document.getElementById('journey-bubble-slot');
         if (bubbleSlot) clearChildren(bubbleSlot);
       }
@@ -5101,28 +5249,41 @@ def render_trial_portal_html() -> str:
 
     function selectJourneyNode(nodeId) {
       if (!activeShipmentRow || !activeShipmentRow.journey) return;
+      const utilDrop = document.getElementById('journey-utility-bubble');
+      if (utilDrop) utilDrop.classList.add('hidden');
       selectedNodeId = String(nodeId);
       renderJourneyMapForShipment(activeShipmentRow, activePublication);
+      const bubbleSlot = document.getElementById('journey-bubble-slot');
+      const wrap = bubbleSlot && bubbleSlot.firstChild;
+      if (wrap && typeof window !== 'undefined' && typeof window.scrollBy === 'function' && window.innerHeight > 0) {
+        const bRect = getRealRect(wrap, window.innerWidth || 9999, window.innerHeight || 9999);
+        if (bRect) {
+          if (bRect.bottom > window.innerHeight - 12) {
+            window.scrollBy(0, Math.ceil(bRect.bottom - (window.innerHeight - 20)));
+          } else if (bRect.top < 12) {
+            window.scrollBy(0, Math.floor(bRect.top - 20));
+          }
+        }
+      }
     }
 
     function renderNodeBubble(node, pos, docs) {
       const bubbleSlot = document.getElementById('journey-bubble-slot');
       if (!bubbleSlot) return;
       clearChildren(bubbleSlot);
-      if (!node || !pos) return;
-
-      const bubbleW = journeyMobileLayout ? 250 : 290;
-      const left = Math.max(18, Math.min(1080 - bubbleW - 18, pos.x + journeyNodeW / 2 - bubbleW / 2));
-      const preferAbove = journeyMobileLayout ? pos.y <= 200 : pos.y > 195;
-      const top = preferAbove ? Math.max(12, pos.y - 12) : pos.y + journeyNodeH + 12;
+      if (!node || !pos) {
+        activeBubblePos = null;
+        return;
+      }
+      activeBubblePos = { x: pos.x, y: pos.y };
 
       const wrap = document.createElement('div');
-      wrap.className = `journey-bubble ${preferAbove ? 'journey-bubble-above' : 'journey-bubble-below'}`;
+      wrap.className = 'journey-bubble journey-bubble-below';
       wrap.dataset.testid = 'journey-bubble';
       wrap.setAttribute('data-node', String(node.id));
-      wrap.style.left = `${left}px`;
-      wrap.style.top = `${top}px`;
-      wrap.style.width = `${bubbleW}px`;
+      wrap.style.left = '12px';
+      wrap.style.top = '12px';
+      wrap.style.width = `${journeyMobileLayout ? 250 : 290}px`;
 
       const head = document.createElement('div');
       head.className = 'journey-bubble-head';
@@ -5143,6 +5304,7 @@ def render_trial_portal_html() -> str:
       closeBtn.textContent = '✕';
       closeBtn.addEventListener('click', () => {
         selectedNodeId = null;
+        activeBubblePos = null;
         renderJourneyMapForShipment(activeShipmentRow, activePublication);
       });
       head.appendChild(headTextWrap);
@@ -5210,10 +5372,15 @@ def render_trial_portal_html() -> str:
       wrap.appendChild(listDiv);
       wrap.appendChild(foot);
       bubbleSlot.appendChild(wrap);
+      positionBubbleElement(wrap, pos);
     }
 
     function openStageModal(nodeId, tab) {
       if (!activeShipmentRow) return;
+      selectedNodeId = null;
+      activeBubblePos = null;
+      const bubbleSlot = document.getElementById('journey-bubble-slot');
+      if (bubbleSlot) clearChildren(bubbleSlot);
       const nodes = (activeShipmentRow.journey && activeShipmentRow.journey.nodes) || [];
       const node = nodes.find(n => String(n.id) === String(nodeId)) || nodes[0] || {
         id: nodeId,
@@ -5698,7 +5865,10 @@ def render_trial_portal_html() -> str:
     function syncJourneyLayoutMode() {
       const wasMobile = journeyMobileLayout;
       const isMobile = applyJourneyLayoutMode();
-      if (wasMobile === isMobile || !activeShipmentRow) return;
+      if (wasMobile === isMobile || !activeShipmentRow) {
+        repositionOpenBubble();
+        return;
+      }
       renderJourneyMapForShipment(activeShipmentRow, activePublication);
       fitJourney();
     }
@@ -5708,7 +5878,8 @@ def render_trial_portal_html() -> str:
       if (vp && vp.addEventListener) {
         let dragState = null;
         vp.addEventListener('pointerdown', (e) => {
-          if (e.target && e.target.closest && e.target.closest('.journey-node, .journey-zoom-bar, .journey-bubble')) return;
+          if (e.pointerType === 'touch') return;
+          if (e.target && e.target.closest && e.target.closest('.journey-node, .journey-zoom-bar, .journey-bubble, .journey-utility-anchor')) return;
           dragState = { startX: e.clientX, startY: e.clientY, origX: currentPan.x, origY: currentPan.y };
           vp.style.cursor = 'grabbing';
         });
@@ -5764,43 +5935,71 @@ def render_tt_login_html() -> str:
 <body>
   <div class="card">
     <h1>Bàn Duyệt Công Bố Nội Bộ Trường Thành</h1>
-    <form onsubmit="event.preventDefault(); loginTt();">
+    <form onsubmit="return loginTt(event);">
       <input id="tt-user" type="text" placeholder="Tài khoản nội bộ TT" />
       <input id="tt-pass" type="password" placeholder="Mật khẩu" />
-      <button type="submit" onclick="loginTt()">Đăng nhập nội bộ TT</button>
+      <button id="btn-tt-login" type="submit">Đăng nhập nội bộ TT</button>
     </form>
     <div id="tt-msg"></div>
   </div>
   <script>
-    async function loginTt() {
-      const username = (document.getElementById('tt-user').value || '').trim();
-      const passcode = (document.getElementById('tt-pass').value || '').trim();
-      const res = await fetch('/api/hexa/v0/tt/auth/login', {
-        method: 'POST',
-        credentials: 'same-origin',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, passcode })
-      });
-      if (!res.ok) {
-        document.getElementById('tt-msg').textContent = 'Từ chối truy cập';
-        return;
-      }
-      const data = await res.json();
-      const tok = String((data && data.session_token) || '');
-      try { if (tok && typeof sessionStorage !== 'undefined') sessionStorage.setItem('hexa_tt_token', tok); } catch (_e) {}
-      const deskRes = await fetch('/tt', {
-        credentials: 'same-origin',
-        headers: tok ? { 'Authorization': 'Bearer ' + tok } : {}
-      });
-      if (deskRes.ok) {
-        const html = await deskRes.text();
+    var ttLoginInFlight = false;
+    async function loginTt(ev) {
+      if (ev && typeof ev.preventDefault === 'function') ev.preventDefault();
+      if (ttLoginInFlight) return false;
+      ttLoginInFlight = true;
+      const submitBtn = document.getElementById('btn-tt-login');
+      if (submitBtn) submitBtn.disabled = true;
+      try {
+        const username = (document.getElementById('tt-user').value || '').trim();
+        const passcode = (document.getElementById('tt-pass').value || '').trim();
+        const res = await fetch('/api/hexa/v0/tt/auth/login', {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, passcode })
+        });
+        if (!res.ok) {
+          document.getElementById('tt-msg').textContent = 'Từ chối truy cập';
+          ttLoginInFlight = false;
+          if (submitBtn) submitBtn.disabled = false;
+          return false;
+        }
+        const data = await res.json();
+        const tok = String((data && data.session_token) || '');
+        try { if (tok && typeof sessionStorage !== 'undefined') sessionStorage.setItem('hexa_tt_token', tok); } catch (_e) {}
         window.__HEXA_TT_TOKEN = tok;
-        document.open();
-        document.write(html);
-        document.close();
-      } else {
-        window.location.href = '/tt';
+        let cookieWorks = false;
+        try {
+          const probe = await fetch('/api/hexa/v0/tt/session', { credentials: 'same-origin' });
+          if (probe.ok) {
+            const pData = await probe.json();
+            cookieWorks = Boolean(pData && pData.authenticated);
+          }
+        } catch (_e) {}
+        if (cookieWorks) {
+          window.location.assign('/tt');
+          return false;
+        }
+        const deskRes = await fetch('/tt', {
+          credentials: 'same-origin',
+          headers: tok ? { 'Authorization': 'Bearer ' + tok } : {}
+        });
+        if (deskRes.ok) {
+          const html = await deskRes.text();
+          try { window.history.replaceState(null, '', '/tt'); } catch (_e) {}
+          document.open();
+          document.write(html);
+          document.close();
+          window.__HEXA_TT_TOKEN = tok;
+        } else {
+          window.location.assign('/tt');
+        }
+      } catch (_err) {
+        ttLoginInFlight = false;
+        if (submitBtn) submitBtn.disabled = false;
       }
+      return false;
     }
   </script>
 </body>
@@ -5886,8 +6085,9 @@ def render_tt_publish_desk_html() -> str:
     </section>
   </main>
   <script>
-    let currentTtShipment = null;
-    let ttCanFinanceWrite = false;
+    var currentTtShipment = null;
+    var ttCanFinanceWrite = false;
+    var ttDeskAutoBooted = false;
     function getTtToken() {
       if (window.__HEXA_TT_TOKEN) return String(window.__HEXA_TT_TOKEN);
       try { if (typeof sessionStorage !== 'undefined') return sessionStorage.getItem('hexa_tt_token') || ''; } catch (_e) {}
@@ -6097,7 +6297,15 @@ def render_tt_publish_desk_html() -> str:
       if (res.ok) await loadTtShipment();
     }
 
-    window.addEventListener('DOMContentLoaded', initTtDesk);
+    function bootTtDeskOnce() {
+      if (ttDeskAutoBooted) return;
+      ttDeskAutoBooted = true;
+      initTtDesk();
+    }
+    window.addEventListener('DOMContentLoaded', bootTtDeskOnce);
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+      bootTtDeskOnce();
+    }
   </script>
 </body>
 </html>
