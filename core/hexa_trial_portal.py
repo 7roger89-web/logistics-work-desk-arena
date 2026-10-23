@@ -103,10 +103,12 @@ CUSTOMER_B_ID = "CUST-MINHDUC"
 CUSTOMER_C_ID = "CUST-ANPHAT"
 
 SHIPMENT_A_ID = "ROAD-LG-001"
+SHIPMENT_A2_ID = "ROAD-LG-002"
 SHIPMENT_B_ID = "ROAD-MD-002"
 SHIPMENT_C_ID = "ROAD-AP-003"
 
 QUOTE_A_ID = "Q-LG-ROAD-001"
+QUOTE_A2_ID = "Q-LG-ROAD-002"
 QUOTE_B_ID = "Q-MD-ROAD-002"
 QUOTE_C_ID = "Q-AP-ROAD-003"
 
@@ -470,6 +472,29 @@ class HexaTrialEnvironment:
             ],
             target_status="SENT",
         )
+        quote_a2 = self._build_trial_quote(
+            core_quotes,
+            quote_id=QUOTE_A2_ID,
+            quote_no="QT-20261023-LG02",
+            customer_id=CUSTOMER_A_ID,
+            customer_name="Công ty TNHH Lục Giác (HEXA)",
+            factory_name=f"Zhongshan Hexa Lighting Factory [{SENTINEL_TT_PRIVATE_SUPPLIER}]",
+            pickup_address="Guzhen, Zhongshan, Guangdong",
+            lines=[
+                {
+                    "code": "ROAD-LTL-DH-HN",
+                    "service_name": "Cước đường bộ Đông Hưng → Móng Cái → Long Biên, Hà Nội",
+                    "unit": "Lô ghép",
+                    "qty": 1,
+                    "currency": "VND",
+                    "cost_unit": 27000000,
+                    "sell_unit": 35000000,
+                    "tax_pct": 8,
+                    "internal_note": f"Giá vốn lô 2 Lục Giác {SENTINEL_TT_INTERNAL_COST}",
+                },
+            ],
+            target_status="SENT",
+        )
         quote_b = self._build_trial_quote(
             core_quotes,
             quote_id=QUOTE_B_ID,
@@ -515,6 +540,7 @@ class HexaTrialEnvironment:
             target_status="SENT",
         )
         db["quotes"].replace_one({"id": QUOTE_A_ID}, quote_a, upsert=True)
+        db["quotes"].replace_one({"id": QUOTE_A2_ID}, quote_a2, upsert=True)
         db["quotes"].replace_one({"id": QUOTE_B_ID}, quote_b, upsert=True)
         db["quotes"].replace_one({"id": QUOTE_C_ID}, quote_c, upsert=True)
 
@@ -580,6 +606,59 @@ class HexaTrialEnvironment:
             ],
         )
         shipment_a["sale_owner"] = "Minh Tú (CSKH & Sale Trường Thành)"
+
+        shipment_a2 = logi_staging_seed._shipment(
+            sid=SHIPMENT_A2_ID,
+            customer="Công ty TNHH Lục Giác (HEXA)",
+            customer_id=CUSTOMER_A_ID,
+            contract_id="HDMB-LG-2026-02",
+            status="pending",
+            created="2026-10-21",
+            mode="Truck",
+            incoterm="DAP",
+            transport={
+                "booking_no": "TRIP-ROAD-2026-03",
+                "carrier": f"Nhà xe Việt Trung An Bình ({SENTINEL_TT_PRIVATE_SUPPLIER})",
+                "etd": "2026-10-21",
+                "eta": "2026-10-24",
+                "pol": "Đông Hưng (Quảng Tây)",
+                "pod": "Móng Cái → Long Biên, Hà Nội",
+                "container_no": "29H-912.34",
+                "qty_pkg": "Thiết bị chiếu sáng văn phòng — 10 pallet / 2.600 kg",
+                "road_facts": {
+                    "ltl_received_at": "2026-10-21T09:00",
+                    "ltl_package_count": "10",
+                    "ltl_weight_kg": "2600",
+                    "ltl_consolidated_at": "2026-10-21T15:00",
+                    "border_crossed_at": "2026-10-22T11:30",
+                },
+            },
+            customs={
+                "tk_no": "106688114455",
+                "customs_status": True,
+                "phan_luong": "Xanh",
+            },
+            arrival={"arrival_date": "2026-10-24", "free_time": 5},
+            delivery={
+                "truck_no": "29H-912.34",
+                "seal_no": "SEAL-ROAD-912",
+                "delivery_date": "",
+                "addr": "Kho Lục Giác — Long Biên, Hà Nội",
+                "is_delivered": False,
+            },
+            details=[
+                logi_staging_seed._line(
+                    "Cước đường bộ Đông Hưng → Long Biên, Hà Nội",
+                    "ROAD-LTL-DH-HN",
+                    1,
+                    35000000,
+                    27000000,
+                    8,
+                    note=f"Giá vốn nội bộ TT: {SENTINEL_TT_INTERNAL_COST}",
+                ),
+            ],
+        )
+        shipment_a2["sale_owner"] = "Minh Tú (CSKH & Sale Trường Thành)"
 
         shipment_b = logi_staging_seed._shipment(
             sid=SHIPMENT_B_ID,
@@ -674,6 +753,7 @@ class HexaTrialEnvironment:
 
         for ship_doc, named_place in (
             (shipment_a, "Hà Nội"),
+            (shipment_a2, "Hà Nội"),
             (shipment_b, "Bắc Ninh"),
             (shipment_c, "Hải Phòng"),
         ):
@@ -771,6 +851,19 @@ class HexaTrialEnvironment:
                 "Cargo: 12 pallets / 3,100 kg",
             ],
         )
+        att_lg02_pl_v1 = self._upload_trial_pdf(
+            core_att,
+            shipment_id=SHIPMENT_A2_ID,
+            file_name="Packing-List-Luc-Giac-Lo2-v1.pdf",
+            category="transport",
+            title="HEXA PACKING LIST LO 2 v1 (APPROVED FOR LUC GIAC)",
+            lines=[
+                f"Shipment: {SHIPMENT_A2_ID}",
+                "Customer: Cong ty TNHH Luc Giac",
+                "Version: v1 (TT verified and published)",
+                "Cargo: 10 pallets / 2,600 kg",
+            ],
+        )
 
         # 6. Populate trial adapter collections (explicitly bridging the schema gaps documented in SCHEMA_GAP_REPORT).
         db["hexa_trial_shipment_links"].delete_many({})
@@ -790,6 +883,21 @@ class HexaTrialEnvironment:
                     "internal_supplier": f"Foshan Hexa Furniture Factory ({SENTINEL_TT_PRIVATE_SUPPLIER})",
                     "internal_carrier_vendor": "Nhà xe Việt Trung An Bình (hợp đồng mua chuyến nội bộ TT)",
                     "unverified_eta": f"2026-10-25 ({SENTINEL_TT_UNVERIFIED_ETA})",
+                },
+                {
+                    "shipment_id": SHIPMENT_A2_ID,
+                    "customer_id": CUSTOMER_A_ID,
+                    "trip_id": "TRIP-ROAD-2026-03",
+                    "shared_truck_plate": "29H-912.34",
+                    "transport_mode": "ROAD",
+                    "quote_id": QUOTE_A2_ID,
+                    "cargo_summary": "Thiết bị chiếu sáng văn phòng — 10 pallet / 2.600 kg",
+                    "route_summary": "Đông Hưng (Quảng Tây) → Móng Cái → Long Biên, Hà Nội",
+                    "internal_cost_vnd": 27000000,
+                    "internal_margin_vnd": 8000000,
+                    "internal_supplier": f"Zhongshan Hexa Lighting Factory ({SENTINEL_TT_PRIVATE_SUPPLIER})",
+                    "internal_carrier_vendor": "Nhà xe Việt Trung An Bình",
+                    "unverified_eta": "2026-10-24",
                 },
                 {
                     "shipment_id": SHIPMENT_B_ID,
@@ -940,6 +1048,35 @@ class HexaTrialEnvironment:
                     "verified_warehouse_eta": "2026-10-23",
                     "private_notes": "",
                 },
+                {
+                    "id": "EVT-LG02-01-PICKUP",
+                    "version": "v1",
+                    "customer_id": CUSTOMER_A_ID,
+                    "shipment_id": SHIPMENT_A2_ID,
+                    "trip_id": "TRIP-ROAD-2026-03",
+                    "stage_id": "pickup",
+                    "public_title": "Đã nhận 10 pallet thiết bị chiếu sáng Lục Giác tại kho Đông Hưng (xe 29H-912.34)",
+                    "occurred_at": "2026-10-21T09:00:00Z",
+                    "verified": True,
+                    "verified_at": "2026-10-21T10:00:00Z",
+                    "visibility": "CUSTOMER",
+                    "private_notes": "",
+                },
+                {
+                    "id": "EVT-LG02-02-CUSTOMS",
+                    "version": "v1",
+                    "customer_id": CUSTOMER_A_ID,
+                    "shipment_id": SHIPMENT_A2_ID,
+                    "trip_id": "TRIP-ROAD-2026-03",
+                    "stage_id": "customs-import",
+                    "public_title": "Đã hoàn tất thông quan nhập khẩu tại Móng Cái — xác nhận lịch giao kho Long Biên ngày 2026-10-24",
+                    "occurred_at": "2026-10-22T15:30:00Z",
+                    "verified": True,
+                    "verified_at": "2026-10-22T16:00:00Z",
+                    "visibility": "CUSTOMER",
+                    "verified_warehouse_eta": "2026-10-24",
+                    "private_notes": "",
+                },
             ]
         )
 
@@ -960,6 +1097,21 @@ class HexaTrialEnvironment:
                     "file_name": "Packing-List-Luc-Giac-v2.pdf",
                     "attachment_id": att_lg_pl_v2["id"],
                     "attachment_shipment_id": SHIPMENT_A_ID,
+                },
+                {
+                    "id": "DOC-LG02-PL",
+                    "version": "v1",
+                    "customer_id": CUSTOMER_A_ID,
+                    "shipment_id": SHIPMENT_A2_ID,
+                    "trip_id": "TRIP-ROAD-2026-03",
+                    "kind": "PL",
+                    "status": "AVAILABLE",
+                    "visibility": "CUSTOMER",
+                    "verified": True,
+                    "public_title": "Packing List Lục Giác Lô 2 (Bản v1 đã duyệt)",
+                    "file_name": "Packing-List-Luc-Giac-Lo2-v1.pdf",
+                    "attachment_id": att_lg02_pl_v1["id"],
+                    "attachment_shipment_id": SHIPMENT_A2_ID,
                 },
                 {
                     "id": "DOC-LG-PL",
@@ -2403,10 +2555,13 @@ def get_trial_environment() -> HexaTrialEnvironment:
 
 
 def seed_live_preview_publications(env: HexaTrialEnvironment | None = None) -> None:
-    """Pre-publish ROAD-LG-001 (Lục Giác) and ROAD-MD-002 (Minh Đức) via real TT staff approval
-    for the standalone Live Preview server while keeping ROAD-AP-003 (An Phát) UNPUBLISHED.
+    """Pre-publish 2 shipments for Lục Giác (ROAD-LG-001 + ROAD-LG-002) and 1 shipment for Minh Đức (ROAD-MD-002)
+    via real TT staff approval for the standalone Live Preview server, while keeping ROAD-AP-003 (An Phát) UNPUBLISHED.
 
-    Note: ``HexaTrialEnvironment()`` by itself remains 100% default-deny ``UNPUBLISHED`` for unit/E2E tests.
+    - Lục Giác (2 shipments): opens Multi-Shipment Dashboard Overview -> select shipment -> Journey Map -> Back to Dashboard.
+    - Minh Đức (1 shipment): opens straight into Journey Map.
+    - An Phát (0 shipments): shows friendly empty state.
+    - Note: ``HexaTrialEnvironment()`` by itself remains 100% default-deny ``UNPUBLISHED`` for unit/E2E tests.
     """
     target_env = env or get_trial_environment()
     target_env.ensure_seeded()
@@ -2426,6 +2581,18 @@ def seed_live_preview_publications(env: HexaTrialEnvironment | None = None) -> N
             "DOC-LG-PI": "v1",
         },
         quote={"id": QUOTE_A_ID, "version": "3"},
+    )
+    target_env.publish_shipment_for_customer(
+        session_token=tt_token,
+        shipment_id=SHIPMENT_A2_ID,
+        event_versions={
+            "EVT-LG02-01-PICKUP": "v1",
+            "EVT-LG02-02-CUSTOMS": "v1",
+        },
+        document_versions={
+            "DOC-LG02-PL": "v1",
+        },
+        quote={"id": QUOTE_A2_ID, "version": "1"},
     )
     target_env.publish_shipment_for_customer(
         session_token=tt_token,
@@ -2460,10 +2627,8 @@ def _extract_cookie_from_raw(raw_cookie: str, cookie_name: str) -> str:
     return ""
 
 
-def _extract_session_token(
-    headers: Mapping[str, str],
-    query: Mapping[str, list[str]] | None = None,
-) -> str:
+def _extract_session_token(headers: Mapping[str, str]) -> str:
+    """Extract customer session token strictly from HTTP headers or Cookie (NEVER from URL query params)."""
     custom_hdr = str(
         headers.get("X-Hexa-Session-Token") or headers.get("x-hexa-session-token") or ""
     ).strip()
@@ -2472,18 +2637,12 @@ def _extract_session_token(
     auth_header = str(headers.get("Authorization") or headers.get("authorization") or "").strip()
     if auth_header.lower().startswith("bearer "):
         return auth_header[7:].strip()
-    if query and "_hx_token" in query:
-        q_tok = str((query.get("_hx_token") or [""])[0] or "").strip()
-        if q_tok:
-            return q_tok
     raw_cookie = str(headers.get("Cookie") or headers.get("cookie") or "").strip()
     return _extract_cookie_from_raw(raw_cookie, TRIAL_COOKIE_NAME)
 
 
-def _extract_tt_session_token(
-    headers: Mapping[str, str],
-    query: Mapping[str, list[str]] | None = None,
-) -> str:
+def _extract_tt_session_token(headers: Mapping[str, str]) -> str:
+    """Extract TT staff session token strictly from HTTP headers or Cookie (NEVER from URL query params)."""
     custom_hdr = str(
         headers.get("X-Hexa-Session-Token") or headers.get("x-hexa-session-token") or ""
     ).strip()
@@ -2492,10 +2651,6 @@ def _extract_tt_session_token(
     auth_header = str(headers.get("Authorization") or headers.get("authorization") or "").strip()
     if auth_header.lower().startswith("bearer "):
         return auth_header[7:].strip()
-    if query and "_hx_token" in query:
-        q_tok = str((query.get("_hx_token") or [""])[0] or "").strip()
-        if q_tok:
-            return q_tok
     raw_cookie = str(headers.get("Cookie") or headers.get("cookie") or "").strip()
     tt_val = _extract_cookie_from_raw(raw_cookie, TRIAL_TT_COOKIE_NAME)
     if tt_val:
@@ -2704,6 +2859,25 @@ def render_trial_portal_html() -> str:
     .journey-side-badge { padding: 3px 8px; border-radius: 999px; background: rgba(255,255,255,0.14); color: #fff; font-size: 11px; font-weight: 700; }
     .journey-modal-close { cursor: pointer; padding: 5px 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.28); background: rgba(255,255,255,0.1); color: #fff; font-size: 12px; font-weight: 700; }
     .journey-side-body { padding: 14px 16px; overflow-y: auto; background: #fff; color: #0f172a; }
+    .dash-table-desktop tbody tr { cursor: pointer; transition: background-color 0.14s ease; }
+    .dash-table-desktop tbody tr:hover { background-color: #f1f5f9; }
+    .dash-cards-mobile { display: none; gap: 10px; }
+    .shipment-card-mobile {
+      border: 1px solid #cbd5e1;
+      border-radius: 10px;
+      padding: 12px;
+      background: #ffffff;
+      display: grid;
+      gap: 8px;
+      cursor: pointer;
+      box-shadow: 0 4px 12px -6px rgba(15, 23, 42, 0.15);
+    }
+    .shipment-card-top { display: flex; align-items: center; justify-content: space-between; gap: 6px; flex-wrap: wrap; }
+    .shipment-card-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: 11.5px; color: #334155; background: #f8fafc; padding: 7px 9px; border-radius: 6px; border: 1px solid #e2e8f0; }
+    @media (max-width: 720px) {
+      .dash-table-desktop { display: none !important; }
+      .dash-cards-mobile { display: grid !important; }
+    }
   </style>
 </head>
 <body>
@@ -2758,24 +2932,31 @@ def render_trial_portal_html() -> str:
       </div>
 
       <div id="customer-shipment-selector" class="shipment-selector-bar hidden" data-testid="customer-shipment-selector">
-        <div style="font-size:12px; font-weight:800; color:#1e293b; margin-bottom:6px;">Danh sách lô hàng đã công bố (chọn lô để mở Journey Map):</div>
-        <table>
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:8px;">
+          <div style="font-size:13px; font-weight:800; color:#0f2942;">Dashboard tổng quan các lô hàng đã công bố (chọn một lô để mở hải đồ Journey Map):</div>
+        </div>
+        <table class="dash-table-desktop">
           <thead>
             <tr>
               <th>Mã lô</th>
-              <th>Tuyến &amp; Hàng hóa</th>
-              <th>Công đoạn xác minh</th>
-              <th>ETA kho đã xác minh</th>
-              <th>Việc tiếp theo &amp; Đầu mối</th>
+              <th>Hàng hóa &amp; Tuyến</th>
+              <th>Phương thức</th>
+              <th>Chặng xác minh</th>
+              <th>ETA được xác minh</th>
+              <th>Cập nhật cuối</th>
               <th>Hành trình</th>
             </tr>
           </thead>
           <tbody id="dash-shipments-tbody"></tbody>
         </table>
+        <div id="dash-shipments-cards" class="dash-cards-mobile" data-testid="dash-shipments-cards"></div>
       </div>
 
-      <div class="journey-demo" data-testid="shipment-journey">
+      <div id="shipment-journey-view" class="journey-demo" data-testid="shipment-journey">
         <div class="journey-toolbar" data-testid="journey-compact-toolbar">
+          <button id="btn-back-to-dashboard" type="button" class="journey-toolbar-btn hidden" data-testid="btn-back-to-dashboard" onclick="backToDashboard()">
+            ← Quay lại Dashboard
+          </button>
           <span id="toolbar-id" class="journey-toolbar-id">—</span>
           <span id="toolbar-mode" class="journey-toolbar-chip">ROAD</span>
           <span id="toolbar-customer" class="journey-toolbar-customer">—</span>
@@ -3149,8 +3330,12 @@ def render_trial_portal_html() -> str:
 
     async function renderDashboardData(body) {
       const tbody = document.getElementById('dash-shipments-tbody');
+      const cardsBox = document.getElementById('dash-shipments-cards');
       const selectorBox = document.getElementById('customer-shipment-selector');
+      const journeyView = document.getElementById('shipment-journey-view');
+      const backBtn = document.getElementById('btn-back-to-dashboard');
       if (tbody) tbody.innerHTML = '';
+      if (cardsBox) cardsBox.innerHTML = '';
 
       const summary = (body && body.summary) || {};
       const brandTitle = document.getElementById('customer-brand-title');
@@ -3170,65 +3355,156 @@ def render_trial_portal_html() -> str:
       dashboardRows = Array.isArray(body && body.shipments) ? body.shipments : [];
 
       dashboardRows.forEach(row => {
+        const sid = String(row.shipment_id || '');
+        const modeText = String(row.transport_mode || 'ROAD');
+        const cargoText = String(row.cargo_summary || '');
+        const routeText = String(row.route_summary || '');
+        const stageLabel = String(row.verified_stage_label || 'Chưa xác minh');
+        const stageTitle = String(row.verified_stage_title || '');
+        const etaLabel = String(row.verified_warehouse_eta_label || 'Chưa xác minh');
+        const updatedLabel = String(row.last_updated_label || row.last_updated_at || 'Chưa cập nhật');
+        const nextStepText = String(row.next_step || '');
+        const contactText = String(row.contact_point || '');
+
+        // 1. Desktop table row
         const tr = document.createElement('tr');
+        tr.dataset.testid = `shipment-row-${sid}`;
+        tr.addEventListener('click', () => selectShipmentForJourney(sid));
 
         const tdId = document.createElement('td');
         const strongId = document.createElement('strong');
-        strongId.textContent = String(row.shipment_id || '');
+        strongId.textContent = sid;
         tdId.appendChild(strongId);
 
-        const tdRoute = document.createElement('td');
-        const divRoute = document.createElement('div');
-        divRoute.textContent = String(row.route_summary || '');
+        const tdCargo = document.createElement('td');
         const divCargo = document.createElement('div');
-        divCargo.style.fontSize = '11.5px';
-        divCargo.style.color = '#64748b';
-        divCargo.textContent = String(row.cargo_summary || '');
-        tdRoute.appendChild(divRoute);
-        tdRoute.appendChild(divCargo);
+        divCargo.style.fontWeight = '700';
+        divCargo.textContent = cargoText;
+        const divRoute = document.createElement('div');
+        divRoute.style.fontSize = '11.5px';
+        divRoute.style.color = '#64748b';
+        divRoute.textContent = routeText;
+        tdCargo.appendChild(divCargo);
+        tdCargo.appendChild(divRoute);
+
+        const tdMode = document.createElement('td');
+        const spanMode = document.createElement('span');
+        spanMode.className = 'journey-toolbar-chip';
+        spanMode.textContent = modeText;
+        tdMode.appendChild(spanMode);
 
         const tdStage = document.createElement('td');
         const spanStage = document.createElement('span');
-        spanStage.textContent = String(row.verified_stage_label || 'Chưa xác minh');
+        spanStage.style.fontWeight = '700';
+        spanStage.textContent = stageLabel;
         const divStageTitle = document.createElement('div');
         divStageTitle.style.fontSize = '11.5px';
         divStageTitle.style.color = '#475569';
-        divStageTitle.textContent = String(row.verified_stage_title || '');
+        divStageTitle.textContent = stageTitle;
         tdStage.appendChild(spanStage);
         tdStage.appendChild(divStageTitle);
 
         const tdEta = document.createElement('td');
-        tdEta.textContent = String(row.verified_warehouse_eta_label || 'Chưa xác minh');
+        tdEta.textContent = etaLabel;
 
-        const tdNext = document.createElement('td');
+        const tdUpdated = document.createElement('td');
+        const divUpdated = document.createElement('div');
+        divUpdated.textContent = updatedLabel;
         const divNext = document.createElement('div');
-        divNext.textContent = String(row.next_step || '');
-        const divContact = document.createElement('div');
-        divContact.style.fontSize = '11.5px';
-        divContact.style.color = '#64748b';
-        divContact.textContent = 'Đầu mối: ' + String(row.contact_point || '');
-        tdNext.appendChild(divNext);
-        tdNext.appendChild(divContact);
+        divNext.style.fontSize = '11px';
+        divNext.style.color = '#64748b';
+        divNext.textContent = `${nextStepText} · Đầu mối: ${contactText}`;
+        tdUpdated.appendChild(divUpdated);
+        tdUpdated.appendChild(divNext);
 
         const tdBtn = document.createElement('td');
         const btnOpen = document.createElement('button');
         btnOpen.type = 'button';
         btnOpen.className = 'journey-toolbar-btn';
-        btnOpen.textContent = 'Mở Journey Map';
-        btnOpen.addEventListener('click', () => selectShipmentForJourney(String(row.shipment_id || '')));
+        btnOpen.dataset.testid = `btn-open-journey-${sid}`;
+        btnOpen.textContent = 'Xem hành trình';
+        btnOpen.addEventListener('click', (ev) => {
+          if (ev && ev.stopPropagation) ev.stopPropagation();
+          selectShipmentForJourney(sid);
+        });
         tdBtn.appendChild(btnOpen);
 
         tr.appendChild(tdId);
-        tr.appendChild(tdRoute);
+        tr.appendChild(tdCargo);
+        tr.appendChild(tdMode);
         tr.appendChild(tdStage);
         tr.appendChild(tdEta);
-        tr.appendChild(tdNext);
+        tr.appendChild(tdUpdated);
         tr.appendChild(tdBtn);
         if (tbody) tbody.appendChild(tr);
+
+        // 2. Mobile compact card (no horizontal table scrolling on 390x844)
+        const card = document.createElement('article');
+        card.className = 'shipment-card-mobile';
+        card.dataset.testid = `shipment-card-${sid}`;
+        card.addEventListener('click', () => selectShipmentForJourney(sid));
+
+        const cardTop = document.createElement('div');
+        cardTop.className = 'shipment-card-top';
+        const cardId = document.createElement('strong');
+        cardId.style.fontFamily = 'var(--mono)';
+        cardId.style.fontSize = '13.5px';
+        cardId.textContent = sid;
+        const cardBadges = document.createElement('div');
+        cardBadges.style.display = 'flex';
+        cardBadges.style.gap = '6px';
+        const badgeMode = document.createElement('span');
+        badgeMode.className = 'journey-toolbar-chip';
+        badgeMode.textContent = modeText;
+        const badgeStage = document.createElement('span');
+        badgeStage.className = 'journey-toolbar-chip journey-toolbar-here';
+        badgeStage.textContent = stageLabel;
+        cardBadges.appendChild(badgeMode);
+        cardBadges.appendChild(badgeStage);
+        cardTop.appendChild(cardId);
+        cardTop.appendChild(cardBadges);
+
+        const cardCargo = document.createElement('div');
+        cardCargo.style.fontSize = '12.5px';
+        cardCargo.style.fontWeight = '700';
+        cardCargo.textContent = cargoText;
+
+        const cardRoute = document.createElement('div');
+        cardRoute.style.fontSize = '11.5px';
+        cardRoute.style.color = '#475569';
+        cardRoute.textContent = routeText;
+
+        const cardMeta = document.createElement('div');
+        cardMeta.className = 'shipment-card-meta';
+        const metaEta = document.createElement('div');
+        metaEta.textContent = `ETA xác minh: ${etaLabel}`;
+        const metaUpdated = document.createElement('div');
+        metaUpdated.textContent = `Cập nhật: ${updatedLabel}`;
+        cardMeta.appendChild(metaEta);
+        cardMeta.appendChild(metaUpdated);
+
+        const cardBtn = document.createElement('button');
+        cardBtn.type = 'button';
+        cardBtn.className = 'btn-primary';
+        cardBtn.style.width = '100%';
+        cardBtn.textContent = 'Xem hành trình →';
+        cardBtn.addEventListener('click', (ev) => {
+          if (ev && ev.stopPropagation) ev.stopPropagation();
+          selectShipmentForJourney(sid);
+        });
+
+        card.appendChild(cardTop);
+        card.appendChild(cardCargo);
+        card.appendChild(cardRoute);
+        card.appendChild(cardMeta);
+        card.appendChild(cardBtn);
+        if (cardsBox) cardsBox.appendChild(card);
       });
 
       if (dashboardRows.length === 0) {
         if (selectorBox) selectorBox.classList.add('hidden');
+        if (backBtn) backBtn.classList.add('hidden');
+        if (journeyView) journeyView.classList.remove('hidden');
         const fallbackId = (document.getElementById('shipment-input').value || '').trim();
         showUnpublishedState(fallbackId);
         return;
@@ -3236,21 +3512,32 @@ def render_trial_portal_html() -> str:
 
       if (dashboardRows.length === 1) {
         if (selectorBox) selectorBox.classList.add('hidden');
-      } else {
-        if (selectorBox) selectorBox.classList.remove('hidden');
+        if (backBtn) backBtn.classList.add('hidden');
+        if (journeyView) journeyView.classList.remove('hidden');
+        await selectShipmentForJourney(String(dashboardRows[0].shipment_id || ''));
+        return;
       }
 
-      await selectShipmentForJourney(String(dashboardRows[0].shipment_id || ''));
+      // 2+ shipments: open Dashboard overview as the first screen; hide Journey Map until a shipment is selected
+      if (selectorBox) selectorBox.classList.remove('hidden');
+      if (journeyView) journeyView.classList.add('hidden');
+      if (backBtn) backBtn.classList.remove('hidden');
     }
 
     async function loadCustomerDashboard() {
       const tbody = document.getElementById('dash-shipments-tbody');
+      const cardsBox = document.getElementById('dash-shipments-cards');
       const selectorBox = document.getElementById('customer-shipment-selector');
+      const journeyView = document.getElementById('shipment-journey-view');
+      const backBtn = document.getElementById('btn-back-to-dashboard');
       if (tbody) tbody.innerHTML = '';
+      if (cardsBox) cardsBox.innerHTML = '';
 
       const res = await apiFetch('/api/hexa/v0/dashboard');
       if (!res.ok) {
         if (selectorBox) selectorBox.classList.add('hidden');
+        if (backBtn) backBtn.classList.add('hidden');
+        if (journeyView) journeyView.classList.remove('hidden');
         showUnpublishedState('');
         return;
       }
@@ -3259,11 +3546,28 @@ def render_trial_portal_html() -> str:
       await renderDashboardData(body);
     }
 
+    function backToDashboard() {
+      closeStageModal();
+      const selectorBox = document.getElementById('customer-shipment-selector');
+      const journeyView = document.getElementById('shipment-journey-view');
+      if (journeyView) journeyView.classList.add('hidden');
+      if (selectorBox) selectorBox.classList.remove('hidden');
+    }
+
     async function selectShipmentForJourney(shipmentId) {
       const sid = String(shipmentId || '').trim();
       if (!sid) return;
       const inp = document.getElementById('shipment-input');
       if (inp) inp.value = sid;
+      const selectorBox = document.getElementById('customer-shipment-selector');
+      const journeyView = document.getElementById('shipment-journey-view');
+      const backBtn = document.getElementById('btn-back-to-dashboard');
+      if (selectorBox) selectorBox.classList.add('hidden');
+      if (journeyView) journeyView.classList.remove('hidden');
+      if (backBtn) {
+        if (dashboardRows.length >= 2) backBtn.classList.remove('hidden');
+        else backBtn.classList.add('hidden');
+      }
       const matched = dashboardRows.find(r => String(r.shipment_id) === sid) || null;
       activeShipmentRow = matched;
       if (matched && matched.journey && Array.isArray(matched.journey.nodes) && matched.journey.nodes.length > 0) {
@@ -3721,8 +4025,7 @@ def render_trial_portal_html() -> str:
     }
 
     async function triggerDownload(shipmentId, docId, version) {
-      const tokenParam = activeAuthToken ? `&_hx_token=${encodeURIComponent(activeAuthToken)}` : '';
-      const url = `/api/hexa/v0/shipments/${encodeURIComponent(shipmentId)}/documents/${encodeURIComponent(docId)}/download?version=${encodeURIComponent(version)}${tokenParam}`;
+      const url = `/api/hexa/v0/shipments/${encodeURIComponent(shipmentId)}/documents/${encodeURIComponent(docId)}/download?version=${encodeURIComponent(version)}`;
       const res = await apiFetch(url);
       const banner = document.getElementById('download-status-banner');
       if (banner) banner.classList.remove('hidden');
@@ -4038,12 +4341,10 @@ class HexaTrialRequestHandler(BaseHTTPRequestHandler):
         self.wfile.write(data)
 
     def _current_token(self) -> str:
-        parsed = urlparse(self.path)
-        return _extract_session_token(self.headers, parse_qs(parsed.query))
+        return _extract_session_token(self.headers)
 
     def _current_tt_token(self) -> str:
-        parsed = urlparse(self.path)
-        return _extract_tt_session_token(self.headers, parse_qs(parsed.query))
+        return _extract_tt_session_token(self.headers)
 
     def _read_json_body(self) -> dict[str, Any]:
         length = int(self.headers.get("Content-Length") or 0)

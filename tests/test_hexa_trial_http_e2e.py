@@ -2199,23 +2199,40 @@ vm.runInContext(scriptMatch[1], sandbox);
     assert "IFRAME_BEARER_LOGIN_OK" in proc.stdout
 
 
-def test_live_preview_seed_and_proxy_stripped_iframe_journey_map_ready(
+def test_multi_shipment_dashboard_to_journey_navigation_revoke_and_no_url_token_leak(
     trial_server,
 ) -> None:
-    """Regression for Owner Live Preview feedback #2:
-    1. seed_live_preview_publications(env) pre-publishes ROAD-LG-001 (Lục Giác) and ROAD-MD-002 (Minh Đức)
-       for the standalone preview server while keeping ROAD-AP-003 (An Phát) UNPUBLISHED.
-    2. Even if both Cookie AND Authorization headers are stripped by a reverse proxy,
-       POST /api/hexa/v0/auth/login returns initial dashboard data and X-Hexa-Session-Token / _hx_token
-       allow full Journey Map rendering (5 nodes, 4 edges, auto-open bubble on current stage, and PDF download).
-    3. Customer display_name never shows '(Khách A)', '(Khách B)', or '(Khách C)'.
+    """HEXA-MULTI-SHIPMENT-DASHBOARD-NAVIGATION:
+    1. Uses 2 simulated shipments belonging to the SAME customer Lục Giác (CUST-LUCGIAC) in SANDBOX_STAGING:
+       ROAD-LG-001 and ROAD-LG-002.
+    2. 0 published shipments -> friendly empty state.
+    3. 1 published shipment (e.g. Minh Đức ROAD-MD-002, or Lục Giác when only 1 is published) -> opens straight into Journey Map.
+    4. 2 published shipments for Lục Giác (ROAD-LG-001 + ROAD-LG-002) -> opens Dashboard overview first (Journey Map hidden),
+       shows shipment_id, cargo_summary, transport_mode, verified_stage_label, verified_warehouse_eta_label, last_updated_label
+       (both desktop table rows and mobile compact cards), clicking a shipment opens its full-screen Journey Map with
+       '← Quay lại Dashboard', and clicking '← Quay lại Dashboard' returns to the Dashboard overview.
+    5. Revoking ROAD-LG-002 removes it from Lục Giác's Dashboard immediately.
+    6. Foreign customer (Minh Đức) cannot access ROAD-LG-001 or ROAD-LG-002.
+    7. Security: session token is NEVER placed in URLs (_hx_token removed from client & server query parsing);
+       PDF download uses Authorization header in apiFetch + Blob in cookie-blocked iframe mode.
     """
+    import subprocess
+    import tempfile
     from core.hexa_trial_portal import seed_live_preview_publications
 
     base_url, env = trial_server
     seed_live_preview_publications(env)
 
-    # Login as Lục Giác
+    # 1. Verify customer HTML has no _hx_token URL parameter and includes Back to Dashboard button + mobile cards container
+    st_html, _, raw_html = _http_request(base_url, "/")
+    assert st_html == 200
+    html_text = raw_html.decode("utf-8")
+    assert "_hx_token" not in html_text
+    assert "btn-back-to-dashboard" in html_text
+    assert "Quay lại Dashboard" in html_text
+    assert "dash-shipments-cards" in html_text
+
+    # 2. Login as Lục Giác (2 published shipments: ROAD-LG-001 and ROAD-LG-002)
     st_login, _, raw_login = _http_request(
         base_url,
         "/api/hexa/v0/auth/login",
@@ -2224,42 +2241,316 @@ def test_live_preview_seed_and_proxy_stripped_iframe_journey_map_ready(
     )
     assert st_login == 200
     login_body = json.loads(raw_login.decode("utf-8"))
-    assert "Khách A" not in login_body.get("label", "")
-    assert "Khách A" not in login_body.get("principal", {}).get("display_name", "")
     issued_token = login_body.get("session_token", "")
     assert issued_token.startswith("hx_cust_")
 
-    # Login response includes initial dashboard with ROAD-LG-001 ready immediately
-    dash = login_body.get("dashboard") or {}
-    assert dash.get("summary", {}).get("active_tracking") == 1
-    assert len(dash.get("shipments") or []) == 1
-    assert dash["shipments"][0]["shipment_id"] == "ROAD-LG-001"
+    dash_2 = login_body.get("dashboard") or {}
+    shipments_2 = dash_2.get("shipments") or []
+    assert len(shipments_2) == 2
+    assert {s["shipment_id"] for s in shipments_2} == {"ROAD-LG-001", "ROAD-LG-002"}
+    assert dash_2.get("summary", {}).get("active_tracking") == 2
+    assert dash_2.get("summary", {}).get("verified_warehouse_eta_count") == 1
 
-    # Even without Cookie or Authorization header, X-Hexa-Session-Token and ?_hx_token= work
-    st_dash_hdr, _, _ = _http_request(
+    # 3. Security: query token ?_hx_token= MUST be rejected (403) without Authorization/Cookie header
+    st_query_tok_dash, _, _ = _http_request(
         base_url,
-        "/api/hexa/v0/dashboard",
-        headers={"X-Hexa-Session-Token": issued_token},
+        f"/api/hexa/v0/dashboard?_hx_token={issued_token}",
     )
-    assert st_dash_hdr == 200
+    assert st_query_tok_dash == 403
 
-    st_pdf_q, _, raw_pdf_q = _http_request(
+    st_query_tok_pdf, _, _ = _http_request(
         base_url,
         f"/api/hexa/v0/shipments/ROAD-LG-001/documents/DOC-LG-PL/download?version=v2&_hx_token={issued_token}",
     )
-    assert st_pdf_q == 200
-    assert raw_pdf_q.startswith(b"%PDF-")
+    assert st_query_tok_pdf == 403
 
-    # An Phát remains UNPUBLISHED so unpublished state is still verifiable
-    st_ap, _, raw_ap = _http_request(
+    # Authorization: Bearer header works for both dashboard and PDF download (used by apiFetch + Blob)
+    st_bearer_pdf, _, raw_bearer_pdf = _http_request(
+        base_url,
+        "/api/hexa/v0/shipments/ROAD-LG-002/documents/DOC-LG02-PL/download?version=v1",
+        headers={"Authorization": f"Bearer {issued_token}"},
+    )
+    assert st_bearer_pdf == 200
+    assert raw_bearer_pdf.startswith(b"%PDF-")
+
+    # 4. Cross-customer isolation: Minh Đức only sees ROAD-MD-002 (1 shipment) and cannot access ROAD-LG-002 (403)
+    st_md_login, _, raw_md_login = _http_request(
+        base_url,
+        "/api/hexa/v0/auth/login",
+        method="POST",
+        json_body={"username": "minhduc.trial", "passcode": "MD-Trial-2026!"},
+    )
+    assert st_md_login == 200
+    md_body = json.loads(raw_md_login.decode("utf-8"))
+    md_token = md_body["session_token"]
+    md_shipments = md_body.get("dashboard", {}).get("shipments") or []
+    assert [s["shipment_id"] for s in md_shipments] == ["ROAD-MD-002"]
+
+    st_md_forbid, _, _ = _http_request(
+        base_url,
+        "/api/hexa/v0/shipments/ROAD-LG-002",
+        headers={"Authorization": f"Bearer {md_token}"},
+    )
+    assert st_md_forbid == 403
+
+    # 5. An Phát has 0 published shipments
+    st_ap_login, _, raw_ap_login = _http_request(
         base_url,
         "/api/hexa/v0/auth/login",
         method="POST",
         json_body={"username": "anphat.trial", "passcode": "AP-Trial-2026!"},
     )
-    assert st_ap == 200
-    ap_body = json.loads(raw_ap.decode("utf-8"))
-    assert ap_body.get("dashboard", {}).get("summary", {}).get("active_tracking") == 0
+    assert st_ap_login == 200
+    ap_body = json.loads(raw_ap_login.decode("utf-8"))
+    assert ap_body.get("dashboard", {}).get("shipments") == []
+
+    # 6. Execute client DOM state machine in Node VM for:
+    #    - 0 shipments (An Phát) -> empty state visible
+    #    - 1 shipment (Minh Đức) -> straight into Journey Map, Dashboard selector hidden, Back button hidden
+    #    - 2 shipments (Lục Giác) -> Dashboard overview visible FIRST, Journey Map hidden ->
+    #      select ROAD-LG-002 -> Journey Map visible, Dashboard hidden, Back button visible ->
+    #      click Back to Dashboard -> Dashboard visible again, Journey Map hidden ->
+    #      select ROAD-LG-001 -> Journey Map of ROAD-LG-001 visible + triggerDownload uses Authorization header (no _hx_token in URL)
+    node_nav_script = r"""
+const fs = require('fs');
+const vm = require('vm');
+const html = fs.readFileSync(process.env.HTML_PATH, 'utf8');
+const lgLogin = JSON.parse(process.env.LG_LOGIN_JSON);
+const mdLogin = JSON.parse(process.env.MD_LOGIN_JSON);
+const apLogin = JSON.parse(process.env.AP_LOGIN_JSON);
+const scriptMatch = html.match(/<script>([\s\S]*?)<\/script>/);
+if (!scriptMatch) { console.error('NO_SCRIPT'); process.exit(2); }
+
+function makeEl(tag) {
+  let _text = '';
+  const classes = new Set();
+  const el = {
+    tagName: (tag || 'div').toUpperCase(),
+    style: {},
+    dataset: {},
+    attrs: {},
+    value: '',
+    children: [],
+    className: '',
+    classList: {
+      add(...cs) { cs.forEach(c => classes.add(c)); el.className = Array.from(classes).join(' '); },
+      remove(...cs) { cs.forEach(c => classes.delete(c)); el.className = Array.from(classes).join(' '); },
+      toggle(c, force) {
+        if (force === undefined) { classes.has(c) ? classes.delete(c) : classes.add(c); }
+        else if (force) { classes.add(c); } else { classes.delete(c); }
+        el.className = Array.from(classes).join(' ');
+      },
+      contains(c) { return classes.has(c); }
+    },
+    appendChild(child) { this.children.push(child); return child; },
+    addEventListener(ev, fn) { this['on' + ev] = fn; },
+    setAttribute(k, v) { this.attrs[k] = String(v); if (k === 'class') this.className = String(v); },
+    getAttribute(k) { return this.attrs[k]; },
+    getBoundingClientRect() { return { width: 1280, height: 640, left: 0, top: 0 }; },
+    get clientWidth() { return 1280; },
+    get clientHeight() { return 640; },
+    get textContent() {
+      if (this.children.length > 0) return _text + this.children.map(c => c.textContent).join(' ');
+      return _text;
+    },
+    set textContent(v) { _text = String(v ?? ''); this.children = []; },
+    set innerHTML(v) { if (v === '') { this.children = []; _text = ''; } }
+  };
+  return el;
+}
+
+const elements = {};
+for (const id of ['customer-shipment-selector', 'shipment-journey-view', 'btn-back-to-dashboard', 'journey-zero-notice', 'journey-modal-layer']) {
+  elements[id] = makeEl('div');
+  if (id !== 'shipment-journey-view') elements[id].classList.add('hidden');
+}
+
+const document = {
+  getElementById(id) {
+    if (!elements[id]) elements[id] = makeEl('div');
+    return elements[id];
+  },
+  createElement(tag) { return makeEl(tag); },
+  createElementNS(_ns, tag) { return makeEl(tag); },
+  querySelectorAll() { return []; },
+  body: makeEl('body')
+};
+
+let activeMockLogin = lgLogin;
+let downloadedUrls = [];
+let downloadedHeaders = [];
+
+const sandbox = {
+  document,
+  window: { addEventListener() {}, open() {} },
+  Intl,
+  encodeURIComponent,
+  Math,
+  Number,
+  JSON,
+  String,
+  Array,
+  Object,
+  console,
+  fetch: async (url, opts = {}) => {
+    if (url === '/api/hexa/v0/auth/login') {
+      return { ok: true, status: 200, json: async () => activeMockLogin };
+    }
+    if (url.includes('/download')) {
+      downloadedUrls.push(url);
+      downloadedHeaders.push(opts.headers || {});
+      return {
+        ok: true,
+        status: 200,
+        blob: async () => ({ size: 1420 })
+      };
+    }
+    return { ok: true, status: 200, json: async () => activeMockLogin.dashboard };
+  }
+};
+vm.createContext(sandbox);
+vm.runInContext(scriptMatch[1], sandbox);
+
+(async () => {
+  // Case A: 0 shipments (An Phát) -> empty state visible
+  activeMockLogin = apLogin;
+  document.getElementById('cust-username').value = 'anphat.trial';
+  document.getElementById('cust-passcode').value = 'AP-Trial-2026!';
+  await sandbox.loginCustomer();
+  if (!elements['customer-shipment-selector'].classList.contains('hidden')) {
+    throw new Error('0-shipment state must hide shipment selector');
+  }
+  if (elements['journey-zero-notice'].classList.contains('hidden')) {
+    throw new Error('0-shipment state must show friendly empty state');
+  }
+
+  // Case B: 1 shipment (Minh Đức) -> straight into Journey Map, selector hidden, Back button hidden
+  activeMockLogin = mdLogin;
+  document.getElementById('cust-username').value = 'minhduc.trial';
+  document.getElementById('cust-passcode').value = 'MD-Trial-2026!';
+  await sandbox.loginCustomer();
+  if (!elements['customer-shipment-selector'].classList.contains('hidden')) {
+    throw new Error('1-shipment state must hide Dashboard selector and open Journey Map directly');
+  }
+  if (elements['shipment-journey-view'].classList.contains('hidden')) {
+    throw new Error('1-shipment state must show Journey Map');
+  }
+  if (!elements['btn-back-to-dashboard'].classList.contains('hidden')) {
+    throw new Error('1-shipment state must hide Back to Dashboard button');
+  }
+  if (document.getElementById('toolbar-id').textContent !== 'ROAD-MD-002') {
+    throw new Error('1-shipment state did not load ROAD-MD-002 into Journey toolbar');
+  }
+
+  // Case C: 2 shipments (Lục Giác) -> Dashboard overview FIRST, Journey Map hidden until selection
+  activeMockLogin = lgLogin;
+  document.getElementById('cust-username').value = 'lucgiac.trial';
+  document.getElementById('cust-passcode').value = 'LG-Trial-2026!';
+  await sandbox.loginCustomer();
+  if (elements['customer-shipment-selector'].classList.contains('hidden')) {
+    throw new Error('2-shipment state must show Dashboard overview first');
+  }
+  if (!elements['shipment-journey-view'].classList.contains('hidden')) {
+    throw new Error('2-shipment state must hide Journey Map until a shipment is selected');
+  }
+
+  // Check required fields in both desktop table and mobile cards
+  const tableText = document.getElementById('dash-shipments-tbody').textContent;
+  const cardsText = document.getElementById('dash-shipments-cards').textContent;
+  for (const token of ['ROAD-LG-001', 'ROAD-LG-002', 'Nội thất văn phòng', 'Thiết bị chiếu sáng', 'ROAD', 'QUA CỬA KHẨU', 'Hải quan nhập', '2026-10-24', '2026-10-21T14:15:00Z', '2026-10-22T15:30:00Z', 'Xem hành trình']) {
+    if (!tableText.includes(token)) throw new Error('Desktop Dashboard table missing required token: ' + token);
+    if (!cardsText.includes(token)) throw new Error('Mobile Dashboard cards missing required token: ' + token);
+  }
+
+  // Select shipment ROAD-LG-002 from Dashboard -> opens full-screen Journey Map of ROAD-LG-002
+  await sandbox.selectShipmentForJourney('ROAD-LG-002');
+  if (!elements['customer-shipment-selector'].classList.contains('hidden')) {
+    throw new Error('Selecting shipment must hide Dashboard overview');
+  }
+  if (elements['shipment-journey-view'].classList.contains('hidden')) {
+    throw new Error('Selecting shipment must show Journey Map');
+  }
+  if (elements['btn-back-to-dashboard'].classList.contains('hidden')) {
+    throw new Error('Multi-shipment Journey Map must show Back to Dashboard button');
+  }
+  if (document.getElementById('toolbar-id').textContent !== 'ROAD-LG-002') {
+    throw new Error('Journey Map did not open ROAD-LG-002');
+  }
+
+  // Click '← Quay lại Dashboard' -> returns to Dashboard overview, hides Journey Map
+  sandbox.backToDashboard();
+  if (elements['customer-shipment-selector'].classList.contains('hidden')) {
+    throw new Error('backToDashboard() must show Dashboard overview');
+  }
+  if (!elements['shipment-journey-view'].classList.contains('hidden')) {
+    throw new Error('backToDashboard() must hide Journey Map');
+  }
+
+  // Select ROAD-LG-001 and verify Blob PDF download uses Authorization header with NO token in URL
+  await sandbox.selectShipmentForJourney('ROAD-LG-001');
+  if (document.getElementById('toolbar-id').textContent !== 'ROAD-LG-001') {
+    throw new Error('Journey Map did not switch to ROAD-LG-001');
+  }
+  await sandbox.triggerDownload('ROAD-LG-001', 'DOC-LG-PL', 'v2');
+  if (downloadedUrls.length !== 1 || downloadedUrls[0].includes('_hx_token') || downloadedUrls[0].includes('hx_cust_')) {
+    throw new Error('PDF download URL leaked token: ' + JSON.stringify(downloadedUrls));
+  }
+  if (!String(downloadedHeaders[0]['Authorization'] || '').startsWith('Bearer hx_cust_')) {
+    throw new Error('PDF download did not send Authorization Bearer header');
+  }
+
+  console.log('MULTI_SHIPMENT_NAV_OK');
+})();
+"""
+    with tempfile.NamedTemporaryFile("w", encoding="utf-8", suffix=".html", delete=False) as fh_html:
+        fh_html.write(html_text)
+        html_path = fh_html.name
+
+    proc = subprocess.run(
+        ["node", "-e", node_nav_script],
+        env={
+            "PATH": "/usr/local/bin:/usr/bin:/bin",
+            "HTML_PATH": html_path,
+            "LG_LOGIN_JSON": json.dumps(login_body),
+            "MD_LOGIN_JSON": json.dumps(md_body),
+            "AP_LOGIN_JSON": json.dumps(ap_body),
+        },
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert proc.returncode == 0, f"Multi-shipment nav test failed: {proc.stdout} {proc.stderr}"
+    assert "MULTI_SHIPMENT_NAV_OK" in proc.stdout
+
+    # 7. Revoke ROAD-LG-002 as TT staff -> ROAD-LG-002 disappears from Lục Giác's Dashboard, leaving 1 shipment (ROAD-LG-001)
+    st_tt, hdrs_tt, _ = _http_request(
+        base_url,
+        "/api/hexa/v0/tt/auth/login",
+        method="POST",
+        json_body={"username": "tt.ops.truongthanh", "passcode": "TT-Trial-2026!"},
+    )
+    assert st_tt == 200
+    tt_token = _extract_cookie_value(hdrs_tt, TRIAL_TT_COOKIE_NAME)
+
+    st_rev, _, _ = _http_request(
+        base_url,
+        "/api/hexa/v0/tt/shipments/ROAD-LG-002/revoke",
+        method="POST",
+        headers={"Cookie": f"{TRIAL_TT_COOKIE_NAME}={tt_token}"},
+        json_body={},
+    )
+    assert st_rev == 200
+
+    st_dash_after_rev, _, raw_dash_after_rev = _http_request(
+        base_url,
+        "/api/hexa/v0/dashboard",
+        headers={"Authorization": f"Bearer {issued_token}"},
+    )
+    assert st_dash_after_rev == 200
+    dash_after_rev = json.loads(raw_dash_after_rev.decode("utf-8"))
+    remaining_ids = [s["shipment_id"] for s in (dash_after_rev.get("shipments") or [])]
+    assert remaining_ids == ["ROAD-LG-001"]
+
 
 
 

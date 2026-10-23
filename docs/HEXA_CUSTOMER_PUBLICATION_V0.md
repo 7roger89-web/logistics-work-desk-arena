@@ -144,6 +144,22 @@ Nguồn dữ liệu nội bộ hiện tại trong repo **chưa có sẵn** các 
   - **Không tự động đánh dấu hoàn thành công đoạn sau từ công đoạn trước**: đã xóa nhánh suy diễn `pickup` → `road-ltl`; sự kiện `pickup` (`Lấy hàng`) không tự đánh dấu `road-ltl` (`Nhận & ghép hàng (LTL)`) hoàn thành khi chưa có sự kiện `road-ltl` được xác minh & công bố.
   - Khi chưa đăng nhập: hiển thị màn đăng nhập gọn (`customer-login-screen`); khi lô chưa công bố hoặc đã thu hồi: hiển thị `"Trường Thành chưa công bố thông tin cho lô này"` trên nền hải đồ (`journey-zero-notice`).
 
+## 8. Điều hướng hai tầng Dashboard nhiều lô → Journey Map từng lô (`HEXA-MULTI-SHIPMENT-DASHBOARD-NAVIGATION`)
+
+- **3 trạng thái hiển thị theo số lô đã được TT công bố cho `customer_id` của phiên server**:
+  1. **Khi khách chưa có lô công bố (`0` lô — ví dụ `anphat.trial`)**: hiển thị trạng thái trống thân thiện (`"Trường Thành chưa công bố thông tin cho lô này"`), ẩn bảng danh sách nhiều lô và ẩn nút quay lại.
+  2. **Khi khách chỉ có `1` lô công bố (ví dụ `minhduc.trial` với `ROAD-MD-002`, hoặc Lục Giác khi chỉ công bố 1 lô)**: giữ nguyên hành vi vào thẳng hải đồ Journey Map của lô đó, ẩn danh sách nhiều lô và ẩn nút `"← Quay lại Dashboard"`.
+  3. **Khi khách có từ `2` lô được công bố trở lên (ví dụ `lucgiac.trial` với 2 lô thuộc cùng `CUST-LUCGIAC`: `ROAD-LG-001` và `ROAD-LG-002`)**:
+     - Mở **Dashboard tổng quan** (`#customer-shipment-selector`) làm màn hình đầu tiên; **ẩn hải đồ** (`#shipment-journey-view`) cho đến khi khách chọn một lô.
+     - Danh sách hiển thị đầy đủ 6 thông tin cần thiết: **mã lô** (`shipment_id`), **hàng hóa & tuyến** (`cargo_summary`, `route_summary`), **phương thức vận chuyển** (`transport_mode`), **chặng xác minh** (`verified_stage_label`, `verified_stage_title`), **ETA được xác minh** (`verified_warehouse_eta_label`), **cập nhật cuối** (`last_updated_label`).
+     - Desktop (`> 720px`) hiển thị bảng `.dash-table-desktop`; Mobile (`<= 720px`) tự động chuyển sang danh sách thẻ gọn `.dash-cards-mobile` (`#dash-shipments-cards`) không gây cuộn ngang.
+     - Bấm dòng lô/thẻ lô hoặc nút **"Xem hành trình"** → ẩn Dashboard tổng quan, mở **Journey Map toàn màn hình** của lô đó kèm nút **"← Quay lại Dashboard"** (`#btn-back-to-dashboard`) trên thanh công cụ để quay lại danh sách tổng quan bất kỳ lúc nào.
+     - Khi TT thu hồi công bố 1 lô (`POST /api/hexa/v0/tt/shipments/ROAD-LG-002/revoke`), lô đó biến mất ngay khỏi Dashboard của khách.
+- **Khóa bảo mật token phiên khi chạy trong iframe**:
+  - Đã gỡ bỏ hoàn toàn việc truyền `_hx_token` trên URL tải PDF và gỡ bỏ cơ chế đọc `_hx_token` từ query string trên server (`GET ...?_hx_token=...` trả `HTTP 403`) để tuyệt đối không làm lộ token phiên qua access log / lịch sử trình duyệt / Referer.
+  - Việc gọi API và tải chứng từ PDF trong chế độ iframe chặn cookie dùng header `Authorization: Bearer <token>` trong `apiFetch()` kết hợp `res.blob()` + `URL.createObjectURL(blob)`.
+
+
 
 
 
