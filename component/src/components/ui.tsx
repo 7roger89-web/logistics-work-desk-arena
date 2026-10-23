@@ -5,7 +5,7 @@ import {
   Search, BookOpen, Languages, ShieldCheck, Menu, X, Bell, CheckCircle2,
   AlertTriangle, OctagonAlert, Info, ChevronRight, ChevronDown, ArrowRight,
   CircleCheck, Clock, CircleAlert, Ban, FileDown, Eye, PenLine, Trash2,
-  Banknote, Layers,
+  Banknote, Layers, Inbox,
   type LucideIcon,
 } from "lucide-react";
 import { cx, matchLoose } from "../lib/format";
@@ -32,6 +32,7 @@ export const ICONS: Record<string, LucideIcon> = {
   lang: Languages,
   shield: ShieldCheck,
   banknote: Banknote,
+  inbox: Inbox,
 };
 
 export function ToneBadge({ tone, children, size = "md" }: { tone: "green" | "amber" | "red" | "blue" | "gray"; children: React.ReactNode; size?: "sm" | "md" }) {

@@ -21,6 +21,7 @@ import {
   Field, PlChoice, PrimaryBtn, SearchPicker, StateRow, ToneBadge, inputCls,
 } from "../components/ui";
 import { useStore } from "../lib/store";
+import { ContractLinkedSnippets } from "./Inbox";
 import { cx, downloadBinaryFile, fmtMoney, fmtText, fmtVND, isUnknown } from "../lib/format";
 import type { Contract, GoodsLine } from "../lib/viewmodel";
 
@@ -259,6 +260,7 @@ export default function ContractDetail() {
 
       {/* ============ TAB: OVERVIEW ============ */}
       {tab === "tong-quan" && (
+        <div className="space-y-4">
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
           <section className="rounded-2xl bg-white border border-slate-200 p-4 md:p-5 space-y-3">
             <h3 className="font-extrabold text-[16.5px] text-[#0f2a4a] flex items-center gap-2"><FileText size={19} className="text-[#1e5aa8]" /> Danh tính pháp lý</h3>
@@ -361,6 +363,8 @@ export default function ContractDetail() {
             )}
             <PrimaryBtn onClick={saveOverview} className="w-full">💾 LƯU TỔNG QUAN</PrimaryBtn>
           </section>
+        </div>
+        <ContractLinkedSnippets contractId={c.id} />
         </div>
       )}
 

@@ -2487,6 +2487,73 @@ export interface ViewModel {
   /** Authoritative outcomes of the last handled business events (see above). */
   lastWrites?: LastWriteOutcome[];
   unknownLabel?: string;
+  /** Issue #212 — Bể thông tin / ghi nhanh. Unverified source snippets. */
+  inbox?: InboxSlice;
+}
+
+export interface InboxAttachment {
+  id: string;
+  name: string;
+  mime: string;
+  originalSize: number;
+  storedSize: number;
+  sizeLabel: string;
+  uploadedAt: string;
+  downloadAvailable?: boolean;
+  downloadBase64?: string;
+  downloadSeq?: number;
+}
+
+export interface InboxSnippet {
+  id: string;
+  rawText: string;
+  source: string;
+  title: string;
+  sourceRef: string;
+  occurredAt: string;
+  createdAt: string;
+  createdBy: string;
+  requestId: string;
+  contractIds: string[];
+  shipmentIds: string[];
+  linkedSnippetIds: string[];
+  attachments: InboxAttachment[];
+  linked: boolean;
+  unverified: boolean;
+  /** Always null — a snippet is not a booked amount. */
+  amount: MaybeNum;
+  currency: string;
+  fxRate: MaybeNum;
+  unknownLabel?: string;
+}
+
+export interface InboxDownload {
+  snippetId: string;
+  attachmentId: string;
+  name: string;
+  mime: string;
+  downloadAvailable: boolean;
+  downloadBase64?: string;
+  downloadSeq?: number;
+}
+
+export interface InboxSlice {
+  canRead: boolean;
+  canWrite: boolean;
+  unverified: boolean;
+  snippets: InboxSnippet[];
+  count: number;
+  linkedCount: number;
+  unlinkedCount: number;
+  hasMore?: boolean;
+  query?: string;
+  filter?: string;
+  before?: string;
+  targetType?: string;
+  targetId?: string;
+  byContractId?: Record<string, InboxSnippet[]>;
+  byShipmentId?: Record<string, InboxSnippet[]>;
+  download?: InboxDownload | null;
 }
 
 // ----------------------------------------------------------------------------
@@ -2508,6 +2575,30 @@ export function applyViewModel(next: ViewModel): void {
   }
   for (const contract of next.contracts ?? []) {
     if (!Array.isArray((contract as unknown as Record<string, unknown>).intlSnapshots)) (contract as unknown as Record<string, unknown>).intlSnapshots = [];
+  }
+  if (!next.inbox) {
+    next.inbox = {
+      canRead: false,
+      canWrite: false,
+      unverified: true,
+      snippets: [],
+      count: 0,
+      linkedCount: 0,
+      unlinkedCount: 0,
+      byContractId: {},
+      byShipmentId: {},
+    };
+  } else {
+    if (!Array.isArray(next.inbox.snippets)) next.inbox.snippets = [];
+    if (typeof next.inbox.canRead !== "boolean") next.inbox.canRead = next.inbox.canWrite;
+    for (const row of next.inbox.snippets) {
+      if (!Array.isArray(row.shipmentIds)) row.shipmentIds = [];
+      if (!Array.isArray(row.attachments)) row.attachments = [];
+      if (!Array.isArray(row.contractIds)) row.contractIds = [];
+      if (!Array.isArray(row.linkedSnippetIds)) row.linkedSnippetIds = [];
+    }
+    if (!next.inbox.byContractId) next.inbox.byContractId = {};
+    if (!next.inbox.byShipmentId) next.inbox.byShipmentId = {};
   }
   const prev = current;
   current = next;

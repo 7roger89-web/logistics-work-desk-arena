@@ -18,7 +18,7 @@ import re
 import threading
 from contextlib import contextmanager
 from functools import lru_cache
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Any, Iterable, Iterator, Mapping
 from uuid import uuid4
@@ -330,6 +330,13 @@ def ensure_indexes() -> bool:
         # LOGI_CONTRACT_INTL_PAYMENT_COMPARATOR_01 — bounded snapshot ledger per contract
         (db.contract_intl_payment_snapshots, "id", {"unique": True, "name": "uq_contract_intl_snapshot_id", "partialFilterExpression": {"id": {"$type": "string"}}}),
         (db.contract_intl_payment_snapshots, [("contract_id", 1), ("created_at", -1)], {"name": "ix_contract_intl_snapshot_contract"}),
+        # Issue #212 — independent inbox snippets reuse quick_notes. team_note
+        # (id=team_note) stays a separate legacy row and is excluded by kind.
+        (db.quick_notes, "id", {"unique": True, "name": "uq_quick_note_id", "partialFilterExpression": {"id": {"$type": "string"}}}),
+        (db.quick_notes, "request_id", {"unique": True, "name": "uq_inbox_snippet_request", "partialFilterExpression": {"kind": "inbox_snippet", "request_id": {"$type": "string"}}}),
+        (db.quick_notes, [("kind", 1), ("created_at", -1)], {"name": "ix_inbox_snippet_kind_created"}),
+        (db.quick_notes, [("contract_ids", 1), ("kind", 1)], {"name": "ix_inbox_snippet_contracts"}),
+        (db.quick_notes, [("shipment_ids", 1), ("kind", 1)], {"name": "ix_inbox_snippet_shipments"}),
     ]
     all_ok = True
     errors: list[str] = []
@@ -1902,6 +1909,1072 @@ def save_quick_note(content: str) -> bool:
     if ok:
         _audit(db, "quick_note", "team_note", "update", before=old, after={"content": content})
     return ok
+
+
+# ---------------------------------------------------------------------------
+# Issue #212 — Bể thông tin / ghi nhanh. Independent snippets live in the
+# EXISTING quick_notes collection with distinct ids. The legacy team sticky
+# (id=team_note) is never overwritten by this path, and a saved snippet is
+# unverified source evidence — never a ledger posting or paid transaction.
+# ---------------------------------------------------------------------------
+
+TEAM_NOTE_ID = "team_note"
+INBOX_SNIPPET_KIND = "inbox_snippet"
+INBOX_WRITE_PERMISSION = "shipment_edit"
+INBOX_ALLOWED_SOURCES = frozenset({"zalo", "wechat", "bank", "other"})
+INBOX_MAX_RAW_TEXT = 20000
+INBOX_MAX_TITLE = 200
+INBOX_MAX_SOURCE_REF = 200
+INBOX_MAX_REQUEST_ID = 120
+INBOX_MAX_BATCH = 50
+INBOX_PAGE_SIZE = 50
+INBOX_LINKED_PER_TARGET = 50
+INBOX_MAX_QUERY = 120
+INBOX_MAX_ATTACHMENTS = 8
+INBOX_LINK_FIELDS = {
+    "contract": "contract_ids",
+    "snippet": "linked_snippet_ids",
+    "shipment": "shipment_ids",
+}
+
+
+def _inbox_norm_source(value: Any) -> str:
+    text = str(value or "").strip().lower()
+    if not text:
+        return ""
+    return text if text in INBOX_ALLOWED_SOURCES else "other"
+
+
+def _inbox_clip(value: Any, limit: int) -> str:
+    return str(value or "").strip()[:limit]
+
+
+def _inbox_audit_body(doc: Mapping[str, Any] | None) -> dict[str, Any]:
+    row = dict(doc or {})
+    attachments = [item for item in (row.get("attachments") or []) if isinstance(item, Mapping)]
+    return {
+        "id": str(row.get("id") or ""),
+        "source": str(row.get("source") or ""),
+        "title": str(row.get("title") or ""),
+        "request_id": str(row.get("request_id") or ""),
+        "raw_text_len": len(str(row.get("raw_text") or "")),
+        "contract_ids": list(row.get("contract_ids") or []),
+        "shipment_ids": list(row.get("shipment_ids") or []),
+        "linked_snippet_ids": list(row.get("linked_snippet_ids") or []),
+        "attachment_ids": [str(item.get("id") or "") for item in attachments],
+        "attachment_names": [str(item.get("original_name") or item.get("stored_name") or "") for item in attachments],
+        "created_by": str(row.get("created_by") or ""),
+    }
+
+
+def inbox_request_fingerprint(
+    *,
+    raw_text: str,
+    source: str = "",
+    title: str = "",
+    source_ref: str = "",
+    occurred_at: str = "",
+    file_sigs: list[str] | None = None,
+) -> str:
+    """Stable capture identity. File sigs are name:size:sha of ORIGINAL bytes."""
+    sigs = sorted(str(item) for item in (file_sigs or []) if str(item).strip())
+    blob = "\n".join(
+        [
+            str(raw_text or ""),
+            str(source or ""),
+            str(title or ""),
+            str(source_ref or ""),
+            str(occurred_at or ""),
+            *sigs,
+        ]
+    )
+    return hashlib.sha256(blob.encode("utf-8")).hexdigest()
+
+
+def _inbox_stored_fingerprint(doc: Mapping[str, Any] | None) -> str:
+    row = dict(doc or {})
+    stored = str(row.get("request_fingerprint") or "").strip()
+    if stored:
+        return stored
+    return inbox_request_fingerprint(
+        raw_text=str(row.get("raw_text") or ""),
+        source=str(row.get("source") or ""),
+        title=str(row.get("title") or ""),
+        source_ref=str(row.get("source_ref") or ""),
+        occurred_at=str(row.get("occurred_at") or ""),
+        file_sigs=[],
+    )
+
+
+def _inbox_id_list(value: Any) -> list[str]:
+    if not isinstance(value, list):
+        return []
+    out: list[str] = []
+    seen: set[str] = set()
+    for item in value:
+        text = str(item or "").strip()
+        if not text or text in seen:
+            continue
+        seen.add(text)
+        out.append(text)
+    return out
+
+
+def _inbox_is_linked(doc: Mapping[str, Any] | None) -> bool:
+    row = dict(doc or {})
+    return bool(
+        _inbox_id_list(row.get("contract_ids"))
+        or _inbox_id_list(row.get("shipment_ids"))
+        or _inbox_id_list(row.get("linked_snippet_ids"))
+    )
+
+
+def _inbox_created_before_value(stamp: str) -> Any:
+    text = str(stamp or "").strip()
+    if not text:
+        return None
+    iso = text[:-1] + "+00:00" if text.endswith("Z") else text
+    try:
+        parsed = datetime.fromisoformat(iso)
+    except ValueError:
+        return text
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed
+
+
+def _inbox_find_filter(
+    *,
+    query: str = "",
+    link_filter: str = "all",
+    before: str = "",
+    target_type: str = "",
+    target_id: str = "",
+) -> dict[str, Any]:
+    clauses: list[dict[str, Any]] = [
+        {"kind": INBOX_SNIPPET_KIND},
+        {"id": {"$ne": TEAM_NOTE_ID}},
+        {"is_deleted": {"$ne": True}},
+    ]
+    needle = str(query or "").strip()[:INBOX_MAX_QUERY]
+    if needle:
+        escaped = re.escape(needle)
+        clauses.append(
+            {
+                "$or": [
+                    {"raw_text": {"$regex": escaped, "$options": "i"}},
+                    {"title": {"$regex": escaped, "$options": "i"}},
+                    {"source_ref": {"$regex": escaped, "$options": "i"}},
+                    {"source": {"$regex": escaped, "$options": "i"}},
+                    {"attachments.original_name": {"$regex": escaped, "$options": "i"}},
+                    {"attachments.stored_name": {"$regex": escaped, "$options": "i"}},
+                    {"contract_ids": needle},
+                    {"shipment_ids": needle},
+                ]
+            }
+        )
+    kind = str(link_filter or "all").strip().lower()
+    empty_or_missing = lambda field: {
+        "$or": [
+            {field: {"$exists": False}},
+            {field: {"$size": 0}},
+            {field: []},
+        ]
+    }
+    if kind == "unlinked":
+        clauses.append(
+            {
+                "$and": [
+                    empty_or_missing("contract_ids"),
+                    empty_or_missing("shipment_ids"),
+                    empty_or_missing("linked_snippet_ids"),
+                ]
+            }
+        )
+    elif kind == "linked":
+        clauses.append(
+            {
+                "$or": [
+                    {"contract_ids.0": {"$exists": True}},
+                    {"shipment_ids.0": {"$exists": True}},
+                    {"linked_snippet_ids.0": {"$exists": True}},
+                ]
+            }
+        )
+    kind_t = str(target_type or "").strip().lower()
+    tid = str(target_id or "").strip()
+    field = INBOX_LINK_FIELDS.get(kind_t, "")
+    if tid and field:
+        clauses.append({field: tid})
+    parsed_before = _inbox_created_before_value(before)
+    if parsed_before is not None:
+        clauses.append({"created_at": {"$lt": parsed_before}})
+    return {"$and": clauses} if len(clauses) > 1 else clauses[0]
+
+
+def _inbox_public(doc: Mapping[str, Any] | None) -> dict[str, Any] | None:
+    if not isinstance(doc, Mapping):
+        return None
+    row = dict(doc)
+    row.pop("_id", None)
+    return row
+
+
+def load_inbox_snippets(*, db: Any = _UNSET_DB, limit: int = 500) -> list[dict[str, Any]]:
+    """Newest-first independent snippets. Never returns the legacy team_note."""
+    db = get_db() if db is _UNSET_DB else db
+    if db is None:
+        return []
+    cap = max(1, min(int(limit or 500), 2000))
+    try:
+        cursor = db.quick_notes.find(
+            {
+                "kind": INBOX_SNIPPET_KIND,
+                "id": {"$ne": TEAM_NOTE_ID},
+                "is_deleted": {"$ne": True}},
+            {"_id": 0},
+        ).sort("created_at", -1).limit(cap)
+    except PyMongoError as exc:
+        _set_last_error(str(exc))
+        return []
+    out: list[dict[str, Any]] = []
+    for row in cursor:
+        if isinstance(row, Mapping) and str(row.get("id") or "") != TEAM_NOTE_ID:
+            out.append(dict(row))
+    return out
+
+
+def query_inbox_snippets(
+    *,
+    db: Any = _UNSET_DB,
+    query: str = "",
+    link_filter: str = "all",
+    before: str = "",
+    target_type: str = "",
+    target_id: str = "",
+    limit: int = INBOX_PAGE_SIZE,
+) -> dict[str, Any]:
+    """Bounded server search. Matching is not capped at 500 hidden rows."""
+    filt = str(link_filter or "all").strip().lower()
+    if filt not in {"all", "linked", "unlinked"}:
+        filt = "all"
+    needle = str(query or "").strip()[:INBOX_MAX_QUERY]
+    kind_t = str(target_type or "").strip().lower()
+    if kind_t not in INBOX_LINK_FIELDS:
+        kind_t = ""
+    tid = str(target_id or "").strip() if kind_t else ""
+    stamp = str(before or "").strip()
+    empty = {
+        "rows": [],
+        "count": 0,
+        "linked_count": 0,
+        "unlinked_count": 0,
+        "has_more": False,
+        "query": needle,
+        "filter": filt,
+        "before": stamp,
+        "target_type": kind_t,
+        "target_id": tid,
+    }
+    db = get_db() if db is _UNSET_DB else db
+    if db is None:
+        return empty
+    page = max(1, min(int(limit or INBOX_PAGE_SIZE), INBOX_PAGE_SIZE))
+    count_match = _inbox_find_filter(
+        query=needle, link_filter=filt, target_type=kind_t, target_id=tid,
+    )
+    match = _inbox_find_filter(
+        query=needle,
+        link_filter=filt,
+        before=stamp,
+        target_type=kind_t,
+        target_id=tid,
+    )
+    linked_match = _inbox_find_filter(
+        query=needle, link_filter="linked", target_type=kind_t, target_id=tid,
+    )
+    unlinked_match = _inbox_find_filter(
+        query=needle, link_filter="unlinked", target_type=kind_t, target_id=tid,
+    )
+    try:
+        total = int(db.quick_notes.count_documents(count_match))
+        linked_count = int(db.quick_notes.count_documents(linked_match))
+        unlinked_count = int(db.quick_notes.count_documents(unlinked_match))
+        cursor = db.quick_notes.find(match, {"_id": 0}).sort("created_at", -1).limit(page + 1)
+    except PyMongoError as exc:
+        _set_last_error(str(exc))
+        return empty
+    rows: list[dict[str, Any]] = []
+    for row in cursor:
+        if isinstance(row, Mapping) and str(row.get("id") or "") != TEAM_NOTE_ID:
+            rows.append(dict(row))
+    has_more = len(rows) > page
+    if has_more:
+        rows = rows[:page]
+    return {
+        "rows": rows,
+        "count": total,
+        "linked_count": linked_count,
+        "unlinked_count": unlinked_count,
+        "has_more": has_more,
+        "query": needle,
+        "filter": filt,
+        "before": stamp,
+        "target_type": kind_t,
+        "target_id": tid,
+    }
+
+
+def load_inbox_snippets_for_target(
+    *,
+    field: str,
+    target_id: str,
+    db: Any = _UNSET_DB,
+    limit: int = INBOX_LINKED_PER_TARGET,
+) -> list[dict[str, Any]]:
+    """Newest-first notes linked to ONE contract or shipment. Other lots cannot hide it."""
+    db = get_db() if db is _UNSET_DB else db
+    if db is None:
+        return []
+    column = str(field or "").strip()
+    target = str(target_id or "").strip()
+    if column not in {"contract_ids", "shipment_ids"} or not target:
+        return []
+    cap = max(1, min(int(limit or INBOX_LINKED_PER_TARGET), INBOX_LINKED_PER_TARGET))
+    try:
+        cursor = db.quick_notes.find(
+            {
+                "kind": INBOX_SNIPPET_KIND,
+                "id": {"$ne": TEAM_NOTE_ID},
+                "is_deleted": {"$ne": True},
+                column: target,
+            },
+            {"_id": 0},
+        ).sort("created_at", -1).limit(cap)
+    except PyMongoError as exc:
+        _set_last_error(str(exc))
+        return []
+    out: list[dict[str, Any]] = []
+    for row in cursor:
+        if isinstance(row, Mapping) and str(row.get("id") or "") != TEAM_NOTE_ID:
+            out.append(dict(row))
+    return out
+
+
+def load_inbox_snippets_linked_to(
+    *,
+    contract_ids: list[str] | None = None,
+    shipment_ids: list[str] | None = None,
+    db: Any = _UNSET_DB,
+    limit: int = INBOX_LINKED_PER_TARGET,
+) -> dict[str, dict[str, list[dict[str, Any]]]]:
+    """Per-target linked notes. A busy lot's newest 200 cannot hide an older target."""
+    db = get_db() if db is _UNSET_DB else db
+    empty: dict[str, dict[str, list[dict[str, Any]]]] = {"by_contract": {}, "by_shipment": {}}
+    if db is None:
+        return empty
+    contracts = [str(item).strip() for item in (contract_ids or []) if str(item).strip()]
+    shipments = [str(item).strip() for item in (shipment_ids or []) if str(item).strip()]
+    by_contract: dict[str, list[dict[str, Any]]] = {}
+    by_shipment: dict[str, list[dict[str, Any]]] = {}
+    for cid in contracts:
+        rows = load_inbox_snippets_for_target(field="contract_ids", target_id=cid, db=db, limit=limit)
+        if rows:
+            by_contract[cid] = rows
+    for sid in shipments:
+        rows = load_inbox_snippets_for_target(field="shipment_ids", target_id=sid, db=db, limit=limit)
+        if rows:
+            by_shipment[sid] = rows
+    return {"by_contract": by_contract, "by_shipment": by_shipment}
+
+
+def load_inbox_snippet(snippet_id: str, *, db: Any = _UNSET_DB) -> dict[str, Any] | None:
+    db = get_db() if db is _UNSET_DB else db
+    if db is None:
+        return None
+    identifier = str(snippet_id or "").strip()
+    if not identifier or identifier == TEAM_NOTE_ID:
+        return None
+    try:
+        doc = db.quick_notes.find_one(
+            {
+                "id": identifier,
+                "kind": INBOX_SNIPPET_KIND,
+                "is_deleted": {"$ne": True},
+            },
+            {"_id": 0},
+        )
+    except PyMongoError as exc:
+        _set_last_error(str(exc))
+        return None
+    return _inbox_public(doc)
+
+
+def create_inbox_snippet(
+    *,
+    raw_text: str,
+    request_id: str,
+    source: str = "",
+    title: str = "",
+    source_ref: str = "",
+    occurred_at: str = "",
+    has_files: bool = False,
+    fingerprint: str = "",
+) -> dict[str, Any]:
+    """Insert ONE independent snippet. Same request_id + same payload is a duplicate.
+
+    A reused request_id with a different payload is refused. Empty text is allowed
+    only when files will be attached. Does not write ledgers or touch team_note.
+    """
+    if not _require_business_permission(
+        INBOX_WRITE_PERMISSION, "Bạn không có quyền ghi nhanh."
+    ):
+        return {"ok": False, "duplicate": False, "error": get_last_db_error() or "RBAC: không có quyền ghi nhanh."}
+
+    raw = str(raw_text or "").strip()
+    if not raw and not has_files:
+        _set_last_error("Nhập nội dung hoặc đính kèm tệp.")
+        return {"ok": False, "duplicate": False, "error": "Nhập nội dung hoặc đính kèm tệp."}
+    if len(raw) > INBOX_MAX_RAW_TEXT:
+        _set_last_error(f"Nội dung vượt {INBOX_MAX_RAW_TEXT} ký tự.")
+        return {"ok": False, "duplicate": False, "error": f"Nội dung vượt {INBOX_MAX_RAW_TEXT} ký tự."}
+
+    rid = _inbox_clip(request_id, INBOX_MAX_REQUEST_ID)
+    if not rid:
+        _set_last_error("Thiếu mã yêu cầu.")
+        return {"ok": False, "duplicate": False, "error": "Thiếu mã yêu cầu."}
+
+    incoming_fp = str(fingerprint or "").strip() or inbox_request_fingerprint(
+        raw_text=raw,
+        source=_inbox_norm_source(source),
+        title=_inbox_clip(title, INBOX_MAX_TITLE),
+        source_ref=_inbox_clip(source_ref, INBOX_MAX_SOURCE_REF),
+        occurred_at=_inbox_clip(occurred_at, 40),
+    )
+
+    db = get_db()
+    if db is None:
+        _set_last_error("MongoDB chưa sẵn sàng.")
+        return {"ok": False, "duplicate": False, "error": "MongoDB chưa sẵn sàng."}
+
+    try:
+        existing = db.quick_notes.find_one(
+            {"request_id": rid, "kind": INBOX_SNIPPET_KIND},
+            {"_id": 0},
+        )
+    except PyMongoError as exc:
+        _set_last_error(str(exc))
+        return {"ok": False, "duplicate": False, "error": str(exc)}
+    if isinstance(existing, Mapping) and str(existing.get("id") or "") != TEAM_NOTE_ID:
+        if _inbox_stored_fingerprint(existing) != incoming_fp:
+            _set_last_error("Mã yêu cầu đã dùng cho nội dung khác.")
+            return {
+                "ok": False,
+                "duplicate": False,
+                "mismatch": True,
+                "error": "Mã yêu cầu đã dùng cho nội dung khác.",
+                "snippet": dict(existing),
+            }
+        return {"ok": True, "duplicate": True, "error": "", "snippet": dict(existing)}
+
+    actor = _actor_context()
+    now = utc_now()
+    snippet_id = f"isnp-{uuid4().hex}"
+    doc = {
+        "id": snippet_id,
+        "kind": INBOX_SNIPPET_KIND,
+        "raw_text": raw,
+        "source": _inbox_norm_source(source),
+        "title": _inbox_clip(title, INBOX_MAX_TITLE),
+        "source_ref": _inbox_clip(source_ref, INBOX_MAX_SOURCE_REF),
+        "occurred_at": _inbox_clip(occurred_at, 40),
+        "request_id": rid,
+        "request_fingerprint": incoming_fp,
+        "contract_ids": [],
+        "shipment_ids": [],
+        "linked_snippet_ids": [],
+        "relation_request_ids": [],
+        "attachments": [],
+        "created_at": now,
+        "created_by": actor["username"],
+        "created_by_user_id": actor["user_id"],
+        "created_by_role": actor["role"],
+        "updated_at": now,
+        "updated_by": actor["username"],
+        "updated_by_user_id": actor["user_id"],
+        "updated_by_role": actor["role"],
+        "is_deleted": False,
+    }
+    try:
+        db.quick_notes.insert_one(dict(doc))
+    except DuplicateKeyError:
+        again = db.quick_notes.find_one(
+            {"request_id": rid, "kind": INBOX_SNIPPET_KIND},
+            {"_id": 0},
+        )
+        if isinstance(again, Mapping):
+            if _inbox_stored_fingerprint(again) != incoming_fp:
+                _set_last_error("Mã yêu cầu đã dùng cho nội dung khác.")
+                return {
+                    "ok": False,
+                    "duplicate": False,
+                    "mismatch": True,
+                    "error": "Mã yêu cầu đã dùng cho nội dung khác.",
+                    "snippet": dict(again),
+                }
+            return {"ok": True, "duplicate": True, "error": "", "snippet": dict(again)}
+        _set_last_error("Không lưu được mẩu tin (trùng khóa).")
+        return {"ok": False, "duplicate": False, "error": "Không lưu được mẩu tin (trùng khóa)."}
+    except PyMongoError as exc:
+        _set_last_error(str(exc))
+        return {"ok": False, "duplicate": False, "error": str(exc)}
+
+    stored = load_inbox_snippet(snippet_id, db=db) or _inbox_public(doc)
+    _audit(
+        db,
+        "inbox_snippet",
+        snippet_id,
+        "create",
+        before=None,
+        after=_inbox_audit_body(stored),
+        actor=actor["username"],
+    )
+    _set_last_error("")
+    return {"ok": True, "duplicate": False, "error": "", "snippet": stored}
+
+
+def _inbox_relation_selector(snippet_id: str) -> dict[str, Any]:
+    return {
+        "id": snippet_id,
+        "kind": INBOX_SNIPPET_KIND,
+        "is_deleted": {"$ne": True},
+    }
+
+
+def _inbox_request_recorded(doc: Mapping[str, Any] | None, request_id: str) -> bool:
+    rid = str(request_id or "").strip()
+    if not rid:
+        return False
+    seen = [str(x) for x in ((doc or {}).get("relation_request_ids") or []) if str(x).strip()]
+    return rid in seen
+
+
+def _inbox_apply_link_side(
+    db: Any,
+    *,
+    snippet_id: str,
+    field: str,
+    act: str,
+    other_id: str,
+    actor: Mapping[str, str],
+    now: Any,
+    request_id: str = "",
+) -> None:
+    """Mutate the relationship and consume request identity in the SAME update.
+
+    A later dedicated marker write is a no-op if this already recorded the id.
+    Failure of that later write must not make the request look fresh.
+    """
+    update: dict[str, Any] = {
+        "$set": {
+            "updated_at": now,
+            "updated_by": actor["username"],
+            "updated_by_user_id": actor.get("user_id", ""),
+            "updated_by_role": actor.get("role", ""),
+        },
+    }
+    add_to_set: dict[str, Any] = {}
+    rid = str(request_id or "").strip()
+    if rid:
+        add_to_set["relation_request_ids"] = rid
+    if act == "link":
+        add_to_set[field] = other_id
+        update["$addToSet"] = add_to_set
+    else:
+        update["$pull"] = {field: other_id}
+        if add_to_set:
+            update["$addToSet"] = add_to_set
+    db.quick_notes.update_one(_inbox_relation_selector(snippet_id), update)
+
+
+def _inbox_record_relation_request(
+    db: Any,
+    *,
+    snippet_id: str,
+    request_id: str,
+    actor: Mapping[str, str],
+    now: Any,
+) -> None:
+    db.quick_notes.update_one(
+        _inbox_relation_selector(snippet_id),
+        {
+            "$addToSet": {"relation_request_ids": request_id},
+            "$set": {
+                "updated_at": now,
+                "updated_by": actor["username"],
+            },
+        },
+    )
+
+
+def _inbox_reverse_link_side(
+    db: Any,
+    *,
+    snippet_id: str,
+    field: str,
+    act: str,
+    other_id: str,
+    actor: Mapping[str, str],
+    now: Any,
+    request_id: str = "",
+) -> None:
+    """Undo a just-applied side, including that side's request identity."""
+    rid = str(request_id or "").strip()
+    header = {
+        "$set": {
+            "updated_at": now,
+            "updated_by": actor["username"],
+        },
+    }
+    if act == "link":
+        pull: dict[str, Any] = {field: other_id}
+        if rid:
+            pull["relation_request_ids"] = rid
+        header["$pull"] = pull
+    else:
+        header["$addToSet"] = {field: other_id}
+        if rid:
+            header["$pull"] = {"relation_request_ids": rid}
+    db.quick_notes.update_one(_inbox_relation_selector(snippet_id), header)
+
+
+def relate_inbox_snippets(
+    *,
+    snippet_ids: list[str],
+    action: str,
+    target_type: str,
+    target_id: str,
+    request_id: str,
+) -> dict[str, Any]:
+    """Link or unlink snippets to a contract, shipment, or another snippet.
+
+    Original raw_text is never rewritten. Relating is not a payment booking.
+    Unlink updates the relationship only — files are not moved, copied, or deleted.
+    A request_id is consumed in the same write as the relationship change.
+    If that id is present on any involved snippet, replay never re-applies
+    the pair — it only fills a missing marker. A newer unlink therefore stays.
+    """
+    if not _require_business_permission(
+        INBOX_WRITE_PERMISSION, "Bạn không có quyền ghép thông tin."
+    ):
+        return {"ok": False, "duplicate": False, "error": get_last_db_error() or "RBAC: không có quyền ghép thông tin."}
+
+    act = str(action or "").strip().lower()
+    kind = str(target_type or "").strip().lower()
+    target = str(target_id or "").strip()
+    rid = _inbox_clip(request_id, INBOX_MAX_REQUEST_ID)
+    if act not in {"link", "unlink"}:
+        _set_last_error("Thao tác ghép không hợp lệ.")
+        return {"ok": False, "duplicate": False, "error": "Thao tác ghép không hợp lệ."}
+    if kind not in INBOX_LINK_FIELDS:
+        _set_last_error("Loại đích ghép không hợp lệ.")
+        return {"ok": False, "duplicate": False, "error": "Loại đích ghép không hợp lệ."}
+    if not target or target == TEAM_NOTE_ID:
+        _set_last_error("Thiếu đích ghép.")
+        return {"ok": False, "duplicate": False, "error": "Thiếu đích ghép."}
+    if not rid:
+        _set_last_error("Thiếu mã yêu cầu.")
+        return {"ok": False, "duplicate": False, "error": "Thiếu mã yêu cầu."}
+
+    ids: list[str] = []
+    seen: set[str] = set()
+    for raw_id in snippet_ids or []:
+        sid = str(raw_id or "").strip()
+        if not sid or sid == TEAM_NOTE_ID or sid in seen:
+            continue
+        seen.add(sid)
+        ids.append(sid)
+        if len(ids) >= INBOX_MAX_BATCH:
+            break
+    if not ids:
+        _set_last_error("Chưa chọn mẩu tin.")
+        return {"ok": False, "duplicate": False, "error": "Chưa chọn mẩu tin."}
+    if kind == "snippet" and len(ids) > 1:
+        # V1: one snippet-to-snippet relation per operation. A shared
+        # request_id is consumed on the target by the first pair, so a
+        # multi-source call would silently skip the rest while reporting
+        # success. Refuse before any write; no partial link is stored.
+        # Many snippets may still link to one contract or one shipment.
+        _set_last_error("Chỉ ghép một mẩu tin với một mẩu khác trong một thao tác.")
+        return {"ok": False, "duplicate": False, "error": "Chỉ ghép một mẩu tin với một mẩu khác trong một thao tác."}
+    if kind == "snippet" and target in seen:
+        _set_last_error("Không ghép một mẩu với chính nó.")
+        return {"ok": False, "duplicate": False, "error": "Không ghép một mẩu với chính nó."}
+
+    db = get_db()
+    if db is None:
+        _set_last_error("MongoDB chưa sẵn sàng.")
+        return {"ok": False, "duplicate": False, "error": "MongoDB chưa sẵn sàng."}
+
+    if kind == "contract":
+        try:
+            contract = db.contracts.find_one(
+                {"id": target, "is_deleted": {"$ne": True}},
+                {"_id": 0, "id": 1},
+            )
+        except PyMongoError as exc:
+            _set_last_error(str(exc))
+            return {"ok": False, "duplicate": False, "error": str(exc)}
+        if not isinstance(contract, Mapping):
+            _set_last_error(f"Không tìm thấy hợp đồng {target}.")
+            return {"ok": False, "duplicate": False, "error": f"Không tìm thấy hợp đồng {target}."}
+    elif kind == "shipment":
+        try:
+            shipment = db.shipments.find_one(
+                {"id": target, "is_deleted": {"$ne": True}},
+                {"_id": 0, "id": 1},
+            )
+        except PyMongoError as exc:
+            _set_last_error(str(exc))
+            return {"ok": False, "duplicate": False, "error": str(exc)}
+        if not isinstance(shipment, Mapping):
+            _set_last_error(f"Không tìm thấy lô hàng {target}.")
+            return {"ok": False, "duplicate": False, "error": f"Không tìm thấy lô hàng {target}."}
+    else:
+        other = load_inbox_snippet(target, db=db)
+        if other is None:
+            _set_last_error("Không tìm thấy mẩu tin đích.")
+            return {"ok": False, "duplicate": False, "error": "Không tìm thấy mẩu tin đích."}
+
+    actor = _actor_context()
+    now = utc_now()
+    field = INBOX_LINK_FIELDS[kind]
+    audit_action = f"{act}_{kind}"
+    snippets: list[dict[str, Any]] = []
+    all_duplicate = True
+
+    for sid in ids:
+        before = load_inbox_snippet(sid, db=db)
+        if before is None:
+            _set_last_error(f"Không tìm thấy mẩu tin {sid}.")
+            return {"ok": False, "duplicate": False, "error": f"Không tìm thấy mẩu tin {sid}."}
+        peer_before = load_inbox_snippet(target, db=db) if kind == "snippet" else None
+        source_done = _inbox_request_recorded(before, rid)
+        peer_done = _inbox_request_recorded(peer_before, rid) if kind == "snippet" else source_done
+        if source_done or peer_done:
+            # Consumed request: never re-apply. Only complete missing markers.
+            try:
+                if not source_done:
+                    _inbox_record_relation_request(
+                        db, snippet_id=sid, request_id=rid, actor=actor, now=now,
+                    )
+                if kind == "snippet" and not peer_done:
+                    _inbox_record_relation_request(
+                        db, snippet_id=target, request_id=rid, actor=actor, now=now,
+                    )
+            except PyMongoError as exc:
+                _set_last_error(str(exc))
+                return {"ok": False, "duplicate": False, "error": str(exc)}
+            snippets.append(load_inbox_snippet(sid, db=db) or before)
+            continue
+        current_links = [str(x) for x in (before.get(field) or []) if str(x).strip()]
+        already = target in current_links
+        will_change = (act == "link" and not already) or (act == "unlink" and already)
+        if will_change:
+            all_duplicate = False
+        try:
+            _inbox_apply_link_side(
+                db,
+                snippet_id=sid,
+                field=field,
+                act=act,
+                other_id=target,
+                actor=actor,
+                now=now,
+                request_id=rid,
+            )
+            if kind == "snippet":
+                try:
+                    _inbox_apply_link_side(
+                        db,
+                        snippet_id=target,
+                        field="linked_snippet_ids",
+                        act=act,
+                        other_id=sid,
+                        actor=actor,
+                        now=now,
+                        request_id=rid,
+                    )
+                except PyMongoError:
+                    _inbox_reverse_link_side(
+                        db, snippet_id=sid, field=field, act=act, other_id=target,
+                        actor=actor, now=now, request_id=rid,
+                    )
+                    raise
+        except PyMongoError as exc:
+            _set_last_error(str(exc))
+            return {"ok": False, "duplicate": False, "error": str(exc)}
+
+        after = load_inbox_snippet(sid, db=db) or before
+        if str(after.get("raw_text") or "") != str(before.get("raw_text") or ""):
+            _set_last_error("Nội dung gốc bị đổi — đã dừng.")
+            return {"ok": False, "duplicate": False, "error": "Nội dung gốc bị đổi — đã dừng."}
+        if kind == "snippet":
+            peer_after = load_inbox_snippet(target, db=db)
+            source_links = [str(x) for x in (after.get("linked_snippet_ids") or []) if str(x).strip()]
+            peer_links = [str(x) for x in ((peer_after or {}).get("linked_snippet_ids") or []) if str(x).strip()]
+            source_ok = (target in source_links) if act == "link" else (target not in source_links)
+            peer_ok = (sid in peer_links) if act == "link" else (sid not in peer_links)
+            if not (source_ok and peer_ok):
+                try:
+                    _inbox_reverse_link_side(
+                        db, snippet_id=sid, field=field, act=act, other_id=target,
+                        actor=actor, now=now, request_id=rid,
+                    )
+                    _inbox_reverse_link_side(
+                        db, snippet_id=target, field="linked_snippet_ids", act=act, other_id=sid,
+                        actor=actor, now=now, request_id=rid,
+                    )
+                except PyMongoError:
+                    pass
+                _set_last_error("Không ghép được hai phía mẩu tin.")
+                return {"ok": False, "duplicate": False, "error": "Không ghép được hai phía mẩu tin."}
+        try:
+            _inbox_record_relation_request(
+                db, snippet_id=sid, request_id=rid, actor=actor, now=now,
+            )
+            if kind == "snippet":
+                _inbox_record_relation_request(
+                    db, snippet_id=target, request_id=rid, actor=actor, now=now,
+                )
+        except PyMongoError as exc:
+            _set_last_error(str(exc))
+            return {"ok": False, "duplicate": False, "error": str(exc)}
+        after = load_inbox_snippet(sid, db=db) or after
+        _audit(
+            db,
+            "inbox_snippet",
+            sid,
+            audit_action,
+            before=_inbox_audit_body(before),
+            after=_inbox_audit_body(after),
+            actor=actor["username"],
+        )
+        if kind == "snippet" and peer_before is not None:
+            peer_after = load_inbox_snippet(target, db=db) or peer_before
+            _audit(
+                db,
+                "inbox_snippet",
+                target,
+                audit_action,
+                before=_inbox_audit_body(peer_before),
+                after=_inbox_audit_body(peer_after),
+                actor=actor["username"],
+            )
+        snippets.append(after)
+
+    _set_last_error("")
+    return {
+        "ok": True,
+        "duplicate": all_duplicate,
+        "error": "",
+        "snippets": snippets,
+    }
+
+
+def probe_inbox_attachment_identity(
+    snippet_id: str,
+    document: Mapping[str, Any],
+) -> tuple[str, dict[str, Any] | None]:
+    """Tri-state exact-id probe for a note-owned file after an uncertain metadata write.
+
+    Only a successful query whose snippet exists and whose attachments array
+    lacks this id is ``ABSENT_PROVEN``. A matching row is ``FOUND_MATCHING``.
+    Unavailable, failed, or identity-mismatched lookups are ``UNPROVEN``.
+    """
+    identifier = str(snippet_id or "").strip()
+    attachment_id = str((document or {}).get("id") or "").strip()
+    if not identifier or not attachment_id:
+        return ATTACHMENT_PROBE_UNPROVEN, None
+    try:
+        db = get_db()
+    except Exception:  # noqa: BLE001 - database availability is unproven
+        return ATTACHMENT_PROBE_UNPROVEN, None
+    if db is None:
+        return ATTACHMENT_PROBE_UNPROVEN, None
+    try:
+        row = db.quick_notes.find_one(
+            {
+                "id": identifier,
+                "kind": INBOX_SNIPPET_KIND,
+                "is_deleted": {"$ne": True},
+            },
+            {"_id": 0, "id": 1, "attachments": 1},
+        )
+    except Exception:  # noqa: BLE001 - lookup proof is unavailable
+        return ATTACHMENT_PROBE_UNPROVEN, None
+    if row is None:
+        return ATTACHMENT_PROBE_ABSENT_PROVEN, None
+    found = next(
+        (
+            item
+            for item in (row.get("attachments") or [])
+            if isinstance(item, Mapping) and str(item.get("id") or "") == attachment_id
+        ),
+        None,
+    )
+    if found is None:
+        return ATTACHMENT_PROBE_ABSENT_PROVEN, None
+    if all(
+        str(found.get(field) or "") == str(document.get(field) or "")
+        for field in _ATTACHMENT_PROBE_FIELDS
+    ):
+        return ATTACHMENT_PROBE_FOUND_MATCHING, dict(found)
+    return ATTACHMENT_PROBE_UNPROVEN, dict(found)
+
+
+def _inbox_unproven_metadata_result(
+    *,
+    probe_state: str,
+    durable: Mapping[str, Any] | None,
+    error: str,
+) -> dict[str, Any]:
+    matching = probe_state == ATTACHMENT_PROBE_FOUND_MATCHING
+    _set_last_error(error)
+    return {
+        "ok": False,
+        "duplicate": False,
+        "error": error,
+        "code": "METADATA_READBACK_UNPROVEN",
+        "probe_state": probe_state,
+        "metadata_committed": matching,
+        "readback_proven": False,
+        "compensation_attempted": False,
+        "compensated": False,
+        "orphan_risk": False,
+        "record": dict(durable) if durable else None,
+    }
+
+
+def append_inbox_attachment(snippet_id: str, record: Mapping[str, Any]) -> dict[str, Any]:
+    """Push ONE attachment metadata row onto the note. Bytes are already stored."""
+    if not _require_business_permission(
+        INBOX_WRITE_PERMISSION, "Bạn không có quyền ghi nhanh."
+    ):
+        return {"ok": False, "error": get_last_db_error() or "RBAC: không có quyền ghi nhanh."}
+    identifier = str(snippet_id or "").strip()
+    if not identifier or identifier == TEAM_NOTE_ID:
+        _set_last_error("Thiếu mã mẩu tin.")
+        return {"ok": False, "error": "Thiếu mã mẩu tin."}
+    row = dict(record or {})
+    attachment_id = str(row.get("id") or "").strip()
+    if not attachment_id:
+        _set_last_error("Thiếu mã tệp.")
+        return {"ok": False, "error": "Thiếu mã tệp."}
+    db = get_db()
+    if db is None:
+        _set_last_error("MongoDB chưa sẵn sàng.")
+        return {"ok": False, "error": "MongoDB chưa sẵn sàng."}
+    before = load_inbox_snippet(identifier, db=db)
+    if before is None:
+        _set_last_error(f"Không tìm thấy mẩu tin {identifier}.")
+        return {"ok": False, "error": f"Không tìm thấy mẩu tin {identifier}."}
+    existing_rows = [item for item in (before.get("attachments") or []) if isinstance(item, Mapping)]
+    if len(existing_rows) >= INBOX_MAX_ATTACHMENTS:
+        _set_last_error(f"Mỗi mẩu tin tối đa {INBOX_MAX_ATTACHMENTS} tệp.")
+        return {"ok": False, "error": f"Mỗi mẩu tin tối đa {INBOX_MAX_ATTACHMENTS} tệp.", "probe_state": ATTACHMENT_PROBE_ABSENT_PROVEN}
+    digest = str(row.get("sha256") or "").strip()
+    if digest:
+        for item in existing_rows:
+            if str(item.get("sha256") or "") == digest:
+                return {"ok": True, "duplicate": True, "error": "", "snippet": before, "record": dict(item)}
+    actor = _actor_context()
+    now = utc_now()
+    try:
+        db.quick_notes.update_one(
+            _inbox_relation_selector(identifier),
+            {
+                "$push": {"attachments": dict(row)},
+                "$set": {
+                    "updated_at": now,
+                    "updated_by": actor["username"],
+                    "updated_by_user_id": actor["user_id"],
+                    "updated_by_role": actor["role"],
+                },
+            },
+        )
+    except PyMongoError as exc:
+        probe_state, durable = probe_inbox_attachment_identity(identifier, row)
+        if probe_state != ATTACHMENT_PROBE_ABSENT_PROVEN:
+            return _inbox_unproven_metadata_result(
+                probe_state=probe_state,
+                durable=durable,
+                error=(
+                    "Bước ghi metadata không hoàn tất rõ ràng; giữ nguyên metadata và nội dung tệp, không xoá bù."
+                ),
+            )
+        _set_last_error(str(exc))
+        return {
+            "ok": False,
+            "error": str(exc),
+            "code": "METADATA_WRITE_FAILED",
+            "probe_state": probe_state,
+        }
+    after: dict[str, Any] | None
+    try:
+        after = load_inbox_snippet(identifier, db=db)
+    except Exception:  # noqa: BLE001 - readback proof is unavailable
+        after = None
+    found = next(
+        (
+            item
+            for item in ((after or {}).get("attachments") or [])
+            if isinstance(item, Mapping) and str(item.get("id") or "") == attachment_id
+        ),
+        None,
+    )
+    if found is None:
+        probe_state, durable = probe_inbox_attachment_identity(identifier, row)
+        if probe_state != ATTACHMENT_PROBE_ABSENT_PROVEN:
+            return _inbox_unproven_metadata_result(
+                probe_state=probe_state,
+                durable=durable,
+                error=(
+                    "Đã ghi metadata nhưng chưa xác minh được readback mới; "
+                    "giữ nguyên metadata và nội dung tệp, không xoá bù."
+                ),
+            )
+        _set_last_error("Không xác minh được metadata tệp trên mẩu tin.")
+        return {
+            "ok": False,
+            "error": "Không xác minh được metadata tệp trên mẩu tin.",
+            "code": "METADATA_WRITE_FAILED",
+            "probe_state": probe_state,
+        }
+    _audit(
+        db,
+        "inbox_snippet",
+        identifier,
+        "attach",
+        before=_inbox_audit_body(before),
+        after=_inbox_audit_body(after),
+        actor=actor["username"],
+    )
+    _set_last_error("")
+    return {"ok": True, "duplicate": False, "error": "", "snippet": after, "record": dict(found)}
+
+
+def find_inbox_attachment(snippet_id: str, attachment_id: str, *, db: Any = _UNSET_DB) -> dict[str, Any] | None:
+    snippet = load_inbox_snippet(snippet_id, db=db)
+    if snippet is None:
+        return None
+    wanted = str(attachment_id or "").strip()
+    if not wanted:
+        return None
+    for item in snippet.get("attachments") or []:
+        if isinstance(item, Mapping) and str(item.get("id") or "") == wanted:
+            return dict(item)
+    return None
 
 
 def load_entrustments() -> dict[str, dict[str, Any]]:

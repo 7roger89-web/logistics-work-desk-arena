@@ -8,6 +8,7 @@ import ShipmentOperations from "../components/ShipmentOperations";
 import ShipmentExecutionProfile from "../components/ShipmentExecutionProfile";
 import FinanceActualEntry from "../components/FinanceActualEntry";
 import ShipmentAttachments from "../components/ShipmentAttachments";
+import { ShipmentInboxSnippets } from "./Inbox";
 import ShipmentDocumentPicker from "../components/ShipmentDocumentPicker";
 import ShipmentJourney, { SeaExportFacts, WorkModuleStepPanel } from "../components/ShipmentJourney";
 import AttentionNow from "../components/AttentionNow";
@@ -2641,6 +2642,7 @@ export default function ShipmentDetail() {
             attachments={s.attachments ?? []}
             policy={vm?.attachmentPolicy}
           />
+          <ShipmentInboxSnippets shipmentId={s.id} />
         </div>
       )}
 
