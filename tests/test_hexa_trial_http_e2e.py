@@ -2199,6 +2199,70 @@ vm.runInContext(scriptMatch[1], sandbox);
     assert "IFRAME_BEARER_LOGIN_OK" in proc.stdout
 
 
+def test_live_preview_seed_and_proxy_stripped_iframe_journey_map_ready(
+    trial_server,
+) -> None:
+    """Regression for Owner Live Preview feedback #2:
+    1. seed_live_preview_publications(env) pre-publishes ROAD-LG-001 (Lục Giác) and ROAD-MD-002 (Minh Đức)
+       for the standalone preview server while keeping ROAD-AP-003 (An Phát) UNPUBLISHED.
+    2. Even if both Cookie AND Authorization headers are stripped by a reverse proxy,
+       POST /api/hexa/v0/auth/login returns initial dashboard data and X-Hexa-Session-Token / _hx_token
+       allow full Journey Map rendering (5 nodes, 4 edges, auto-open bubble on current stage, and PDF download).
+    3. Customer display_name never shows '(Khách A)', '(Khách B)', or '(Khách C)'.
+    """
+    from core.hexa_trial_portal import seed_live_preview_publications
+
+    base_url, env = trial_server
+    seed_live_preview_publications(env)
+
+    # Login as Lục Giác
+    st_login, _, raw_login = _http_request(
+        base_url,
+        "/api/hexa/v0/auth/login",
+        method="POST",
+        json_body={"username": "lucgiac.trial", "passcode": "LG-Trial-2026!"},
+    )
+    assert st_login == 200
+    login_body = json.loads(raw_login.decode("utf-8"))
+    assert "Khách A" not in login_body.get("label", "")
+    assert "Khách A" not in login_body.get("principal", {}).get("display_name", "")
+    issued_token = login_body.get("session_token", "")
+    assert issued_token.startswith("hx_cust_")
+
+    # Login response includes initial dashboard with ROAD-LG-001 ready immediately
+    dash = login_body.get("dashboard") or {}
+    assert dash.get("summary", {}).get("active_tracking") == 1
+    assert len(dash.get("shipments") or []) == 1
+    assert dash["shipments"][0]["shipment_id"] == "ROAD-LG-001"
+
+    # Even without Cookie or Authorization header, X-Hexa-Session-Token and ?_hx_token= work
+    st_dash_hdr, _, _ = _http_request(
+        base_url,
+        "/api/hexa/v0/dashboard",
+        headers={"X-Hexa-Session-Token": issued_token},
+    )
+    assert st_dash_hdr == 200
+
+    st_pdf_q, _, raw_pdf_q = _http_request(
+        base_url,
+        f"/api/hexa/v0/shipments/ROAD-LG-001/documents/DOC-LG-PL/download?version=v2&_hx_token={issued_token}",
+    )
+    assert st_pdf_q == 200
+    assert raw_pdf_q.startswith(b"%PDF-")
+
+    # An Phát remains UNPUBLISHED so unpublished state is still verifiable
+    st_ap, _, raw_ap = _http_request(
+        base_url,
+        "/api/hexa/v0/auth/login",
+        method="POST",
+        json_body={"username": "anphat.trial", "passcode": "AP-Trial-2026!"},
+    )
+    assert st_ap == 200
+    ap_body = json.loads(raw_ap.decode("utf-8"))
+    assert ap_body.get("dashboard", {}).get("summary", {}).get("active_tracking") == 0
+
+
+
 
 
 

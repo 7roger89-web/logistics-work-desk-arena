@@ -13,6 +13,7 @@ if str(ROOT) not in sys.path:
 from core.hexa_trial_portal import (  # noqa: E402
     create_trial_http_server,
     get_trial_environment,
+    seed_live_preview_publications,
 )
 
 
@@ -25,9 +26,16 @@ def main() -> None:
         action="store_true",
         help="Enable isolated /internal/qa/* endpoints (still requires server-only X-Hexa-Internal-QA-Key)",
     )
+    parser.add_argument(
+        "--no-seed-published",
+        action="store_true",
+        help="Start with 0 published shipments (default pre-publishes ROAD-LG-001 and ROAD-MD-002 for Live Preview)",
+    )
     args = parser.parse_args()
 
     env = get_trial_environment()
+    if not args.no_seed_published:
+        seed_live_preview_publications(env)
     server = create_trial_http_server(
         host=args.host,
         port=args.port,

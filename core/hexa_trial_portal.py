@@ -299,34 +299,34 @@ class HexaTrialEnvironment:
         self.sessions = {
             token_customer_a: {
                 "role_key": "customer_a",
-                "label": "Khách A — Công ty TNHH Lục Giác (HEXA)",
+                "label": "Công ty TNHH Lục Giác (HEXA)",
                 "principal": {
                     "authenticated": True,
                     "kind": "customer",
                     "customer_id": CUSTOMER_A_ID,
-                    "display_name": "Lục Giác (Khách A)",
+                    "display_name": "Công ty TNHH Lục Giác (HEXA)",
                 },
                 "default_shipment_id": SHIPMENT_A_ID,
             },
             token_customer_b: {
                 "role_key": "customer_b",
-                "label": "Khách B — Công ty CP Minh Đức",
+                "label": "Công ty CP Minh Đức",
                 "principal": {
                     "authenticated": True,
                     "kind": "customer",
                     "customer_id": CUSTOMER_B_ID,
-                    "display_name": "Minh Đức (Khách B)",
+                    "display_name": "Công ty CP Minh Đức",
                 },
                 "default_shipment_id": SHIPMENT_B_ID,
             },
             token_customer_c: {
                 "role_key": "customer_c",
-                "label": "Khách C — Công ty TNHH Thiết bị An Phát",
+                "label": "Công ty TNHH Thiết bị An Phát",
                 "principal": {
                     "authenticated": True,
                     "kind": "customer",
                     "customer_id": CUSTOMER_C_ID,
-                    "display_name": "An Phát (Khách C)",
+                    "display_name": "Công ty TNHH Thiết bị An Phát",
                 },
                 "default_shipment_id": SHIPMENT_C_ID,
             },
@@ -403,8 +403,8 @@ class HexaTrialEnvironment:
                     "kind": "customer",
                     "customer_id": CUSTOMER_A_ID,
                     "role_key": "customer_a",
-                    "label": "Khách A — Công ty TNHH Lục Giác (HEXA)",
-                    "display_name": "Lục Giác (Khách A)",
+                    "label": "Công ty TNHH Lục Giác (HEXA)",
+                    "display_name": "Công ty TNHH Lục Giác (HEXA)",
                     "default_shipment_id": SHIPMENT_A_ID,
                     "active": True,
                 },
@@ -415,8 +415,8 @@ class HexaTrialEnvironment:
                     "kind": "customer",
                     "customer_id": CUSTOMER_B_ID,
                     "role_key": "customer_b",
-                    "label": "Khách B — Công ty CP Minh Đức",
-                    "display_name": "Minh Đức (Khách B)",
+                    "label": "Công ty CP Minh Đức",
+                    "display_name": "Công ty CP Minh Đức",
                     "default_shipment_id": SHIPMENT_B_ID,
                     "active": True,
                 },
@@ -427,8 +427,8 @@ class HexaTrialEnvironment:
                     "kind": "customer",
                     "customer_id": CUSTOMER_C_ID,
                     "role_key": "customer_c",
-                    "label": "Khách C — Công ty TNHH Thiết bị An Phát",
-                    "display_name": "An Phát (Khách C)",
+                    "label": "Công ty TNHH Thiết bị An Phát",
+                    "display_name": "Công ty TNHH Thiết bị An Phát",
                     "default_shipment_id": SHIPMENT_C_ID,
                     "active": True,
                 },
@@ -2402,32 +2402,105 @@ def get_trial_environment() -> HexaTrialEnvironment:
     return _DEFAULT_ENV
 
 
-def _extract_session_token(headers: Mapping[str, str]) -> str:
-    auth_header = str(headers.get("Authorization") or headers.get("authorization") or "").strip()
-    if auth_header.lower().startswith("bearer "):
-        return auth_header[7:].strip()
-    raw_cookie = str(headers.get("Cookie") or headers.get("cookie") or "").strip()
-    if raw_cookie:
+def seed_live_preview_publications(env: HexaTrialEnvironment | None = None) -> None:
+    """Pre-publish ROAD-LG-001 (Lục Giác) and ROAD-MD-002 (Minh Đức) via real TT staff approval
+    for the standalone Live Preview server while keeping ROAD-AP-003 (An Phát) UNPUBLISHED.
+
+    Note: ``HexaTrialEnvironment()`` by itself remains 100% default-deny ``UNPUBLISHED`` for unit/E2E tests.
+    """
+    target_env = env or get_trial_environment()
+    target_env.ensure_seeded()
+    tt_token, _ = target_env.authenticate_tt_staff_login(
+        username=TT_STAFF_TRIAL_USERNAME,
+        passcode=TT_STAFF_TRIAL_PASSCODE,
+    )
+    target_env.publish_shipment_for_customer(
+        session_token=tt_token,
+        shipment_id=SHIPMENT_A_ID,
+        event_versions={
+            "EVT-LG-01-PICKUP": "v1",
+            "EVT-LG-02-BORDER": "v2",
+        },
+        document_versions={
+            "DOC-LG-PL": "v2",
+            "DOC-LG-PI": "v1",
+        },
+        quote={"id": QUOTE_A_ID, "version": "3"},
+    )
+    target_env.publish_shipment_for_customer(
+        session_token=tt_token,
+        shipment_id=SHIPMENT_B_ID,
+        event_versions={
+            "EVT-MD-01-PICKUP": "v1",
+        },
+        document_versions={
+            "DOC-MD-PL": "v1",
+        },
+        quote={"id": QUOTE_B_ID, "version": "1"},
+    )
+
+
+def _extract_cookie_from_raw(raw_cookie: str, cookie_name: str) -> str:
+    if not raw_cookie:
+        return ""
+    try:
         cookie = SimpleCookie()
         cookie.load(raw_cookie)
-        if TRIAL_COOKIE_NAME in cookie:
-            return cookie[TRIAL_COOKIE_NAME].value.strip()
+        if cookie_name in cookie and cookie[cookie_name].value.strip():
+            return cookie[cookie_name].value.strip()
+    except Exception:  # noqa: BLE001
+        pass
+    for part in raw_cookie.split(";"):
+        piece = part.strip()
+        if "=" not in piece:
+            continue
+        k, v = piece.split("=", 1)
+        if k.strip() == cookie_name and v.strip():
+            return v.strip()
     return ""
 
 
-def _extract_tt_session_token(headers: Mapping[str, str]) -> str:
+def _extract_session_token(
+    headers: Mapping[str, str],
+    query: Mapping[str, list[str]] | None = None,
+) -> str:
+    custom_hdr = str(
+        headers.get("X-Hexa-Session-Token") or headers.get("x-hexa-session-token") or ""
+    ).strip()
+    if custom_hdr:
+        return custom_hdr
     auth_header = str(headers.get("Authorization") or headers.get("authorization") or "").strip()
     if auth_header.lower().startswith("bearer "):
         return auth_header[7:].strip()
+    if query and "_hx_token" in query:
+        q_tok = str((query.get("_hx_token") or [""])[0] or "").strip()
+        if q_tok:
+            return q_tok
     raw_cookie = str(headers.get("Cookie") or headers.get("cookie") or "").strip()
-    if raw_cookie:
-        cookie = SimpleCookie()
-        cookie.load(raw_cookie)
-        if TRIAL_TT_COOKIE_NAME in cookie and cookie[TRIAL_TT_COOKIE_NAME].value.strip():
-            return cookie[TRIAL_TT_COOKIE_NAME].value.strip()
-        if TRIAL_COOKIE_NAME in cookie:
-            return cookie[TRIAL_COOKIE_NAME].value.strip()
-    return ""
+    return _extract_cookie_from_raw(raw_cookie, TRIAL_COOKIE_NAME)
+
+
+def _extract_tt_session_token(
+    headers: Mapping[str, str],
+    query: Mapping[str, list[str]] | None = None,
+) -> str:
+    custom_hdr = str(
+        headers.get("X-Hexa-Session-Token") or headers.get("x-hexa-session-token") or ""
+    ).strip()
+    if custom_hdr:
+        return custom_hdr
+    auth_header = str(headers.get("Authorization") or headers.get("authorization") or "").strip()
+    if auth_header.lower().startswith("bearer "):
+        return auth_header[7:].strip()
+    if query and "_hx_token" in query:
+        q_tok = str((query.get("_hx_token") or [""])[0] or "").strip()
+        if q_tok:
+            return q_tok
+    raw_cookie = str(headers.get("Cookie") or headers.get("cookie") or "").strip()
+    tt_val = _extract_cookie_from_raw(raw_cookie, TRIAL_TT_COOKIE_NAME)
+    if tt_val:
+        return tt_val
+    return _extract_cookie_from_raw(raw_cookie, TRIAL_COOKIE_NAME)
 
 
 def render_trial_portal_html() -> str:
@@ -2491,6 +2564,146 @@ def render_trial_portal_html() -> str:
     .readonly-box .lbl { font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; }
     .readonly-box .val { font-size: 13px; font-weight: 700; color: #0f172a; margin-top: 3px; }
     .status-note { margin-top: 10px; padding: 8px 12px; border-radius: 7px; font-size: 12.5px; font-weight: 600; background: #f1f5f9; color: #334155; }
+    /* Canonical G2 Map-First Journey layout rules ensuring 100% containment inside #journey-map-viewport */
+    .journey-split.journey-map-first { position: relative; display: block; width: 100%; }
+    .journey-split.journey-map-first .journey-canvas {
+      position: relative !important;
+      display: block;
+      width: 100%;
+      height: clamp(520px, calc(100vh - 230px), 660px);
+      min-height: 520px;
+      border-radius: 12px;
+      border: 1px solid #D6DEE7;
+      background-color: #EDF1F5;
+      overflow: hidden !important;
+      user-select: none;
+      touch-action: none;
+      cursor: grab;
+    }
+    .journey-split.journey-map-first .journey-canvas.is-dragging { cursor: grabbing; }
+    .journey-sea-chart {
+      position: absolute !important;
+      inset: 0 !important;
+      z-index: 0;
+      pointer-events: none;
+      background-color: #E9EFF5;
+      background-repeat: no-repeat;
+      background-size: cover;
+      background-position: center center;
+    }
+    @media (max-width: 720px) and (orientation: portrait) {
+      .journey-sea-chart { background-size: contain; background-position: center center; }
+    }
+    .journey-edges {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 1080px;
+      height: 520px;
+      pointer-events: none;
+      z-index: 1;
+      overflow: visible;
+    }
+    .journey-node {
+      position: absolute;
+      width: 116px;
+      height: 66px;
+      overflow: hidden;
+      border-radius: 10px;
+      border: 1px solid #C9D4DF;
+      background: #fff;
+      color: #10263C;
+      cursor: pointer;
+      padding: 6px 8px 6px 10px;
+      box-shadow: 0 8px 18px -12px rgba(16,38,60,.42);
+      font-family: var(--sans);
+      text-align: left;
+      display: flex;
+      flex-direction: column;
+      z-index: 10;
+      --stripe: #94A3B8;
+    }
+    .journey-bubble {
+      position: absolute;
+      z-index: 35;
+      pointer-events: auto;
+      background: #fff;
+      border: 1px solid #C9D4DF;
+      border-radius: 12px;
+      padding: 0;
+      overflow: hidden;
+      color: #10263C;
+      box-shadow: 0 18px 36px -14px rgba(16,38,60,.38);
+    }
+    .journey-bubble-above { transform: translateY(-100%); }
+    .journey-bubble-dot {
+      display: inline-grid;
+      place-items: center;
+      width: 18px;
+      height: 18px;
+      margin-top: 2px;
+      border-radius: 999px;
+      font-size: 10px;
+      font-weight: 800;
+      flex-shrink: 0;
+    }
+    .journey-bubble-dot.dot-done { background: #DCEDE4; color: #22614A; border: 1px solid #96C7AF; }
+    .journey-bubble-dot.dot-info { background: #DCEBFA; color: #154C79; border: 1px solid #8EC0E8; }
+    .journey-bubble-dot.dot-pending { background: #E7ECF2; color: #5B6875; border: 1px solid #C8D3DF; }
+    .journey-bubble-open {
+      cursor: pointer;
+      border: none;
+      background: transparent;
+      color: #123A5E;
+      font-size: 12px;
+      font-weight: 800;
+      padding: 0;
+    }
+    .journey-map-hint {
+      position: absolute;
+      bottom: 12px;
+      left: 12px;
+      z-index: 20;
+      display: inline-flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 12px;
+      border-radius: 10px;
+      border: 1px solid #D6DEE7;
+      background: rgba(255, 255, 255, 0.94);
+      color: #10263C;
+      font-size: 11.5px;
+      font-weight: 600;
+      box-shadow: 0 6px 16px -10px rgba(16, 38, 60, 0.35);
+    }
+    .journey-zoom-bar {
+      position: absolute;
+      bottom: 12px;
+      right: 12px;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      background: rgba(255, 255, 255, 0.94);
+      border: 1px solid #D6DEE7;
+      border-radius: 10px;
+      padding: 4px;
+      box-shadow: 0 6px 16px -10px rgba(16, 38, 60, 0.45);
+    }
+    .journey-side-head {
+      background: #10263C;
+      color: #fff;
+      padding: 12px 16px;
+      border-bottom: 1px solid #1E3E5C;
+    }
+    .journey-side-title-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+    .journey-side-kicker { font-family: var(--mono); font-size: 10.5px; font-weight: 700; color: #9CCAF0; letter-spacing: 0.08em; }
+    .journey-side-title { margin: 3px 0 0; font-size: 16px; font-weight: 800; color: #fff; }
+    .journey-side-sub { margin-top: 2px; font-size: 12px; color: #cbd5e1; }
+    .journey-side-badge { padding: 3px 8px; border-radius: 999px; background: rgba(255,255,255,0.14); color: #fff; font-size: 11px; font-weight: 700; }
+    .journey-modal-close { cursor: pointer; padding: 5px 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.28); background: rgba(255,255,255,0.1); color: #fff; font-size: 12px; font-weight: 700; }
+    .journey-side-body { padding: 14px 16px; overflow-y: auto; background: #fff; color: #0f172a; }
   </style>
 </head>
 <body>
@@ -2707,6 +2920,7 @@ def render_trial_portal_html() -> str:
       const hdrs = Object.assign({}, options.headers || {});
       if (activeAuthToken) {
         hdrs['Authorization'] = 'Bearer ' + activeAuthToken;
+        hdrs['X-Hexa-Session-Token'] = activeAuthToken;
       }
       options.headers = hdrs;
       return fetch(url, options);
@@ -2878,7 +3092,11 @@ def render_trial_portal_html() -> str:
         document.getElementById('cust-passcode').value = '';
         if (loginData && loginData.authenticated) {
           applySessionState(loginData);
-          await loadCustomerDashboard();
+          if (loginData.dashboard && Array.isArray(loginData.dashboard.shipments)) {
+            await renderDashboardData(loginData.dashboard);
+          } else {
+            await loadCustomerDashboard();
+          }
         } else {
           await loadSession();
         }
@@ -2929,25 +3147,17 @@ def render_trial_portal_html() -> str:
       document.getElementById('toolbar-next').textContent = 'Chờ Trường Thành công bố mốc xác minh';
     }
 
-    async function loadCustomerDashboard() {
+    async function renderDashboardData(body) {
       const tbody = document.getElementById('dash-shipments-tbody');
       const selectorBox = document.getElementById('customer-shipment-selector');
       if (tbody) tbody.innerHTML = '';
 
-      const res = await apiFetch('/api/hexa/v0/dashboard');
-      if (!res.ok) {
-        if (selectorBox) selectorBox.classList.add('hidden');
-        showUnpublishedState('');
-        return;
-      }
-
-      const body = await res.json();
-      const summary = body.summary || {};
+      const summary = (body && body.summary) || {};
       const brandTitle = document.getElementById('customer-brand-title');
-      if (brandTitle && body.customer_name) {
+      if (brandTitle && body && body.customer_name) {
         brandTitle.textContent = String(body.customer_name);
       }
-      document.getElementById('toolbar-customer').textContent = String(body.customer_name || '');
+      document.getElementById('toolbar-customer').textContent = String((body && body.customer_name) || '');
       document.getElementById('kpi-active-tracking').textContent = String(summary.active_tracking ?? 0);
       document.getElementById('kpi-arriving-soon').textContent = String(
         summary.verified_warehouse_eta_count ?? summary.arriving_soon ?? 0
@@ -2957,7 +3167,7 @@ def render_trial_portal_html() -> str:
         summary.customer_action_status_label || 'Chưa có yêu cầu được xác nhận'
       );
 
-      dashboardRows = Array.isArray(body.shipments) ? body.shipments : [];
+      dashboardRows = Array.isArray(body && body.shipments) ? body.shipments : [];
 
       dashboardRows.forEach(row => {
         const tr = document.createElement('tr');
@@ -3033,6 +3243,22 @@ def render_trial_portal_html() -> str:
       await selectShipmentForJourney(String(dashboardRows[0].shipment_id || ''));
     }
 
+    async function loadCustomerDashboard() {
+      const tbody = document.getElementById('dash-shipments-tbody');
+      const selectorBox = document.getElementById('customer-shipment-selector');
+      if (tbody) tbody.innerHTML = '';
+
+      const res = await apiFetch('/api/hexa/v0/dashboard');
+      if (!res.ok) {
+        if (selectorBox) selectorBox.classList.add('hidden');
+        showUnpublishedState('');
+        return;
+      }
+
+      const body = await res.json();
+      await renderDashboardData(body);
+    }
+
     async function selectShipmentForJourney(shipmentId) {
       const sid = String(shipmentId || '').trim();
       if (!sid) return;
@@ -3040,6 +3266,13 @@ def render_trial_portal_html() -> str:
       if (inp) inp.value = sid;
       const matched = dashboardRows.find(r => String(r.shipment_id) === sid) || null;
       activeShipmentRow = matched;
+      if (matched && matched.journey && Array.isArray(matched.journey.nodes) && matched.journey.nodes.length > 0) {
+        activePublication = matched;
+        selectedNodeId = String(matched.journey.current_stage_id || matched.journey.nodes[0].id || '');
+        renderJourneyMapForShipment(matched, matched);
+        fitJourney();
+        return;
+      }
       await loadShipment(sid);
     }
 
@@ -3192,7 +3425,7 @@ def render_trial_portal_html() -> str:
 
     function selectJourneyNode(nodeId) {
       if (!activeShipmentRow || !activeShipmentRow.journey) return;
-      selectedNodeId = (selectedNodeId === nodeId) ? null : String(nodeId);
+      selectedNodeId = String(nodeId);
       renderJourneyMapForShipment(activeShipmentRow, activePublication);
     }
 
@@ -3488,7 +3721,8 @@ def render_trial_portal_html() -> str:
     }
 
     async function triggerDownload(shipmentId, docId, version) {
-      const url = `/api/hexa/v0/shipments/${encodeURIComponent(shipmentId)}/documents/${encodeURIComponent(docId)}/download?version=${encodeURIComponent(version)}`;
+      const tokenParam = activeAuthToken ? `&_hx_token=${encodeURIComponent(activeAuthToken)}` : '';
+      const url = `/api/hexa/v0/shipments/${encodeURIComponent(shipmentId)}/documents/${encodeURIComponent(docId)}/download?version=${encodeURIComponent(version)}${tokenParam}`;
       const res = await apiFetch(url);
       const banner = document.getElementById('download-status-banner');
       if (banner) banner.classList.remove('hidden');
@@ -3804,10 +4038,12 @@ class HexaTrialRequestHandler(BaseHTTPRequestHandler):
         self.wfile.write(data)
 
     def _current_token(self) -> str:
-        return _extract_session_token(self.headers)
+        parsed = urlparse(self.path)
+        return _extract_session_token(self.headers, parse_qs(parsed.query))
 
     def _current_tt_token(self) -> str:
-        return _extract_tt_session_token(self.headers)
+        parsed = urlparse(self.path)
+        return _extract_tt_session_token(self.headers, parse_qs(parsed.query))
 
     def _read_json_body(self) -> dict[str, Any]:
         length = int(self.headers.get("Content-Length") or 0)
@@ -4006,9 +4242,16 @@ class HexaTrialRequestHandler(BaseHTTPRequestHandler):
                     username=username,
                     passcode=passcode,
                 )
+                initial_dashboard = self.env.build_customer_dashboard(
+                    session_token=issued_token,
+                )
                 self._send_json(
                     HTTPStatus.OK,
-                    {**summary, "session_token": issued_token},
+                    {
+                        **summary,
+                        "session_token": issued_token,
+                        "dashboard": initial_dashboard,
+                    },
                     set_cookie_token=issued_token,
                     cookie_name=TRIAL_COOKIE_NAME,
                 )
