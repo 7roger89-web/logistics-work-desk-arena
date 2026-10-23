@@ -1284,7 +1284,7 @@ class HexaTrialEnvironment:
             raise PublicationDenied()
 
         norm_user = str(username or "").strip().lower()
-        raw_pass = str(passcode or "")
+        raw_pass = str(passcode or "").strip()
         if not norm_user or not raw_pass:
             self._record_audit(
                 action="CUSTOMER_LOGIN",
@@ -1356,7 +1356,7 @@ class HexaTrialEnvironment:
             raise PublicationDenied()
 
         norm_user = str(username or "").strip().lower()
-        raw_pass = str(passcode or "")
+        raw_pass = str(passcode or "").strip()
         if not norm_user or not raw_pass:
             self._record_audit(
                 action="TT_STAFF_LOGIN",
@@ -2514,17 +2514,19 @@ def render_trial_portal_html() -> str:
     <section id="customer-login-screen" class="login-shell" data-testid="customer-login-screen">
       <h2>Đăng nhập Cổng Khách Hàng</h2>
       <p>Vui lòng đăng nhập bằng tài khoản doanh nghiệp để xem hải đồ hành trình và chứng từ đã được Trường Thành công bố.</p>
-      <div class="field-group">
-        <label for="cust-username">Tài khoản khách hàng</label>
-        <input id="cust-username" type="text" autocomplete="username" placeholder="Nhập tài khoản doanh nghiệp" />
-      </div>
-      <div class="field-group">
-        <label for="cust-passcode">Mật khẩu</label>
-        <input id="cust-passcode" type="password" autocomplete="current-password" placeholder="Nhập mật khẩu" />
-      </div>
-      <div style="display:flex; gap:10px; align-items:center; margin-top:14px;">
-        <button type="button" class="btn-primary" onclick="loginCustomer()">Đăng nhập</button>
-      </div>
+      <form onsubmit="event.preventDefault(); loginCustomer();">
+        <div class="field-group">
+          <label for="cust-username">Tài khoản khách hàng</label>
+          <input id="cust-username" type="text" autocomplete="username" placeholder="Nhập tài khoản doanh nghiệp" />
+        </div>
+        <div class="field-group">
+          <label for="cust-passcode">Mật khẩu</label>
+          <input id="cust-passcode" type="password" autocomplete="current-password" placeholder="Nhập mật khẩu" />
+        </div>
+        <div style="display:flex; gap:10px; align-items:center; margin-top:14px;">
+          <button id="btn-customer-login" type="submit" class="btn-primary" onclick="loginCustomer()">Đăng nhập</button>
+        </div>
+      </form>
       <div id="customer-auth-note" class="status-note">Đăng nhập để mở bản đồ hành trình lô hàng của quý khách.</div>
     </section>
 
@@ -2683,6 +2685,33 @@ def render_trial_portal_html() -> str:
     };
 
     let currentSession = { authenticated: false, principal: {}, default_shipment_id: '' };
+    let activeAuthToken = '';
+    try {
+      if (typeof sessionStorage !== 'undefined') {
+        activeAuthToken = sessionStorage.getItem('hexa_cust_token') || '';
+      }
+    } catch (_e) {}
+
+    function setAuthToken(tok) {
+      activeAuthToken = String(tok || '');
+      try {
+        if (typeof sessionStorage !== 'undefined') {
+          if (activeAuthToken) sessionStorage.setItem('hexa_cust_token', activeAuthToken);
+          else sessionStorage.removeItem('hexa_cust_token');
+        }
+      } catch (_e) {}
+    }
+
+    function apiFetch(url, opts) {
+      const options = Object.assign({ credentials: 'same-origin' }, opts || {});
+      const hdrs = Object.assign({}, options.headers || {});
+      if (activeAuthToken) {
+        hdrs['Authorization'] = 'Bearer ' + activeAuthToken;
+      }
+      options.headers = hdrs;
+      return fetch(url, options);
+    }
+
     let dashboardRows = [];
     let activeShipmentRow = null;
     let activePublication = null;
@@ -2775,9 +2804,7 @@ def render_trial_portal_html() -> str:
       }
     }
 
-    async function loadSession() {
-      const res = await fetch('/api/hexa/v0/session', { credentials: 'same-origin' });
-      const data = await res.json();
+    function applySessionState(data) {
       currentSession = data || { authenticated: false, principal: {} };
       const authed = Boolean(currentSession.authenticated);
 
@@ -2795,7 +2822,7 @@ def render_trial_portal_html() -> str:
         if (pill) pill.textContent = 'Chưa đăng nhập';
         if (brandTitle) brandTitle.textContent = 'Cổng Hành Trình Lô Hàng Khách Hàng';
         if (brandSub) brandSub.textContent = 'Theo dõi trực quan trên hải đồ theo dữ liệu Trường Thành đã xác minh';
-        return;
+        return false;
       }
 
       const p = currentSession.principal || {};
@@ -2811,29 +2838,58 @@ def render_trial_portal_html() -> str:
         const inp = document.getElementById('shipment-input');
         if (inp && !inp.value) inp.value = String(currentSession.default_shipment_id);
       }
-      await loadCustomerDashboard();
+      return true;
     }
 
+    async function loadSession() {
+      const res = await apiFetch('/api/hexa/v0/session');
+      const data = await res.json();
+      if (applySessionState(data)) {
+        await loadCustomerDashboard();
+      }
+    }
+
+    let loginInFlight = false;
     async function loginCustomer() {
+      if (loginInFlight) return;
       const username = (document.getElementById('cust-username').value || '').trim();
-      const passcode = document.getElementById('cust-passcode').value || '';
+      const passcode = (document.getElementById('cust-passcode').value || '').trim();
       const note = document.getElementById('customer-auth-note');
-      const res = await fetch('/api/hexa/v0/auth/login', {
-        method: 'POST',
-        credentials: 'same-origin',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, passcode })
-      });
-      if (!res.ok) {
-        if (note) note.textContent = 'Thông tin đăng nhập không hợp lệ hoặc không thuộc phạm vi khách hàng.';
+      if (!username || !passcode) {
+        if (note) note.textContent = 'Vui lòng nhập đầy đủ tài khoản và mật khẩu khách hàng.';
         return;
       }
-      document.getElementById('cust-passcode').value = '';
-      await loadSession();
+      loginInFlight = true;
+      if (note) note.textContent = 'Đang xác thực tài khoản...';
+      try {
+        const res = await apiFetch('/api/hexa/v0/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, passcode })
+        });
+        if (!res.ok) {
+          if (note) note.textContent = 'Thông tin đăng nhập không hợp lệ hoặc không thuộc phạm vi khách hàng.';
+          return;
+        }
+        const loginData = await res.json();
+        if (loginData && loginData.session_token) {
+          setAuthToken(String(loginData.session_token));
+        }
+        document.getElementById('cust-passcode').value = '';
+        if (loginData && loginData.authenticated) {
+          applySessionState(loginData);
+          await loadCustomerDashboard();
+        } else {
+          await loadSession();
+        }
+      } finally {
+        loginInFlight = false;
+      }
     }
 
     async function logoutCustomer() {
-      await fetch('/api/hexa/v0/auth/logout', { method: 'POST', credentials: 'same-origin' });
+      await apiFetch('/api/hexa/v0/auth/logout', { method: 'POST' });
+      setAuthToken('');
       dashboardRows = [];
       activeShipmentRow = null;
       activePublication = null;
@@ -2878,7 +2934,7 @@ def render_trial_portal_html() -> str:
       const selectorBox = document.getElementById('customer-shipment-selector');
       if (tbody) tbody.innerHTML = '';
 
-      const res = await fetch('/api/hexa/v0/dashboard', { credentials: 'same-origin' });
+      const res = await apiFetch('/api/hexa/v0/dashboard');
       if (!res.ok) {
         if (selectorBox) selectorBox.classList.add('hidden');
         showUnpublishedState('');
@@ -2999,9 +3055,7 @@ def render_trial_portal_html() -> str:
         showUnpublishedState('');
         return;
       }
-      const res = await fetch(`/api/hexa/v0/shipments/${encodeURIComponent(sid)}`, {
-        credentials: 'same-origin'
-      });
+      const res = await apiFetch(`/api/hexa/v0/shipments/${encodeURIComponent(sid)}`);
       if (!res.ok) {
         activePublication = null;
         showUnpublishedState(sid);
@@ -3435,7 +3489,7 @@ def render_trial_portal_html() -> str:
 
     async function triggerDownload(shipmentId, docId, version) {
       const url = `/api/hexa/v0/shipments/${encodeURIComponent(shipmentId)}/documents/${encodeURIComponent(docId)}/download?version=${encodeURIComponent(version)}`;
-      const res = await fetch(url, { credentials: 'same-origin' });
+      const res = await apiFetch(url);
       const banner = document.getElementById('download-status-banner');
       if (banner) banner.classList.remove('hidden');
       if (res.ok) {
@@ -3500,27 +3554,55 @@ def render_tt_login_html() -> str:
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Trường Thành — Đăng nhập Bàn Duyệt Công Bố Nội Bộ</title>
+  <style>
+    body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0f2236; color: #0f172a; display: grid; place-items: center; min-height: 100vh; }
+    .card { width: 100%; max-width: 420px; background: #fff; border-radius: 10px; padding: 24px 26px; box-shadow: 0 20px 45px rgba(0,0,0,0.35); }
+    h1 { margin: 0 0 12px; font-size: 17px; color: #0f2942; }
+    input { width: 100%; padding: 9px 11px; margin-bottom: 12px; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box; }
+    button { width: 100%; padding: 9px 14px; border: none; border-radius: 6px; background: #0f4c81; color: #fff; font-weight: 700; cursor: pointer; }
+    #tt-msg { margin-top: 10px; font-size: 12.5px; color: #b91c1c; font-weight: 600; }
+  </style>
 </head>
 <body>
   <div class="card">
     <h1>Bàn Duyệt Công Bố Nội Bộ Trường Thành</h1>
-    <input id="tt-user" type="text" placeholder="Tài khoản nội bộ TT" />
-    <input id="tt-pass" type="password" placeholder="Mật khẩu" />
-    <button type="button" onclick="loginTt()">Đăng nhập nội bộ TT</button>
+    <form onsubmit="event.preventDefault(); loginTt();">
+      <input id="tt-user" type="text" placeholder="Tài khoản nội bộ TT" />
+      <input id="tt-pass" type="password" placeholder="Mật khẩu" />
+      <button type="submit" onclick="loginTt()">Đăng nhập nội bộ TT</button>
+    </form>
     <div id="tt-msg"></div>
   </div>
   <script>
     async function loginTt() {
       const username = (document.getElementById('tt-user').value || '').trim();
-      const passcode = document.getElementById('tt-pass').value || '';
+      const passcode = (document.getElementById('tt-pass').value || '').trim();
       const res = await fetch('/api/hexa/v0/tt/auth/login', {
         method: 'POST',
         credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, passcode })
       });
-      if (res.ok) window.location.href = '/tt';
-      else document.getElementById('tt-msg').textContent = 'Từ chối truy cập';
+      if (!res.ok) {
+        document.getElementById('tt-msg').textContent = 'Từ chối truy cập';
+        return;
+      }
+      const data = await res.json();
+      const tok = String((data && data.session_token) || '');
+      try { if (tok && typeof sessionStorage !== 'undefined') sessionStorage.setItem('hexa_tt_token', tok); } catch (_e) {}
+      const deskRes = await fetch('/tt', {
+        credentials: 'same-origin',
+        headers: tok ? { 'Authorization': 'Bearer ' + tok } : {}
+      });
+      if (deskRes.ok) {
+        const html = await deskRes.text();
+        window.__HEXA_TT_TOKEN = tok;
+        document.open();
+        document.write(html);
+        document.close();
+      } else {
+        window.location.href = '/tt';
+      }
     }
   </script>
 </body>
@@ -3564,9 +3646,22 @@ def render_tt_publish_desk_html() -> str:
   </main>
   <script>
     let currentTtShipment = null;
+    function getTtToken() {
+      if (window.__HEXA_TT_TOKEN) return String(window.__HEXA_TT_TOKEN);
+      try { if (typeof sessionStorage !== 'undefined') return sessionStorage.getItem('hexa_tt_token') || ''; } catch (_e) {}
+      return '';
+    }
+    function ttFetch(url, opts) {
+      const options = Object.assign({ credentials: 'same-origin' }, opts || {});
+      const hdrs = Object.assign({}, options.headers || {});
+      const tok = getTtToken();
+      if (tok) hdrs['Authorization'] = 'Bearer ' + tok;
+      options.headers = hdrs;
+      return fetch(url, options);
+    }
     async function loadTtShipment() {
       const sid = (document.getElementById('tt-shipment-input').value || '').trim();
-      const res = await fetch(`/api/hexa/v0/tt/shipments/${encodeURIComponent(sid)}`, { credentials: 'same-origin' });
+      const res = await ttFetch(`/api/hexa/v0/tt/shipments/${encodeURIComponent(sid)}`);
       if (!res.ok) return;
       currentTtShipment = await res.json();
       const pub = currentTtShipment.publication || {};
@@ -3613,8 +3708,8 @@ def render_tt_publish_desk_html() -> str:
       document.querySelectorAll('.tt-doc-ck:checked').forEach(cb => { document_versions[cb.dataset.id] = cb.dataset.version; });
       const q = currentTtShipment && currentTtShipment.candidate_quote;
       const quote = q ? { id: q.id, version: q.version } : null;
-      const res = await fetch(`/api/hexa/v0/tt/shipments/${encodeURIComponent(sid)}/publish`, {
-        method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+      const res = await ttFetch(`/api/hexa/v0/tt/shipments/${encodeURIComponent(sid)}/publish`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ event_versions, document_versions, quote })
       });
       document.getElementById('tt-status').textContent = res.ok ? `Đã công bố lô ${sid}` : 'Lỗi công bố';
@@ -3622,8 +3717,8 @@ def render_tt_publish_desk_html() -> str:
     }
     async function submitTtRevokeAll() {
       const sid = (document.getElementById('tt-shipment-input').value || '').trim();
-      const res = await fetch(`/api/hexa/v0/tt/shipments/${encodeURIComponent(sid)}/revoke`, {
-        method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+      const res = await ttFetch(`/api/hexa/v0/tt/shipments/${encodeURIComponent(sid)}/revoke`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({})
       });
       document.getElementById('tt-status').textContent = res.ok ? `Đã thu hồi công bố lô ${sid}` : 'Lỗi thu hồi';
@@ -3669,9 +3764,15 @@ class HexaTrialRequestHandler(BaseHTTPRequestHandler):
         self.send_header("Cache-Control", "no-store")
         self.send_header("X-Content-Type-Options", "nosniff")
         if set_cookie_token is not None:
+            forwarded_proto = str(self.headers.get("X-Forwarded-Proto") or "").strip().lower()
+            samesite_attr = (
+                "SameSite=None; Secure; Partitioned"
+                if forwarded_proto == "https"
+                else "SameSite=Lax"
+            )
             self.send_header(
                 "Set-Cookie",
-                f"{cookie_name}={set_cookie_token}; Path=/; HttpOnly; SameSite=Lax",
+                f"{cookie_name}={set_cookie_token}; Path=/; HttpOnly; {samesite_attr}",
             )
         self.end_headers()
         self.wfile.write(raw)
@@ -3907,7 +4008,7 @@ class HexaTrialRequestHandler(BaseHTTPRequestHandler):
                 )
                 self._send_json(
                     HTTPStatus.OK,
-                    summary,
+                    {**summary, "session_token": issued_token},
                     set_cookie_token=issued_token,
                     cookie_name=TRIAL_COOKIE_NAME,
                 )
@@ -3937,7 +4038,7 @@ class HexaTrialRequestHandler(BaseHTTPRequestHandler):
                 )
                 self._send_json(
                     HTTPStatus.OK,
-                    summary,
+                    {**summary, "session_token": issued_token},
                     set_cookie_token=issued_token,
                     cookie_name=TRIAL_TT_COOKIE_NAME,
                 )

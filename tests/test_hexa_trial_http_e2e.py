@@ -1979,13 +1979,225 @@ vm.runInContext(scriptMatch[1], sandbox);
 
     proc = subprocess.run(
         ["node", "-e", node_dom_script],
-        env={"PATH": "/usr/local/bin:/usr/bin:/bin", "HTML_PATH": html_path, "DASH_PATH": json_path},
+        env={"PATH": "/usr/local/bin:/usr/bin:/bin", "HTML_PATH": html_path, "DASH_PATH": dash_json and json_path},
         capture_output=True,
         text=True,
         check=False,
     )
     assert proc.returncode == 0, f"Node Journey DOM state test failed: {proc.stdout} {proc.stderr}"
     assert "JOURNEY_UI_DOM_STATES_OK" in proc.stdout
+
+
+def test_customer_login_works_in_cookie_blocked_iframe_via_bearer_token_and_trimmed_passcode(
+    trial_server,
+) -> None:
+    """Regression for Owner Live Preview report ('vào được link nhưng ấn đăng nhập không được'):
+    In a cross-origin iframe (Arena Live Preview), browsers drop SameSite=Lax cookies.
+    Verify that:
+    1. POST /api/hexa/v0/auth/login returns session_token in JSON body (and tolerates accidental trailing space in copy-pasted passcode).
+    2. Client JS loginCustomer() stores session_token and sends Authorization: Bearer <token> on subsequent
+       /api/hexa/v0/session, /api/hexa/v0/dashboard, /api/hexa/v0/shipments/*, and document download calls,
+       so clicking 'Đăng nhập' succeeds even when 100% of browser cookies are blocked.
+    """
+    import subprocess
+    import tempfile
+
+    base_url, _env = trial_server
+    _tt_login_and_publish_standard_fixtures(base_url)
+
+    # 1. Verify server login tolerates accidental trailing whitespace from copy-paste and returns session_token
+    st_login, _hdrs, raw_login = _http_request(
+        base_url,
+        "/api/hexa/v0/auth/login",
+        method="POST",
+        json_body={"username": "  lucgiac.trial  ", "passcode": " LG-Trial-2026! "},
+    )
+    assert st_login == 200
+    login_payload = json.loads(raw_login.decode("utf-8"))
+    assert login_payload["authenticated"] is True
+    issued_token = login_payload.get("session_token")
+    assert isinstance(issued_token, str) and issued_token.startswith("hx_cust_")
+
+    # Verify Bearer token works on /api/hexa/v0/dashboard without any Cookie header
+    st_dash, _, raw_dash = _http_request(
+        base_url,
+        "/api/hexa/v0/dashboard",
+        headers={"Authorization": f"Bearer {issued_token}"},
+    )
+    assert st_dash == 200
+    dash_json = raw_dash.decode("utf-8")
+
+    st_html, _, raw_html = _http_request(base_url, "/")
+    assert st_html == 200
+    html_text = raw_html.decode("utf-8")
+
+    # 2. Simulate cookie-blocked iframe in Node VM: API calls ONLY succeed if Authorization: Bearer <token> is sent!
+    node_iframe_script = r"""
+const fs = require('fs');
+const vm = require('vm');
+const html = fs.readFileSync(process.env.HTML_PATH, 'utf8');
+const dashData = JSON.parse(process.env.DASH_JSON);
+const expectedToken = process.env.EXPECTED_TOKEN;
+const scriptMatch = html.match(/<script>([\s\S]*?)<\/script>/);
+if (!scriptMatch) { console.error('NO_SCRIPT'); process.exit(2); }
+
+function makeEl(tag) {
+  let _text = '';
+  const classes = new Set();
+  const el = {
+    tagName: (tag || 'div').toUpperCase(),
+    style: {},
+    dataset: {},
+    attrs: {},
+    value: '',
+    children: [],
+    className: '',
+    classList: {
+      add(...cs) { cs.forEach(c => classes.add(c)); el.className = Array.from(classes).join(' '); },
+      remove(...cs) { cs.forEach(c => classes.delete(c)); el.className = Array.from(classes).join(' '); },
+      toggle(c, force) {
+        if (force === undefined) { classes.has(c) ? classes.delete(c) : classes.add(c); }
+        else if (force) { classes.add(c); } else { classes.delete(c); }
+        el.className = Array.from(classes).join(' ');
+      },
+      contains(c) { return classes.has(c); }
+    },
+    appendChild(child) { this.children.push(child); return child; },
+    addEventListener(ev, fn) { this['on' + ev] = fn; },
+    setAttribute(k, v) { this.attrs[k] = String(v); if (k === 'class') this.className = String(v); },
+    getAttribute(k) { return this.attrs[k]; },
+    get clientWidth() { return 1200; },
+    get clientHeight() { return 640; },
+    get textContent() {
+      if (this.children.length > 0) return _text + this.children.map(c => c.textContent).join(' ');
+      return _text;
+    },
+    set textContent(v) { _text = String(v ?? ''); this.children = []; },
+    set innerHTML(v) { if (v === '') { this.children = []; _text = ''; } }
+  };
+  return el;
+}
+
+const elements = {};
+const document = {
+  getElementById(id) {
+    if (!elements[id]) elements[id] = makeEl('div');
+    return elements[id];
+  },
+  createElement(tag) { return makeEl(tag); },
+  createElementNS(_ns, tag) { return makeEl(tag); },
+  querySelectorAll() { return []; },
+  body: makeEl('body')
+};
+
+const sandbox = {
+  document,
+  window: { addEventListener() {}, open() {} },
+  Intl,
+  encodeURIComponent,
+  Math,
+  Number,
+  JSON,
+  String,
+  Array,
+  Object,
+  console,
+  fetch: async (url, opts = {}) => {
+    const hdrs = opts.headers || {};
+    const auth = hdrs['Authorization'] || hdrs['authorization'] || '';
+    const hasValidBearer = (auth === 'Bearer ' + expectedToken);
+
+    if (url === '/api/hexa/v0/auth/login') {
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          authenticated: true,
+          session_token: expectedToken,
+          label: 'Công ty TNHH Lục Giác (HEXA)',
+          principal: { authenticated: true, kind: 'customer', customer_id: 'CUST-HEXA-LG', display_name: 'Công ty TNHH Lục Giác (HEXA)' },
+          default_shipment_id: 'ROAD-LG-001'
+        })
+      };
+    }
+    if (url === '/api/hexa/v0/session') {
+      if (!hasValidBearer) {
+        return { ok: true, status: 200, json: async () => ({ authenticated: false, principal: { authenticated: false } }) };
+      }
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          authenticated: true,
+          label: 'Công ty TNHH Lục Giác (HEXA)',
+          principal: { authenticated: true, kind: 'customer', customer_id: 'CUST-HEXA-LG', display_name: 'Công ty TNHH Lục Giác (HEXA)' },
+          default_shipment_id: 'ROAD-LG-001'
+        })
+      };
+    }
+    if (url === '/api/hexa/v0/dashboard') {
+      if (!hasValidBearer) return { ok: false, status: 403, json: async () => ({ error: 'CUSTOMER_RESOURCE_UNAVAILABLE' }) };
+      return { ok: true, status: 200, json: async () => dashData };
+    }
+    if (url.startsWith('/api/hexa/v0/shipments/')) {
+      if (!hasValidBearer) return { ok: false, status: 403, json: async () => ({ error: 'CUSTOMER_RESOURCE_UNAVAILABLE' }) };
+      const row = dashData.shipments[0];
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          schema: 'hexa-customer-publication/v0',
+          reference: row.shipment_id,
+          transport_mode: row.transport_mode,
+          timeline: row.timeline,
+          documents: row.documents,
+          quote: row.quote
+        })
+      };
+    }
+    return { ok: false, status: 404, json: async () => ({}) };
+  }
+};
+vm.createContext(sandbox);
+vm.runInContext(scriptMatch[1], sandbox);
+
+(async () => {
+  await sandbox.loadSession();
+  document.getElementById('cust-username').value = 'lucgiac.trial';
+  document.getElementById('cust-passcode').value = 'LG-Trial-2026!';
+  await sandbox.loginCustomer();
+  if (!elements['customer-login-screen'].classList.contains('hidden')) {
+    throw new Error('Login screen still visible after loginCustomer() in cookie-blocked iframe!');
+  }
+  if (elements['journey-workspace-shell'].classList.contains('hidden')) {
+    throw new Error('Journey workspace still hidden after loginCustomer() in cookie-blocked iframe!');
+  }
+  const nodesText = elements['journey-nodes-layer'].textContent;
+  if (!nodesText.includes('QUA CỬA KHẨU')) {
+    throw new Error('Journey Map nodes not rendered after iframe login: ' + nodesText);
+  }
+  console.log('IFRAME_BEARER_LOGIN_OK');
+})();
+"""
+    with tempfile.NamedTemporaryFile("w", encoding="utf-8", suffix=".html", delete=False) as fh_html:
+        fh_html.write(html_text)
+        html_path = fh_html.name
+
+    proc = subprocess.run(
+        ["node", "-e", node_iframe_script],
+        env={
+            "PATH": "/usr/local/bin:/usr/bin:/bin",
+            "HTML_PATH": html_path,
+            "DASH_JSON": dash_json,
+            "EXPECTED_TOKEN": issued_token,
+        },
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert proc.returncode == 0, f"Iframe bearer login failed: {proc.stdout} {proc.stderr}"
+    assert "IFRAME_BEARER_LOGIN_OK" in proc.stdout
+
 
 
 
