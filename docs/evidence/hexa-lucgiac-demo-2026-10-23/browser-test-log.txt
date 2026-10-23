@@ -1,0 +1,116 @@
+
+=== desktop 1440x900 ===
+DEMO_BADGE: DEMO — DỮ LIỆU MINH HỌA
+DASH_ROWS: 2
+ROW0: ROAD-LG-001 Nội thất văn phòng — 18 kiện / 4.200 kg Bằng Tường (Quảng Tây) → Hà Nội via Hữu Nghị ROAD Vận chuyển & qua biên Đang vận chuyển 
+ROW1: ROAD-LG-002 Thiết bị chiếu sáng văn phòng — 10 pallet / 2.600 kg Bằng Tường (Quảng Tây) → Hà Nội via Hữu Nghị ROAD Kế hoạch Báo giá & hợp đồ
+DEBT0: Tổng phải thanh toán: 57.240.000 VND Đã thanh toán: 30.000.000 VND Còn phải thanh toán: 27.240.000 VND
+DEBT1: Tổng phải thanh toán: UNKNOWN / Chưa đối soát Đã thanh toán: UNKNOWN / Chưa đối soát Còn phải thanh toán: UNKNOWN / Chưa
+DOC_SCROLLW_CLIENTW: {"sw":1440,"cw":1440}
+JOURNEY_VISIBLE: true
+NODES: 7 ["journey-node-plan","journey-node-pickup","journey-node-road-ltl","journey-node-road-border","journey-node-customs-import","journey-node-delivery","journey-node-finance-reconciliation"]
+NODE_OUT_OF_VIEWPORT: 0 []
+NODE_TEXT_CLIPPED: 0 []
+ZOOMBAR_OUTSIDE: [] OVERLAP: [] W: 268 IN_VIEWPORT: true
+MAP_VIEW_FULLY_VISIBLE: {"top":120,"bottom":780,"vh":900,"fullyVisible":true}
+BUBBLE: present
+BUBBLE_IN_VIEWPORT: true
+BUBBLE_RECT: {"l":59,"t":181,"w":290,"h":213}
+BUBBLE_TEXT: KẾ HOẠCH CÓ BẰNG CHỨNG × ✓ Báo giá QT-20261022-LG01 đã xác nhận · Hợp đồng HD-LG-2026-01 đã ký (DEMO) Xác minh: 17/10/2026 16:00 ▤ Chứng từ được phép tải (3 tệp
+BUBBLE_BTNS: ["journey-bubble-close:×","journey-bubble-task-stage:✓\nBáo giá QT-20261022-LG01 đã ","journey-bubble-task-docs:▤\nChứng từ được phép tải (3 tệ","journey-open-workspace:Xem chi tiết chỉ-đọc →"]
+OPEN_BTN: true
+MODAL: {"hidden":false,"title":"Kế hoạch"}
+MODAL_TEXT: TRẠNG THÁI CÔNG ĐOẠN CÓ BẰNG CHỨNG THỜI ĐIỂM XÁC MINH 17/10/2026 16:00 ETA KHO ĐÃ XÁC MINH 25/10/2026 (đã xác minh) ĐẦU MỐI TRƯỜNG THÀNH CSKH Trường Thành — Ms. Minh Tú 0901 234 567 BÁO GIÁ BÁN ĐÃ DUYỆT 53.400.000 VND (QT-20261022-LG01 · vv1) NỘI DUNG ĐÃ CÔNG BỐ TẠI CÔNG ĐOẠN NÀY Báo giá QT-20261022
+ILLUSTRATIVE_NOTES: 4 ["Bảng minh họa — Nhấn vào hàng/thẻ lô để mở Journey Map. Cột Công nợ chỉ hiển thị","Chỉ minh họa — số liệu trong bubble là dữ liệu mẫu.","Chỉ minh họa — không lưu dữ liệu thật. Nút bên dưới không gửi dữ liệu tới server","Tệp PDF minh họa — không phải chứng từ thật. Nút tải chỉ tạo tệp mẫu DEMO tại tr"]
+MODAL_BACK_BTN: ["← Quay lại hải đồ"]
+MODAL_CLOSED: true
+BUBBLE_CLOSED: true
+FINANCE_NODE: true
+FINANCE_MODAL: {"title":"Thanh toán","body":"TRẠNG THÁI CÔNG ĐOẠN ĐANG XỬ LÝ THỜI ĐIỂM XÁC MINH 20/10/2026 15:00 ETA KHO ĐÃ XÁC MINH 25/10/2026 (đã xác minh) ĐẦU MỐI TRƯỜNG THÀNH CSKH Trường Thành — Ms. Minh Tú 0901 234 567 BÁO GIÁ BÁN ĐÃ DUYỆT 53.400.000 VND (QT-20261022-LG01 · vv1) NỘI DUNG ĐÃ CÔNG BỐ "}
+BACK_TO_DASH: true
+EXTERNAL_REQUESTS: 0 []
+JS_ERRORS: 0 []
+
+=== mobile 390x844 ===
+DEMO_BADGE: DEMO — DỮ LIỆU MINH HỌA
+DASH_ROWS: 2
+ROW0: ROAD-LG-001Nội thất văn phòng — 18 kiện / 4.200 kgBằng Tường (Quảng Tây) → Hà Nội via Hữu NghịROADVận chuyển & qua biênĐang vận chuyển đường
+ROW1: ROAD-LG-002Thiết bị chiếu sáng văn phòng — 10 pallet / 2.600 kgBằng Tường (Quảng Tây) → Hà Nội via Hữu NghịROADKế hoạchBáo giá & hợp đồng ủy
+DEBT0: Tổng phải thanh toán: 57.240.000 VNDĐã thanh toán: 30.000.000 VNDCòn phải thanh toán: 27.240.000 VND
+DEBT1: Tổng phải thanh toán: UNKNOWN / Chưa đối soátĐã thanh toán: UNKNOWN / Chưa đối soátCòn phải thanh toán: UNKNOWN / Chưa đ
+DOC_SCROLLW_CLIENTW: {"sw":390,"cw":390}
+JOURNEY_VISIBLE: true
+NODES: 7 ["journey-node-plan","journey-node-pickup","journey-node-road-ltl","journey-node-road-border","journey-node-customs-import","journey-node-delivery","journey-node-finance-reconciliation"]
+NODE_OUT_OF_VIEWPORT: 0 []
+NODE_TEXT_CLIPPED: 0 []
+ZOOMBAR_OUTSIDE: [] OVERLAP: [] W: 340 IN_VIEWPORT: true
+MAP_VIEW_FULLY_VISIBLE: {"top":132,"bottom":712,"vh":844,"fullyVisible":true}
+BUBBLE: present
+BUBBLE_IN_VIEWPORT: true
+BUBBLE_RECT: {"l":25,"t":370,"w":250,"h":242}
+BUBBLE_TEXT: KẾ HOẠCH CÓ BẰNG CHỨNG × ✓ Báo giá QT-20261022-LG01 đã xác nhận · Hợp đồng HD-LG-2026-01 đã ký (DEMO) Xác minh: 17/10/2026 16:00 ▤ Chứng từ được phép tải (3 tệp
+BUBBLE_BTNS: ["journey-bubble-close:×","journey-bubble-task-stage:✓\nBáo giá QT-20261022-LG01 đã ","journey-bubble-task-docs:▤\nChứng từ được phép tải (3 tệ","journey-open-workspace:Xem chi tiết chỉ-đọc →"]
+OPEN_BTN: true
+MODAL: {"hidden":false,"title":"Kế hoạch"}
+MODAL_TEXT: TRẠNG THÁI CÔNG ĐOẠN CÓ BẰNG CHỨNG THỜI ĐIỂM XÁC MINH 17/10/2026 16:00 ETA KHO ĐÃ XÁC MINH 25/10/2026 (đã xác minh) ĐẦU MỐI TRƯỜNG THÀNH CSKH Trường Thành — Ms. Minh Tú 0901 234 567 BÁO GIÁ BÁN ĐÃ DUYỆT 53.400.000 VND (QT-20261022-LG01 · vv1) NỘI DUNG ĐÃ CÔNG BỐ TẠI CÔNG ĐOẠN NÀY Báo giá QT-20261022
+ILLUSTRATIVE_NOTES: 4 ["Bảng minh họa — Nhấn vào hàng/thẻ lô để mở Journey Map. Cột Công nợ chỉ hiển thị","Chỉ minh họa — số liệu trong bubble là dữ liệu mẫu.","Chỉ minh họa — không lưu dữ liệu thật. Nút bên dưới không gửi dữ liệu tới server","Tệp PDF minh họa — không phải chứng từ thật. Nút tải chỉ tạo tệp mẫu DEMO tại tr"]
+MODAL_BACK_BTN: ["← Quay lại hải đồ"]
+MODAL_CLOSED: true
+BUBBLE_CLOSED: true
+FINANCE_NODE: true
+FINANCE_MODAL: {"title":"Thanh toán","body":"TRẠNG THÁI CÔNG ĐOẠN ĐANG XỬ LÝ THỜI ĐIỂM XÁC MINH 20/10/2026 15:00 ETA KHO ĐÃ XÁC MINH 25/10/2026 (đã xác minh) ĐẦU MỐI TRƯỜNG THÀNH CSKH Trường Thành — Ms. Minh Tú 0901 234 567 BÁO GIÁ BÁN ĐÃ DUYỆT 53.400.000 VND (QT-20261022-LG01 · vv1) NỘI DUNG ĐÃ CÔNG BỐ "}
+BACK_TO_DASH: true
+EXTERNAL_REQUESTS: 0 []
+JS_ERRORS: 0 []
+
+--- extended pass ---
+
+=== desktop 1440x900 ===
+SHIPMENT2: {"id":"ROAD-LG-002","here":"Đang ở: Kế hoạch","eta":"ETA kho: Chưa xác minh","nodes":7}
+SHIPMENT2_FINANCE_BUBBLE: {"inVp":true,"text":"THANH TOÁN CHỜ THÔNG TIN × · Chưa đối soát công nợ dịch vụ — Không tự lấy số báo giá làm công nợ (DEMO) Chưa có mốc thời gian xác minh ▤ Chứng từ được phép tải (2 tệp) Nhấn để xem chi tiết chỉ-đọc và tải minh họa Xem chi"}
+ZOOM: {"before":"122%","afterIn":"137%","afterOut":"107%","afterFit":"122%","afterRead":"100%"}
+BUBBLE_AFTER_ZOOM_INSIDE_MAP: true
+DOCS_MODAL: {"hidden":false,"title":"Kế hoạch","notes":2}
+DOCS_TEXT: TRẠNG THÁI CÔNG ĐOẠN CÓ BẰNG CHỨNG THỜI ĐIỂM XÁC MINH 19/10/2026 11:00 ETA KHO ĐÃ XÁC MINH Chưa xác minh ĐẦU MỐI TRƯỜNG THÀNH CSKH Trường Thành — Ms. Minh Tú 0901 234 567 BÁO GIÁ BÁN ĐÃ DUYỆT 42.500.000 VND (QT-20261022-LG02 · vv1) NỘI DUNG
+DOCS_MODAL_CLOSED_BY_BACKDROP: true
+MODAL_CLOSED_BY_ESC: true
+BUBBLE_CLOSED_BY_ESC: true
+UTILITY_BUBBLE: {"open":true,"inVp":true,"text":"DỮ LIỆU TRƯỜNG THÀNH ĐÃ DUYỆT (DEMO) × Chứng từ được phép tải (DEMO) 2 tệp đã duyệt Báo giá bán đã duyệt (DEMO) 42.500.000 VND Chỉ minh họa — số liệu trong bubb"}
+BACK_TO_DASH: true
+EXTERNAL_REQUESTS: 0 []
+JS_ERRORS: 0 []
+
+=== mobile 390x844 ===
+SHIPMENT2: {"id":"ROAD-LG-002","here":"Đang ở: Kế hoạch","eta":"ETA kho: Chưa xác minh","nodes":7}
+SHIPMENT2_FINANCE_BUBBLE: {"inVp":true,"text":"THANH TOÁN CHỜ THÔNG TIN × · Chưa đối soát công nợ dịch vụ — Không tự lấy số báo giá làm công nợ (DEMO) Chưa có mốc thời gian xác minh ▤ Chứng từ được phép tải (2 tệp) Nhấn để xem chi tiết chỉ-đọc và tải minh họa Xem chi"}
+ZOOM: {"before":"99%","afterIn":"114%","afterOut":"84%","afterFit":"99%","afterRead":"100%"}
+BUBBLE_AFTER_ZOOM_INSIDE_MAP: true
+DOCS_MODAL: {"hidden":false,"title":"Kế hoạch","notes":2}
+DOCS_TEXT: TRẠNG THÁI CÔNG ĐOẠN CÓ BẰNG CHỨNG THỜI ĐIỂM XÁC MINH 19/10/2026 11:00 ETA KHO ĐÃ XÁC MINH Chưa xác minh ĐẦU MỐI TRƯỜNG THÀNH CSKH Trường Thành — Ms. Minh Tú 0901 234 567 BÁO GIÁ BÁN ĐÃ DUYỆT 42.500.000 VND (QT-20261022-LG02 · vv1) NỘI DUNG
+DOCS_MODAL_CLOSED_BY_BACKDROP: true
+MODAL_CLOSED_BY_ESC: true
+BUBBLE_CLOSED_BY_ESC: true
+UTILITY_BUBBLE: {"open":true,"inVp":true,"text":"DỮ LIỆU TRƯỜNG THÀNH ĐÃ DUYỆT (DEMO) × Chứng từ được phép tải (DEMO) 2 tệp đã duyệt Báo giá bán đã duyệt (DEMO) 42.500.000 VND Chỉ minh họa — số liệu trong bubb"}
+BACK_TO_DASH: true
+EXTERNAL_REQUESTS: 0 []
+JS_ERRORS: 0 []
+
+--- docs/chat/debt pass ---
+
+=== desktop 1440x900 ===
+DOCS_FROM_BUBBLE: {"title":"Kế hoạch","hasDocsTable":true,"docRows":4,"hasChat":true,"hasDebt":true,"notes":["Chỉ minh họa — không lưu dữ liệu thật. Nút bên dưới không gửi dữ liệu ","Tệp PDF minh họa — không phải chứng từ thật. Nút tải chỉ tạo tệp mẫu D"],"downloadBtns":4}
+MODAL_BOTTOM_TEXT: ng Thành đã xác minh & công bố 01 LẤY HÀNG · 20/10/2026 08:30 · PHIÊN BẢN V2 Đã lấy hàng tại Shunde, Foshan — 18 kiện / 4.200 kg — Đã xác minh 02 NHẬN & GHÉP HÀNG · 20/10/2026 16:00 · PHIÊN BẢN V1 Đã nhận & ghép hàng tại kho Bằng Tường — LTL 4.200 kg — Đã cân chính xác 03 VẬN CHUYỂN & QUA BIÊN · 22/10/2026 07:15 · PHIÊN BẢN V1 Xe đã xuất phát — Đang trên đường tới Hữu Nghị (DEMO) ← Quay lại hải đồ
+DOWNLOAD_BTNS: [{"t":"Tải PDF minh họa","tid":null},{"t":"Tải PDF minh họa","tid":null},{"t":"Tải PDF minh họa","tid":null},{"t":"Tải PDF minh họa","tid":null}]
+MODAL_BACK_BTN_VISIBLE: {"rect":[356,809,125,29],"inVp":true}
+BACK_TO_MAP_WITH_BUBBLE: {"modalHidden":true,"journeyVisible":true,"bubbleReopened":true,"bubbleInVp":true}
+EXTERNAL_REQUESTS: 0 []
+JS_ERRORS: 0 []
+
+=== mobile 390x844 ===
+DOCS_FROM_BUBBLE: {"title":"Kế hoạch","hasDocsTable":true,"docRows":4,"hasChat":true,"hasDebt":true,"notes":["Chỉ minh họa — không lưu dữ liệu thật. Nút bên dưới không gửi dữ liệu ","Tệp PDF minh họa — không phải chứng từ thật. Nút tải chỉ tạo tệp mẫu D"],"downloadBtns":4}
+MODAL_BOTTOM_TEXT: ng Thành đã xác minh & công bố 01 LẤY HÀNG · 20/10/2026 08:30 · PHIÊN BẢN V2 Đã lấy hàng tại Shunde, Foshan — 18 kiện / 4.200 kg — Đã xác minh 02 NHẬN & GHÉP HÀNG · 20/10/2026 16:00 · PHIÊN BẢN V1 Đã nhận & ghép hàng tại kho Bằng Tường — LTL 4.200 kg — Đã cân chính xác 03 VẬN CHUYỂN & QUA BIÊN · 22/10/2026 07:15 · PHIÊN BẢN V1 Xe đã xuất phát — Đang trên đường tới Hữu Nghị (DEMO) ← Quay lại hải đồ
+DOWNLOAD_BTNS: [{"t":"Tải PDF minh họa","tid":null},{"t":"Tải PDF minh họa","tid":null},{"t":"Tải PDF minh họa","tid":null},{"t":"Tải PDF minh họa","tid":null}]
+MODAL_BACK_BTN_VISIBLE: {"rect":[32,757,125,29],"inVp":true}
+BACK_TO_MAP_WITH_BUBBLE: {"modalHidden":true,"journeyVisible":true,"bubbleReopened":true,"bubbleInVp":true}
+EXTERNAL_REQUESTS: 0 []
+JS_ERRORS: 0 []
