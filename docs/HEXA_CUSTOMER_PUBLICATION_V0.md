@@ -130,6 +130,21 @@ Nguồn dữ liệu nội bộ hiện tại trong repo **chưa có sẵn** các 
   - Toàn bộ trạng thái lưu trong RAM (`mongomock` + `GridFS`); khởi động lại tiến trình sẽ quay về mặc định `UNPUBLISHED`.
   - Chưa nối MongoDB Atlas production, chưa tạo collection manifest/account khách trên DB thật, và `BROWSER_QA=NOT_RUN / BLOCKED` trong sandbox Arena (không có Chromium).
 
+## 7. Đồng bộ Dashboard khách hàng với Journey Map đã duyệt (`HEXA-CUSTOMER-JOURNEY-UI-FIDELITY`)
+
+- **Tái sử dụng UI (`REUSE_ACTUAL_COMPONENT=PARTIAL_CSS_ASSETS_AND_PORTED_JOURNEYMAP_DOM`)**:
+  - Phục vụ trực tiếp file CSS biên dịch `component/dist/logi-shell.css` (`/assets/journey/logi-shell.css`) và 2 tài sản hải đồ thật `component/src/assets/journey/vietnam-east-sea-chart.webp` (`/assets/journey/vietnam-east-sea-chart.webp`), `component/src/assets/journey/chart-paper.jpg` (`/assets/journey/chart-paper.jpg`) mà không chỉnh sửa `component/src/*` hay `component/dist/*` của PR #211.
+  - Vì `component/dist/logi-shell.js` chỉ export hàm mount toàn bộ `<App />` nội bộ (gồm sidebar nội bộ TT và các form nhập liệu nghiệp vụ TT), cổng khách hàng tái sử dụng nguyên trạng hệ class CSS `.journey-demo`, `.journey-toolbar`, `.journey-split.journey-map-first`, `.journey-canvas`, `.journey-sea-chart`, `.journey-edge`, `.journey-node`, `.journey-bubble`, `.journey-modal-layer`, `.journey-side.journey-modal-card`, `.journey-zoom-bar` và công thức tọa độ/đường cong Bézier (`JOURNEY_NODE_W=116`, `JOURNEY_NODE_H=66`, `PITCH=140`, `PX=42`, `journeyEdgePath`) của `JourneyMap.tsx` + `JourneyBubble.tsx` + `ShipmentJourney.tsx` trên lớp JS chỉ-đọc dành riêng cho khách.
+- **Tách biệt tuyệt đối màn hình khách hàng (`GET /`, `GET /hexa`) và bàn duyệt nội bộ TT (`GET /tt`, `GET /tt/login`)**:
+  - HTML khách hàng tuyệt đối không chứa: Màn hình 1 — Nội bộ Trường Thành, tab đổi vai trò, nút chọn nhanh Khách A/B/C hay mật khẩu mẫu, debug JSON / schema kỹ thuật / cảnh báo `HTTP 403`, hay công việc nội bộ/giá vốn/NCC/lợi nhuận của TT.
+  - Bàn duyệt công bố dành cho nhân sự TT được tách sang `/tt` (kiểm quyền `_require_authorized_tt_staff` phía server trước khi trả HTML; khách hoặc người dùng ẩn danh truy cập `/tt` bị chặn `HTTP 403`).
+- **Hành trình khách hàng Map-First & tính đúng của các công đoạn**:
+  - Khách có 1 lô đã công bố (`ROAD-LG-001`) sẽ mở thẳng Journey Map làm màn hình chính; khi có nhiều lô mới hiện thanh danh sách lô gọn (`customer-shipment-selector`).
+  - Bấm node mở `.journey-bubble` gắn theo node → bấm mục trong bubble mở popup chỉ-đọc (`.journey-modal-layer` / `.journey-side.journey-modal-card`) hiển thị trạng thái đã xác minh, thời điểm, nội dung công bố và bảng tải chứng từ PDF đúng phiên bản (không có form nhập liệu nội bộ TT).
+  - **Không tự động đánh dấu hoàn thành công đoạn sau từ công đoạn trước**: đã xóa nhánh suy diễn `pickup` → `road-ltl`; sự kiện `pickup` (`Lấy hàng`) không tự đánh dấu `road-ltl` (`Nhận & ghép hàng (LTL)`) hoàn thành khi chưa có sự kiện `road-ltl` được xác minh & công bố.
+  - Khi chưa đăng nhập: hiển thị màn đăng nhập gọn (`customer-login-screen`); khi lô chưa công bố hoặc đã thu hồi: hiển thị `"Trường Thành chưa công bố thông tin cho lô này"` trên nền hải đồ (`journey-zero-notice`).
+
+
 
 
 

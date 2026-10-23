@@ -1591,5 +1591,403 @@ vm.runInContext(scriptMatch[1], sandbox);
     assert "SAFE_DOM_RENDER_OK" in proc.stdout
 
 
+def test_journey_ui_fidelity_pickup_does_not_mark_road_ltl_completed_and_stage_truth(
+    trial_server,
+) -> None:
+    """HEXA-CUSTOMER-JOURNEY-UI-FIDELITY:
+    1. A 'pickup' event MUST NEVER automatically mark 'road-ltl' (consolidation) as completed.
+    2. Completing 'pickup' or 'road-border' without a verified 'road-ltl' event leaves 'road-ltl' in UPCOMING (completed=False).
+    3. Customer journey payload includes node state aligned with JourneyMap (COMPLETED, CURRENT, UPCOMING) and SVG edges.
+    """
+    base_url, _env = trial_server
+
+    st_tt, hdrs_tt, _ = _http_request(
+        base_url,
+        "/api/hexa/v0/tt/auth/login",
+        method="POST",
+        json_body={"username": "tt.ops.truongthanh", "passcode": "TT-Trial-2026!"},
+    )
+    assert st_tt == 200
+    tt_token = _extract_cookie_value(hdrs_tt, TRIAL_TT_COOKIE_NAME)
+
+    # 1. Publish ONLY pickup event for ROAD-LG-001
+    st_pub_pickup_only, _, _ = _http_request(
+        base_url,
+        f"/api/hexa/v0/tt/shipments/{SHIPMENT_A_ID}/publish",
+        method="POST",
+        session_token=tt_token,
+        json_body={
+            "event_versions": {"EVT-LG-01-PICKUP": "v1"},
+            "document_versions": {"DOC-LG-PL": "v2"},
+            "quote": {"id": QUOTE_A_ID, "version": "3"},
+        },
+    )
+    assert st_pub_pickup_only == 200
+
+    st_lg, hdrs_lg, _ = _http_request(
+        base_url,
+        "/api/hexa/v0/auth/login",
+        method="POST",
+        json_body={"username": "lucgiac.trial", "passcode": "LG-Trial-2026!"},
+    )
+    assert st_lg == 200
+    lg_token = _extract_cookie_value(hdrs_lg, TRIAL_COOKIE_NAME)
+
+    st_d1, _, raw_d1 = _http_request(base_url, "/api/hexa/v0/dashboard", session_token=lg_token)
+    assert st_d1 == 200
+    d1 = json.loads(raw_d1.decode("utf-8"))
+    nodes_1 = {n["id"]: n for n in d1["shipments"][0]["journey"]["nodes"]}
+
+    assert nodes_1["pickup"]["completed"] is True
+    assert nodes_1["pickup"]["current"] is True
+    assert nodes_1["pickup"]["state"] == "CURRENT"
+    # CRITICAL REGRESSION: pickup does NOT prove LTL consolidation is complete!
+    assert nodes_1["road-ltl"]["completed"] is False
+    assert nodes_1["road-ltl"]["current"] is False
+    assert nodes_1["road-ltl"]["state"] == "UPCOMING"
+    assert nodes_1["road-border"]["completed"] is False
+    assert nodes_1["customs-import"]["completed"] is False
+    assert nodes_1["delivery"]["completed"] is False
+
+    # 2. Publish pickup + road-border (still no road-ltl event)
+    _tt_login_and_publish_standard_fixtures(base_url)
+    st_d2, _, raw_d2 = _http_request(base_url, "/api/hexa/v0/dashboard", session_token=lg_token)
+    assert st_d2 == 200
+    d2 = json.loads(raw_d2.decode("utf-8"))
+    journey_2 = d2["shipments"][0]["journey"]
+    nodes_2 = {n["id"]: n for n in journey_2["nodes"]}
+
+    assert nodes_2["pickup"]["completed"] is True
+    assert nodes_2["pickup"]["current"] is False
+    assert nodes_2["pickup"]["state"] == "COMPLETED"
+    assert nodes_2["road-ltl"]["completed"] is False
+    assert nodes_2["road-ltl"]["current"] is False
+    assert nodes_2["road-ltl"]["state"] == "UPCOMING"
+    assert nodes_2["road-border"]["completed"] is True
+    assert nodes_2["road-border"]["current"] is True
+    assert nodes_2["road-border"]["state"] == "CURRENT"
+    assert nodes_2["customs-import"]["completed"] is False
+    assert nodes_2["customs-import"]["state"] == "UPCOMING"
+    assert nodes_2["delivery"]["completed"] is False
+    assert nodes_2["delivery"]["state"] == "UPCOMING"
+    assert len(journey_2.get("edges") or []) == 4
+
+
+def test_customer_html_strict_separation_and_reused_journey_assets(
+    trial_server,
+) -> None:
+    """HEXA-CUSTOMER-JOURNEY-UI-FIDELITY:
+    1. Customer HTML (GET / and GET /hexa) NEVER contains TT internal screen, role tabs,
+       Customer A/B/C buttons, sample passwords, debug JSON, or technical schema/403 dumps.
+    2. Real Journey Map assets (vietnam-east-sea-chart.webp, chart-paper.jpg, logi-shell.css) are served.
+    3. TT approval desk (/tt) is separated from the customer portal and enforced by server-side auth.
+    """
+    base_url, _env = trial_server
+
+    for path in ("/", "/hexa"):
+        st_html, _, raw_html = _http_request(base_url, path)
+        assert st_html == 200
+        html_text = raw_html.decode("utf-8")
+
+        forbidden_customer_html_tokens = [
+            "Màn hình 1",
+            "Nội bộ Trường Thành",
+            "screen-tt",
+            "tab-btn-tt",
+            "switchScreen",
+            "/api/hexa/v0/tt/",
+            "Khách A",
+            "Khách B",
+            "Khách C",
+            "fillCustomerLogin",
+            "LG-Trial-2026!",
+            "MD-Trial-2026!",
+            "AP-Trial-2026!",
+            "TT-Trial-2026!",
+            "minhduc.trial",
+            "anphat.trial",
+            "tt.ops.truongthanh",
+            "raw-publication-json",
+            "SCHEMA_GAP_REPORT",
+            "CUSTOMER_RESOURCE_UNAVAILABLE",
+            "HTTP 403",
+        ]
+        for token in forbidden_customer_html_tokens:
+            assert token not in html_text, f"Forbidden token leaked in customer HTML ({path}): {token}"
+
+        # Must reference real reused Journey Map assets and classes
+        assert "/assets/journey/vietnam-east-sea-chart.webp" in html_text
+        assert "/assets/journey/chart-paper.jpg" in html_text
+        assert "/assets/journey/logi-shell.css" in html_text
+        assert "journey-map-viewport" in html_text
+        assert "journey-sea-chart" in html_text
+        assert "journey-bubble" in html_text
+
+    # Reused assets are served over HTTP with exact file bytes
+    st_webp, hdrs_webp, raw_webp = _http_request(base_url, "/assets/journey/vietnam-east-sea-chart.webp")
+    assert st_webp == 200
+    assert "image/webp" in hdrs_webp.get("Content-Type", "")
+    assert len(raw_webp) > 50000
+
+    st_jpg, hdrs_jpg, raw_jpg = _http_request(base_url, "/assets/journey/chart-paper.jpg")
+    assert st_jpg == 200
+    assert "image/jpeg" in hdrs_jpg.get("Content-Type", "")
+    assert len(raw_jpg) > 100000
+
+    st_css, hdrs_css, raw_css = _http_request(base_url, "/assets/journey/logi-shell.css")
+    assert st_css == 200
+    assert "text/css" in hdrs_css.get("Content-Type", "")
+    assert b".journey-sea-chart" in raw_css
+
+    # Separated TT page (/tt) requires server-side TT staff authentication
+    st_tt_anon, _, _ = _http_request(base_url, "/tt")
+    assert st_tt_anon == 403
+
+    st_lg, hdrs_lg, _ = _http_request(
+        base_url,
+        "/api/hexa/v0/auth/login",
+        method="POST",
+        json_body={"username": "lucgiac.trial", "passcode": "LG-Trial-2026!"},
+    )
+    assert st_lg == 200
+    lg_token = _extract_cookie_value(hdrs_lg, TRIAL_COOKIE_NAME)
+    st_tt_as_cust, _, _ = _http_request(base_url, "/tt", session_token=lg_token)
+    assert st_tt_as_cust == 403
+
+    # Authorized TT staff can open /tt after logging in via /tt/login -> /api/hexa/v0/tt/auth/login
+    st_tt_login_page, _, _ = _http_request(base_url, "/tt/login")
+    assert st_tt_login_page == 200
+
+    st_tt_auth, hdrs_tt, _ = _http_request(
+        base_url,
+        "/api/hexa/v0/tt/auth/login",
+        method="POST",
+        json_body={"username": "tt.ops.truongthanh", "passcode": "TT-Trial-2026!"},
+    )
+    assert st_tt_auth == 200
+    tt_token = _extract_cookie_value(hdrs_tt, TRIAL_TT_COOKIE_NAME)
+    st_tt_desk, _, raw_tt_desk = _http_request(
+        base_url,
+        "/tt",
+        headers={"Cookie": f"{TRIAL_TT_COOKIE_NAME}={tt_token}"},
+    )
+    assert st_tt_desk == 200
+    assert "Nội bộ Trường Thành" in raw_tt_desk.decode("utf-8")
+
+
+def test_customer_map_first_dom_states_single_multi_unpublished_and_node_bubble_popup(
+    trial_server,
+) -> None:
+    """HEXA-CUSTOMER-JOURNEY-UI-FIDELITY:
+    Verify via Node VM DOM execution that the customer screen:
+    - Shows a clean login card when unauthenticated (no HTTP 403 dump);
+    - Shows 'Trường Thành chưa công bố thông tin cho lô này' when unpublished or revoked;
+    - Auto-opens the Journey Map as the primary screen when 1 published shipment exists;
+    - Shows a compact shipment selector when multiple shipments exist;
+    - Opens node bubble -> read-only stage popup with verified status, timestamp, published content,
+      and downloadable documents (with zero TT data-entry inputs).
+    """
+    import subprocess
+    import tempfile
+
+    base_url, _env = trial_server
+    _tt_login_and_publish_standard_fixtures(base_url)
+
+    st_html, _, raw_html = _http_request(base_url, "/")
+    assert st_html == 200
+    html_text = raw_html.decode("utf-8")
+
+    st_lg, hdrs_lg, _ = _http_request(
+        base_url,
+        "/api/hexa/v0/auth/login",
+        method="POST",
+        json_body={"username": "lucgiac.trial", "passcode": "LG-Trial-2026!"},
+    )
+    assert st_lg == 200
+    lg_token = _extract_cookie_value(hdrs_lg, TRIAL_COOKIE_NAME)
+    st_dash, _, raw_dash = _http_request(base_url, "/api/hexa/v0/dashboard", session_token=lg_token)
+    assert st_dash == 200
+    dash_json = raw_dash.decode("utf-8")
+
+    node_dom_script = r"""
+const fs = require('fs');
+const vm = require('vm');
+const html = fs.readFileSync(process.env.HTML_PATH, 'utf8');
+const dashData = JSON.parse(fs.readFileSync(process.env.DASH_PATH, 'utf8'));
+const scriptMatch = html.match(/<script>([\s\S]*?)<\/script>/);
+if (!scriptMatch) { console.error('NO_SCRIPT'); process.exit(2); }
+
+function makeEl(tag) {
+  let _text = '';
+  const classes = new Set();
+  const el = {
+    tagName: (tag || 'div').toUpperCase(),
+    style: {},
+    dataset: {},
+    attrs: {},
+    value: '',
+    children: [],
+    className: '',
+    classList: {
+      add(...cs) { cs.forEach(c => classes.add(c)); el.className = Array.from(classes).join(' '); },
+      remove(...cs) { cs.forEach(c => classes.delete(c)); el.className = Array.from(classes).join(' '); },
+      toggle(c, force) {
+        if (force === undefined) { classes.has(c) ? classes.delete(c) : classes.add(c); }
+        else if (force) { classes.add(c); } else { classes.delete(c); }
+        el.className = Array.from(classes).join(' ');
+      },
+      contains(c) { return classes.has(c); }
+    },
+    appendChild(child) { this.children.push(child); return child; },
+    addEventListener(ev, fn) { this['on' + ev] = fn; },
+    setAttribute(k, v) { this.attrs[k] = String(v); if (k === 'class') this.className = String(v); },
+    getAttribute(k) { return this.attrs[k]; },
+    getBoundingClientRect() { return { width: 1200, height: 640, left: 0, top: 0 }; },
+    get clientWidth() { return 1200; },
+    get clientHeight() { return 640; },
+    get textContent() {
+      if (this.children.length > 0) return _text + this.children.map(c => c.textContent).join(' ');
+      return _text;
+    },
+    set textContent(v) { _text = String(v ?? ''); this.children = []; },
+    set innerHTML(v) { if (v === '') { this.children = []; _text = ''; } }
+  };
+  return el;
+}
+
+const elements = {};
+const document = {
+  getElementById(id) {
+    if (!elements[id]) elements[id] = makeEl('div');
+    return elements[id];
+  },
+  createElement(tag) { return makeEl(tag); },
+  createElementNS(_ns, tag) { return makeEl(tag); },
+  querySelectorAll() { return []; },
+  body: makeEl('body')
+};
+let mockAuthed = false;
+let mockDash = { customer_id: 'CUST-HEXA-LG', customer_name: 'Công ty TNHH Lục Giác (HEXA)', summary: { active_tracking: 0, arriving_soon: 0, verified_warehouse_eta_count: 0, customer_action_needed: 0, customer_action_status_label: 'Chưa có yêu cầu được xác nhận', total_published: 0 }, shipments: [] };
+
+const sandbox = {
+  document,
+  window: { addEventListener() {}, open() {} },
+  Intl,
+  encodeURIComponent,
+  Math,
+  Number,
+  JSON,
+  String,
+  Array,
+  Object,
+  console,
+  fetch: async (url) => {
+    if (url === '/api/hexa/v0/session') {
+      return {
+        ok: true,
+        status: 200,
+        json: async () => mockAuthed
+          ? { authenticated: true, label: 'Lục Giác', principal: { authenticated: true, customer_id: 'CUST-HEXA-LG', display_name: 'Công ty TNHH Lục Giác (HEXA)' }, default_shipment_id: 'ROAD-LG-001' }
+          : { authenticated: false, label: 'Chưa đăng nhập', principal: { authenticated: false, customer_id: '', display_name: '' }, default_shipment_id: '' }
+      };
+    }
+    if (url === '/api/hexa/v0/dashboard') {
+      if (!mockAuthed) return { ok: false, status: 403, json: async () => ({ error: 'CUSTOMER_RESOURCE_UNAVAILABLE' }) };
+      return { ok: true, status: 200, json: async () => mockDash };
+    }
+    const row = (mockDash.shipments || [])[0];
+    if (!mockAuthed || !row) return { ok: false, status: 403, json: async () => ({ error: 'CUSTOMER_RESOURCE_UNAVAILABLE' }) };
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({
+        schema: 'hexa-customer-publication/v0',
+        reference: row.shipment_id,
+        transport_mode: row.transport_mode,
+        timeline: row.timeline,
+        documents: row.documents,
+        quote: row.quote
+      })
+    };
+  }
+};
+vm.createContext(sandbox);
+vm.runInContext(scriptMatch[1], sandbox);
+
+(async () => {
+  // 1. Unauthenticated -> clean login screen, journey shell hidden
+  await sandbox.loadSession();
+  if (elements['customer-login-screen'].classList.contains('hidden')) throw new Error('Login screen should be visible when unauthed');
+  if (!elements['journey-workspace-shell'].classList.contains('hidden')) throw new Error('Journey workspace should be hidden when unauthed');
+
+  // 2. Authenticated but 0 published shipments -> unpublished notice visible
+  mockAuthed = true;
+  await sandbox.loadSession();
+  const zeroText = elements['journey-zero-notice'].textContent;
+  if (!zeroText.includes('Trường Thành chưa công bố thông tin cho lô này')) {
+    throw new Error('Missing unpublished notice: ' + zeroText);
+  }
+
+  // 3. Authenticated with 1 published shipment -> Journey Map auto-opens, selector hidden
+  mockDash = dashData;
+  await sandbox.loadCustomerDashboard();
+  if (!elements['customer-shipment-selector'].classList.contains('hidden')) {
+    throw new Error('Single shipment should hide multi-shipment selector');
+  }
+  const nodesLayerText = elements['journey-nodes-layer'].textContent;
+  if (!nodesLayerText.includes('LẤY HÀNG') || !nodesLayerText.includes('QUA CỬA KHẨU')) {
+    throw new Error('Journey Map nodes missing: ' + nodesLayerText);
+  }
+
+  // 4. Click node -> bubble opens -> click bubble item -> read-only stage popup opens
+  sandbox.selectJourneyNode('road-border');
+  const bubbleText = elements['journey-bubble-slot'].textContent;
+  if (!bubbleText.includes('QUA CỬA KHẨU')) {
+    throw new Error('Journey bubble did not open for road-border: ' + bubbleText);
+  }
+  sandbox.openStageModal('road-border', 'info');
+  if (elements['journey-modal-layer'].classList.contains('hidden')) {
+    throw new Error('Read-only stage modal did not open');
+  }
+  const modalText = elements['journey-modal-body'].textContent;
+  if (!modalText.includes('Hữu Nghị') || !modalText.includes('Packing List Lục Giác')) {
+    throw new Error('Modal missing published evidence or documents: ' + modalText);
+  }
+
+  // 5. Multiple shipments -> compact selector becomes visible
+  mockDash = {
+    ...dashData,
+    shipments: [
+      dashData.shipments[0],
+      { ...dashData.shipments[0], shipment_id: 'ROAD-LG-002', route_summary: 'Shenzhen -> Hà Nội' }
+    ]
+  };
+  await sandbox.loadCustomerDashboard();
+  if (elements['customer-shipment-selector'].classList.contains('hidden')) {
+    throw new Error('Multi-shipment selector should be visible when >1 shipment');
+  }
+
+  console.log('JOURNEY_UI_DOM_STATES_OK');
+})();
+"""
+    with tempfile.NamedTemporaryFile("w", encoding="utf-8", suffix=".html", delete=False) as fh_html, \
+         tempfile.NamedTemporaryFile("w", encoding="utf-8", suffix=".json", delete=False) as fh_json:
+        fh_html.write(html_text)
+        fh_json.write(dash_json)
+        html_path = fh_html.name
+        json_path = fh_json.name
+
+    proc = subprocess.run(
+        ["node", "-e", node_dom_script],
+        env={"PATH": "/usr/local/bin:/usr/bin:/bin", "HTML_PATH": html_path, "DASH_PATH": json_path},
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert proc.returncode == 0, f"Node Journey DOM state test failed: {proc.stdout} {proc.stderr}"
+    assert "JOURNEY_UI_DOM_STATES_OK" in proc.stdout
+
+
+
 
 

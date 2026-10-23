@@ -2056,17 +2056,19 @@ class HexaTrialEnvironment:
 
             customer_nodes: list[dict[str, Any]] = []
             verified_stage_label = "Chưa xác minh"
+            is_complete = "delivery" in events_by_stage
             for raw_node in internal_journey.get("nodes") or []:
                 n_id = str(raw_node.get("id") or "")
                 if n_id == "MAIN_CARRIAGE":
                     continue
                 n_label = str(raw_node.get("label") or n_id)
+                # HEXA-CUSTOMER-JOURNEY-UI-FIDELITY:
+                # Never mark a stage completed merely because a previous stage completed.
+                # Specifically, a 'pickup' event does NOT automatically prove 'road-ltl' (consolidation) is completed.
                 matched_ev = events_by_stage.get(n_id)
-                if matched_ev is None and n_id == "road-ltl" and "pickup" in events_by_stage:
-                    matched_ev = events_by_stage["pickup"]
                 is_done = matched_ev is not None
-                is_current = bool(verified_stage_id and n_id == verified_stage_id)
-                if is_current:
+                is_current = bool(verified_stage_id and n_id == verified_stage_id and not is_complete)
+                if verified_stage_id and n_id == verified_stage_id:
                     verified_stage_label = n_label
                 customer_nodes.append(
                     {
@@ -2077,7 +2079,7 @@ class HexaTrialEnvironment:
                         "state": (
                             "CURRENT"
                             if is_current
-                            else ("VERIFIED_DONE" if is_done else "PENDING_VERIFICATION")
+                            else ("COMPLETED" if is_done else "UPCOMING")
                         ),
                         "evidence": (
                             str(matched_ev.get("title") or "")
@@ -2088,11 +2090,14 @@ class HexaTrialEnvironment:
                     }
                 )
 
+            customer_edges: list[dict[str, str]] = [
+                {"from": customer_nodes[i]["id"], "to": customer_nodes[i + 1]["id"]}
+                for i in range(len(customer_nodes) - 1)
+            ]
+
             if verified_stage_id and verified_stage_label == "Chưa xác minh":
                 verified_stage_label = verified_stage_id
 
-            # Never default a shipment to completed unless a verified 'delivery' event was explicitly published
-            is_complete = "delivery" in events_by_stage
             docs = list(pub_payload.get("documents") or [])
             quote = pub_payload.get("quote")
 
@@ -2141,6 +2146,7 @@ class HexaTrialEnvironment:
                     "journey": {
                         "current_stage_id": verified_stage_id or "",
                         "nodes": customer_nodes,
+                        "edges": customer_edges,
                         "position_note": (
                             verified_stage_title
                             if verified_stage_id
@@ -2425,1319 +2431,1205 @@ def _extract_tt_session_token(headers: Mapping[str, str]) -> str:
 
 
 def render_trial_portal_html() -> str:
-    """Two-screen HEXA V0 trial portal HTML (Trường Thành Publish Desk & Customer Portal).
+    """Customer Map-First Journey Portal HTML (HEXA V0 / V1).
 
-    Contains ZERO TT internal cost, margin, supplier, unverified ETA, or other
-    customer's information in static HTML, and provides NO self-service session
-    switcher on the customer surface.
+    Reuses ``component/dist/logi-shell.css``, ``component/src/assets/journey/vietnam-east-sea-chart.webp``,
+    ``component/src/assets/journey/chart-paper.jpg``, and the ``JourneyMap.tsx`` + ``JourneyBubble.tsx``
+    + ``ShipmentJourney.tsx`` DOM/geometry/pan-zoom-fit/bubble/modal contract over read-only
+    TT-approved customer data.
+
+    Contains ZERO TT internal screens, role-switching tabs, Customer A/B/C sample buttons,
+    sample credentials, debug JSON, technical schema dumps, or internal TT holdback data.
     """
     return """<!doctype html>
 <html lang="vi">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>HEXA V0 — Luồng TT Duyệt Công Bố → Khách Hàng Đăng Nhập Xem Lô</title>
+  <title>HEXA V0 — Cổng Hành Trình Lô Hàng Khách Hàng</title>
+  <link rel="stylesheet" href="/assets/journey/logi-shell.css" />
   <style>
     :root {
-      --bg: #f4f6f9;
+      --bg: #eef2f6;
       --surface: #ffffff;
-      --border: #d8dee9;
-      --text: #1b2430;
-      --muted: #526071;
-      --primary: #0f4c81;
-      --primary-soft: #e8f1f8;
-      --ok: #137333;
-      --ok-bg: #e6f4ea;
-      --deny: #b3261e;
-      --deny-bg: #fce8e6;
-      --warn: #8a5300;
-      --warn-bg: #fef7e0;
+      --border: #cbd5e1;
+      --text: #0f172a;
+      --muted: #475569;
+      --primary: #1a4b75;
       --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-      --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     }
     * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      font-family: var(--sans);
-      color: var(--text);
-      background: var(--bg);
-      line-height: 1.5;
-    }
-    header {
-      background: #0f2942;
-      color: #fff;
-      padding: 16px 24px;
-      border-bottom: 3px solid #1e6091;
-    }
-    header .top-row {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: space-between;
-      align-items: center;
-      gap: 12px;
-      max-width: 1120px;
-      margin: 0 auto;
-    }
-    header h1 {
-      font-size: 18px;
-      margin: 0;
-      font-weight: 700;
-    }
-    .screen-tabs {
-      max-width: 1120px;
-      margin: 16px auto 0;
-      padding: 0 20px;
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-    }
-    .screen-tab-btn {
-      padding: 12px 16px;
-      border-radius: 10px;
-      border: 2px solid var(--border);
-      background: var(--surface);
-      color: var(--text);
-      text-align: left;
-      cursor: pointer;
-      transition: all 0.15s ease;
-    }
-    .screen-tab-btn.active {
-      border-color: var(--primary);
-      background: var(--primary-soft);
-      color: var(--primary);
-    }
-    .screen-tab-btn .tab-title {
-      display: block;
-      font-size: 15px;
-      font-weight: 700;
-    }
-    .screen-tab-btn .tab-sub {
-      display: block;
-      font-size: 12.5px;
-      color: var(--muted);
-      margin-top: 2px;
-      font-weight: 500;
-    }
-    .pill {
-      padding: 4px 10px;
-      border-radius: 999px;
-      font-weight: 600;
-      font-size: 12px;
-      display: inline-block;
-    }
-    .pill-ok { background: var(--ok-bg); color: var(--ok); }
-    .pill-deny { background: var(--deny-bg); color: var(--deny); }
-    .pill-warn { background: var(--warn-bg); color: var(--warn); }
-    main {
-      max-width: 1120px;
-      margin: 16px auto;
-      padding: 0 20px 48px;
-      display: grid;
-      gap: 20px;
-    }
-    .screen-pane { display: grid; gap: 18px; }
-    .screen-pane.hidden { display: none; }
-    .card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 18px 20px;
-      box-shadow: 0 1px 3px rgba(15, 41, 66, 0.05);
-    }
-    .card h2 {
-      margin: 0 0 10px;
-      font-size: 16px;
-      color: var(--primary);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-    .card h3 {
-      margin: 14px 0 8px;
-      font-size: 14px;
-      color: var(--text);
-    }
-    .muted { color: var(--muted); font-size: 13px; }
-    .mono { font-family: var(--mono); font-size: 12.5px; }
-    .btn-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-top: 10px;
-      align-items: center;
-    }
-    input[type="text"], input[type="password"] {
-      padding: 7px 10px;
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      font-family: var(--mono);
-      font-size: 13px;
-    }
-    button {
-      cursor: pointer;
-      border: 1px solid var(--primary);
-      background: var(--primary);
-      color: #fff;
-      padding: 8px 13px;
-      border-radius: 6px;
-      font-size: 13px;
-      font-weight: 600;
-    }
-    button:hover { background: #0b3960; }
-    button.btn-secondary {
-      background: #fff;
-      color: var(--primary);
-      border-color: var(--primary);
-    }
-    button.btn-secondary:hover { background: var(--primary-soft); }
-    button.btn-danger {
-      background: var(--deny);
-      border-color: var(--deny);
-      color: #fff;
-    }
-    button.btn-danger:hover { background: #8c1d17; }
-    .kv-list {
-      display: grid;
-      grid-template-columns: 210px 1fr;
-      gap: 6px 12px;
-      font-size: 13px;
-      margin: 8px 0;
-    }
-    .kv-list dt { color: var(--muted); font-weight: 600; }
-    .kv-list dd { margin: 0; font-weight: 500; }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 13px;
-      margin-top: 8px;
-    }
-    th, td {
-      border: 1px solid var(--border);
-      padding: 8px 10px;
-      text-align: left;
-      vertical-align: top;
-    }
-    th { background: #f8fafc; font-weight: 600; color: var(--text); }
-    pre {
-      background: #0f172a;
-      color: #e2e8f0;
-      padding: 12px;
-      border-radius: 8px;
-      overflow-x: auto;
-      font-family: var(--mono);
-      font-size: 12px;
-      margin: 8px 0 0;
-      max-height: 280px;
-    }
-    .banner-result {
-      padding: 10px 14px;
-      border-radius: 8px;
-      font-size: 13px;
-      font-weight: 600;
-      margin-bottom: 12px;
-    }
-    .banner-ok { background: var(--ok-bg); color: var(--ok); border: 1px solid #a8dab5; }
-    .banner-deny { background: var(--deny-bg); color: var(--deny); border: 1px solid #f6aea9; }
-    .banner-warn { background: var(--warn-bg); color: var(--warn); border: 1px solid #f5d68e; }
-    .helper-box {
-      margin-top: 10px;
-      padding: 10px 12px;
-      background: #f8fafc;
-      border: 1px dashed var(--border);
-      border-radius: 8px;
-      font-size: 12.5px;
-      color: var(--muted);
-    }
-    .kpi-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 12px;
-      margin: 10px 0 14px;
-    }
-    .kpi-card {
-      background: #f8fafc;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 12px 14px;
-    }
-    .kpi-card .kpi-label {
-      font-size: 12.5px;
-      color: var(--muted);
-      font-weight: 600;
-    }
-    .kpi-card .kpi-val {
-      font-size: 24px;
-      font-weight: 700;
-      color: var(--primary);
-      margin-top: 4px;
-      font-family: var(--mono);
-    }
-    .table-scroll {
-      width: 100%;
-      overflow-x: auto;
-    }
-    .journey-map-bar {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(165px, 1fr));
-      gap: 10px;
-      margin: 10px 0 16px;
-    }
-    .journey-node {
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 10px 12px;
-      background: #f8fafc;
-      font-size: 12.5px;
-    }
-    .journey-node.done {
-      border-color: #a8dab5;
-      background: var(--ok-bg);
-    }
-    .journey-node.current {
-      border: 2px solid var(--primary);
-      background: var(--primary-soft);
-    }
-    .journey-node .node-title {
-      font-weight: 700;
-      color: var(--text);
-      margin-bottom: 4px;
-    }
-    @media (max-width: 768px) {
-      .screen-tabs { grid-template-columns: 1fr; }
-      .kpi-grid { grid-template-columns: 1fr; }
-      .kv-list { grid-template-columns: 1fr; }
-    }
+    body { margin: 0; font-family: var(--sans); color: var(--text); background: var(--bg); line-height: 1.45; }
+    .hidden { display: none !important; }
+    .portal-header { background: linear-gradient(90deg, #0c233a 0%, #153c61 100%); color: #f8fafc; padding: 12px 20px; border-bottom: 2px solid #1e5b8f; }
+    .portal-header-inner { max-width: 1380px; margin: 0 auto; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+    .brand-group { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .brand-badge { padding: 4px 10px; border-radius: 6px; background: rgba(255, 255, 255, 0.14); border: 1px solid rgba(255, 255, 255, 0.24); font-family: var(--mono); font-size: 11.5px; font-weight: 700; letter-spacing: 0.05em; }
+    .brand-title { margin: 0; font-size: 16px; font-weight: 800; letter-spacing: -0.01em; }
+    .brand-sub { font-size: 12px; color: #cbd5e1; font-weight: 500; }
+    .portal-main { max-width: 1380px; margin: 14px auto; padding: 0 16px 36px; }
+    .login-shell { max-width: 460px; margin: 48px auto; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 12px; padding: 26px 28px; box-shadow: 0 18px 40px -18px rgba(15, 23, 42, 0.22); }
+    .login-shell h2 { margin: 0 0 6px; font-size: 18px; font-weight: 800; color: #0f2942; }
+    .login-shell p { margin: 0 0 16px; font-size: 13px; color: var(--muted); }
+    .field-group { display: grid; gap: 6px; margin-bottom: 12px; }
+    .field-group label { font-size: 12px; font-weight: 700; color: #334155; }
+    .field-group input { padding: 9px 12px; border: 1px solid #cbd5e1; border-radius: 7px; font-size: 13.5px; font-family: var(--sans); }
+    .btn-primary { cursor: pointer; border: 1px solid #1a4b75; background: #1a4b75; color: #fff; padding: 9px 14px; border-radius: 7px; font-size: 13px; font-weight: 700; }
+    .btn-primary:hover { background: #123656; }
+    .btn-ghost { cursor: pointer; border: 1px solid rgba(255, 255, 255, 0.35); background: rgba(255, 255, 255, 0.1); color: #fff; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 700; }
+    .customer-kpi-strip { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 8px; padding: 8px 12px; margin-bottom: 10px; }
+    .kpi-pills { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .kpi-pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 6px; background: #f8fafc; border: 1px solid #e2e8f0; font-size: 12px; color: #334155; font-weight: 600; }
+    .kpi-pill strong { font-family: var(--mono); font-size: 13px; color: #0f172a; }
+    .shipment-selector-bar { background: #ffffff; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px 12px; margin-bottom: 10px; }
+    .shipment-selector-bar table, .doc-list-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+    .shipment-selector-bar th, .shipment-selector-bar td, .doc-list-table th, .doc-list-table td { padding: 7px 9px; border-bottom: 1px solid #e2e8f0; text-align: left; }
+    .shipment-selector-bar th, .doc-list-table th { font-size: 11px; text-transform: uppercase; color: #475569; background: #f8fafc; }
+    .readonly-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; margin-bottom: 12px; }
+    .readonly-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 7px; padding: 10px 12px; }
+    .readonly-box .lbl { font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; }
+    .readonly-box .val { font-size: 13px; font-weight: 700; color: #0f172a; margin-top: 3px; }
+    .status-note { margin-top: 10px; padding: 8px 12px; border-radius: 7px; font-size: 12.5px; font-weight: 600; background: #f1f5f9; color: #334155; }
   </style>
 </head>
 <body>
-  <header>
-    <div class="top-row">
-      <div>
-        <h1>HEXA V1 — Dashboard Khách Hàng Dùng Chung Nền Tảng Logistics (Map / Journey-First)</h1>
-        <div style="font-size: 13px; opacity: 0.9; margin-top: 4px;">
-          Môi trường thử nghiệm cô lập (SANDBOX_STAGING) · Chỉ hiển thị đúng tiến độ đã xác minh, chứng từ đúng phiên bản và báo giá bán đã duyệt.
+  <header class="portal-header" data-testid="shipment-identity-bar">
+    <div class="portal-header-inner">
+      <div class="brand-group">
+        <span class="brand-badge">HEXA V0 · JOURNEY MAP</span>
+        <div>
+          <h1 class="brand-title" id="customer-brand-title">Cổng Hành Trình Lô Hàng Khách Hàng</h1>
+          <div class="brand-sub" id="customer-brand-sub">Theo dõi trực quan trên hải đồ theo dữ liệu Trường Thành đã xác minh</div>
         </div>
       </div>
-      <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-        <span id="tt-session-pill" class="pill pill-warn">TT: Chưa đăng nhập</span>
-        <span id="active-session-pill" class="pill pill-deny">Khách: Chưa đăng nhập</span>
+      <div class="brand-group" id="header-auth-controls">
+        <span id="session-pill" class="brand-badge">Chưa đăng nhập</span>
+        <button id="btn-customer-logout" type="button" class="btn-ghost hidden" onclick="logoutCustomer()">Đăng xuất</button>
       </div>
     </div>
   </header>
 
-  <nav class="screen-tabs" aria-label="Chuyển màn hình nghiệp vụ">
-    <button id="tab-btn-customer" class="screen-tab-btn active" onclick="switchScreen('customer')">
-      <span class="tab-title">Màn hình 2 — Dashboard Khách Hàng V1 (Lục Giác / Minh Đức / An Phát)</span>
-      <span class="tab-sub">Bước khách hàng: Đăng nhập → Xem Dashboard tổng quan → Bấm lô mở Hành trình &amp; Chứng từ</span>
-    </button>
-    <button id="tab-btn-tt" class="screen-tab-btn" onclick="switchScreen('tt')">
-      <span class="tab-title">Màn hình 1 — Nội bộ Trường Thành (Duyệt Công Bố)</span>
-      <span class="tab-sub">Bước nhân sự TT: Mở lô (ROAD-LG-001 / ROAD-MD-002 / ROAD-AP-003) → Chọn mục → Công bố / Thu hồi</span>
-    </button>
-  </nav>
+  <main class="portal-main">
+    <section id="customer-login-screen" class="login-shell" data-testid="customer-login-screen">
+      <h2>Đăng nhập Cổng Khách Hàng</h2>
+      <p>Vui lòng đăng nhập bằng tài khoản doanh nghiệp để xem hải đồ hành trình và chứng từ đã được Trường Thành công bố.</p>
+      <div class="field-group">
+        <label for="cust-username">Tài khoản khách hàng</label>
+        <input id="cust-username" type="text" autocomplete="username" placeholder="Nhập tài khoản doanh nghiệp" />
+      </div>
+      <div class="field-group">
+        <label for="cust-passcode">Mật khẩu</label>
+        <input id="cust-passcode" type="password" autocomplete="current-password" placeholder="Nhập mật khẩu" />
+      </div>
+      <div style="display:flex; gap:10px; align-items:center; margin-top:14px;">
+        <button type="button" class="btn-primary" onclick="loginCustomer()">Đăng nhập</button>
+      </div>
+      <div id="customer-auth-note" class="status-note">Đăng nhập để mở bản đồ hành trình lô hàng của quý khách.</div>
+    </section>
 
-  <main>
-    <!-- ==================== SCREEN 1: TRƯỜNG THÀNH STAFF ==================== -->
-    <div id="screen-tt" class="screen-pane hidden">
-      <section class="card">
-        <h2>
-          <span>Bước 1 (Trường Thành) — Đăng nhập nhân sự điều vận / chứng từ</span>
-          <span id="tt-login-badge" class="pill pill-warn">Chưa xác thực TT</span>
-        </h2>
-        <div class="btn-row">
-          <label for="tt-username" class="muted">Tài khoản TT:</label>
-          <input id="tt-username" type="text" value="tt.ops.truongthanh" />
-          <label for="tt-passcode" class="muted">Mã xác thực:</label>
-          <input id="tt-passcode" type="password" value="TT-Trial-2026!" />
-          <button onclick="loginTtStaff()">1. Đăng nhập Trường Thành</button>
-          <button class="btn-secondary" onclick="logoutTtStaff()">Đăng xuất TT</button>
+    <section id="journey-workspace-shell" class="hidden" data-testid="journey-workspace-shell">
+      <div class="customer-kpi-strip">
+        <div class="kpi-pills">
+          <span class="kpi-pill">Đang theo dõi: <strong id="kpi-active-tracking">0</strong></span>
+          <span class="kpi-pill">Có ETA kho đã xác minh: <strong id="kpi-arriving-soon">0</strong></span>
+          <span class="kpi-pill">Cần khách xử lý: <strong id="kpi-customer-action">0</strong> (<span id="kpi-customer-action-sub">Chưa có yêu cầu được xác nhận</span>)</span>
         </div>
-        <div class="helper-box">
-          Tài khoản nhân sự TT có quyền duyệt công bố trong môi trường thử nghiệm:
-          <span class="mono">tt.ops.truongthanh</span> / <span class="mono">TT-Trial-2026!</span>
-          (Tài khoản <span class="mono">tt.viewer</span> hoặc tài khoản khách hàng sẽ bị từ chối quyền duyệt).
+        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+          <input id="shipment-input" type="text" placeholder="Mã lô hàng" style="padding:5px 9px; border:1px solid #cbd5e1; border-radius:6px; font-family:var(--mono); font-size:12px; width:145px;" />
+          <button type="button" class="journey-toolbar-btn" onclick="openRequestedShipmentInput()">Mở hành trình</button>
+          <button type="button" class="journey-toolbar-btn" onclick="loadCustomerDashboard()">↻ Làm mới</button>
         </div>
-        <div id="tt-auth-banner" style="margin-top: 10px;"></div>
-      </section>
+      </div>
 
-      <section class="card">
-        <h2>
-          <span>Bước 2 &amp; 3 (Trường Thành) — Chọn mục chia sẻ → Duyệt công bố → Thu hồi</span>
-          <div class="btn-row" style="margin-top: 0;">
-            <label for="tt-shipment-input" class="muted">Mã lô:</label>
-            <input id="tt-shipment-input" type="text" value="ROAD-LG-001" style="width: 140px;" />
-            <button class="btn-secondary" onclick="loadTtShipmentDesk()">Mở hồ sơ lô</button>
-            <button class="btn-secondary" onclick="pickTtShipment('ROAD-LG-001')">Lô ROAD-LG-001</button>
-            <button class="btn-secondary" onclick="pickTtShipment('ROAD-MD-002')">Lô ROAD-MD-002</button>
-            <button class="btn-secondary" onclick="pickTtShipment('ROAD-AP-003')">Lô ROAD-AP-003</button>
-          </div>
-        </h2>
+      <div id="customer-shipment-selector" class="shipment-selector-bar hidden" data-testid="customer-shipment-selector">
+        <div style="font-size:12px; font-weight:800; color:#1e293b; margin-bottom:6px;">Danh sách lô hàng đã công bố (chọn lô để mở Journey Map):</div>
+        <table>
+          <thead>
+            <tr>
+              <th>Mã lô</th>
+              <th>Tuyến &amp; Hàng hóa</th>
+              <th>Công đoạn xác minh</th>
+              <th>ETA kho đã xác minh</th>
+              <th>Việc tiếp theo &amp; Đầu mối</th>
+              <th>Hành trình</th>
+            </tr>
+          </thead>
+          <tbody id="dash-shipments-tbody"></tbody>
+        </table>
+      </div>
 
-        <div id="tt-desk-status" class="banner-result banner-warn">
-          Hãy bấm "1. Đăng nhập Trường Thành" ở trên để mở hồ sơ nội bộ lô và duyệt công bố cho khách hàng tương ứng.
-        </div>
-
-        <div id="tt-desk-body" style="display: none;">
-          <dl class="kv-list">
-            <dt>Lô hàng / Khách hàng:</dt><dd id="tt-ship-summary">-</dd>
-            <dt>Chuyến xe ghép:</dt><dd class="mono" id="tt-trip-summary">-</dd>
-            <dt>Dữ liệu giữ lại nội bộ TT:</dt><dd id="tt-internal-holdback">-</dd>
-          </dl>
-
-          <h3>1. Chọn Mốc tiến độ đã xác minh để chia sẻ cho khách</h3>
-          <div class="table-scroll">
-            <table>
-              <thead>
-                <tr>
-                  <th style="width: 70px;">Chọn</th>
-                  <th>Mã mốc &amp; Phiên bản</th>
-                  <th>Nội dung tiến độ</th>
-                  <th>Trạng thái xác minh</th>
-                </tr>
-              </thead>
-              <tbody id="tt-events-tbody"></tbody>
-            </table>
-          </div>
-
-          <h3>2. Chọn Chứng từ &amp; Phiên bản cụ thể để cho phép khách tải</h3>
-          <div class="table-scroll">
-            <table>
-              <thead>
-                <tr>
-                  <th style="width: 70px;">Chọn</th>
-                  <th>Mã chứng từ &amp; Phiên bản</th>
-                  <th>Loại</th>
-                  <th>Tên chứng từ</th>
-                  <th>Kiểm soát &amp; Thu hồi nhanh</th>
-                </tr>
-              </thead>
-              <tbody id="tt-docs-tbody"></tbody>
-            </table>
-          </div>
-
-          <h3>3. Chọn Phiên bản Báo giá BÁN muốn công bố</h3>
-          <div id="tt-quote-box" class="helper-box" style="font-size: 13px; color: var(--text);"></div>
-
-          <div class="btn-row" style="margin-top: 16px;">
-            <button class="btn-secondary" onclick="selectAllEligibleTtItems()">☑ Tích chọn nhanh mục đủ điều kiện</button>
-            <button onclick="submitTtPublish()">2. Công bố cho khách (Theo các mục đã tích chọn)</button>
-            <button class="btn-danger" onclick="submitTtRevokeAll()">3. Thu hồi toàn bộ công bố lô này</button>
-            <button class="btn-secondary" onclick="switchScreen('customer')">→ Sang Màn hình Khách hàng kiểm tra</button>
-          </div>
-
-          <h3>Bản ghi kiểm toán công bố tại Server (Ai duyệt · Lúc nào · Mục/Phiên bản nào)</h3>
-          <dl class="kv-list">
-            <dt>Trạng thái công bố:</dt><dd id="tt-pub-state">-</dd>
-            <dt>Người duyệt gần nhất:</dt><dd class="mono" id="tt-pub-approved">-</dd>
-            <dt>Người thu hồi gần nhất:</dt><dd class="mono" id="tt-pub-revoked">-</dd>
-            <dt>Mục &amp; phiên bản hiệu lực:</dt><dd class="mono" id="tt-pub-items">-</dd>
-          </dl>
-          <pre id="tt-pub-history-json">{}</pre>
-        </div>
-      </section>
-    </div>
-
-    <!-- ==================== SCREEN 2: CUSTOMER DASHBOARD V1 ==================== -->
-    <div id="screen-customer" class="screen-pane">
-      <section class="card">
-        <h2>
-          <span>Bước 1 (Khách hàng) — Đăng nhập tài khoản khách thử nghiệm riêng</span>
-          <span class="mono" id="http-status-badge">HTTP --</span>
-        </h2>
-        <div class="btn-row">
-          <label for="cust-username" class="muted">Tài khoản khách:</label>
-          <input id="cust-username" type="text" value="lucgiac.trial" />
-          <label for="cust-passcode" class="muted">Mật khẩu:</label>
-          <input id="cust-passcode" type="password" value="LG-Trial-2026!" />
-          <button onclick="loginCustomer()">1. Đăng nhập Khách hàng</button>
-          <button class="btn-secondary" onclick="logoutCustomer()">Đăng xuất</button>
-          <button class="btn-secondary" onclick="switchScreen('tt')">⇄ Mở Màn hình Trường Thành (Duyệt/Thu hồi)</button>
-        </div>
-        <div class="btn-row" style="margin-top: 8px;">
-          <span class="muted">Điền nhanh tài khoản thử nghiệm:</span>
-          <button class="btn-secondary" onclick="fillCustomerCreds('lucgiac.trial', 'LG-Trial-2026!')">Khách A (lucgiac.trial)</button>
-          <button class="btn-secondary" onclick="fillCustomerCreds('minhduc.trial', 'MD-Trial-2026!')">Khách B (minhduc.trial)</button>
-          <button class="btn-secondary" onclick="fillCustomerCreds('anphat.trial', 'AP-Trial-2026!')">Khách C (anphat.trial)</button>
-        </div>
-        <div class="helper-box">
-          <strong>3 Tài khoản khách thử nghiệm (Dùng chung 1 pipeline Dashboard, phân tách dữ liệu tại Server):</strong><br/>
-          • Khách A (Lục Giác — lô <span class="mono">ROAD-LG-001</span>, đi ghép xe): <span class="mono">lucgiac.trial</span> / <span class="mono">LG-Trial-2026!</span><br/>
-          • Khách B (Minh Đức — lô <span class="mono">ROAD-MD-002</span>, đi ghép cùng xe với A): <span class="mono">minhduc.trial</span> / <span class="mono">MD-Trial-2026!</span><br/>
-          • Khách C (An Phát — lô <span class="mono">ROAD-AP-003</span>, kiểm chứng tái sử dụng): <span class="mono">anphat.trial</span> / <span class="mono">AP-Trial-2026!</span>
-        </div>
-        <div id="cust-auth-banner" style="margin-top: 10px;"></div>
-      </section>
-
-      <section class="card" id="customer-dashboard-card">
-        <h2>
-          <span>Bước 2 (Khách hàng) — Tổng quan Lô hàng đã được Trường Thành công bố</span>
-          <button class="btn-secondary" onclick="loadCustomerDashboard()">↻ Làm mới Dashboard</button>
-        </h2>
-        <div id="dashboard-status-banner" class="banner-result banner-warn">
-          Hãy đăng nhập tài khoản khách hàng ở Bước 1 để tải Dashboard tổng quan các lô hàng đã được Trường Thành duyệt công bố.
+      <div class="journey-demo" data-testid="shipment-journey">
+        <div class="journey-toolbar" data-testid="journey-compact-toolbar">
+          <span id="toolbar-id" class="journey-toolbar-id">—</span>
+          <span id="toolbar-mode" class="journey-toolbar-chip">ROAD</span>
+          <span id="toolbar-customer" class="journey-toolbar-customer">—</span>
+          <span id="toolbar-route" class="journey-toolbar-route">—</span>
+          <span id="toolbar-here" class="journey-toolbar-chip journey-toolbar-here">Đang ở: —</span>
+          <span id="toolbar-eta" class="journey-toolbar-chip">ETA kho: Chưa xác minh</span>
+          <span id="toolbar-next" class="journey-toolbar-next">—</span>
+          <button type="button" class="journey-toolbar-btn" data-testid="journey-global-open" onclick="openGlobalModal('docs')">
+            ▤ Chứng từ &amp; Báo giá
+          </button>
         </div>
 
-        <div class="kpi-grid">
-          <div class="kpi-card">
-            <div class="kpi-label">Đang theo dõi</div>
-            <div class="kpi-val" id="dash-count-tracking">0</div>
-          </div>
-          <div class="kpi-card">
-            <div class="kpi-label">Có ETA kho đã xác minh</div>
-            <div class="kpi-val" id="dash-count-arriving">0</div>
-            <div class="muted" style="font-size: 12px; margin-top: 2px;">Chỉ đếm lô có ETA kho được TT xác minh &amp; công bố</div>
-          </div>
-          <div class="kpi-card">
-            <div class="kpi-label">Cần khách xử lý</div>
-            <div class="kpi-val" id="dash-count-action">0</div>
-            <div class="muted" id="dash-action-status-note" style="font-size: 12px; margin-top: 2px;">Chưa có yêu cầu được xác nhận</div>
-          </div>
-        </div>
+        <div class="journey-split journey-map-first">
+          <div id="journey-map-viewport" class="journey-canvas" data-testid="journey-map-viewport" style="min-height:540px; cursor:grab; user-select:none;">
+            <div class="journey-sea-chart" data-testid="journey-sea-chart" aria-hidden="true" style="background-image:url('/assets/journey/vietnam-east-sea-chart.webp');"></div>
+            <div data-testid="journey-map-texture" aria-hidden="true" style="position:absolute; inset:0; background-image:url('/assets/journey/chart-paper.jpg'); background-size:460px 460px; background-repeat:repeat; opacity:0.16; mix-blend-mode:multiply; pointer-events:none; z-index:0;"></div>
+            <div data-testid="journey-map-grid" aria-hidden="true" style="position:absolute; inset:0; background-image:linear-gradient(to right, rgba(20, 55, 85, 0.045) 1px, transparent 1px), linear-gradient(to bottom, rgba(20, 55, 85, 0.045) 1px, transparent 1px); background-size:52px 52px; pointer-events:none; z-index:0;"></div>
 
-        <div class="table-scroll">
-          <table>
-            <thead>
-              <tr>
-                <th>Mã lô &amp; Phương thức</th>
-                <th>Hàng hóa</th>
-                <th>Chặng / Vị trí xác minh gần nhất</th>
-                <th>Thời điểm cập nhật</th>
-                <th>ETA kho (Chỉ hiện khi đã xác minh)</th>
-                <th>Việc tiếp theo</th>
-                <th>Đầu mối TT</th>
-                <th>Chi tiết</th>
-              </tr>
-            </thead>
-            <tbody id="dash-shipments-tbody">
-              <tr>
-                <td colspan="8" class="muted">Chưa có lô hàng nào được công bố hiển thị.</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
+            <div style="position:absolute; top:12px; right:12px; z-index:18; pointer-events:auto;">
+              <button type="button" data-testid="journey-utility-trigger" onclick="toggleUtilityBubble()" style="display:inline-flex; align-items:center; gap:7px; padding:6px 11px; border-radius:6px; border:1px solid rgba(26, 75, 117, 0.42); background:rgba(255, 255, 255, 0.94); color:#0f2236; font-size:11.5px; font-weight:800; cursor:pointer;">
+                <span>▤ Hồ sơ &amp; Chứng từ</span>
+                <span id="utility-doc-count" style="padding:1px 6px; border-radius:4px; background:#eff6ff; color:#1d4ed8; font-family:var(--mono); font-size:10.5px; font-weight:800;">0 tệp</span>
+              </button>
+              <div id="journey-utility-bubble" data-testid="journey-utility-bubble" class="hidden" style="margin-top:6px; width:280px; border-radius:8px; border:1px solid rgba(26, 75, 117, 0.38); background:rgba(255, 255, 255, 0.98); overflow:hidden;">
+                <div style="padding:8px 11px; background:#0f2236; color:#f8fafc; font-size:10.5px; font-weight:800; text-transform:uppercase; display:flex; justify-content:space-between; align-items:center;">
+                  <span>Dữ liệu Trường Thành đã duyệt</span>
+                  <button type="button" onclick="toggleUtilityBubble(false)" style="border:none; background:transparent; color:#cbd5e1; cursor:pointer;">✕</button>
+                </div>
+                <div style="padding:6px; display:grid; gap:4px;">
+                  <button type="button" onclick="openGlobalModal('docs')" style="display:flex; align-items:center; justify-content:space-between; padding:7px 9px; border-radius:6px; border:1px solid #e2e8f0; background:#f8fafc; color:#0f172a; font-size:11.5px; font-weight:700; cursor:pointer;">
+                    <span>Chứng từ được phép tải</span>
+                    <span id="utility-docs-sub" style="font-size:10.5px; color:#1d4ed8; font-family:var(--mono);">0 tệp</span>
+                  </button>
+                  <button type="button" onclick="openGlobalModal('quote')" style="display:flex; align-items:center; justify-content:space-between; padding:7px 9px; border-radius:6px; border:1px solid #e2e8f0; background:#f8fafc; color:#0f172a; font-size:11.5px; font-weight:700; cursor:pointer;">
+                    <span>Báo giá bán đã duyệt</span>
+                    <span id="utility-quote-sub" style="font-size:10.5px; color:#15803d; font-family:var(--mono);">—</span>
+                  </button>
+                </div>
+              </div>
+            </div>
 
-      <section class="card" id="hexa-portal-card">
-        <h2>
-          <span>Bước 3 (Khách hàng) — Bản đồ Hành trình (Journey) &amp; Chứng từ đúng phiên bản của lô</span>
-          <div class="btn-row" style="margin-top: 0;">
-            <label for="shipment-input" class="muted">Mã tham chiếu lô:</label>
-            <input id="shipment-input" type="text" value="ROAD-LG-001" style="width: 140px;" />
-            <button onclick="loadRequestedShipment()">Xem hành trình &amp; công bố</button>
-          </div>
-        </h2>
-        <div id="portal-status-banner" class="banner-result banner-deny">Chưa tải dữ liệu lô hàng.</div>
+            <div id="journey-zero-notice" class="journey-zero-notice hidden" data-testid="journey-zero-state" style="position:relative; z-index:12; margin:48px auto; max-width:520px; background:rgba(255,255,255,0.95);">
+              <span class="journey-zero-kicker">TRẠNG THÁI CÔNG BỐ</span>
+              <strong id="journey-zero-title" class="journey-zero-title">Trường Thành chưa công bố thông tin cho lô này</strong>
+              <span id="journey-zero-summary" class="journey-zero-summary">Hành trình xác minh, báo giá bán và chứng từ sẽ xuất hiện trên hải đồ ngay khi Trường Thành duyệt công bố.</span>
+            </div>
 
-        <div id="portal-content">
-          <h3>Bản đồ Hành trình Lô hàng (Map / Journey-First — Chỉ đánh dấu hoàn thành các chặng đã xác minh)</h3>
-          <div id="pub-journey-map" class="journey-map-bar">
-            <div class="journey-node"><div class="node-title">Chưa chọn lô đã công bố</div><div class="muted">Bấm vào lô ở bảng trên để mở sơ đồ hành trình.</div></div>
+            <div id="journey-map-transform" data-testid="journey-map-transform" style="position:relative; width:1080px; height:520px; transform:translate(0px, 0px) scale(1); transform-origin:0 0; z-index:2;">
+              <svg id="journey-edges-svg" class="journey-edges" viewBox="0 0 1080 520" preserveAspectRatio="none"></svg>
+              <div id="journey-nodes-layer"></div>
+              <div id="journey-bubble-slot"></div>
+            </div>
+
+            <div class="journey-map-hint" data-testid="journey-status-legend">
+              <span><b>✓</b> Có bằng chứng</span>
+              <span class="sep">·</span>
+              <span><b>◐</b> Đang xử lý</span>
+              <span class="sep">·</span>
+              <span><b>◷</b> Chờ thông tin</span>
+              <span class="sep">·</span>
+              <span><b>·</b> Chưa bắt đầu</span>
+              <span class="sep">·</span>
+              <span id="journey-zoom-pct">100%</span>
+            </div>
+
+            <div class="journey-zoom-bar">
+              <button type="button" class="journey-zoom-btn" data-testid="journey-zoom-in" onclick="zoomIn()" title="Phóng to">+</button>
+              <button type="button" class="journey-zoom-btn" data-testid="journey-zoom-out" onclick="zoomOut()" title="Thu nhỏ">−</button>
+              <div id="journey-zoom-level" class="journey-zoom-level" data-testid="journey-zoom-level">100%</div>
+              <button type="button" class="journey-zoom-btn journey-zoom-text" data-testid="journey-zoom-fit" onclick="fitJourney()">⤢ Fit Journey</button>
+              <button type="button" class="journey-zoom-btn journey-zoom-text" data-testid="journey-zoom-readable" onclick="resetReadable()">↺ Đọc rõ</button>
+            </div>
           </div>
 
-          <dl class="kv-list">
-            <dt>Schema công bố:</dt><dd class="mono" id="pub-schema">-</dd>
-            <dt>Mã tham chiếu lô:</dt><dd class="mono" id="pub-reference">-</dd>
-            <dt>Phương thức vận tải:</dt><dd class="mono" id="pub-mode">-</dd>
-            <dt>Tổng báo giá BÁN đã gửi:</dt><dd id="pub-quote">-</dd>
-          </dl>
-
-          <h3>Tiến độ đã xác minh &amp; công bố (Timeline)</h3>
-          <div class="table-scroll">
-            <table>
-              <thead>
-                <tr>
-                  <th>Mã mốc</th>
-                  <th>Công đoạn</th>
-                  <th>Nội dung công bố</th>
-                  <th>Thời điểm xảy ra</th>
-                  <th>Phiên bản</th>
-                </tr>
-              </thead>
-              <tbody id="pub-timeline-body"></tbody>
-            </table>
-          </div>
-
-          <h3>Chứng từ được phép tải (Kiểm quyền phía Server trước khi đọc file)</h3>
-          <div class="table-scroll">
-            <table>
-              <thead>
-                <tr>
-                  <th>Mã chứng từ</th>
-                  <th>Loại</th>
-                  <th>Tên công bố</th>
-                  <th>Phiên bản</th>
-                  <th>Tải file</th>
-                </tr>
-              </thead>
-              <tbody id="pub-docs-body"></tbody>
-            </table>
+          <div id="journey-modal-layer" class="journey-modal-layer hidden" data-testid="journey-modal" role="dialog" aria-modal="true">
+            <div class="journey-modal-backdrop" data-testid="journey-modal-backdrop" onclick="closeStageModal()"></div>
+            <aside class="journey-side journey-modal-card" data-testid="journey-stage-workspace">
+              <div class="journey-side-head">
+                <div class="journey-side-title-row">
+                  <div>
+                    <div id="modal-kicker" class="journey-side-kicker">CHI TIẾT ĐÃ XÁC MINH (CHỈ ĐỌC)</div>
+                    <h3 id="modal-title" class="journey-side-title">—</h3>
+                    <div id="modal-sub" class="journey-side-sub">—</div>
+                  </div>
+                  <div style="display:flex; align-items:center; gap:8px;">
+                    <span id="modal-badge" class="journey-side-badge">—</span>
+                    <button type="button" class="journey-modal-close" data-testid="journey-modal-close" onclick="closeStageModal()">✕ Đóng</button>
+                  </div>
+                </div>
+              </div>
+              <div id="journey-modal-body" class="journey-side-body"></div>
+            </aside>
           </div>
         </div>
+      </div>
 
-        <div id="download-status-banner" style="margin-top: 12px;"></div>
-        <h3>Payload công bố (<span class="mono" id="raw-json-url">/api/hexa/v0/shipments/ROAD-LG-001</span>)</h3>
-        <pre id="raw-publication-json">{}</pre>
-      </section>
-
-      <section class="card" id="sandbox-operational-notice">
-        <h2>Lưu ý vận hành &amp; Giới hạn môi trường thử nghiệm (Owner Gate)</h2>
-        <div class="helper-box" style="margin-top: 0; color: var(--text);">
-          <strong>1. Dữ liệu giả lập (SANDBOX_STAGING):</strong> Ba tài khoản khách (<span class="mono">lucgiac.trial</span>, <span class="mono">minhduc.trial</span>, <span class="mono">anphat.trial</span>), nhân sự TT (<span class="mono">tt.ops.truongthanh</span>), các lô <span class="mono">ROAD-LG-001</span>, <span class="mono">ROAD-MD-002</span>, <span class="mono">ROAD-AP-003</span> và tệp PDF chỉ phục vụ kiểm thử trong sandbox; tuyệt đối không dùng tài khoản/mật khẩu demo cho hệ thống thật.<br/>
-          <strong>2. Giới hạn bộ nhớ trong tiến trình (In-Memory Persistence):</strong> Dữ liệu đang chạy trên <span class="mono">mongomock</span> + <span class="mono">GridFS</span> trong bộ nhớ RAM của tiến trình thử nghiệm; khi khởi động lại tiến trình, trạng thái quay về mặc định chưa công bố (<span class="mono">UNPUBLISHED</span>).<br/>
-          <strong>3. Chưa sẵn sàng vận hành thực tế (Production Readiness Gaps):</strong> Chưa kết nối MongoDB Atlas thật, chưa tạo collection manifest công bố và bảng tài khoản khách hàng riêng trên DB production, chưa qua kiểm thử trình duyệt thực tế (<span class="mono">BROWSER_QA</span>) trên máy có Chromium, và chưa cấp quyền truy cập cho khách hàng thật.
-        </div>
-      </section>
-    </div>
+      <div id="download-status-banner" class="status-note hidden"></div>
+    </section>
   </main>
 
   <script>
-    let currentTtDeskData = null;
-    let currentDashboardShipments = {};
+    const JOURNEY_NODE_W = 116;
+    const JOURNEY_NODE_H = 66;
+    const PITCH = 140;
+    const PX = 42;
+    const col = (c) => PX + c * PITCH;
+    const DEMO_POS = {
+      'pickup':         { x: col(0), y: 205 },
+      'road-ltl':       { x: col(1), y: 205 },
+      'road-border':    { x: col(2), y: 205 },
+      'customs-import': { x: col(4), y: 205 },
+      'delivery':       { x: col(5), y: 205 }
+    };
+    const JOURNEY_NODE_STATUS = {
+      COMPLETED: 'CÓ BẰNG CHỨNG',
+      CURRENT:   'ĐANG XỬ LÝ',
+      WAITING:   'CHỜ THÔNG TIN',
+      PROBLEM:   'CẦN XỬ LÝ',
+      UPCOMING:  'CHƯA BẮT ĐẦU'
+    };
 
-    function formatVnd(val) {
-      if (val === null || val === undefined) return 'Chưa xác định (null)';
-      return new Intl.NumberFormat('vi-VN').format(val) + ' VND';
+    let currentSession = { authenticated: false, principal: {}, default_shipment_id: '' };
+    let dashboardRows = [];
+    let activeShipmentRow = null;
+    let activePublication = null;
+    let selectedNodeId = null;
+    let currentScale = 1;
+    let currentPan = { x: 0, y: 0 };
+
+    function formatVnd(amount) {
+      if (typeof amount !== 'number') return 'Chưa công bố';
+      return new Intl.NumberFormat('vi-VN').format(amount) + ' VND';
     }
 
-    function switchScreen(which) {
-      const isTt = which === 'tt';
-      document.getElementById('screen-tt').classList.toggle('hidden', !isTt);
-      document.getElementById('screen-customer').classList.toggle('hidden', isTt);
-      document.getElementById('tab-btn-tt').classList.toggle('active', isTt);
-      document.getElementById('tab-btn-customer').classList.toggle('active', !isTt);
-      if (isTt) {
-        refreshTtSessionState();
+    function getNodePos(id, idx) {
+      if (DEMO_POS[id]) return DEMO_POS[id];
+      return { x: PX + idx * PITCH, y: 205 };
+    }
+
+    function journeyEdgePath(a, b) {
+      const x1 = a.x + JOURNEY_NODE_W;
+      const y1 = a.y + JOURNEY_NODE_H / 2;
+      const x2 = b.x;
+      const y2 = b.y + JOURNEY_NODE_H / 2;
+      const dx = Math.max(40, Math.abs(x2 - x1) * 0.42);
+      return `M ${x1} ${y1} C ${x1 + dx} ${y1}, ${x2 - dx} ${y2}, ${x2} ${y2}`;
+    }
+
+    function applyTransform() {
+      const tf = document.getElementById('journey-map-transform');
+      if (tf && tf.style) {
+        tf.style.transform = `translate(${currentPan.x}px, ${currentPan.y}px) scale(${currentScale})`;
+      }
+      const pct = `${Math.round(currentScale * 100)}%`;
+      const zl = document.getElementById('journey-zoom-level');
+      if (zl) zl.textContent = pct;
+      const zp = document.getElementById('journey-zoom-pct');
+      if (zp) zp.textContent = pct;
+    }
+
+    function zoomIn() {
+      currentScale = Math.min(1.85, Math.round((currentScale + 0.15) * 100) / 100);
+      applyTransform();
+    }
+
+    function zoomOut() {
+      currentScale = Math.max(0.55, Math.round((currentScale - 0.15) * 100) / 100);
+      applyTransform();
+    }
+
+    function resetReadable() {
+      currentScale = 1;
+      currentPan = { x: 0, y: 0 };
+      applyTransform();
+    }
+
+    function fitJourney() {
+      const vp = document.getElementById('journey-map-viewport');
+      const nodes = (activeShipmentRow && activeShipmentRow.journey && activeShipmentRow.journey.nodes) || [];
+      if (!vp || nodes.length === 0) {
+        resetReadable();
+        return;
+      }
+      const positions = nodes.map((n, i) => getNodePos(n.id, i));
+      const minX = Math.min(...positions.map(p => p.x));
+      const maxX = Math.max(...positions.map(p => p.x + JOURNEY_NODE_W));
+      const minY = Math.min(...positions.map(p => p.y));
+      const maxY = Math.max(...positions.map(p => p.y + JOURNEY_NODE_H));
+      const pad = 48;
+      const boxW = Math.max(240, maxX - minX + pad * 2);
+      const boxH = Math.max(180, maxY - minY + pad * 2);
+      const vw = vp.clientWidth || 960;
+      const vh = vp.clientHeight || 520;
+      const nextScale = Math.max(0.65, Math.min(1.25, Math.min(vw / boxW, vh / boxH)));
+      const cx = (minX + maxX) / 2;
+      const cy = (minY + maxY) / 2;
+      currentScale = Math.round(nextScale * 100) / 100;
+      currentPan = {
+        x: Math.round(vw / 2 - cx * currentScale),
+        y: Math.round(vh / 2 - cy * currentScale)
+      };
+      applyTransform();
+    }
+
+    function toggleUtilityBubble(force) {
+      const el = document.getElementById('journey-utility-bubble');
+      if (!el) return;
+      if (typeof force === 'boolean') {
+        el.classList.toggle('hidden', !force);
       } else {
-        refreshSessionState();
-        loadCustomerDashboard();
-        loadRequestedShipment();
+        el.classList.toggle('hidden');
       }
     }
 
-    function pickTtShipment(sid) {
-      document.getElementById('tt-shipment-input').value = sid;
-      loadTtShipmentDesk();
-    }
-
-    function fillCustomerCreds(username, passcode) {
-      document.getElementById('cust-username').value = username;
-      document.getElementById('cust-passcode').value = passcode;
-    }
-
-    async function refreshSessionState() {
+    async function loadSession() {
       const res = await fetch('/api/hexa/v0/session', { credentials: 'same-origin' });
       const data = await res.json();
-      const p = data.principal || {};
-      const pill = document.getElementById('active-session-pill');
-      pill.textContent = `${data.label || 'Ẩn danh'} | customer_id=${p.customer_id || '(chưa xác thực)'}`;
-      pill.className = 'pill ' + (p.authenticated && p.kind === 'customer' ? 'pill-ok' : 'pill-deny');
-      if (data.default_shipment_id) {
-        document.getElementById('shipment-input').value = data.default_shipment_id;
+      currentSession = data || { authenticated: false, principal: {} };
+      const authed = Boolean(currentSession.authenticated);
+
+      const loginScreen = document.getElementById('customer-login-screen');
+      const workspaceShell = document.getElementById('journey-workspace-shell');
+      const logoutBtn = document.getElementById('btn-customer-logout');
+      const pill = document.getElementById('session-pill');
+      const brandTitle = document.getElementById('customer-brand-title');
+      const brandSub = document.getElementById('customer-brand-sub');
+
+      if (!authed) {
+        if (loginScreen) loginScreen.classList.remove('hidden');
+        if (workspaceShell) workspaceShell.classList.add('hidden');
+        if (logoutBtn) logoutBtn.classList.add('hidden');
+        if (pill) pill.textContent = 'Chưa đăng nhập';
+        if (brandTitle) brandTitle.textContent = 'Cổng Hành Trình Lô Hàng Khách Hàng';
+        if (brandSub) brandSub.textContent = 'Theo dõi trực quan trên hải đồ theo dữ liệu Trường Thành đã xác minh';
+        return;
       }
+
+      const p = currentSession.principal || {};
+      const customerDisplay = String(p.display_name || currentSession.label || 'Khách hàng');
+      if (loginScreen) loginScreen.classList.add('hidden');
+      if (workspaceShell) workspaceShell.classList.remove('hidden');
+      if (logoutBtn) logoutBtn.classList.remove('hidden');
+      if (pill) pill.textContent = customerDisplay;
+      if (brandTitle) brandTitle.textContent = customerDisplay;
+      if (brandSub) brandSub.textContent = 'Hành trình lô hàng và chứng từ đã được Trường Thành duyệt công bố';
+
+      if (currentSession.default_shipment_id) {
+        const inp = document.getElementById('shipment-input');
+        if (inp && !inp.value) inp.value = String(currentSession.default_shipment_id);
+      }
+      await loadCustomerDashboard();
     }
 
     async function loginCustomer() {
       const username = (document.getElementById('cust-username').value || '').trim();
       const passcode = document.getElementById('cust-passcode').value || '';
-      const banner = document.getElementById('cust-auth-banner');
+      const note = document.getElementById('customer-auth-note');
       const res = await fetch('/api/hexa/v0/auth/login', {
         method: 'POST',
         credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, passcode }),
+        body: JSON.stringify({ username, passcode })
       });
-      const body = await res.json().catch(() => ({}));
       if (!res.ok) {
-        banner.className = 'banner-result banner-deny';
-        banner.textContent = `ĐĂNG NHẬP KHÁCH BỊ TỪ CHỐI (HTTP ${res.status}): Sai thông tin hoặc tài khoản không phải khách hàng.`;
-        await refreshSessionState();
-        await loadCustomerDashboard();
+        if (note) note.textContent = 'Thông tin đăng nhập không hợp lệ hoặc không thuộc phạm vi khách hàng.';
         return;
       }
-      banner.className = 'banner-result banner-ok';
-      banner.textContent = `ĐĂNG NHẬP THÀNH CÔNG: ${body.label} (customer_id=${(body.principal || {}).customer_id})`;
-      await refreshSessionState();
-      await loadCustomerDashboard();
-      await loadRequestedShipment();
+      document.getElementById('cust-passcode').value = '';
+      await loadSession();
     }
 
     async function logoutCustomer() {
       await fetch('/api/hexa/v0/auth/logout', { method: 'POST', credentials: 'same-origin' });
-      const banner = document.getElementById('cust-auth-banner');
-      banner.className = 'banner-result banner-warn';
-      banner.textContent = 'Đã đăng xuất phiên khách hàng.';
-      await refreshSessionState();
-      await loadCustomerDashboard();
-      await loadRequestedShipment();
+      dashboardRows = [];
+      activeShipmentRow = null;
+      activePublication = null;
+      selectedNodeId = null;
+      await loadSession();
     }
 
-    function renderEmptyTableRow(tbody, colSpan, message) {
-      tbody.textContent = '';
-      const tr = document.createElement('tr');
-      const td = document.createElement('td');
-      td.colSpan = colSpan;
-      td.className = 'muted';
-      td.textContent = message;
-      tr.appendChild(td);
-      tbody.appendChild(tr);
+    function showUnpublishedState(shipmentCode) {
+      const zeroEl = document.getElementById('journey-zero-notice');
+      const zeroTitle = document.getElementById('journey-zero-title');
+      const zeroSummary = document.getElementById('journey-zero-summary');
+      const nodesLayer = document.getElementById('journey-nodes-layer');
+      const edgesSvg = document.getElementById('journey-edges-svg');
+      const bubbleSlot = document.getElementById('journey-bubble-slot');
+
+      if (nodesLayer) nodesLayer.innerHTML = '';
+      if (edgesSvg) edgesSvg.innerHTML = '';
+      if (bubbleSlot) bubbleSlot.innerHTML = '';
+
+      if (zeroTitle) zeroTitle.textContent = 'Trường Thành chưa công bố thông tin cho lô này';
+      if (zeroSummary) {
+        zeroSummary.textContent = shipmentCode
+          ? `Lô ${shipmentCode} hiện chưa có bản công bố hợp lệ hoặc đã được thu hồi. Hành trình và chứng từ sẽ hiển thị ngay khi Trường Thành duyệt công bố.`
+          : 'Hành trình xác minh, báo giá bán và chứng từ sẽ xuất hiện trên hải đồ ngay khi Trường Thành duyệt công bố.';
+      }
+      if (zeroEl) {
+        if (zeroTitle && zeroSummary && (!zeroEl.children || zeroEl.children.length === 0)) {
+          zeroEl.appendChild(zeroTitle);
+          zeroEl.appendChild(zeroSummary);
+        }
+        zeroEl.classList.remove('hidden');
+      }
+
+      document.getElementById('toolbar-id').textContent = shipmentCode || '—';
+      document.getElementById('toolbar-here').textContent = 'Trường Thành chưa công bố thông tin cho lô này';
+      document.getElementById('toolbar-eta').textContent = 'ETA kho: Chưa xác minh';
+      document.getElementById('toolbar-next').textContent = 'Chờ Trường Thành công bố mốc xác minh';
     }
 
     async function loadCustomerDashboard() {
-      const res = await fetch('/api/hexa/v0/dashboard', { credentials: 'same-origin' });
-      const statusBanner = document.getElementById('dashboard-status-banner');
       const tbody = document.getElementById('dash-shipments-tbody');
-      const actionNote = document.getElementById('dash-action-status-note');
-      const body = await res.json().catch(() => ({}));
-      currentDashboardShipments = {};
+      const selectorBox = document.getElementById('customer-shipment-selector');
+      if (tbody) tbody.innerHTML = '';
 
+      const res = await fetch('/api/hexa/v0/dashboard', { credentials: 'same-origin' });
       if (!res.ok) {
-        statusBanner.className = 'banner-result banner-deny';
-        statusBanner.textContent = `CHƯA XÁC THỰC KHÁCH HÀNG (HTTP ${res.status}): Hãy đăng nhập tài khoản khách ở Bước 1 để xem Dashboard.`;
-        document.getElementById('dash-count-tracking').textContent = '0';
-        document.getElementById('dash-count-arriving').textContent = '0';
-        document.getElementById('dash-count-action').textContent = '0';
-        if (actionNote) actionNote.textContent = 'Chưa có yêu cầu được xác nhận';
-        renderEmptyTableRow(tbody, 8, 'Chưa đăng nhập phiên khách hàng.');
+        if (selectorBox) selectorBox.classList.add('hidden');
+        showUnpublishedState('');
         return;
       }
 
+      const body = await res.json();
       const summary = body.summary || {};
-      const etaCount = summary.verified_warehouse_eta_count ?? summary.arriving_soon ?? 0;
-      const actionCount = summary.customer_action_needed ?? 0;
-      document.getElementById('dash-count-tracking').textContent = String(summary.active_tracking ?? 0);
-      document.getElementById('dash-count-arriving').textContent = String(etaCount);
-      document.getElementById('dash-count-action').textContent = String(actionCount);
-      if (actionNote) {
-        actionNote.textContent = String(summary.customer_action_status_label || (actionCount > 0 ? `${actionCount} yêu cầu đang mở` : 'Chưa có yêu cầu được xác nhận'));
+      const brandTitle = document.getElementById('customer-brand-title');
+      if (brandTitle && body.customer_name) {
+        brandTitle.textContent = String(body.customer_name);
       }
+      document.getElementById('toolbar-customer').textContent = String(body.customer_name || '');
+      document.getElementById('kpi-active-tracking').textContent = String(summary.active_tracking ?? 0);
+      document.getElementById('kpi-arriving-soon').textContent = String(
+        summary.verified_warehouse_eta_count ?? summary.arriving_soon ?? 0
+      );
+      document.getElementById('kpi-customer-action').textContent = String(summary.customer_action_needed ?? 0);
+      document.getElementById('kpi-customer-action-sub').textContent = String(
+        summary.customer_action_status_label || 'Chưa có yêu cầu được xác nhận'
+      );
 
-      const shipments = body.shipments || [];
-      if (shipments.length === 0) {
-        statusBanner.className = 'banner-result banner-warn';
-        statusBanner.textContent = `Khách hàng ${body.customer_name} (${body.customer_id}): Hiện chưa có lô hàng nào được Trường Thành duyệt công bố (Trạng thái mặc định: Chưa công bố / Đã thu hồi).`;
-        renderEmptyTableRow(tbody, 8, 'Không có dữ liệu lô đã công bố. Khi nhân sự TT duyệt công bố lô hàng, lô sẽ xuất hiện tại đây.');
-        renderJourneyMap(null);
-        return;
-      }
+      dashboardRows = Array.isArray(body.shipments) ? body.shipments : [];
 
-      statusBanner.className = 'banner-result banner-ok';
-      statusBanner.textContent = `Dashboard ${body.customer_name} (${body.customer_id}) — Đang hiển thị ${shipments.length} lô đã được Trường Thành công bố.`;
-      tbody.textContent = '';
-
-      shipments.forEach(row => {
-        const sid = String(row.shipment_id || '');
-        currentDashboardShipments[sid] = row;
+      dashboardRows.forEach(row => {
         const tr = document.createElement('tr');
-        tr.style.cursor = 'pointer';
-        tr.addEventListener('click', () => selectDashboardShipment(sid));
 
-        const tdCode = document.createElement('td');
-        tdCode.className = 'mono';
-        const strongSid = document.createElement('strong');
-        strongSid.textContent = sid;
-        const brCode = document.createElement('br');
-        const modePill = document.createElement('span');
-        modePill.className = 'pill pill-ok';
-        modePill.textContent = String(row.transport_mode || 'ROAD');
-        tdCode.appendChild(strongSid);
-        tdCode.appendChild(brCode);
-        tdCode.appendChild(modePill);
+        const tdId = document.createElement('td');
+        const strongId = document.createElement('strong');
+        strongId.textContent = String(row.shipment_id || '');
+        tdId.appendChild(strongId);
 
-        const tdCargo = document.createElement('td');
-        const spanCargo = document.createElement('span');
-        spanCargo.textContent = String(row.cargo_summary || '');
-        const brCargo = document.createElement('br');
-        const spanRoute = document.createElement('span');
-        spanRoute.className = 'muted';
-        spanRoute.textContent = String(row.route_summary || '');
-        tdCargo.appendChild(spanCargo);
-        tdCargo.appendChild(brCargo);
-        tdCargo.appendChild(spanRoute);
+        const tdRoute = document.createElement('td');
+        const divRoute = document.createElement('div');
+        divRoute.textContent = String(row.route_summary || '');
+        const divCargo = document.createElement('div');
+        divCargo.style.fontSize = '11.5px';
+        divCargo.style.color = '#64748b';
+        divCargo.textContent = String(row.cargo_summary || '');
+        tdRoute.appendChild(divRoute);
+        tdRoute.appendChild(divCargo);
 
         const tdStage = document.createElement('td');
-        const strongStage = document.createElement('strong');
-        strongStage.textContent = String(row.verified_stage_label || '');
-        const brStage = document.createElement('br');
-        const spanStageTitle = document.createElement('span');
-        spanStageTitle.className = 'muted';
-        spanStageTitle.textContent = String(row.verified_stage_title || '');
-        tdStage.appendChild(strongStage);
-        tdStage.appendChild(brStage);
-        tdStage.appendChild(spanStageTitle);
-
-        const tdUpdated = document.createElement('td');
-        tdUpdated.className = 'mono';
-        tdUpdated.textContent = String(row.last_updated_label || '');
+        const spanStage = document.createElement('span');
+        spanStage.textContent = String(row.verified_stage_label || 'Chưa xác minh');
+        const divStageTitle = document.createElement('div');
+        divStageTitle.style.fontSize = '11.5px';
+        divStageTitle.style.color = '#475569';
+        divStageTitle.textContent = String(row.verified_stage_title || '');
+        tdStage.appendChild(spanStage);
+        tdStage.appendChild(divStageTitle);
 
         const tdEta = document.createElement('td');
-        const etaPill = document.createElement('span');
-        etaPill.className = row.verified_warehouse_eta ? 'pill pill-ok' : 'pill pill-warn';
-        etaPill.textContent = String(row.verified_warehouse_eta_label || 'Chưa xác minh');
-        tdEta.appendChild(etaPill);
+        tdEta.textContent = String(row.verified_warehouse_eta_label || 'Chưa xác minh');
 
         const tdNext = document.createElement('td');
-        tdNext.textContent = String(row.next_step || '');
+        const divNext = document.createElement('div');
+        divNext.textContent = String(row.next_step || '');
+        const divContact = document.createElement('div');
+        divContact.style.fontSize = '11.5px';
+        divContact.style.color = '#64748b';
+        divContact.textContent = 'Đầu mối: ' + String(row.contact_point || '');
+        tdNext.appendChild(divNext);
+        tdNext.appendChild(divContact);
 
-        const tdContact = document.createElement('td');
-        tdContact.textContent = String(row.contact_point || '');
-
-        const tdAction = document.createElement('td');
+        const tdBtn = document.createElement('td');
         const btnOpen = document.createElement('button');
-        btnOpen.textContent = 'Mở Hành trình & Chứng từ';
-        btnOpen.addEventListener('click', (event) => {
-          event.stopPropagation();
-          selectDashboardShipment(sid);
-        });
-        tdAction.appendChild(btnOpen);
+        btnOpen.type = 'button';
+        btnOpen.className = 'journey-toolbar-btn';
+        btnOpen.textContent = 'Mở Journey Map';
+        btnOpen.addEventListener('click', () => selectShipmentForJourney(String(row.shipment_id || '')));
+        tdBtn.appendChild(btnOpen);
 
-        tr.appendChild(tdCode);
-        tr.appendChild(tdCargo);
+        tr.appendChild(tdId);
+        tr.appendChild(tdRoute);
         tr.appendChild(tdStage);
-        tr.appendChild(tdUpdated);
         tr.appendChild(tdEta);
         tr.appendChild(tdNext);
-        tr.appendChild(tdContact);
-        tr.appendChild(tdAction);
-        tbody.appendChild(tr);
+        tr.appendChild(tdBtn);
+        if (tbody) tbody.appendChild(tr);
       });
 
-      const firstSid = String(shipments[0].shipment_id || '');
-      document.getElementById('shipment-input').value = firstSid;
-      renderJourneyMap(shipments[0].journey);
-    }
-
-    function renderJourneyMap(journey) {
-      const container = document.getElementById('pub-journey-map');
-      if (!container) return;
-      container.textContent = '';
-      if (!journey || !Array.isArray(journey.nodes) || journey.nodes.length === 0) {
-        const emptyNode = document.createElement('div');
-        emptyNode.className = 'journey-node';
-        const titleDiv = document.createElement('div');
-        titleDiv.className = 'node-title';
-        titleDiv.textContent = 'Chưa có hành trình công bố';
-        const mutedDiv = document.createElement('div');
-        mutedDiv.className = 'muted';
-        mutedDiv.textContent = 'Lô chưa được công bố hoặc đã bị thu hồi.';
-        emptyNode.appendChild(titleDiv);
-        emptyNode.appendChild(mutedDiv);
-        container.appendChild(emptyNode);
+      if (dashboardRows.length === 0) {
+        if (selectorBox) selectorBox.classList.add('hidden');
+        const fallbackId = (document.getElementById('shipment-input').value || '').trim();
+        showUnpublishedState(fallbackId);
         return;
       }
-      journey.nodes.forEach((n, idx) => {
-        const div = document.createElement('div');
-        div.className = 'journey-node' + (n.current ? ' current' : (n.completed ? ' done' : ''));
 
-        const titleDiv = document.createElement('div');
-        titleDiv.className = 'node-title';
-        titleDiv.textContent = `${idx + 1}. ${String(n.label || '')}`;
+      if (dashboardRows.length === 1) {
+        if (selectorBox) selectorBox.classList.add('hidden');
+      } else {
+        if (selectorBox) selectorBox.classList.remove('hidden');
+      }
 
-        const badgeWrap = document.createElement('div');
-        badgeWrap.style.marginBottom = '6px';
-        const badgeSpan = document.createElement('span');
-        badgeSpan.className = (n.current || n.completed) ? 'pill pill-ok' : 'pill pill-warn';
-        badgeSpan.textContent = n.current
-          ? '● Vị trí xác minh gần nhất'
-          : (n.completed ? '✓ Đã xác minh' : '○ Chưa xác minh');
-        badgeWrap.appendChild(badgeSpan);
-
-        const evDiv = document.createElement('div');
-        evDiv.className = 'muted';
-        evDiv.textContent = String(n.evidence || '');
-
-        div.appendChild(titleDiv);
-        div.appendChild(badgeWrap);
-        div.appendChild(evDiv);
-
-        if (n.occurred_at) {
-          const timeDiv = document.createElement('div');
-          timeDiv.className = 'mono muted';
-          timeDiv.style.marginTop = '4px';
-          timeDiv.textContent = String(n.occurred_at);
-          div.appendChild(timeDiv);
-        }
-        container.appendChild(div);
-      });
+      await selectShipmentForJourney(String(dashboardRows[0].shipment_id || ''));
     }
 
-    async function selectDashboardShipment(sid) {
-      document.getElementById('shipment-input').value = sid;
-      const row = currentDashboardShipments[sid];
-      if (row && row.journey) {
-        renderJourneyMap(row.journey);
-      }
+    async function selectShipmentForJourney(shipmentId) {
+      const sid = String(shipmentId || '').trim();
+      if (!sid) return;
+      const inp = document.getElementById('shipment-input');
+      if (inp) inp.value = sid;
+      const matched = dashboardRows.find(r => String(r.shipment_id) === sid) || null;
+      activeShipmentRow = matched;
       await loadShipment(sid);
     }
 
-    async function refreshTtSessionState() {
-      const res = await fetch('/api/hexa/v0/tt/session', { credentials: 'same-origin' });
-      const data = await res.json();
-      const p = data.principal || {};
-      const pill = document.getElementById('tt-session-pill');
-      const badge = document.getElementById('tt-login-badge');
-      if (data.authenticated && p.kind === 'tt_staff') {
-        pill.textContent = `TT: ${p.username} (${p.role})`;
-        pill.className = 'pill pill-ok';
-        badge.textContent = `Đã xác thực: ${p.display_name} (${p.username})`;
-        badge.className = 'pill pill-ok';
-        await loadTtShipmentDesk();
-      } else {
-        pill.textContent = 'TT: Chưa đăng nhập';
-        pill.className = 'pill pill-warn';
-        badge.textContent = 'Chưa xác thực TT';
-        badge.className = 'pill pill-warn';
-      }
-    }
-
-    async function loginTtStaff() {
-      const username = (document.getElementById('tt-username').value || '').trim();
-      const passcode = document.getElementById('tt-passcode').value || '';
-      const banner = document.getElementById('tt-auth-banner');
-      const res = await fetch('/api/hexa/v0/tt/auth/login', {
-        method: 'POST',
-        credentials: 'same-origin',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, passcode }),
-      });
-      const body = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        banner.className = 'banner-result banner-deny';
-        banner.textContent = `ĐĂNG NHẬP TT BỊ TỪ CHỐI (HTTP ${res.status}): Tài khoản không có quyền duyệt công bố.`;
-        return;
-      }
-      banner.className = 'banner-result banner-ok';
-      banner.textContent = `ĐĂNG NHẬP NHÂN SỰ TT THÀNH CÔNG: ${body.label}`;
-      await refreshTtSessionState();
-    }
-
-    async function logoutTtStaff() {
-      await fetch('/api/hexa/v0/tt/auth/logout', { method: 'POST', credentials: 'same-origin' });
-      document.getElementById('tt-desk-body').style.display = 'none';
-      const status = document.getElementById('tt-desk-status');
-      status.className = 'banner-result banner-warn';
-      status.textContent = 'Đã đăng xuất nhân sự Trường Thành.';
-      await refreshTtSessionState();
-    }
-
-    async function loadTtShipmentDesk() {
-      const sid = (document.getElementById('tt-shipment-input').value || 'ROAD-LG-001').trim();
-      const res = await fetch(`/api/hexa/v0/tt/shipments/${encodeURIComponent(sid)}`, { credentials: 'same-origin' });
-      const status = document.getElementById('tt-desk-status');
-      const deskBody = document.getElementById('tt-desk-body');
-      const body = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        deskBody.style.display = 'none';
-        status.className = 'banner-result banner-deny';
-        status.textContent = `KHÔNG MỞ ĐƯỢC HỒ SƠ NỘI BỘ (HTTP ${res.status}): Cần đăng nhập nhân sự TT có quyền duyệt công bố.`;
-        return;
-      }
-      currentTtDeskData = body;
-      deskBody.style.display = 'block';
-      const s = body.shipment || {};
-      status.className = 'banner-result banner-ok';
-      status.textContent = `Đang mở hồ sơ nội bộ lô ${s.shipment_id} — Khách hàng: ${s.customer_name} (${s.customer_id})`;
-      document.getElementById('tt-ship-summary').textContent = `${s.shipment_id} · ${s.customer_name} (${s.customer_id}) · Phương thức: ${s.transport_mode}`;
-      document.getElementById('tt-trip-summary').textContent = `${s.trip_id} · Biển số: ${s.shared_truck_plate}`;
-      document.getElementById('tt-internal-holdback').textContent =
-        `Giá vốn: ${formatVnd(s.internal_cost_summary_vnd)} | Lợi nhuận dự kiến: ${formatVnd(s.internal_margin_summary_vnd)} | ${s.unverified_eta_note}`;
-
-      renderTtSelectionTables(body);
-      renderTtPublicationAudit(body.publication || {});
-    }
-
-    function renderTtSelectionTables(body) {
-      const pub = body.publication || {};
-      const approvedEvents = pub.event_versions || {};
-      const approvedDocs = pub.document_versions || {};
-      const approvedQuote = pub.quote || null;
-
-      const evTbody = document.getElementById('tt-events-tbody');
-      evTbody.textContent = '';
-      (body.candidate_events || []).forEach(ev => {
-        const checked = approvedEvents[ev.id] === ev.version && pub.state === 'PUBLISHED';
-        const tr = document.createElement('tr');
-        const tdCheck = document.createElement('td');
-        const chk = document.createElement('input');
-        chk.type = 'checkbox';
-        if (ev.eligible_for_customer) {
-          chk.className = 'tt-ev-check';
-          chk.dataset.id = String(ev.id || '');
-          chk.dataset.version = String(ev.version || '');
-          chk.checked = Boolean(checked);
-        } else {
-          chk.disabled = true;
-        }
-        tdCheck.appendChild(chk);
-
-        const tdCode = document.createElement('td');
-        tdCode.className = 'mono';
-        tdCode.textContent = `${ev.id}@${ev.version}`;
-
-        const tdTitle = document.createElement('td');
-        if (!ev.eligible_for_customer) tdTitle.className = 'muted';
-        tdTitle.textContent = String(ev.public_title || '');
-
-        const tdVerify = document.createElement('td');
-        const pill = document.createElement('span');
-        if (ev.eligible_for_customer) {
-          pill.className = 'pill pill-ok';
-          pill.textContent = `Đã xác minh (${ev.verified_at})`;
-        } else {
-          pill.className = 'pill pill-deny';
-          pill.textContent = 'Khóa tự động (Chưa xác minh / Nội bộ TT)';
-        }
-        tdVerify.appendChild(pill);
-
-        tr.appendChild(tdCheck);
-        tr.appendChild(tdCode);
-        tr.appendChild(tdTitle);
-        tr.appendChild(tdVerify);
-        evTbody.appendChild(tr);
-      });
-
-      const docTbody = document.getElementById('tt-docs-tbody');
-      docTbody.textContent = '';
-      (body.candidate_documents || []).forEach(doc => {
-        const isCurrentApproved = approvedDocs[doc.id] === doc.version && pub.state === 'PUBLISHED';
-        const tr = document.createElement('tr');
-        const tdCheck = document.createElement('td');
-        const chk = document.createElement('input');
-        chk.type = 'checkbox';
-        if (doc.eligible_for_customer) {
-          chk.className = 'tt-doc-check';
-          chk.dataset.id = String(doc.id || '');
-          chk.dataset.version = String(doc.version || '');
-          chk.checked = Boolean(isCurrentApproved);
-        } else {
-          chk.disabled = true;
-        }
-        tdCheck.appendChild(chk);
-
-        const tdCode = document.createElement('td');
-        tdCode.className = 'mono';
-        tdCode.textContent = `${doc.id}@${doc.version}`;
-
-        const tdKind = document.createElement('td');
-        tdKind.className = 'mono';
-        const kindPill = document.createElement('span');
-        kindPill.className = doc.eligible_for_customer ? 'pill pill-ok' : 'pill pill-deny';
-        kindPill.textContent = String(doc.kind || '');
-        tdKind.appendChild(kindPill);
-
-        const tdTitle = document.createElement('td');
-        if (doc.eligible_for_customer) {
-          const spanTitle = document.createElement('span');
-          spanTitle.textContent = String(doc.public_title || '') + ' ';
-          const spanFile = document.createElement('span');
-          spanFile.className = 'muted mono';
-          spanFile.textContent = `(${doc.file_name})`;
-          tdTitle.appendChild(spanTitle);
-          tdTitle.appendChild(spanFile);
-        } else {
-          tdTitle.className = 'muted';
-          tdTitle.textContent = String(doc.public_title || '');
-        }
-
-        const tdCtrl = document.createElement('td');
-        if (doc.eligible_for_customer) {
-          if (isCurrentApproved) {
-            const btnRev = document.createElement('button');
-            btnRev.className = 'btn-danger';
-            btnRev.style.padding = '4px 8px';
-            btnRev.style.fontSize = '12px';
-            btnRev.textContent = `Thu hồi chứng từ ${doc.id}`;
-            btnRev.addEventListener('click', () => submitTtRevokeDoc(String(doc.id || '')));
-            tdCtrl.appendChild(btnRev);
-          } else {
-            const spanOk = document.createElement('span');
-            spanOk.className = 'muted';
-            spanOk.textContent = 'Đủ điều kiện công bố';
-            tdCtrl.appendChild(spanOk);
-          }
-        } else {
-          const lockPill = document.createElement('span');
-          lockPill.className = 'pill pill-deny';
-          lockPill.textContent = 'Khóa tự động (Chứng từ nội bộ TT)';
-          tdCtrl.appendChild(lockPill);
-        }
-
-        tr.appendChild(tdCheck);
-        tr.appendChild(tdCode);
-        tr.appendChild(tdKind);
-        tr.appendChild(tdTitle);
-        tr.appendChild(tdCtrl);
-        docTbody.appendChild(tr);
-      });
-
-      const qBox = document.getElementById('tt-quote-box');
-      qBox.textContent = '';
-      const q = body.candidate_quote;
-      if (q && q.id) {
-        const qChecked = approvedQuote && approvedQuote.id === q.id && String(approvedQuote.version) === String(q.version) && pub.state === 'PUBLISHED';
-        const lbl = document.createElement('label');
-        lbl.style.display = 'flex';
-        lbl.style.alignItems = 'center';
-        lbl.style.gap = '8px';
-        lbl.style.cursor = 'pointer';
-        const chk = document.createElement('input');
-        chk.type = 'checkbox';
-        chk.id = 'tt-quote-check';
-        chk.dataset.id = String(q.id || '');
-        chk.dataset.version = String(q.version || '');
-        chk.checked = Boolean(qChecked);
-        const spanDesc = document.createElement('span');
-        spanDesc.textContent = `Chia sẻ báo giá bán ${q.id}@v${q.version} (Trạng thái: ${q.status}) — Tổng giá bán: ${formatVnd(q.selling_total_vnd)} (Tự động ẩn giá vốn & biên lợi nhuận nội bộ)`;
-        lbl.appendChild(chk);
-        lbl.appendChild(spanDesc);
-        qBox.appendChild(lbl);
-      } else {
-        qBox.textContent = 'Không có báo giá bán đủ điều kiện.';
-      }
-    }
-
-    function renderTtPublicationAudit(pub) {
-      const stateEl = document.getElementById('tt-pub-state');
-      stateEl.textContent = '';
-      const isPub = pub.state === 'PUBLISHED';
-      const statePill = document.createElement('span');
-      statePill.className = `pill ${isPub ? 'pill-ok' : 'pill-deny'}`;
-      statePill.textContent = String(pub.state || 'UNPUBLISHED');
-      stateEl.appendChild(statePill);
-      document.getElementById('tt-pub-approved').textContent =
-        pub.approved_by ? `${pub.approved_by} lúc ${pub.approved_at}` : '(Chưa có)';
-      document.getElementById('tt-pub-revoked').textContent =
-        pub.revoked_by ? `${pub.revoked_by} lúc ${pub.revoked_at}` : '(Chưa thu hồi)';
-      const evStr = Object.entries(pub.event_versions || {}).map(([k, v]) => `${k}@${v}`).join(', ') || 'Không có';
-      const docStr = Object.entries(pub.document_versions || {}).map(([k, v]) => `${k}@${v}`).join(', ') || 'Không có';
-      const qStr = pub.quote ? `${pub.quote.id}@v${pub.quote.version}` : 'Không có';
-      document.getElementById('tt-pub-items').textContent = `Tiến độ: [${evStr}] | Chứng từ: [${docStr}] | Báo giá: [${qStr}]`;
-      document.getElementById('tt-pub-history-json').textContent = JSON.stringify(pub, null, 2);
-    }
-
-    function selectAllEligibleTtItems() {
-      document.querySelectorAll('.tt-ev-check, .tt-doc-check').forEach(el => {
-        if (!el.disabled) el.checked = true;
-      });
-      const qEl = document.getElementById('tt-quote-check');
-      if (qEl && !qEl.disabled) qEl.checked = true;
-    }
-
-    async function submitTtPublish() {
-      const sid = (document.getElementById('tt-shipment-input').value || 'ROAD-LG-001').trim();
-      const event_versions = {};
-      document.querySelectorAll('.tt-ev-check:checked').forEach(el => {
-        event_versions[el.dataset.id] = el.dataset.version;
-      });
-      const document_versions = {};
-      document.querySelectorAll('.tt-doc-check:checked').forEach(el => {
-        document_versions[el.dataset.id] = el.dataset.version;
-      });
-      let quote = null;
-      const qEl = document.getElementById('tt-quote-check');
-      if (qEl && qEl.checked) {
-        quote = { id: qEl.dataset.id, version: qEl.dataset.version };
-      }
-
-      const res = await fetch(`/api/hexa/v0/tt/shipments/${encodeURIComponent(sid)}/publish`, {
-        method: 'POST',
-        credentials: 'same-origin',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ event_versions, document_versions, quote }),
-      });
-      const status = document.getElementById('tt-desk-status');
-      const body = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        status.className = 'banner-result banner-deny';
-        status.textContent = `DUYỆT CÔNG BỐ THẤT BẠI (HTTP ${res.status})`;
-        return;
-      }
-      status.className = 'banner-result banner-ok';
-      status.textContent = `ĐÃ DUYỆT CÔNG BỐ CHO KHÁCH (${sid}) — Người duyệt: ${body.publication.approved_by} lúc ${body.publication.approved_at}`;
-      await loadTtShipmentDesk();
-    }
-
-    async function submitTtRevokeDoc(docId) {
-      const sid = (document.getElementById('tt-shipment-input').value || 'ROAD-LG-001').trim();
-      const res = await fetch(`/api/hexa/v0/tt/shipments/${encodeURIComponent(sid)}/revoke`, {
-        method: 'POST',
-        credentials: 'same-origin',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ document_ids: [docId] }),
-      });
-      const status = document.getElementById('tt-desk-status');
-      const body = await res.json().catch(() => ({}));
-      if (res.ok) {
-        status.className = 'banner-result banner-warn';
-        status.textContent = `ĐÃ THU HỒI CHỨNG TỪ ${docId} — Khách hàng không thể tải chứng từ này nữa kể cả dùng link cũ.`;
-        await loadTtShipmentDesk();
-      }
-    }
-
-    async function submitTtRevokeAll() {
-      const sid = (document.getElementById('tt-shipment-input').value || 'ROAD-LG-001').trim();
-      const res = await fetch(`/api/hexa/v0/tt/shipments/${encodeURIComponent(sid)}/revoke`, {
-        method: 'POST',
-        credentials: 'same-origin',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}),
-      });
-      const status = document.getElementById('tt-desk-status');
-      const body = await res.json().catch(() => ({}));
-      if (res.ok) {
-        status.className = 'banner-result banner-warn';
-        status.textContent = `ĐÃ THU HỒI TOÀN BỘ CÔNG BỐ LÔ ${sid} — Người thu hồi: ${body.publication.revoked_by} lúc ${body.publication.revoked_at}`;
-        await loadTtShipmentDesk();
-      }
-    }
-
-    async function loadRequestedShipment() {
+    async function openRequestedShipmentInput() {
       const sid = (document.getElementById('shipment-input').value || '').trim();
       if (!sid) return;
-      await loadShipment(sid);
+      await selectShipmentForJourney(sid);
     }
 
-    async function loadShipment(shipmentPath) {
-      const url = `/api/hexa/v0/shipments/${encodeURIComponent(shipmentPath)}`;
-      document.getElementById('raw-json-url').textContent = url;
-      const res = await fetch(url, { credentials: 'same-origin' });
-      const body = await res.json();
-
-      const statusBadge = document.getElementById('http-status-badge');
-      statusBadge.textContent = `HTTP ${res.status}`;
-      statusBadge.className = 'pill ' + (res.ok ? 'pill-ok' : 'pill-deny');
-
-      document.getElementById('raw-publication-json').textContent = JSON.stringify(body, null, 2);
-
-      const banner = document.getElementById('portal-status-banner');
-      const content = document.getElementById('portal-content');
-
-      if (!res.ok) {
-        banner.className = 'banner-result banner-deny';
-        banner.textContent = `TRUY CẬP BỊ TỪ CHỐI (HTTP ${res.status}): ${body.error || 'CUSTOMER_RESOURCE_UNAVAILABLE'} (Chưa đăng nhập khách, lô chưa công bố, hoặc không thuộc quyền xem của bạn)`;
-        content.style.opacity = '0.45';
+    async function loadShipment(shipmentId) {
+      const sid = String(shipmentId || (document.getElementById('shipment-input').value || '')).trim();
+      if (!sid) {
+        showUnpublishedState('');
         return;
       }
+      const res = await fetch(`/api/hexa/v0/shipments/${encodeURIComponent(sid)}`, {
+        credentials: 'same-origin'
+      });
+      if (!res.ok) {
+        activePublication = null;
+        showUnpublishedState(sid);
+        return;
+      }
+      const pub = await res.json();
+      activePublication = pub;
+      const row = dashboardRows.find(r => String(r.shipment_id) === sid) || activeShipmentRow || {
+        shipment_id: pub.reference || sid,
+        transport_mode: pub.transport_mode || 'ROAD',
+        route_summary: 'Tuyến vận chuyển đã công bố',
+        cargo_summary: 'Hàng hóa theo chứng từ công bố',
+        verified_stage_id: (pub.timeline && pub.timeline[0] && pub.timeline[0].stage) || '',
+        verified_stage_label: (pub.timeline && pub.timeline[0] && pub.timeline[0].stage) || 'Đang xử lý',
+        verified_stage_title: (pub.timeline && pub.timeline[0] && pub.timeline[0].title) || '',
+        verified_warehouse_eta_label: 'Chưa xác minh',
+        next_step: 'Đang vận chuyển theo hành trình — Chưa có yêu cầu được xác nhận',
+        contact_point: 'CSKH Trường Thành',
+        journey: { nodes: [], edges: [] },
+        timeline: pub.timeline || [],
+        documents: pub.documents || [],
+        quote: pub.quote || null
+      };
+      activeShipmentRow = row;
+      renderJourneyMapForShipment(row, pub);
+    }
 
-      content.style.opacity = '1';
-      banner.className = 'banner-result banner-ok';
-      banner.textContent = `ĐỌC DỮ LIỆU CÔNG BỐ THÀNH CÔNG (HTTP 200) — Lô ${body.reference} (${body.transport_mode})`;
+    function renderJourneyMapForShipment(row, pub) {
+      const zeroEl = document.getElementById('journey-zero-notice');
+      if (zeroEl) zeroEl.classList.add('hidden');
 
-      document.getElementById('pub-schema').textContent = body.schema || '-';
-      document.getElementById('pub-reference').textContent = body.reference || '-';
-      document.getElementById('pub-mode').textContent = body.transport_mode || '-';
-      const quoteEl = document.getElementById('pub-quote');
-      quoteEl.textContent = '';
-      if (body.quote) {
-        const strongVnd = document.createElement('strong');
-        strongVnd.textContent = formatVnd(body.quote.selling_total_vnd);
-        const spanMeta = document.createElement('span');
-        spanMeta.className = 'mono';
-        spanMeta.textContent = ` (Mã: ${body.quote.id} · v${body.quote.version} · Trạng thái: ${body.quote.status})`;
-        quoteEl.appendChild(strongVnd);
-        quoteEl.appendChild(spanMeta);
-      } else {
-        quoteEl.textContent = 'Chưa có báo giá công bố';
+      document.getElementById('toolbar-id').textContent = String(row.shipment_id || pub.reference || '');
+      document.getElementById('toolbar-mode').textContent = String(row.transport_mode || pub.transport_mode || 'ROAD');
+      document.getElementById('toolbar-route').textContent = `${String(row.route_summary || '')} · ${String(row.cargo_summary || '')}`;
+      document.getElementById('toolbar-here').textContent = `Đang ở: ${String(row.verified_stage_label || 'Chưa xác minh')}`;
+      document.getElementById('toolbar-eta').textContent = `ETA kho: ${String(row.verified_warehouse_eta_label || 'Chưa xác minh')}`;
+      document.getElementById('toolbar-next').textContent = `${String(row.next_step || '')} · Đầu mối: ${String(row.contact_point || '')}`;
+
+      const docs = (pub && Array.isArray(pub.documents)) ? pub.documents : (row.documents || []);
+      const quote = (pub && pub.quote) ? pub.quote : row.quote;
+      document.getElementById('utility-doc-count').textContent = `${docs.length} tệp`;
+      document.getElementById('utility-docs-sub').textContent = `${docs.length} tệp đã duyệt`;
+      document.getElementById('utility-quote-sub').textContent = quote ? formatVnd(quote.selling_total_vnd) : 'Chưa công bố';
+
+      const journey = row.journey || { nodes: [], edges: [] };
+      const nodes = Array.isArray(journey.nodes) ? journey.nodes : [];
+      const edges = Array.isArray(journey.edges) && journey.edges.length > 0
+        ? journey.edges
+        : nodes.slice(0, -1).map((n, idx) => ({ from: n.id, to: nodes[idx + 1].id }));
+
+      const posById = {};
+      const nodeById = {};
+      nodes.forEach((n, idx) => {
+        posById[n.id] = getNodePos(n.id, idx);
+        nodeById[n.id] = n;
+      });
+
+      const edgesSvg = document.getElementById('journey-edges-svg');
+      if (edgesSvg) {
+        edgesSvg.innerHTML = '';
+        edges.forEach(e => {
+          const a = posById[e.from];
+          const b = posById[e.to];
+          if (!a || !b) return;
+          const fromNode = nodeById[e.from] || {};
+          const pathEl = document.createElementNS
+            ? document.createElementNS('http://www.w3.org/2000/svg', 'path')
+            : document.createElement('path');
+          const cls = ['journey-edge', fromNode.completed ? 'journey-edge-done' : ''].filter(Boolean).join(' ');
+          pathEl.setAttribute('class', cls);
+          pathEl.setAttribute('d', journeyEdgePath(a, b));
+          edgesSvg.appendChild(pathEl);
+        });
       }
 
-      const tlBody = document.getElementById('pub-timeline-body');
-      tlBody.textContent = '';
-      (body.timeline || []).forEach(ev => {
-        const tr = document.createElement('tr');
-        const tdId = document.createElement('td');
-        tdId.className = 'mono';
-        tdId.textContent = String(ev.id || '');
+      const nodesLayer = document.getElementById('journey-nodes-layer');
+      if (nodesLayer) {
+        nodesLayer.innerHTML = '';
+        nodes.forEach((n, idx) => {
+          const p = posById[n.id];
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.dataset.testid = `journey-node-${n.id}`;
+          btn.setAttribute('data-state', String(n.state || 'UPCOMING'));
+          const classes = ['journey-node'];
+          if (n.current) classes.push('journey-node-here');
+          if (selectedNodeId === n.id) classes.push('journey-node-selected');
+          btn.className = classes.join(' ');
+          btn.style.left = `${p.x}px`;
+          btn.style.top = `${p.y}px`;
+          btn.style.width = `${JOURNEY_NODE_W}px`;
+          btn.style.height = `${JOURNEY_NODE_H}px`;
 
-        const tdStage = document.createElement('td');
-        tdStage.className = 'mono';
-        tdStage.textContent = String(ev.stage || '');
+          const topDiv = document.createElement('div');
+          topDiv.className = 'journey-node-top';
+          const idxSpan = document.createElement('span');
+          idxSpan.className = 'journey-node-idx';
+          idxSpan.textContent = String(idx + 1).padStart(2, '0');
+          topDiv.appendChild(idxSpan);
 
-        const tdTitle = document.createElement('td');
-        tdTitle.textContent = String(ev.title || '');
+          const titleDiv = document.createElement('div');
+          titleDiv.className = 'journey-node-title';
+          titleDiv.textContent = String(n.label || '').toUpperCase();
 
-        const tdTime = document.createElement('td');
-        tdTime.className = 'mono';
-        tdTime.textContent = String(ev.occurred_at || '');
+          const footDiv = document.createElement('div');
+          footDiv.className = 'journey-node-foot';
+          const stSpan = document.createElement('span');
+          stSpan.className = 'journey-node-status';
+          stSpan.textContent = JOURNEY_NODE_STATUS[n.state] || 'CHƯA BẮT ĐẦU';
+          footDiv.appendChild(stSpan);
 
-        const tdVer = document.createElement('td');
-        tdVer.className = 'mono';
-        tdVer.textContent = String(ev.version || '');
+          if ((n.completed || n.current) && docs.length > 0) {
+            const cntSpan = document.createElement('span');
+            cntSpan.className = 'journey-node-count';
+            cntSpan.textContent = `📎${docs.length}`;
+            footDiv.appendChild(cntSpan);
+          }
 
-        tr.appendChild(tdId);
-        tr.appendChild(tdStage);
-        tr.appendChild(tdTitle);
-        tr.appendChild(tdTime);
-        tr.appendChild(tdVer);
-        tlBody.appendChild(tr);
+          btn.appendChild(topDiv);
+          btn.appendChild(titleDiv);
+          btn.appendChild(footDiv);
+          btn.addEventListener('click', () => selectJourneyNode(String(n.id)));
+          nodesLayer.appendChild(btn);
+        });
+      }
+
+      if (selectedNodeId && nodeById[selectedNodeId]) {
+        renderNodeBubble(nodeById[selectedNodeId], posById[selectedNodeId], docs);
+      } else {
+        const bubbleSlot = document.getElementById('journey-bubble-slot');
+        if (bubbleSlot) bubbleSlot.innerHTML = '';
+      }
+    }
+
+    function selectJourneyNode(nodeId) {
+      if (!activeShipmentRow || !activeShipmentRow.journey) return;
+      selectedNodeId = (selectedNodeId === nodeId) ? null : String(nodeId);
+      renderJourneyMapForShipment(activeShipmentRow, activePublication);
+    }
+
+    function renderNodeBubble(node, pos, docs) {
+      const bubbleSlot = document.getElementById('journey-bubble-slot');
+      if (!bubbleSlot) return;
+      bubbleSlot.innerHTML = '';
+      if (!node || !pos) return;
+
+      const bubbleW = 290;
+      const left = Math.max(18, Math.min(1080 - bubbleW - 18, pos.x + JOURNEY_NODE_W / 2 - bubbleW / 2));
+      const preferAbove = pos.y > 195;
+      const top = preferAbove ? Math.max(12, pos.y - 12) : pos.y + JOURNEY_NODE_H + 12;
+
+      const wrap = document.createElement('div');
+      wrap.className = `journey-bubble ${preferAbove ? 'journey-bubble-above' : 'journey-bubble-below'}`;
+      wrap.dataset.testid = 'journey-bubble';
+      wrap.setAttribute('data-node', String(node.id));
+      wrap.style.left = `${left}px`;
+      wrap.style.top = `${top}px`;
+      wrap.style.width = `${bubbleW}px`;
+
+      const head = document.createElement('div');
+      head.className = 'journey-bubble-head';
+      const headTextWrap = document.createElement('div');
+      const kicker = document.createElement('span');
+      kicker.className = 'journey-bubble-kicker';
+      kicker.textContent = String(node.label || '').toUpperCase();
+      const stateSpan = document.createElement('span');
+      stateSpan.className = 'journey-bubble-state';
+      stateSpan.textContent = JOURNEY_NODE_STATUS[node.state] || 'CHƯA BẮT ĐẦU';
+      headTextWrap.appendChild(kicker);
+      headTextWrap.appendChild(stateSpan);
+
+      const closeBtn = document.createElement('button');
+      closeBtn.type = 'button';
+      closeBtn.className = 'journey-bubble-close';
+      closeBtn.dataset.testid = 'journey-bubble-close';
+      closeBtn.textContent = '✕';
+      closeBtn.addEventListener('click', () => {
+        selectedNodeId = null;
+        renderJourneyMapForShipment(activeShipmentRow, activePublication);
       });
+      head.appendChild(headTextWrap);
+      head.appendChild(closeBtn);
 
-      const docsBody = document.getElementById('pub-docs-body');
-      docsBody.textContent = '';
-      (body.documents || []).forEach(doc => {
-        const tr = document.createElement('tr');
-        const tdId = document.createElement('td');
-        tdId.className = 'mono';
-        tdId.textContent = String(doc.id || '');
+      const listDiv = document.createElement('div');
+      listDiv.className = 'journey-bubble-list';
 
-        const tdKind = document.createElement('td');
-        tdKind.className = 'mono';
-        const kindPill = document.createElement('span');
-        kindPill.className = 'pill pill-ok';
-        kindPill.textContent = String(doc.kind || '');
-        tdKind.appendChild(kindPill);
+      const taskStage = document.createElement('button');
+      taskStage.type = 'button';
+      taskStage.className = `journey-bubble-task ${node.completed ? 'is-done' : ''}`;
+      taskStage.dataset.testid = 'journey-bubble-task-stage';
+      const dot1 = document.createElement('span');
+      dot1.className = `journey-bubble-dot ${node.completed ? 'dot-done' : (node.current ? 'dot-info' : 'dot-pending')}`;
+      dot1.textContent = node.completed ? '✓' : (node.current ? '◐' : '·');
+      const body1 = document.createElement('span');
+      body1.className = 'journey-bubble-task-body';
+      const title1 = document.createElement('span');
+      title1.className = 'journey-bubble-title';
+      title1.textContent = String(node.evidence || 'Chưa có mốc xác minh được công bố');
+      const meta1 = document.createElement('span');
+      meta1.className = 'journey-bubble-meta';
+      meta1.textContent = node.occurred_at ? `Xác minh: ${String(node.occurred_at)}` : 'Chưa có mốc thời gian xác minh';
+      body1.appendChild(title1);
+      body1.appendChild(meta1);
+      taskStage.appendChild(dot1);
+      taskStage.appendChild(body1);
+      taskStage.addEventListener('click', () => openStageModal(String(node.id), 'info'));
 
-        const tdTitle = document.createElement('td');
-        tdTitle.textContent = String(doc.title || '');
+      const taskDocs = document.createElement('button');
+      taskDocs.type = 'button';
+      taskDocs.className = `journey-bubble-task ${docs.length > 0 ? 'is-done' : ''}`;
+      taskDocs.dataset.testid = 'journey-bubble-task-docs';
+      const dot2 = document.createElement('span');
+      dot2.className = `journey-bubble-dot ${docs.length > 0 ? 'dot-done' : 'dot-pending'}`;
+      dot2.textContent = docs.length > 0 ? '📎' : '·';
+      const body2 = document.createElement('span');
+      body2.className = 'journey-bubble-task-body';
+      const title2 = document.createElement('span');
+      title2.className = 'journey-bubble-title';
+      title2.textContent = `Chứng từ được phép tải (${docs.length} tệp)`;
+      const meta2 = document.createElement('span');
+      meta2.className = 'journey-bubble-meta';
+      meta2.textContent = 'Nhấn để xem chi tiết chỉ-đọc và tải PDF đúng phiên bản';
+      body2.appendChild(title2);
+      body2.appendChild(meta2);
+      taskDocs.appendChild(dot2);
+      taskDocs.appendChild(body2);
+      taskDocs.addEventListener('click', () => openStageModal(String(node.id), 'docs'));
 
-        const tdVer = document.createElement('td');
-        tdVer.className = 'mono';
-        tdVer.textContent = String(doc.version || '');
+      listDiv.appendChild(taskStage);
+      listDiv.appendChild(taskDocs);
 
-        const tdDl = document.createElement('td');
-        const btnDl = document.createElement('button');
-        btnDl.textContent = `⬇ Tải ${doc.id} (${doc.version})`;
-        btnDl.addEventListener('click', () => triggerDownload(String(body.reference || ''), String(doc.id || ''), String(doc.version || '')));
-        tdDl.appendChild(btnDl);
+      const foot = document.createElement('div');
+      foot.className = 'journey-bubble-foot';
+      const openBtn = document.createElement('button');
+      openBtn.type = 'button';
+      openBtn.className = 'journey-bubble-open';
+      openBtn.dataset.testid = 'journey-open-workspace';
+      openBtn.textContent = 'Xem chi tiết chỉ-đọc →';
+      openBtn.addEventListener('click', () => openStageModal(String(node.id), 'info'));
+      foot.appendChild(openBtn);
 
-        tr.appendChild(tdId);
-        tr.appendChild(tdKind);
-        tr.appendChild(tdTitle);
-        tr.appendChild(tdVer);
-        tr.appendChild(tdDl);
-        docsBody.appendChild(tr);
+      wrap.appendChild(head);
+      wrap.appendChild(listDiv);
+      wrap.appendChild(foot);
+      bubbleSlot.appendChild(wrap);
+    }
+
+    function openStageModal(nodeId, tab) {
+      if (!activeShipmentRow) return;
+      const nodes = (activeShipmentRow.journey && activeShipmentRow.journey.nodes) || [];
+      const node = nodes.find(n => String(n.id) === String(nodeId)) || nodes[0] || {
+        id: nodeId,
+        label: nodeId,
+        state: 'UPCOMING',
+        evidence: 'Chưa có mốc xác minh được công bố',
+        occurred_at: ''
+      };
+      const modalLayer = document.getElementById('journey-modal-layer');
+      if (modalLayer) modalLayer.classList.remove('hidden');
+
+      document.getElementById('modal-kicker').textContent = `CHI TIẾT CÔNG ĐOẠN · ${String(activeShipmentRow.shipment_id || '')}`;
+      document.getElementById('modal-title').textContent = String(node.label || '');
+      document.getElementById('modal-sub').textContent = node.occurred_at
+        ? `Thời điểm xác minh: ${String(node.occurred_at)}`
+        : 'Chưa có thời điểm xác minh được công bố cho công đoạn này';
+      document.getElementById('modal-badge').textContent = JOURNEY_NODE_STATUS[node.state] || 'CHƯA BẮT ĐẦU';
+
+      renderReadonlyModalBody(node, tab || 'info');
+    }
+
+    function openGlobalModal(tab) {
+      if (!activeShipmentRow) return;
+      const nodes = (activeShipmentRow.journey && activeShipmentRow.journey.nodes) || [];
+      const currentNode = nodes.find(n => n.current) || nodes[0] || {
+        id: 'overview',
+        label: 'Tổng quan Hồ sơ & Chứng từ đã công bố',
+        state: 'CURRENT',
+        evidence: String(activeShipmentRow.verified_stage_title || ''),
+        occurred_at: String(activeShipmentRow.last_updated_at || '')
+      };
+      openStageModal(currentNode.id, tab || 'docs');
+    }
+
+    function closeStageModal() {
+      const modalLayer = document.getElementById('journey-modal-layer');
+      if (modalLayer) modalLayer.classList.add('hidden');
+    }
+
+    function renderReadonlyModalBody(node, activeTab) {
+      const container = document.getElementById('journey-modal-body');
+      if (!container) return;
+      container.innerHTML = '';
+
+      const row = activeShipmentRow || {};
+      const pub = activePublication || {};
+      const docs = Array.isArray(pub.documents) ? pub.documents : (row.documents || []);
+      const timeline = Array.isArray(pub.timeline) ? pub.timeline : (row.timeline || []);
+      const quote = pub.quote || row.quote || null;
+
+      const grid = document.createElement('div');
+      grid.className = 'readonly-grid';
+
+      const items = [
+        ['Trạng thái công đoạn', JOURNEY_NODE_STATUS[node.state] || 'CHƯA BẮT ĐẦU'],
+        ['Thời điểm xác minh', String(node.occurred_at || 'Chưa có mốc xác minh')],
+        ['ETA kho đã xác minh', String(row.verified_warehouse_eta_label || 'Chưa xác minh')],
+        ['Đầu mối Trường Thành', String(row.contact_point || 'CSKH Trường Thành')],
+        ['Báo giá bán đã duyệt', quote ? `${formatVnd(quote.selling_total_vnd)} (${String(quote.id || '')} · v${String(quote.version || '')})` : 'Chưa công bố']
+      ];
+      items.forEach(([lbl, val]) => {
+        const box = document.createElement('div');
+        box.className = 'readonly-box';
+        const l = document.createElement('div');
+        l.className = 'lbl';
+        l.textContent = lbl;
+        const v = document.createElement('div');
+        v.className = 'val';
+        v.textContent = val;
+        box.appendChild(l);
+        box.appendChild(v);
+        grid.appendChild(box);
       });
+      container.appendChild(grid);
+
+      const evBox = document.createElement('div');
+      evBox.className = 'readonly-box';
+      evBox.style.marginBottom = '14px';
+      const evLbl = document.createElement('div');
+      evLbl.className = 'lbl';
+      evLbl.textContent = 'Nội dung đã công bố tại công đoạn này';
+      const evVal = document.createElement('div');
+      evVal.className = 'val';
+      evVal.textContent = String(node.evidence || 'Chưa có mốc xác minh được công bố');
+      evBox.appendChild(evLbl);
+      evBox.appendChild(evVal);
+      container.appendChild(evBox);
+
+      const tlTitle = document.createElement('h4');
+      tlTitle.style.margin = '12px 0 6px';
+      tlTitle.style.fontSize = '13px';
+      tlTitle.textContent = 'Nhật ký mốc tiến độ Trường Thành đã xác minh & công bố';
+      container.appendChild(tlTitle);
+
+      const tlList = document.createElement('div');
+      tlList.style.display = 'grid';
+      tlList.style.gap = '6px';
+      if (timeline.length === 0) {
+        const emptyTl = document.createElement('div');
+        emptyTl.className = 'readonly-box';
+        emptyTl.textContent = 'Trường Thành chưa công bố mốc tiến độ nào cho lô này.';
+        tlList.appendChild(emptyTl);
+      } else {
+        timeline.forEach(ev => {
+          const item = document.createElement('div');
+          item.className = 'readonly-box';
+          const top = document.createElement('div');
+          top.className = 'lbl';
+          top.textContent = `${String(ev.stage || '')} · ${String(ev.occurred_at || '')} · Phiên bản ${String(ev.version || '')}`;
+          const txt = document.createElement('div');
+          txt.className = 'val';
+          txt.textContent = String(ev.title || '');
+          item.appendChild(top);
+          item.appendChild(txt);
+          tlList.appendChild(item);
+        });
+      }
+      container.appendChild(tlList);
+
+      const docHeading = document.createElement('h4');
+      docHeading.style.margin = '16px 0 6px';
+      docHeading.style.fontSize = '13px';
+      docHeading.textContent = 'Chứng từ được phép tải (đúng phiên bản đã duyệt)';
+      container.appendChild(docHeading);
+
+      const table = document.createElement('table');
+      table.className = 'doc-list-table';
+      const thead = document.createElement('thead');
+      const htr = document.createElement('tr');
+      ['Mã chứng từ', 'Loại', 'Tên chứng từ đã công bố', 'Phiên bản', 'Tải tệp'].forEach(h => {
+        const th = document.createElement('th');
+        th.textContent = h;
+        htr.appendChild(th);
+      });
+      thead.appendChild(htr);
+      table.appendChild(thead);
+
+      const tbody = document.createElement('tbody');
+      if (docs.length === 0) {
+        const tr = document.createElement('tr');
+        const td = document.createElement('td');
+        td.colSpan = 5;
+        td.textContent = 'Chưa có chứng từ được công bố.';
+        tr.appendChild(td);
+        tbody.appendChild(tr);
+      } else {
+        docs.forEach(doc => {
+          const tr = document.createElement('tr');
+          const tdId = document.createElement('td');
+          tdId.textContent = String(doc.id || '');
+          const tdKind = document.createElement('td');
+          tdKind.textContent = String(doc.kind || '');
+          const tdTitle = document.createElement('td');
+          tdTitle.textContent = String(doc.title || '');
+          const tdVer = document.createElement('td');
+          tdVer.textContent = String(doc.version || '');
+          const tdDl = document.createElement('td');
+          const btnDl = document.createElement('button');
+          btnDl.type = 'button';
+          btnDl.className = 'btn-primary';
+          btnDl.style.padding = '5px 10px';
+          btnDl.style.fontSize = '12px';
+          btnDl.textContent = '⬇ Tải PDF';
+          btnDl.addEventListener('click', () => triggerDownload(
+            String(row.shipment_id || pub.reference || ''),
+            String(doc.id || ''),
+            String(doc.version || '')
+          ));
+          tdDl.appendChild(btnDl);
+
+          tr.appendChild(tdId);
+          tr.appendChild(tdKind);
+          tr.appendChild(tdTitle);
+          tr.appendChild(tdVer);
+          tr.appendChild(tdDl);
+          tbody.appendChild(tr);
+        });
+      }
+      table.appendChild(tbody);
+      container.appendChild(table);
     }
 
     async function triggerDownload(shipmentId, docId, version) {
       const url = `/api/hexa/v0/shipments/${encodeURIComponent(shipmentId)}/documents/${encodeURIComponent(docId)}/download?version=${encodeURIComponent(version)}`;
       const res = await fetch(url, { credentials: 'same-origin' });
       const banner = document.getElementById('download-status-banner');
+      if (banner) banner.classList.remove('hidden');
       if (res.ok) {
         const blob = await res.blob();
-        banner.className = 'banner-result banner-ok';
-        banner.textContent = `TẢI CHỨNG TỪ THÀNH CÔNG (HTTP ${res.status}): ${docId}@${version} (${blob.size} bytes PDF).`;
-        const dlUrl = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = dlUrl;
-        a.download = `${docId}-${version}.pdf`;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        URL.revokeObjectURL(dlUrl);
+        if (banner) banner.textContent = `Đã tải chứng từ ${docId} (${version}) thành công (${blob.size} bytes PDF).`;
+        if (typeof URL !== 'undefined' && URL.createObjectURL) {
+          const dlUrl = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = dlUrl;
+          a.download = `${docId}-${version}.pdf`;
+          document.body.appendChild(a);
+          a.click();
+          if (a.remove) a.remove();
+          URL.revokeObjectURL(dlUrl);
+        }
       } else {
-        const err = await res.json().catch(() => ({}));
-        banner.className = 'banner-result banner-deny';
-        banner.textContent = `TỪ CHỐI TẢI CHỨNG TỪ (HTTP ${res.status}): ${err.error || 'CUSTOMER_RESOURCE_UNAVAILABLE'}`;
+        if (banner) banner.textContent = `Chứng từ ${docId} (${version}) hiện không nằm trong danh mục được phép tải.`;
       }
     }
 
     window.addEventListener('DOMContentLoaded', async () => {
-      await refreshSessionState();
-      await refreshTtSessionState();
-      await loadCustomerDashboard();
-      await loadRequestedShipment();
+      const vp = document.getElementById('journey-map-viewport');
+      if (vp && vp.addEventListener) {
+        let dragState = null;
+        vp.addEventListener('pointerdown', (e) => {
+          if (e.target && e.target.closest && e.target.closest('.journey-node, .journey-zoom-bar, .journey-bubble')) return;
+          dragState = { startX: e.clientX, startY: e.clientY, origX: currentPan.x, origY: currentPan.y };
+          vp.style.cursor = 'grabbing';
+        });
+        vp.addEventListener('pointermove', (e) => {
+          if (!dragState) return;
+          currentPan = {
+            x: dragState.origX + (e.clientX - dragState.startX),
+            y: dragState.origY + (e.clientY - dragState.startY)
+          };
+          applyTransform();
+        });
+        const endDrag = () => { dragState = null; vp.style.cursor = 'grab'; };
+        vp.addEventListener('pointerup', endDrag);
+        vp.addEventListener('pointercancel', endDrag);
+        vp.addEventListener('wheel', (e) => {
+          if (!e.ctrlKey && !e.metaKey) return;
+          e.preventDefault();
+          const delta = e.deltaY < 0 ? 0.1 : -0.1;
+          currentScale = Math.max(0.55, Math.min(1.85, Math.round((currentScale + delta) * 100) / 100));
+          applyTransform();
+        }, { passive: false });
+      }
+      await loadSession();
     });
+  </script>
+</body>
+</html>
+"""
+
+
+def render_tt_login_html() -> str:
+    """Minimal login page for authorized Trường Thành staff (/tt/login)."""
+    return """<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Trường Thành — Đăng nhập Bàn Duyệt Công Bố Nội Bộ</title>
+</head>
+<body>
+  <div class="card">
+    <h1>Bàn Duyệt Công Bố Nội Bộ Trường Thành</h1>
+    <input id="tt-user" type="text" placeholder="Tài khoản nội bộ TT" />
+    <input id="tt-pass" type="password" placeholder="Mật khẩu" />
+    <button type="button" onclick="loginTt()">Đăng nhập nội bộ TT</button>
+    <div id="tt-msg"></div>
+  </div>
+  <script>
+    async function loginTt() {
+      const username = (document.getElementById('tt-user').value || '').trim();
+      const passcode = document.getElementById('tt-pass').value || '';
+      const res = await fetch('/api/hexa/v0/tt/auth/login', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, passcode })
+      });
+      if (res.ok) window.location.href = '/tt';
+      else document.getElementById('tt-msg').textContent = 'Từ chối truy cập';
+    }
+  </script>
+</body>
+</html>
+"""
+
+
+def render_tt_publish_desk_html() -> str:
+    """Separated internal Trường Thành publication approval desk (/tt)."""
+    return """<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Nội bộ Trường Thành — Bàn Duyệt Công Bố Lô Hàng</title>
+  <style>
+    body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f1f5f9; color: #0f172a; }
+    header { background: #0f2942; color: #fff; padding: 14px 22px; display: flex; justify-content: space-between; align-items: center; }
+    main { max-width: 1120px; margin: 18px auto; padding: 0 18px 40px; display: grid; gap: 16px; }
+    .card { background: #fff; border: 1px solid #cbd5e1; border-radius: 8px; padding: 16px 18px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 10px; }
+    th, td { padding: 8px; border-bottom: 1px solid #e2e8f0; text-align: left; }
+    button { cursor: pointer; padding: 7px 12px; border-radius: 6px; border: 1px solid #0f4c81; background: #0f4c81; color: #fff; font-weight: 600; }
+    button.danger { background: #b91c1c; border-color: #b91c1c; }
+  </style>
+</head>
+<body>
+  <header>
+    <strong>Nội bộ Trường Thành — Bàn Duyệt Công Bố &amp; Thu Hồi (Tách biệt khỏi Cổng Khách Hàng)</strong>
+  </header>
+  <main class="card">
+    <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+      <input id="tt-shipment-input" type="text" value="ROAD-LG-001" style="padding:6px 10px;" />
+      <button type="button" onclick="loadTtShipment()">Mở hồ sơ lô</button>
+      <button type="button" onclick="submitTtPublish()">✓ Duyệt &amp; Công bố</button>
+      <button type="button" class="danger" onclick="submitTtRevokeAll()">✕ Thu hồi công bố</button>
+    </div>
+    <div id="tt-status" style="margin-top:8px; font-weight:700;"></div>
+    <table><thead><tr><th>Chọn</th><th>Mã mốc</th><th>Phiên bản</th><th>Công đoạn</th><th>Nội dung</th></tr></thead><tbody id="tt-events-tbody"></tbody></table>
+    <table><thead><tr><th>Chọn</th><th>Mã chứng từ</th><th>Phiên bản</th><th>Loại</th><th>Tiêu đề</th></tr></thead><tbody id="tt-docs-tbody"></tbody></table>
+  </main>
+  <script>
+    let currentTtShipment = null;
+    async function loadTtShipment() {
+      const sid = (document.getElementById('tt-shipment-input').value || '').trim();
+      const res = await fetch(`/api/hexa/v0/tt/shipments/${encodeURIComponent(sid)}`, { credentials: 'same-origin' });
+      if (!res.ok) return;
+      currentTtShipment = await res.json();
+      const pub = currentTtShipment.publication || {};
+      const pubEvents = pub.event_versions || {};
+      const pubDocs = pub.document_versions || {};
+      const evBody = document.getElementById('tt-events-tbody');
+      evBody.innerHTML = '';
+      (currentTtShipment.candidate_events || []).forEach(ev => {
+        const tr = document.createElement('tr');
+        const tdCk = document.createElement('td');
+        const ck = document.createElement('input');
+        ck.type = 'checkbox'; ck.className = 'tt-ev-ck'; ck.dataset.id = ev.id; ck.dataset.version = ev.version;
+        ck.checked = (pubEvents[ev.id] === ev.version); ck.disabled = !ev.eligible_for_customer;
+        tdCk.appendChild(ck);
+        const tdId = document.createElement('td'); tdId.textContent = ev.id;
+        const tdVer = document.createElement('td'); tdVer.textContent = ev.version;
+        const tdSt = document.createElement('td'); tdSt.textContent = ev.stage;
+        const tdTitle = document.createElement('td'); tdTitle.textContent = ev.title;
+        tr.append(tdCk, tdId, tdVer, tdSt, tdTitle);
+        evBody.appendChild(tr);
+      });
+      const docBody = document.getElementById('tt-docs-tbody');
+      docBody.innerHTML = '';
+      (currentTtShipment.candidate_documents || []).forEach(doc => {
+        const tr = document.createElement('tr');
+        const tdCk = document.createElement('td');
+        const ck = document.createElement('input');
+        ck.type = 'checkbox'; ck.className = 'tt-doc-ck'; ck.dataset.id = doc.id; ck.dataset.version = doc.version;
+        ck.checked = (pubDocs[doc.id] === doc.version); ck.disabled = !doc.eligible_for_customer;
+        tdCk.appendChild(ck);
+        const tdId = document.createElement('td'); tdId.textContent = doc.id;
+        const tdVer = document.createElement('td'); tdVer.textContent = doc.version;
+        const tdKind = document.createElement('td'); tdKind.textContent = doc.kind;
+        const tdTitle = document.createElement('td'); tdTitle.textContent = doc.title;
+        tr.append(tdCk, tdId, tdVer, tdKind, tdTitle);
+        docBody.appendChild(tr);
+      });
+    }
+    async function submitTtPublish() {
+      const sid = (document.getElementById('tt-shipment-input').value || '').trim();
+      const event_versions = {};
+      document.querySelectorAll('.tt-ev-ck:checked').forEach(cb => { event_versions[cb.dataset.id] = cb.dataset.version; });
+      const document_versions = {};
+      document.querySelectorAll('.tt-doc-ck:checked').forEach(cb => { document_versions[cb.dataset.id] = cb.dataset.version; });
+      const q = currentTtShipment && currentTtShipment.candidate_quote;
+      const quote = q ? { id: q.id, version: q.version } : null;
+      const res = await fetch(`/api/hexa/v0/tt/shipments/${encodeURIComponent(sid)}/publish`, {
+        method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ event_versions, document_versions, quote })
+      });
+      document.getElementById('tt-status').textContent = res.ok ? `Đã công bố lô ${sid}` : 'Lỗi công bố';
+      await loadTtShipment();
+    }
+    async function submitTtRevokeAll() {
+      const sid = (document.getElementById('tt-shipment-input').value || '').trim();
+      const res = await fetch(`/api/hexa/v0/tt/shipments/${encodeURIComponent(sid)}/revoke`, {
+        method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({})
+      });
+      document.getElementById('tt-status').textContent = res.ok ? `Đã thu hồi công bố lô ${sid}` : 'Lỗi thu hồi';
+      await loadTtShipment();
+    }
+    window.addEventListener('DOMContentLoaded', loadTtShipment);
   </script>
 </body>
 </html>
@@ -3793,6 +3685,23 @@ class HexaTrialRequestHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(raw)
 
+    def _send_static_asset(self, rel_path: str, content_type: str) -> None:
+        from pathlib import Path
+
+        repo_root = Path(__file__).resolve().parent.parent
+        asset_path = (repo_root / rel_path).resolve()
+        if not str(asset_path).startswith(str(repo_root)) or not asset_path.is_file():
+            self._send_json(HTTPStatus.NOT_FOUND, {"error": "NOT_FOUND"})
+            return
+        data = asset_path.read_bytes()
+        self.send_response(HTTPStatus.OK)
+        self.send_header("Content-Type", content_type)
+        self.send_header("Content-Length", str(len(data)))
+        self.send_header("Cache-Control", "public, max-age=300")
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.end_headers()
+        self.wfile.write(data)
+
     def _current_token(self) -> str:
         return _extract_session_token(self.headers)
 
@@ -3826,6 +3735,31 @@ class HexaTrialRequestHandler(BaseHTTPRequestHandler):
 
         if path in {"/", "/hexa"}:
             self._send_html(HTTPStatus.OK, render_trial_portal_html())
+            return
+
+        if path == "/tt/login":
+            self._send_html(HTTPStatus.OK, render_tt_login_html())
+            return
+
+        if path in {"/tt", "/tt/publish"}:
+            try:
+                self.env._require_authorized_tt_staff(self._current_tt_token())
+            except PublicationDenied as exc:
+                self._send_json(HTTPStatus.FORBIDDEN, {"error": str(exc)})
+                return
+            self._send_html(HTTPStatus.OK, render_tt_publish_desk_html())
+            return
+
+        if path == "/assets/journey/vietnam-east-sea-chart.webp":
+            self._send_static_asset("component/src/assets/journey/vietnam-east-sea-chart.webp", "image/webp")
+            return
+
+        if path == "/assets/journey/chart-paper.jpg":
+            self._send_static_asset("component/src/assets/journey/chart-paper.jpg", "image/jpeg")
+            return
+
+        if path == "/assets/journey/logi-shell.css":
+            self._send_static_asset("component/dist/logi-shell.css", "text/css; charset=utf-8")
             return
 
         if path == "/api/hexa/v0/health":
