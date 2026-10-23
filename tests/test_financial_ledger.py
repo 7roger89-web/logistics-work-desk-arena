@@ -516,6 +516,110 @@ class FinancialLedgerMemoryFixtureTests(unittest.TestCase):
         self.assertEqual(projection["totals_by_currency"]["VND"]["payable_to_partner"], 33_000)
         self.assertNotIn("net_position", projection)
 
+    def test_combined_transaction_allocation_is_guarded_idempotent_and_insert_only(self):
+        obligation = save_obligation(
+            _obligation("OBL-COMBINED", 10_000, shipment_ids=["SHIP-COMBINED"]),
+            "REQ-COMBINED-OBL",
+            actor="fixture",
+        )
+        self.assertTrue(obligation[0], obligation[2])
+        transaction_document = {
+            "id": "TX-COMBINED",
+            "source_party": TT,
+            "holder_party": ABO,
+            "beneficial_owner": TT,
+            "amount": 10_000,
+            "currency": "VND",
+            "transaction_kind": "customer_payment",
+            "classification_status": CONFIRMED,
+            "restriction": {"status": "NONE"},
+            "shipment_ids": ["SHIP-COMBINED"],
+        }
+
+        first = allocate_transaction(
+            "TX-COMBINED",
+            "OBL-COMBINED",
+            10_000,
+            "REQ-COMBINED-WRITE",
+            currency="VND",
+            shipment_ids=["SHIP-COMBINED"],
+            transaction_document=transaction_document,
+            actor="fixture",
+        )
+        retry = allocate_transaction(
+            "TX-COMBINED",
+            "OBL-COMBINED",
+            10_000,
+            "REQ-COMBINED-WRITE",
+            currency="VND",
+            shipment_ids=["SHIP-COMBINED"],
+            transaction_document=transaction_document,
+            actor="fixture",
+        )
+        changed_retry = allocate_transaction(
+            "TX-COMBINED",
+            "OBL-COMBINED",
+            10_001,
+            "REQ-COMBINED-WRITE",
+            currency="VND",
+            shipment_ids=["SHIP-COMBINED"],
+            transaction_document={**transaction_document, "amount": 10_001},
+            actor="fixture",
+        )
+
+        self.assertTrue(first[0], first[2])
+        self.assertTrue(retry[0], retry[2])
+        self.assertEqual(first[1], retry[1])
+        self.assertFalse(changed_retry[0])
+        self.assertEqual(self.db.financial_transactions.count_documents({"id": "TX-COMBINED"}), 1)
+        self.assertEqual(self.db.financial_allocations.count_documents({"transaction_id": "TX-COMBINED"}), 1)
+        self.assertEqual(self.db.financial_action_requests.count_documents({"request_id": "REQ-COMBINED-WRITE"}), 1)
+        saved_transaction = self.db.financial_transactions.find_one({"id": "TX-COMBINED"})
+        saved_allocation = self.db.financial_allocations.find_one({"transaction_id": "TX-COMBINED"})
+        self.assertTrue(saved_transaction["confirmed_by_finance_write"])
+        self.assertTrue(saved_allocation["confirmed_by_finance_write"])
+
+    def test_combined_transaction_allocation_rolls_back_on_mid_write_failure(self):
+        obligation = save_obligation(
+            _obligation("OBL-COMBINED-ROLLBACK", 10_000, shipment_ids=["SHIP-COMBINED"]),
+            "REQ-COMBINED-ROLLBACK-OBL",
+            actor="fixture",
+        )
+        self.assertTrue(obligation[0], obligation[2])
+        before_audit = self.db.audit_logs.count_documents({})
+        before_outbox = self.db.notification_outbox.count_documents({})
+        self.db.financial_allocations.fail_on_insert_calls = {1}
+        transaction_document = {
+            "id": "TX-COMBINED-ROLLBACK",
+            "source_party": TT,
+            "holder_party": ABO,
+            "beneficial_owner": TT,
+            "amount": 10_000,
+            "currency": "VND",
+            "transaction_kind": "customer_payment",
+            "classification_status": CONFIRMED,
+            "restriction": {"status": "NONE"},
+            "shipment_ids": ["SHIP-COMBINED"],
+        }
+
+        result = allocate_transaction(
+            "TX-COMBINED-ROLLBACK",
+            "OBL-COMBINED-ROLLBACK",
+            10_000,
+            "REQ-COMBINED-ROLLBACK-WRITE",
+            currency="VND",
+            shipment_ids=["SHIP-COMBINED"],
+            transaction_document=transaction_document,
+            actor="fixture",
+        )
+
+        self.assertFalse(result[0])
+        self.assertIsNone(self.db.financial_transactions.find_one({"id": "TX-COMBINED-ROLLBACK"}))
+        self.assertEqual(self.db.financial_allocations.count_documents({"transaction_id": "TX-COMBINED-ROLLBACK"}), 0)
+        self.assertEqual(self.db.financial_action_requests.count_documents({"request_id": "REQ-COMBINED-ROLLBACK-WRITE"}), 0)
+        self.assertEqual(self.db.audit_logs.count_documents({}), before_audit)
+        self.assertEqual(self.db.notification_outbox.count_documents({}), before_outbox)
+
     def test_allocation_reversal_preserves_original_and_restores_derived_positions(self):
         transaction = save_transaction(_transaction("TX-REVERSAL", 30_000_000), "REQ-REV-TX", actor="fixture")
         obligation = save_obligation(_obligation("OBL-REVERSAL", 80_000_000, shipment_ids=["L-004"]), "REQ-REV-OBL", actor="fixture")

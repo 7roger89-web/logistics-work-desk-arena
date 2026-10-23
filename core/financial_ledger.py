@@ -633,6 +633,43 @@ def _restriction_allows(transaction: Mapping[str, Any], obligation: Mapping[str,
     return None
 
 
+def _compensate_sandbox_composite_allocation(
+    db: Any,
+    *,
+    transaction_id: str,
+    allocation_id: str | None,
+    request_id: str,
+    action_type: str,
+    fingerprint: str,
+) -> bool:
+    """Best-effort cleanup for the explicitly sandbox-only no-op session shim.
+
+    This is not a replacement for Mongo transactions. Production callers must
+    use a real transaction session; the HEXA trial sandbox uses mongomock, whose
+    session shim deliberately performs no rollback.
+    """
+    try:
+        if allocation_id:
+            db[ALLOCATIONS].delete_one({"id": allocation_id, "request_id": request_id})
+        db[ACTION_REQUESTS].delete_one(
+            {"request_id": request_id, "action_type": action_type, "fingerprint": fingerprint}
+        )
+        db[TRANSACTIONS].delete_one({"id": transaction_id, "request_id": request_id})
+        db["audit_logs"].delete_many(
+            {
+                "$or": [
+                    {"entity_type": TRANSACTIONS, "entity_id": transaction_id, "after.request_id": request_id},
+                    {"entity_type": ALLOCATIONS, "entity_id": allocation_id, "after.request_id": request_id},
+                ]
+            }
+        )
+        db["notification_outbox"].delete_many({"payload.request_id": request_id})
+        return True
+    except Exception:
+        database.LOGGER.exception("sandbox financial composite-write compensation failed")
+        return False
+
+
 def allocate_transaction(
     transaction_id: str,
     obligation_id: str,
@@ -644,8 +681,18 @@ def allocate_transaction(
     evidence_refs: Any = None,
     source_refs: Any = None,
     actor: str | None = None,
+    transaction_document: Mapping[str, Any] | None = None,
+    sandbox_compensate: bool = False,
 ) -> tuple[bool, dict[str, Any], str]:
-    """Allocate an effective credit to an obligation with all guards active."""
+    """Allocate an effective credit with all guards active.
+
+    ``transaction_document`` is the narrow combined-create path used when a
+    payment and its allocation must share one request identity/transaction.
+    With a real Mongo session, both records, the idempotency row, audit, and
+    outbox are committed together. The no-op mock session is accepted only
+    when the caller explicitly requests compensation and the active transport
+    is ``SANDBOX_STAGING``; this is not a production transaction guarantee.
+    """
 
     if not _require_finance_write():
         return _error("Bạn không có quyền ghi nhận Finance Actual.")
@@ -654,21 +701,48 @@ def allocate_transaction(
     request_id = str(request_id or "").strip()
     if not transaction_id or not obligation_id or not request_id:
         return _error("allocation requires transaction, obligation, and request identity")
+    is_composite_create = transaction_document is not None
+    if sandbox_compensate and not is_composite_create:
+        return _error("sandbox compensation is only valid for a combined transaction/allocation write")
+
     try:
         allocation_amount = _amount(amount)
+        clean_shipment_ids = _string_list(list(shipment_ids or []))
+        clean_evidence_refs = _references(evidence_refs)
+        clean_source_refs = _references(source_refs)
+        source_transaction = deepcopy(dict(transaction_document)) if is_composite_create else None
+        transaction_payload = None
+        transaction_fingerprint = None
+        if source_transaction is not None:
+            source_transaction.pop("_id", None)
+            if str(source_transaction.get("id") or "").strip() != transaction_id:
+                raise FinancialLedgerValidationError("combined transaction id must match the requested transaction id")
+            if not clean_shipment_ids:
+                raise FinancialLedgerValidationError("combined transaction/allocation requires shipment linkage")
+            transaction_payload = _transaction_payload(source_transaction, request_id, actor)
+            source_transaction_fingerprint = deepcopy(source_transaction)
+            source_transaction_fingerprint["amount"] = _amount(source_transaction.get("amount"))
+            source_transaction_fingerprint["currency"] = _currency(source_transaction.get("currency"))
+            transaction_fingerprint = _stable_fingerprint(source_transaction_fingerprint)
     except (FinancialLedgerValidationError, TypeError, ValueError) as exc:
         return _error(str(exc))
-    fingerprint = database._financial_fingerprint(
-        {
-            "transaction_id": transaction_id,
-            "obligation_id": obligation_id,
-            "amount": allocation_amount,
-            "currency": str(currency or "").upper() or None,
-            "shipment_ids": _string_list(list(shipment_ids or [])),
-            "evidence_refs": _references(evidence_refs),
-            "source_refs": _references(source_refs),
-        }
+
+    fingerprint_payload = {
+        "transaction_id": transaction_id,
+        "obligation_id": obligation_id,
+        "amount": allocation_amount,
+        "currency": str(currency or "").upper() or None,
+        "shipment_ids": clean_shipment_ids,
+        "evidence_refs": clean_evidence_refs,
+        "source_refs": clean_source_refs,
+    }
+    if is_composite_create:
+        fingerprint_payload["transaction_document"] = transaction_fingerprint
+    fingerprint = database._financial_fingerprint(fingerprint_payload)
+    action_type = (
+        "financial_transaction_allocation_create" if is_composite_create else "financial_allocation_create"
     )
+
     db = database.get_db()
     if db is None:
         return _error("MongoDB is not available")
@@ -676,20 +750,71 @@ def allocate_transaction(
     if client is None:
         return _error("financial ledger requires Mongo transaction support")
     actor_context = database._actor_context(actor)
+    sandbox_mode = False
+    write_started = False
+    allocation_id: str | None = None
+
+    def _failed_write(message: str) -> tuple[bool, dict[str, Any], str]:
+        if sandbox_mode and write_started:
+            compensated = _compensate_sandbox_composite_allocation(
+                db,
+                transaction_id=transaction_id,
+                allocation_id=allocation_id,
+                request_id=request_id,
+                action_type=action_type,
+                fingerprint=fingerprint,
+            )
+            if not compensated:
+                message = f"{message}; sandbox compensation failed, write state is unconfirmed"
+        return _error(message)
+
     try:
         with client.start_session() as session:
             with session.start_transaction():
-                existing = db[ACTION_REQUESTS].find_one({"request_id": request_id}, session=session)
-                if existing:
-                    return _existing_action(existing, "financial_allocation_create", fingerprint)
-                transaction = db[TRANSACTIONS].find_one({"id": transaction_id}, {"_id": 0}, session=session)
+                if is_composite_create and not session:
+                    if not sandbox_compensate:
+                        raise FinancialLedgerValidationError(
+                            "combined transaction/allocation requires a real Mongo transaction"
+                        )
+                    from views import logi_sandbox
+
+                    if logi_sandbox.transport_name() != logi_sandbox.SANDBOX_TRANSPORT:
+                        raise FinancialLedgerValidationError(
+                            "no-op session compensation is restricted to SANDBOX_STAGING"
+                        )
+                    sandbox_mode = True
+
+                existing_action = db[ACTION_REQUESTS].find_one({"request_id": request_id}, session=session)
+                if existing_action:
+                    return _existing_action(existing_action, action_type, fingerprint)
+
+                if is_composite_create:
+                    if db[TRANSACTIONS].find_one({"id": transaction_id}, {"_id": 0}, session=session):
+                        raise FinancialLedgerValidationError(
+                            "transaction id already exists; financial transaction cannot be overwritten"
+                        )
+                    transaction = deepcopy(transaction_payload or {})
+                    transaction["confirmed_by"] = actor_context["username"]
+                    transaction["confirmed_by_role"] = actor_context["role"]
+                    transaction["confirmed_by_finance_write"] = True
+                else:
+                    transaction = db[TRANSACTIONS].find_one(
+                        {"id": transaction_id}, {"_id": 0}, session=session
+                    )
                 obligation = db[OBLIGATIONS].find_one({"id": obligation_id}, {"_id": 0}, session=session)
                 if not transaction or not obligation:
                     raise FinancialLedgerValidationError("allocation target record was not found")
                 if not _effective(transaction) or not _effective(obligation):
                     raise FinancialLedgerValidationError("allocation target is inactive or reversed")
-                transaction_currency = str(transaction.get("currency") or "").upper()
-                obligation_currency = str(obligation.get("currency") or "").upper()
+                if is_composite_create:
+                    transaction_shipments = set(_shipment_ids(transaction))
+                    obligation_shipments = set(_shipment_ids(obligation))
+                    if not set(clean_shipment_ids).issubset(transaction_shipments):
+                        raise FinancialLedgerValidationError("transaction shipment does not match allocation shipment")
+                    if not set(clean_shipment_ids).issubset(obligation_shipments):
+                        raise FinancialLedgerValidationError("obligation shipment does not match allocation shipment")
+                transaction_currency = str(transaction.get("currency") or "").strip().upper()
+                obligation_currency = str(obligation.get("currency") or "").strip().upper()
                 requested_currency = str(currency or transaction_currency).strip().upper()
                 if transaction_currency != obligation_currency or requested_currency != transaction_currency:
                     raise FinancialLedgerValidationError("cross-currency allocation requires an explicit FX event")
@@ -705,8 +830,10 @@ def allocate_transaction(
                     raise FinancialLedgerValidationError("allocation exceeds transaction available amount")
                 if allocation_amount > to_decimal(obligation_position["outstanding"]):
                     raise FinancialLedgerValidationError("allocation exceeds obligation outstanding amount")
+
+                allocation_id = f"ALC-{uuid4().hex.upper()}"
                 allocation = {
-                    "id": f"ALC-{uuid4().hex.upper()}",
+                    "id": allocation_id,
                     "record_type": "allocation",
                     "transaction_id": transaction_id,
                     "obligation_id": obligation_id,
@@ -715,10 +842,10 @@ def allocate_transaction(
                     "status": ACTIVE,
                     "request_id": request_id,
                     "internal_sale_owner": transaction.get("internal_sale_owner") or obligation.get("internal_sale_owner"),
-                    "shipment_ids": _string_list(list(shipment_ids or [])),
+                    "shipment_ids": clean_shipment_ids,
                     "shipment_id": None,
-                    "evidence_refs": _references(evidence_refs),
-                    "source_refs": _references(source_refs),
+                    "evidence_refs": clean_evidence_refs,
+                    "source_refs": clean_source_refs,
                     "provenance": {"mapping_status": CONFIRMED, "review_status": CONFIRMED},
                     "created_at": utc_now(),
                     "created_by": actor_context["username"],
@@ -729,13 +856,21 @@ def allocate_transaction(
                     "updated_by_user_id": actor_context["user_id"],
                     "updated_by_role": actor_context["role"],
                 }
-                allocation.update(_shipment_fields(allocation["shipment_ids"]))
-                db[ALLOCATIONS].insert_one(allocation, session=session)
-                transaction_position_after = derive_transaction_position(transaction, allocations + [allocation])
-                obligation_position_after = derive_obligation_position(obligation, allocations + [allocation])
+                allocation.update(_shipment_fields(clean_shipment_ids))
+                if is_composite_create:
+                    allocation["confirmed_by"] = actor_context["username"]
+                    allocation["confirmed_by_role"] = actor_context["role"]
+                    allocation["confirmed_by_finance_write"] = True
+
+                transaction_position_after = derive_transaction_position(
+                    transaction, allocations + [allocation]
+                )
+                obligation_position_after = derive_obligation_position(
+                    obligation, allocations + [allocation]
+                )
                 result = {
-                    "record_type": "allocation",
-                    "id": allocation["id"],
+                    "record_type": "transaction_allocation" if is_composite_create else "allocation",
+                    "id": allocation_id,
                     "request_id": request_id,
                     "transaction_id": transaction_id,
                     "obligation_id": obligation_id,
@@ -744,10 +879,19 @@ def allocate_transaction(
                     "transaction_unallocated": transaction_position_after["unallocated"],
                     "obligation_outstanding": obligation_position_after["outstanding"],
                 }
+                if is_composite_create:
+                    result["allocation_id"] = allocation_id
+                    result["transaction"] = deepcopy(transaction)
+                    result["allocation"] = deepcopy(allocation)
+
+                if is_composite_create:
+                    write_started = True
+                    db[TRANSACTIONS].insert_one(transaction, session=session)
+                db[ALLOCATIONS].insert_one(allocation, session=session)
                 db[ACTION_REQUESTS].insert_one(
                     {
                         "request_id": request_id,
-                        "action_type": "financial_allocation_create",
+                        "action_type": action_type,
                         "fingerprint": fingerprint,
                         "status": "applied",
                         "shipment_id": allocation.get("shipment_id"),
@@ -759,25 +903,62 @@ def allocate_transaction(
                     },
                     session=session,
                 )
-                database._audit(db, ALLOCATIONS, allocation["id"], "create", before=None, after=allocation, actor=actor, session=session)
+                if is_composite_create:
+                    database._audit(
+                        db,
+                        TRANSACTIONS,
+                        transaction_id,
+                        "create",
+                        before=None,
+                        after=transaction,
+                        actor=actor,
+                        session=session,
+                    )
+                database._audit(
+                    db,
+                    ALLOCATIONS,
+                    allocation_id,
+                    "create",
+                    before=None,
+                    after=allocation,
+                    actor=actor,
+                    session=session,
+                )
+                if is_composite_create:
+                    database._enqueue_domain_event(
+                        db,
+                        "financial.transaction.created",
+                        {"record_type": "transaction", "record_id": transaction_id, "request_id": request_id},
+                        session=session,
+                    )
                 database._enqueue_domain_event(
                     db,
                     "financial.allocation.created",
-                    {"allocation_id": allocation["id"], "transaction_id": transaction_id, "obligation_id": obligation_id, "request_id": request_id},
+                    {
+                        "allocation_id": allocation_id,
+                        "transaction_id": transaction_id,
+                        "obligation_id": obligation_id,
+                        "request_id": request_id,
+                    },
                     session=session,
                 )
                 database._set_last_error("")
-                return True, result, "financial allocation created"
+                message = (
+                    "financial transaction and allocation created"
+                    if is_composite_create
+                    else "financial allocation created"
+                )
+                return True, result, message
     except DuplicateKeyError:
         existing = db[ACTION_REQUESTS].find_one({"request_id": request_id})
         if existing:
-            return _existing_action(existing, "financial_allocation_create", fingerprint)
-        return _error("allocation request conflicted and could not be read back")
+            return _existing_action(existing, action_type, fingerprint)
+        return _failed_write("allocation request conflicted and could not be read back")
     except FinancialLedgerValidationError as exc:
-        return _error(str(exc))
-    except (PyMongoError, RuntimeError, ValueError) as exc:
+        return _failed_write(str(exc))
+    except (PyMongoError, RuntimeError, TypeError, ValueError) as exc:
         database.LOGGER.exception("financial allocation failed")
-        return _error(str(exc))
+        return _failed_write(str(exc))
 
 
 def reverse_allocation(

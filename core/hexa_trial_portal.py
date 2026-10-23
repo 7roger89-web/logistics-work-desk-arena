@@ -31,6 +31,7 @@ from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
 import secrets
+import threading
 from typing import Any, Mapping, Sequence
 from urllib.parse import parse_qs, urlparse
 
@@ -259,9 +260,16 @@ class HexaTrialEnvironment:
         self._role_tokens: dict[str, str] = {}
         self.internal_qa_key: str = ""
         self._seeded: bool = False
+        self._finance_confirmation_lock = threading.RLock()
 
     def ensure_seeded(self, *, force_reset: bool = False) -> None:
         if self._seeded and not force_reset:
+            from views import logi_sandbox
+
+            if logi_sandbox.transport_name() != logi_sandbox.SANDBOX_TRANSPORT:
+                raise RuntimeError(
+                    "HEXA trial portal chỉ được chạy trên SANDBOX_STAGING, tuyệt đối không dùng DB thật."
+                )
             return
 
         import logging
@@ -2000,6 +2008,49 @@ class HexaTrialEnvironment:
             "actor": principal["username"],
         }
 
+    @staticmethod
+    def _financial_rows_for_shipment(db: Any, collection: str, shipment_id: str) -> list[dict[str, Any]]:
+        sid = str(shipment_id or "").strip()
+        rows: list[dict[str, Any]] = []
+        for raw in db[collection].find({}, {"_id": 0}):
+            row = copy.deepcopy(dict(raw))
+            row.pop("_id", None)
+            row_shipments = row.get("shipment_ids") or []
+            if isinstance(row_shipments, str):
+                row_shipments = [row_shipments]
+            linked = {str(value or "").strip() for value in row_shipments if str(value or "").strip()}
+            if str(row.get("shipment_id") or "").strip() == sid or sid in linked:
+                rows.append(row)
+        from core import database as core_db
+
+        return sorted(
+            rows,
+            key=lambda row: (str(row.get("id") or ""), core_db._financial_fingerprint(row)),
+        )
+
+    @classmethod
+    def _finance_source_fingerprint(
+        cls,
+        db: Any,
+        *,
+        shipment_id: str,
+        customer_id: str,
+    ) -> str:
+        from core import database as core_db
+        from core.financial_ledger import ALLOCATIONS, OBLIGATIONS, TRANSACTIONS
+
+        source = {
+            collection: cls._financial_rows_for_shipment(db, collection, shipment_id)
+            for collection in (OBLIGATIONS, TRANSACTIONS, ALLOCATIONS)
+        }
+        return core_db._financial_fingerprint(
+            {
+                "shipment_id": str(shipment_id or "").strip(),
+                "customer_id": str(customer_id or "").strip(),
+                "records": source,
+            }
+        )
+
     def publish_shipment_for_customer(
         self,
         *,
@@ -2008,20 +2059,30 @@ class HexaTrialEnvironment:
         event_versions: Mapping[str, Any] | None = None,
         document_versions: Mapping[str, Any] | None = None,
         quote: Mapping[str, Any] | None = None,
+        approve_finance: bool = False,
     ) -> dict[str, Any]:
-        """Approve & publish selected verified milestones, document versions, and selling quote."""
+        """Publish selected verified items; financial disclosure needs a separate finance_write approval."""
         from core import database as core_db
 
         self.ensure_seeded()
+        finance_approval_requested = approve_finance is True
         try:
-            principal = self._require_authorized_tt_staff(session_token)
+            principal = (
+                self._require_authorized_tt_finance_staff(session_token)
+                if finance_approval_requested
+                else self._require_authorized_tt_staff(session_token)
+            )
         except PublicationDenied:
             self._record_audit(
-                action="PUBLISH_SHIPMENT",
+                action="PUBLISH_FINANCE" if finance_approval_requested else "PUBLISH_SHIPMENT",
                 principal=self.resolve_principal(session_token),
                 shipment_id=str(shipment_id or ""),
                 allowed=False,
-                detail="unauthorized caller attempted publish",
+                detail=(
+                    "denied: caller lacks finance_write permission to approve financial publication"
+                    if finance_approval_requested
+                    else "unauthorized caller attempted publish"
+                ),
             )
             raise
 
@@ -2100,6 +2161,27 @@ class HexaTrialEnvironment:
         history = list(existing.get("history") or [])
         approver = str(principal["username"])
         now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        current_finance_fingerprint = self._finance_source_fingerprint(
+            db,
+            shipment_id=sid,
+            customer_id=cust_id,
+        )
+        prior_finance_fingerprint = str(existing.get("finance_source_fingerprint") or "")
+        finance_published = finance_approval_requested or (
+            existing.get("state") == "PUBLISHED"
+            and existing.get("finance_published") is True
+            and bool(prior_finance_fingerprint)
+            and prior_finance_fingerprint == current_finance_fingerprint
+        )
+        finance_source_fingerprint = (
+            current_finance_fingerprint if finance_approval_requested else prior_finance_fingerprint
+        )
+        finance_approved_by = (
+            approver if finance_approval_requested else str(existing.get("finance_approved_by") or "")
+        )
+        finance_approved_at = (
+            now_iso if finance_approval_requested else str(existing.get("finance_approved_at") or "")
+        )
         history.append(
             {
                 "action": "PUBLISHED",
@@ -2109,6 +2191,8 @@ class HexaTrialEnvironment:
                 "event_versions": dict(clean_events),
                 "document_versions": dict(clean_docs),
                 "quote": dict(clean_quote) if clean_quote else None,
+                "finance_published": finance_published,
+                "finance_source_fingerprint": finance_source_fingerprint,
             }
         )
         pub_doc = {
@@ -2122,6 +2206,10 @@ class HexaTrialEnvironment:
             "event_versions": clean_events,
             "document_versions": clean_docs,
             "quote": clean_quote,
+            "finance_published": finance_published,
+            "finance_source_fingerprint": finance_source_fingerprint,
+            "finance_approved_by": finance_approved_by,
+            "finance_approved_at": finance_approved_at,
             "history": history[-25:],
         }
         db["hexa_trial_publications"].replace_one(
@@ -2136,7 +2224,8 @@ class HexaTrialEnvironment:
             allowed=True,
             detail=(
                 f"approved_by={approver} events={list(clean_events.keys())} "
-                f"docs={list(clean_docs.keys())} quote={clean_quote}"
+                f"docs={list(clean_docs.keys())} quote={clean_quote} "
+                f"finance_published={finance_published}"
             ),
         )
         return {"ok": True, "publication": pub_doc}
@@ -2209,7 +2298,17 @@ class HexaTrialEnvironment:
             cur_events = dict(existing.get("event_versions") or {})
             cur_docs = dict(existing.get("document_versions") or {})
             cur_quote = copy.deepcopy(existing.get("quote"))
-            cur_fin_pub = bool(existing.get("finance_published", True))
+            approved_finance_fingerprint = str(existing.get("finance_source_fingerprint") or "")
+            current_finance_fingerprint = self._finance_source_fingerprint(
+                db,
+                shipment_id=sid,
+                customer_id=cust_id,
+            )
+            cur_fin_pub = (
+                existing.get("finance_published") is True
+                and bool(approved_finance_fingerprint)
+                and approved_finance_fingerprint == current_finance_fingerprint
+            )
             for d_id in doc_list:
                 cur_docs.pop(d_id, None)
             for e_id in ev_list:
@@ -2247,6 +2346,9 @@ class HexaTrialEnvironment:
                 "document_versions": cur_docs,
                 "quote": cur_quote,
                 "finance_published": cur_fin_pub,
+                "finance_source_fingerprint": approved_finance_fingerprint,
+                "finance_approved_by": str(existing.get("finance_approved_by") or ""),
+                "finance_approved_at": str(existing.get("finance_approved_at") or ""),
                 "history": history[-25:],
             }
         else:
@@ -2273,6 +2375,9 @@ class HexaTrialEnvironment:
                 "document_versions": {},
                 "quote": None,
                 "finance_published": False,
+                "finance_source_fingerprint": str(existing.get("finance_source_fingerprint") or ""),
+                "finance_approved_by": str(existing.get("finance_approved_by") or ""),
+                "finance_approved_at": str(existing.get("finance_approved_at") or ""),
                 "history": history[-25:],
             }
 
@@ -2477,20 +2582,29 @@ class HexaTrialEnvironment:
         shipment_id: str,
         transaction_id: str,
         obligation_id: str,
-        amount: float,
+        amount: Any,
         currency: str = "VND",
         occurred_at: str = "",
         note: str = "",
         verified_document_id: str = "",
     ) -> dict[str, Any]:
-        """Confirm a customer payment & allocation on a shipment.
+        """Record a shipment payment and allocation through the canonical ledger.
 
-        STRICT AUTHORITY RULE:
-        Requires ``finance_write`` permission in ``core.auth.ROLE_PERMISSIONS``.
-        ``operations_write`` (e.g. ``tt.ops.truongthanh``) is rejected with ``PublicationDenied`` (HTTP 403).
+        ``finance_write`` is checked at the trial boundary and again by the
+        Financial Ledger. Transaction and allocation IDs are insert-only and
+        share a stable request identity. The HEXA preview uses compensation for
+        mongomock's no-op session; that is explicitly sandbox-only and is not a
+        production transaction guarantee.
         """
         from core import database as core_db
-        from core.financial_ledger import ALLOCATIONS, CONFIRMED, OBLIGATIONS, TRANSACTIONS
+        from core.financial_ledger import (
+            ALLOCATIONS,
+            CONFIRMED,
+            OBLIGATIONS,
+            TRANSACTIONS,
+            allocate_transaction,
+            party_key,
+        )
 
         self.ensure_seeded()
         try:
@@ -2513,69 +2627,111 @@ class HexaTrialEnvironment:
         shipment = self._load_adapted_shipment(db, sid)
         if not shipment:
             raise PublicationDenied()
-        cust_id = shipment["customer_id"]
+        cust_id = str(shipment.get("customer_id") or "").strip()
         obl_id = str(obligation_id or "").strip()
-        txn_id = str(transaction_id or f"TXN-{secrets.token_hex(4).upper()}").strip()
-        amt = float(amount)
+        txn_id = str(transaction_id or "").strip()
+        if not obl_id or not txn_id:
+            raise PublicationDenied()
+
+        obligation = db[OBLIGATIONS].find_one(
+            {"id": obl_id, "shipment_id": sid},
+            {"_id": 0},
+        )
+        if not obligation:
+            raise PublicationDenied()
+        obligation_shipments = obligation.get("shipment_ids") or []
+        if isinstance(obligation_shipments, str):
+            obligation_shipments = [obligation_shipments]
+        linked_shipments = {str(value or "").strip() for value in obligation_shipments if str(value or "").strip()}
+        if str(obligation.get("shipment_id") or "").strip():
+            linked_shipments.add(str(obligation["shipment_id"]).strip())
+        if linked_shipments != {sid}:
+            raise PublicationDenied()
+
+        customer_party = {"party_type": "customer", "party_id": cust_id, "name": cust_id}
+        tt_party = {
+            "party_type": "company",
+            "party_id": "TT-COMPANY",
+            "name": "Công ty Trường Thành Logistics",
+        }
+        if party_key(obligation.get("from_party")) != party_key(customer_party):
+            raise PublicationDenied()
+        if party_key(obligation.get("to_party")) != party_key(tt_party):
+            raise PublicationDenied()
+
+        verified_doc_id = str(verified_document_id or "").strip()
+        verified_doc = None
+        if verified_doc_id:
+            verified_doc = db["hexa_trial_documents"].find_one(
+                {"shipment_id": sid, "customer_id": cust_id, "id": verified_doc_id},
+                {"_id": 0},
+            )
+            if not verified_doc:
+                raise PublicationDenied()
+
+        pay_date = str(occurred_at or "").strip()
         curr = str(currency or "VND").strip().upper()
-        if amt <= 0 or not obl_id:
-            raise PublicationDenied()
-
-        obl = db[OBLIGATIONS].find_one({"id": obl_id, "shipment_id": sid}, {"_id": 0})
-        if not obl:
-            raise PublicationDenied()
-
-        now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-        pay_date = str(occurred_at or now_iso[:10]).strip()
-        cust_party = {"party_type": "customer", "party_id": cust_id, "name": cust_id}
-        tt_party = {"party_type": "company", "party_id": "TT-COMPANY", "name": "Công ty Trường Thành Logistics"}
-
-        txn_doc = {
+        evidence_refs = (
+            [{"kind": "hexa_trial_document", "reference": verified_doc_id}]
+            if verified_doc_id
+            else []
+        )
+        txn_doc: dict[str, Any] = {
             "id": txn_id,
             "record_type": "transaction",
             "transaction_kind": "customer_payment",
-            "source_party": cust_party,
-            "source_party_key": f"customer:{cust_id}",
+            "source_party": customer_party,
             "holder_party": tt_party,
-            "holder_party_key": "company:TT-COMPANY",
             "shipment_ids": [sid],
             "shipment_id": sid,
-            "amount": amt,
+            "amount": amount,
             "currency": curr,
-            "occurred_at": pay_date,
             "classification_status": CONFIRMED,
             "restriction": {"status": "NONE"},
-            "status": "active",
-            "confirmed_by": str(principal["username"]),
-            "confirmed_by_role": str(principal["role"]),
-            "confirmed_by_finance_write": True,
-            "created_at": now_iso,
             "note": str(note or "Khoản thanh toán đã được Kế toán TT đối soát"),
+            "evidence_refs": evidence_refs,
         }
-        db[TRANSACTIONS].replace_one({"id": txn_id}, txn_doc, upsert=True)
+        if pay_date:
+            txn_doc["occurred_at"] = pay_date
 
-        alloc_id = f"ALC-{txn_id}"
-        alloc_doc = {
-            "id": alloc_id,
-            "record_type": "allocation",
-            "transaction_id": txn_id,
-            "obligation_id": obl_id,
-            "shipment_ids": [sid],
-            "shipment_id": sid,
-            "amount": amt,
-            "currency": curr,
-            "status": "active",
-            "confirmed_by": str(principal["username"]),
-            "confirmed_by_role": str(principal["role"]),
-            "confirmed_by_finance_write": True,
-            "created_at": now_iso,
-        }
-        db[ALLOCATIONS].replace_one({"id": alloc_id}, alloc_doc, upsert=True)
+        request_id = f"hexa-trial-finance:{sid}:{cust_id}:{txn_id}"
+        with self._finance_confirmation_lock:
+            ok, ledger_result, message = allocate_transaction(
+                txn_id,
+                obl_id,
+                amount,
+                request_id,
+                currency=curr,
+                shipment_ids=[sid],
+                evidence_refs=evidence_refs,
+                source_refs=[{"kind": "hexa_trial", "shipment_id": sid, "customer_id": cust_id}],
+                actor=str(principal["username"]),
+                transaction_document=txn_doc,
+                sandbox_compensate=True,
+            )
+        if not ok:
+            self._record_audit(
+                action="TT_CONFIRM_FINANCE",
+                principal=principal,
+                shipment_id=sid,
+                allowed=False,
+                detail=f"financial ledger rejected txn={txn_id} obl={obl_id}: {message}",
+            )
+            raise PublicationDenied()
 
-        ver_doc_id = str(verified_document_id or "").strip()
-        if ver_doc_id:
-            db["hexa_trial_documents"].update_many(
-                {"shipment_id": sid, "customer_id": cust_id, "id": ver_doc_id},
+        saved_transaction = ledger_result.get("transaction")
+        saved_allocation = ledger_result.get("allocation")
+        if not isinstance(saved_transaction, Mapping):
+            saved_transaction = db[TRANSACTIONS].find_one({"id": txn_id}, {"_id": 0}) or {}
+        if not isinstance(saved_allocation, Mapping):
+            saved_allocation = db[ALLOCATIONS].find_one(
+                {"id": str(ledger_result.get("allocation_id") or ledger_result.get("id") or "")},
+                {"_id": 0},
+            ) or {}
+
+        if verified_doc_id and verified_doc is not None:
+            db["hexa_trial_documents"].update_one(
+                {"shipment_id": sid, "customer_id": cust_id, "id": verified_doc_id},
                 {
                     "$set": {
                         "verified": True,
@@ -2584,26 +2740,57 @@ class HexaTrialEnvironment:
                     }
                 },
             )
-            pub_existing = db["hexa_trial_publications"].find_one(
-                {"shipment_id": sid, "customer_id": cust_id},
-                {"_id": 0},
+
+        publication = db["hexa_trial_publications"].find_one(
+            {"shipment_id": sid, "customer_id": cust_id},
+            {"_id": 0},
+        )
+        if publication:
+            updates: dict[str, Any] = {}
+            if verified_doc_id and publication.get("state") == "PUBLISHED":
+                document_versions = dict(publication.get("document_versions") or {})
+                document_versions[verified_doc_id] = str((verified_doc or {}).get("version") or "v1")
+                updates["document_versions"] = document_versions
+            current_fingerprint = self._finance_source_fingerprint(
+                db,
+                shipment_id=sid,
+                customer_id=cust_id,
             )
-            if pub_existing and pub_existing.get("state") == "PUBLISHED":
-                doc_vers = dict(pub_existing.get("document_versions") or {})
-                doc_vers[ver_doc_id] = "v1"
+            approved_fingerprint = str(publication.get("finance_source_fingerprint") or "")
+            if publication.get("finance_published") is True and (
+                not approved_fingerprint or approved_fingerprint != current_fingerprint
+            ):
+                updates["finance_published"] = False
+            if updates:
                 db["hexa_trial_publications"].update_one(
                     {"shipment_id": sid, "customer_id": cust_id},
-                    {"$set": {"document_versions": doc_vers, "finance_published": True}},
+                    {"$set": updates},
                 )
+
+        confirmed_amount = saved_transaction.get("amount", amount)
+
+        def _json_safe(value: Any) -> Any:
+            if isinstance(value, datetime):
+                aware = value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+                return aware.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+            if isinstance(value, Mapping):
+                return {str(key): _json_safe(item) for key, item in value.items()}
+            if isinstance(value, (list, tuple)):
+                return [_json_safe(item) for item in value]
+            return value
 
         self._record_audit(
             action="TT_CONFIRM_FINANCE",
             principal=principal,
             shipment_id=sid,
             allowed=True,
-            detail=f"confirmed_by={principal['username']} txn={txn_id} obl={obl_id} amount={amt} {curr}",
+            detail=f"confirmed_by={principal['username']} txn={txn_id} obl={obl_id} amount={confirmed_amount} {curr}",
         )
-        return {"ok": True, "transaction": txn_doc, "allocation": alloc_doc}
+        return {
+            "ok": True,
+            "transaction": _json_safe(saved_transaction),
+            "allocation": _json_safe(saved_allocation),
+        }
 
     def _project_customer_finance_and_plan(
         self,
@@ -2633,13 +2820,21 @@ class HexaTrialEnvironment:
 
         cust_party_key = f"customer:{customer_id.strip().upper()}"
         tt_party_key = "company:TT-COMPANY"
-        finance_published = bool(publication.get("finance_published", True)) and (
-            publication.get("state") == "PUBLISHED"
-        )
 
-        raw_obls = list(db[OBLIGATIONS].find({"shipment_id": shipment_id}, {"_id": 0}))
-        raw_txns = list(db[TRANSACTIONS].find({"shipment_id": shipment_id}, {"_id": 0}))
-        raw_allocs = list(db[ALLOCATIONS].find({"shipment_id": shipment_id}, {"_id": 0}))
+        raw_obls = self._financial_rows_for_shipment(db, OBLIGATIONS, shipment_id)
+        raw_txns = self._financial_rows_for_shipment(db, TRANSACTIONS, shipment_id)
+        raw_allocs = self._financial_rows_for_shipment(db, ALLOCATIONS, shipment_id)
+        current_finance_fingerprint = self._finance_source_fingerprint(
+            db,
+            shipment_id=shipment_id,
+            customer_id=customer_id,
+        )
+        finance_published = (
+            publication.get("state") == "PUBLISHED"
+            and publication.get("finance_published") is True
+            and bool(publication.get("finance_source_fingerprint"))
+            and publication.get("finance_source_fingerprint") == current_finance_fingerprint
+        )
 
         confirmed_allocs = [
             a
@@ -2709,7 +2904,7 @@ class HexaTrialEnvironment:
                         pay_dates.append(str(t["occurred_at"]).strip())
             latest_date = max(pay_dates) if pay_dates else str(matched[0].get("updated_at") or "")[:10]
             status_label = (
-                "Đã đối soát — Hoàn tất thanh toán"
+                "Đã thanh toán khoản công bố — Chờ quyết toán"
                 if remaining <= 0
                 else "Đã đối soát — Còn công nợ"
             )
@@ -2788,13 +2983,9 @@ class HexaTrialEnvironment:
         finance_detail = {
             **debt_summary,
             "reconciliation_status_label": debt_summary["status_label"],
-            "completed": bool(
-                debt_summary["status"] == "CONFIRMED"
-                and debt_summary["total_payable"] is not None
-                and debt_summary["total_payable"] > 0
-                and debt_summary["remaining_balance"] is not None
-                and debt_summary["remaining_balance"] <= 0
-            ),
+            # The trial finance source has no canonical final-settlement confirmation.
+            # A zero balance is payment evidence, not proof that the debt is closed.
+            "completed": False,
         }
         return debt_summary, plan_detail, finance_detail
 
@@ -6017,6 +6208,7 @@ class HexaTrialRequestHandler(BaseHTTPRequestHandler):
                     event_versions=body.get("event_versions") if isinstance(body.get("event_versions"), Mapping) else {},
                     document_versions=body.get("document_versions") if isinstance(body.get("document_versions"), Mapping) else {},
                     quote=body.get("quote") if isinstance(body.get("quote"), Mapping) else None,
+                    approve_finance=body.get("approve_finance") is True,
                 )
                 self._send_json(HTTPStatus.OK, result)
             except PublicationDenied as exc:

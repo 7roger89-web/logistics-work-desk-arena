@@ -2560,24 +2560,25 @@ def test_journey_plan_finance_and_stage_collaboration_v1(trial_server) -> None:
        - 06: finance-reconciliation (THANH TOÁN & ĐỐI SOÁT) after delivery
     2. Node 00:
        - ROAD-LG-001 (normal service): shows quote, contract, payment terms; does NOT apply entrusted goods advance.
-       - ROAD-LG-002 (entrusted import): shows quote, contract, payment terms AND entrusted goods advance
-         (required=200,000,000 VND, received=150,000,000 VND, shortfall=50,000,000 VND).
+       - ROAD-LG-002 (entrusted import): shows quote, contract, payment terms; its finance advance stays UNKNOWN
+         until that shipment's finance publication is explicitly approved.
     3. Node 06 & Dashboard 'Công nợ' column:
-       - ROAD-LG-001: confirmed service receivable 57,240,000 VND, paid 30,000,000 VND (2026-10-20), remaining 27,240,000 VND.
-       - ROAD-LG-002: has quote (37,800,000 VND) and entrusted goods advance (200,000,000 VND), but NO confirmed
-         service receivable obligation -> shows UNKNOWN / Chưa đối soát (total_payable=None, total_paid=None, remaining_balance=None),
-         never 0 and never copying quote selling total!
+       - Both shipments show UNKNOWN until a finance_write staff member explicitly approves financial publication.
+       - ROAD-LG-001 then shows confirmed service receivable 57,240,000 VND, paid 30,000,000 VND (2026-10-20), remaining 27,240,000 VND.
+       - ROAD-LG-002 has quote (37,800,000 VND) and entrusted goods advance (200,000,000 VND), but NO confirmed
+         service receivable obligation -> remains UNKNOWN (total_payable=None, total_paid=None, remaining_balance=None),
+         never 0 and never copying quote selling total.
     4. Finance authority boundary:
        - tt.ops.truongthanh (role='operations', only operations_write, no finance_write) CANNOT confirm financial entries (403).
        - tt.finance.truongthanh (role='support', has finance_write) CAN confirm financial entries.
     5. Stage-bound collaboration (TRAO ĐỔI & CHỨNG TỪ):
        - Customer Lục Giác submits a comment + bank transfer PDF (UNC) on stage 'finance-reconciliation' of ROAD-LG-001.
        - Stored in GridFS via upload_attachment, marked verified=False ('Hồ sơ khách đã nộp — Chờ TT xác minh').
-       - Does NOT auto-complete Node 06 and does NOT change total_paid (30,000,000) or remaining_balance (27,240,000).
+       - Does NOT auto-complete Node 06 or expose paid/balance values while finance publication is unapproved.
        - TT receives the comment & attachment; TT internal note (visibility='TT') is NEVER visible to customer;
          TT published reply (visibility='CUSTOMER') IS visible to customer.
-       - After tt.finance.truongthanh confirms the 27,240,000 VND payment allocation and TT publishes,
-         Node 06 & Dashboard update to total_paid=57,240,000 VND, remaining_balance=0 VND.
+       - After tt.finance.truongthanh confirms the 27,240,000 VND payment allocation, the numbers remain hidden until
+         finance_write explicitly approves publication; Node 06 then shows paid=57,240,000 VND, remaining=0, but stays incomplete pending settlement.
        - When TT revokes a published TT comment or document, customer can no longer read/download it (403, 0 GridFS reads).
     """
     import base64
@@ -2635,19 +2636,17 @@ def test_journey_plan_finance_and_stage_collaboration_v1(trial_server) -> None:
     plan_02 = nodes_02[0]["plan_detail"]
     assert plan_02["contract_no"] == "HDUT-LG-2026-02"
     assert plan_02["entrusted_import"]["applicable"] is True
-    assert plan_02["entrusted_import"]["goods_advance_required"] == 200000000.0
-    assert plan_02["entrusted_import"]["goods_advance_received"] == 150000000.0
-    assert plan_02["entrusted_import"]["goods_advance_shortfall"] == 50000000.0
+    assert plan_02["entrusted_import"]["goods_advance_required"] is None
+    assert plan_02["entrusted_import"]["goods_advance_received"] is None
+    assert plan_02["entrusted_import"]["goods_advance_shortfall"] is None
+    assert plan_02["entrusted_import"]["status_label"] == "Chưa xác nhận"
 
-    # 3. Verify Node 06 & Dashboard 'debt_summary':
-    # ROAD-LG-001 has confirmed receivable 57,240,000, paid 30,000,000, remaining 27,240,000
+    # 3. Financial ledgers exist, but shipment publication alone does not approve financial disclosure.
     debt_01 = s_lg01["debt_summary"]
-    assert debt_01["status"] == "CONFIRMED"
-    assert debt_01["total_payable"] == 57240000.0
-    assert debt_01["total_paid"] == 30000000.0
-    assert debt_01["remaining_balance"] == 27240000.0
-    assert debt_01["currency"] == "VND"
-    assert debt_01["updated_at"] == "2026-10-20"
+    assert debt_01["status"] == "UNKNOWN"
+    assert debt_01["total_payable"] is None
+    assert debt_01["total_paid"] is None
+    assert debt_01["remaining_balance"] is None
     assert nodes_01[6]["completed"] is False
 
     # ROAD-LG-002 has NO confirmed service receivable obligation -> UNKNOWN / Chưa đối soát (never 0, never quote total!)
@@ -2688,8 +2687,9 @@ def test_journey_plan_finance_and_stage_collaboration_v1(trial_server) -> None:
     assert st_dash_after_sub == 200
     dash_after_sub = json.loads(raw_dash_after_sub.decode("utf-8"))
     s01_after_sub = next(s for s in dash_after_sub["shipments"] if s["shipment_id"] == "ROAD-LG-001")
-    assert s01_after_sub["debt_summary"]["total_paid"] == 30000000.0
-    assert s01_after_sub["debt_summary"]["remaining_balance"] == 27240000.0
+    assert s01_after_sub["debt_summary"]["status"] == "UNKNOWN"
+    assert s01_after_sub["debt_summary"]["total_paid"] is None
+    assert s01_after_sub["debt_summary"]["remaining_balance"] is None
     fin_node_after_sub = next(n for n in s01_after_sub["journey"]["nodes"] if n["id"] == "finance-reconciliation")
     assert fin_node_after_sub["completed"] is False
 
@@ -2775,6 +2775,32 @@ def test_journey_plan_finance_and_stage_collaboration_v1(trial_server) -> None:
     )
     assert st_ops_fin_forbid == 403
 
+    # Operations may publish progress but cannot approve financial disclosure.
+    db = core_db.get_db()
+    publication_before_finance = db["hexa_trial_publications"].find_one(
+        {"shipment_id": "ROAD-LG-001", "customer_id": CUSTOMER_A_ID},
+        {"_id": 0},
+    )
+    assert publication_before_finance is not None
+    assert publication_before_finance.get("finance_published") is False
+    st_ops_publish_finance_forbid, _, _ = _http_request(
+        base_url,
+        "/api/hexa/v0/tt/shipments/ROAD-LG-001/publish",
+        method="POST",
+        headers={"Authorization": f"Bearer {tt_ops_token}"},
+        json_body={
+            "event_versions": publication_before_finance.get("event_versions") or {},
+            "document_versions": publication_before_finance.get("document_versions") or {},
+            "quote": publication_before_finance.get("quote"),
+            "approve_finance": True,
+        },
+    )
+    assert st_ops_publish_finance_forbid == 403
+    assert db["hexa_trial_publications"].find_one(
+        {"shipment_id": "ROAD-LG-001", "customer_id": CUSTOMER_A_ID},
+        {"_id": 0},
+    ).get("finance_published") is False
+
     # 7. TT Finance staff (tt.finance.truongthanh, has finance_write) confirms the 27,240,000 VND payment allocation
     st_tt_fin, _, raw_tt_fin = _http_request(
         base_url,
@@ -2800,10 +2826,48 @@ def test_journey_plan_finance_and_stage_collaboration_v1(trial_server) -> None:
             "verified_document_id": cust_doc_id,
         },
     )
-    assert st_fin_ok == 200
+    assert st_fin_ok == 200, raw_fin_ok.decode("utf-8")
 
-    # Check Lục Giác dashboard after finance confirmation:
-    # - debt_summary now shows paid=57,240,000, remaining=0, Node 06 completed=True (while delivery Node 05 is STILL False!)
+    # Confirmation writes to the ledger but does not itself publish financial values.
+    publication_after_confirm = db["hexa_trial_publications"].find_one(
+        {"shipment_id": "ROAD-LG-001", "customer_id": CUSTOMER_A_ID},
+        {"_id": 0},
+    )
+    assert publication_after_confirm.get("finance_published") is False
+    st_dash_unapproved, _, raw_dash_unapproved = _http_request(
+        base_url,
+        "/api/hexa/v0/dashboard",
+        headers={"Authorization": f"Bearer {lg_token}"},
+    )
+    assert st_dash_unapproved == 200
+    shipment_unapproved = next(
+        s for s in json.loads(raw_dash_unapproved.decode("utf-8"))["shipments"]
+        if s["shipment_id"] == "ROAD-LG-001"
+    )
+    assert shipment_unapproved["debt_summary"]["status"] == "UNKNOWN"
+    assert shipment_unapproved["debt_summary"]["total_paid"] is None
+
+    # Only finance_write can publish the current finance-source fingerprint.
+    st_fin_publish, _, _ = _http_request(
+        base_url,
+        "/api/hexa/v0/tt/shipments/ROAD-LG-001/publish",
+        method="POST",
+        headers={"Authorization": f"Bearer {tt_fin_token}"},
+        json_body={
+            "event_versions": publication_after_confirm.get("event_versions") or {},
+            "document_versions": publication_after_confirm.get("document_versions") or {},
+            "quote": publication_after_confirm.get("quote"),
+            "approve_finance": True,
+        },
+    )
+    assert st_fin_publish == 200
+    assert db["hexa_trial_publications"].find_one(
+        {"shipment_id": "ROAD-LG-001", "customer_id": CUSTOMER_A_ID},
+        {"_id": 0},
+    ).get("finance_published") is True
+
+    # Check Lục Giác dashboard after explicit finance publication:
+    # - debt_summary shows paid=57,240,000, remaining=0; Node 06 stays WAITING pending settlement.
     # - internal note is NOT present; TT published reply IS present
     st_dash_reconciled, _, raw_dash_reconciled = _http_request(
         base_url,
@@ -2822,7 +2886,11 @@ def test_journey_plan_finance_and_stage_collaboration_v1(trial_server) -> None:
     assert s01_rec["debt_summary"]["remaining_balance"] == 0.0
     assert s01_rec["is_complete"] is False  # Delivery is still not complete!
     fin_node_rec = next(n for n in s01_rec["journey"]["nodes"] if n["id"] == "finance-reconciliation")
-    assert fin_node_rec["completed"] is True
+    assert fin_node_rec["completed"] is False
+    assert fin_node_rec["state"] == "WAITING"
+    assert fin_node_rec["finance_detail"]["completed"] is False
+    assert fin_node_rec["finance_detail"]["status_label"] == "Đã thanh toán khoản công bố — Chờ quyết toán"
+    assert "Chờ quyết toán" in fin_node_rec["evidence"]
     stage_comments = [c["comment"] for c in fin_node_rec["stage_comments"]]
     assert any("Lục Giác gửi ủy nhiệm chi" in c for c in stage_comments)
     assert any("Trường Thành đã nhận tệp UNC" in c for c in stage_comments)
@@ -2966,7 +3034,7 @@ vm.runInContext(scriptMatch[1], sandbox);
   // Open Node 06 (finance-reconciliation) popup
   sandbox.openStageModal('finance-reconciliation', 'info');
   const modalFinText = document.getElementById('journey-modal-body').textContent;
-  for (const token of ['57.240.000 VND', '0 VND', 'Lục Giác gửi ủy nhiệm chi', 'TRAO ĐỔI', 'CHỨNG TỪ']) {
+  for (const token of ['57.240.000 VND', '0 VND', 'Chờ quyết toán', 'Lục Giác gửi ủy nhiệm chi', 'TRAO ĐỔI', 'CHỨNG TỪ']) {
     if (!modalFinText.includes(token)) throw new Error('Node 06 modal missing token: ' + token);
   }
 
@@ -2974,8 +3042,11 @@ vm.runInContext(scriptMatch[1], sandbox);
   await sandbox.selectShipmentForJourney('ROAD-LG-002');
   sandbox.openStageModal('plan', 'info');
   const modalEntrustedText = document.getElementById('journey-modal-body').textContent;
-  for (const token of ['HDUT-LG-2026-02', '200.000.000 VND', '150.000.000 VND', '50.000.000 VND']) {
+  for (const token of ['HDUT-LG-2026-02', 'Chưa xác nhận']) {
     if (!modalEntrustedText.includes(token)) throw new Error('Entrusted Node 00 modal missing token: ' + token);
+  }
+  for (const hiddenAmount of ['200.000.000 VND', '150.000.000 VND', '50.000.000 VND']) {
+    if (modalEntrustedText.includes(hiddenAmount)) throw new Error('Unapproved entrusted finance leaked: ' + hiddenAmount);
   }
 
   console.log('PLAN_FINANCE_COLLAB_DOM_OK');
@@ -3000,10 +3071,248 @@ vm.runInContext(scriptMatch[1], sandbox);
     assert "PLAN_FINANCE_COLLAB_DOM_OK" in proc.stdout
 
 
+def test_finance_confirmation_uses_ledger_guards_retry_and_sandbox_compensation(trial_server, monkeypatch) -> None:
+    from pymongo.errors import PyMongoError
+
+    from core.financial_ledger import ACTION_REQUESTS, ALLOCATIONS, OBLIGATIONS, TRANSACTIONS
+    from core.hexa_customer_publication import PublicationDenied
+
+    _base_url, env = trial_server
+    db = core_db.get_db()
+    assert db is not None
+    tt_fin_token, _ = env.authenticate_tt_staff_login(
+        username="tt.finance.truongthanh",
+        passcode="TT-Finance-2026!",
+    )
+
+    def confirm(
+        transaction_id: str,
+        *,
+        shipment_id: str = SHIPMENT_A_ID,
+        obligation_id: str = "OBL-LG01-SVC-01",
+        amount: int = 1_000_000,
+        currency: str = "VND",
+        note: str = "finance integrity regression",
+    ):
+        return env.confirm_tt_shipment_finance(
+            session_token=tt_fin_token,
+            shipment_id=shipment_id,
+            transaction_id=transaction_id,
+            obligation_id=obligation_id,
+            amount=amount,
+            currency=currency,
+            occurred_at="2026-10-23",
+            note=note,
+        )
+
+    # An amount above outstanding, wrong currency, wrong lot, and wrong customer all fail before writes.
+    for kwargs in (
+        {"transaction_id": "TXN-OVER-OUTSTANDING", "amount": 27_240_001},
+        {"transaction_id": "TXN-WRONG-CURRENCY", "amount": 1_000, "currency": "USD"},
+        {
+            "transaction_id": "TXN-WRONG-LOT",
+            "amount": 1_000,
+            "obligation_id": "OBL-LG02-GOODS-ADV",
+        },
+        {
+            "transaction_id": "TXN-WRONG-CUSTOMER",
+            "shipment_id": SHIPMENT_B_ID,
+            "amount": 1_000,
+        },
+    ):
+        with pytest.raises(PublicationDenied):
+            confirm(**kwargs)
+        assert db[TRANSACTIONS].find_one({"id": kwargs["transaction_id"]}) is None
+
+    # Same-shipment obligations still fail closed when the payer/customer or TT legal entity is wrong.
+    service_obligation = db[OBLIGATIONS].find_one({"id": "OBL-LG01-SVC-01"}, {"_id": 0})
+    assert service_obligation is not None
+    try:
+        db[OBLIGATIONS].update_one(
+            {"id": service_obligation["id"]},
+            {
+                "$set": {
+                    "from_party": {
+                        "party_type": "customer",
+                        "party_id": "CUST-MINHDUC",
+                        "name": "Minh Đức",
+                    }
+                }
+            },
+        )
+        with pytest.raises(PublicationDenied):
+            confirm("TXN-WRONG-PAYER", amount=1_000)
+        assert db[TRANSACTIONS].find_one({"id": "TXN-WRONG-PAYER"}) is None
+
+        db[OBLIGATIONS].update_one(
+            {"id": service_obligation["id"]},
+            {
+                "$set": {
+                    "from_party": service_obligation["from_party"],
+                    "to_party": {
+                        "party_type": "company",
+                        "party_id": "OTHER-ENTITY",
+                        "name": "Other entity",
+                    },
+                }
+            },
+        )
+        with pytest.raises(PublicationDenied):
+            confirm("TXN-WRONG-ENTITY", amount=1_000)
+        assert db[TRANSACTIONS].find_one({"id": "TXN-WRONG-ENTITY"}) is None
+    finally:
+        db[OBLIGATIONS].update_one(
+            {"id": service_obligation["id"]},
+            {
+                "$set": {
+                    "from_party": service_obligation["from_party"],
+                    "to_party": service_obligation["to_party"],
+                }
+            },
+        )
+
+    # A pre-existing transaction ID is never replaced, even when it belongs to this same shipment.
+    original_transaction = db[TRANSACTIONS].find_one({"id": "TXN-LG01-PAY-01"}, {"_id": 0})
+    with pytest.raises(PublicationDenied):
+        confirm("TXN-LG01-PAY-01", amount=1_000)
+    assert db[TRANSACTIONS].find_one({"id": "TXN-LG01-PAY-01"}, {"_id": 0}) == original_transaction
+
+    # Exact resend is idempotent; changing payload under the same transaction/request identity is denied.
+    first = confirm("TXN-LG01-IDEMPOTENT", amount=1_000_000)
+    retry = confirm("TXN-LG01-IDEMPOTENT", amount=1_000_000)
+    assert first["transaction"]["id"] == retry["transaction"]["id"]
+    assert first["allocation"]["id"] == retry["allocation"]["id"]
+    assert first["allocation"]["amount"] == retry["allocation"]["amount"] == 1_000_000
+    assert db[TRANSACTIONS].count_documents({"id": "TXN-LG01-IDEMPOTENT"}) == 1
+    assert db[ALLOCATIONS].count_documents({"transaction_id": "TXN-LG01-IDEMPOTENT"}) == 1
+    assert db[ACTION_REQUESTS].count_documents(
+        {"request_id": f"hexa-trial-finance:{SHIPMENT_A_ID}:{CUSTOMER_A_ID}:TXN-LG01-IDEMPOTENT"}
+    ) == 1
+    with pytest.raises(PublicationDenied):
+        confirm("TXN-LG01-IDEMPOTENT", amount=1_000_001)
+    assert db[TRANSACTIONS].find_one({"id": "TXN-LG01-IDEMPOTENT"})["amount"] == 1_000_000
+    assert db[ALLOCATIONS].count_documents({"transaction_id": "TXN-LG01-IDEMPOTENT"}) == 1
+
+    # Simulate a mid-write failure on the no-op mongomock session. The sandbox compensation removes
+    # the just-created transaction and any associated allocation/action/audit/outbox rows.
+    failed_id = "TXN-LG01-PARTIAL-FAIL"
+    failed_request_id = f"hexa-trial-finance:{SHIPMENT_A_ID}:{CUSTOMER_A_ID}:{failed_id}"
+    allocation_collection = db[ALLOCATIONS]
+
+    def fail_allocation_insert(*_args, **_kwargs):
+        raise PyMongoError("injected allocation insert failure")
+
+    monkeypatch.setattr(allocation_collection, "insert_one", fail_allocation_insert)
+    with pytest.raises(PublicationDenied):
+        confirm(failed_id, amount=500_000)
+    assert db[TRANSACTIONS].find_one({"id": failed_id}) is None
+    assert db[ALLOCATIONS].count_documents({"transaction_id": failed_id}) == 0
+    assert db[ACTION_REQUESTS].count_documents({"request_id": failed_request_id}) == 0
+    assert db["audit_logs"].count_documents({"after.request_id": failed_request_id}) == 0
+    assert db["notification_outbox"].count_documents({"payload.request_id": failed_request_id}) == 0
 
 
+def test_finance_publication_requires_reapproval_after_source_change_and_revocation(trial_server) -> None:
+    from core.hexa_customer_publication import PublicationDenied
+    from core.hexa_trial_portal import seed_live_preview_publications
 
+    _base_url, env = trial_server
+    seed_live_preview_publications(env)
+    db = core_db.get_db()
+    assert db is not None
+    tt_ops_token, _ = env.authenticate_tt_staff_login(
+        username="tt.ops.truongthanh",
+        passcode="TT-Trial-2026!",
+    )
+    tt_fin_token, _ = env.authenticate_tt_staff_login(
+        username="tt.finance.truongthanh",
+        passcode="TT-Finance-2026!",
+    )
+    customer_token, _ = env.authenticate_customer_login(
+        username="lucgiac.trial",
+        passcode="LG-Trial-2026!",
+    )
 
+    def current_publication() -> dict[str, Any]:
+        return db["hexa_trial_publications"].find_one(
+            {"shipment_id": SHIPMENT_A_ID, "customer_id": CUSTOMER_A_ID},
+            {"_id": 0},
+        )
 
+    def publish(token: str, *, approve_finance: bool = False) -> dict[str, Any]:
+        publication = current_publication()
+        return env.publish_shipment_for_customer(
+            session_token=token,
+            shipment_id=SHIPMENT_A_ID,
+            event_versions=publication.get("event_versions") or {},
+            document_versions=publication.get("document_versions") or {},
+            quote=publication.get("quote"),
+            approve_finance=approve_finance,
+        )
 
+    def customer_shipment() -> dict[str, Any]:
+        dashboard = env.build_customer_dashboard(session_token=customer_token)
+        return next(item for item in dashboard["shipments"] if item["shipment_id"] == SHIPMENT_A_ID)
+
+    # Shipment/progress publication alone does not disclose finance, and operations cannot opt in.
+    assert current_publication().get("finance_published") is False
+    assert customer_shipment()["debt_summary"]["status"] == "UNKNOWN"
+
+    # A legacy publication with no finance_published field also fails closed.
+    db["hexa_trial_publications"].update_one(
+        {"shipment_id": SHIPMENT_A_ID, "customer_id": CUSTOMER_A_ID},
+        {"$unset": {"finance_published": ""}},
+    )
+    assert "finance_published" not in current_publication()
+    assert customer_shipment()["debt_summary"]["status"] == "UNKNOWN"
+    publish(tt_ops_token)
+    assert current_publication().get("finance_published") is False
+
+    with pytest.raises(PublicationDenied):
+        publish(tt_ops_token, approve_finance=True)
+    assert current_publication().get("finance_published") is False
+
+    publish(tt_fin_token, approve_finance=True)
+    disclosed = customer_shipment()["debt_summary"]
+    assert disclosed["status"] == "CONFIRMED"
+    assert disclosed["total_payable"] == 57_240_000.0
+    assert disclosed["total_paid"] == 30_000_000.0
+    assert current_publication().get("finance_published") is True
+
+    # A new confirmed ledger transaction changes the source fingerprint and immediately hides stale values.
+    env.confirm_tt_shipment_finance(
+        session_token=tt_fin_token,
+        shipment_id=SHIPMENT_A_ID,
+        transaction_id="TXN-LG01-SOURCE-CHANGE",
+        obligation_id="OBL-LG01-SVC-01",
+        amount=5_000_000,
+        currency="VND",
+        occurred_at="2026-10-23",
+        note="source change requires finance re-review",
+    )
+    assert current_publication().get("finance_published") is False
+    assert customer_shipment()["debt_summary"]["status"] == "UNKNOWN"
+
+    # Republishing progress/documents as operations cannot refresh or grant the finance approval.
+    publish(tt_ops_token)
+    assert current_publication().get("finance_published") is False
+    assert customer_shipment()["debt_summary"]["status"] == "UNKNOWN"
+
+    # Finance explicitly rechecks the changed source and publishes the new totals.
+    publish(tt_fin_token, approve_finance=True)
+    refreshed = customer_shipment()["debt_summary"]
+    assert refreshed["status"] == "CONFIRMED"
+    assert refreshed["total_paid"] == 35_000_000.0
+    assert refreshed["remaining_balance"] == 22_240_000.0
+
+    # Revoking finance and then republishing the shipment must leave the finance gate closed.
+    env.revoke_shipment_publication(
+        session_token=tt_ops_token,
+        shipment_id=SHIPMENT_A_ID,
+        revoke_finance=True,
+    )
+    assert current_publication().get("finance_published") is False
+    publish(tt_ops_token)
+    assert current_publication().get("finance_published") is False
+    assert customer_shipment()["debt_summary"]["status"] == "UNKNOWN"
 
