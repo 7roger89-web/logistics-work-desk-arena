@@ -40,6 +40,10 @@ python -m pip install -r requirements.txt
 Khuyến nghị: tạo virtualenv trước khi cài (`python -m venv .venv` rồi kích hoạt)
 để không lẫn thư viện với các dự án khác trên cùng máy.
 
+`requirements.txt` là nguồn dải version (range) dùng cho deploy. Máy dev và CI
+muốn bản ghim tái lập 100% thì cài từ `requirements.lock` (sinh bằng `pip freeze`
+từ venv sạch; xem hướng dẫn tái tạo ở header file lock).
+
 ---
 
 ## 3. Cấu hình

@@ -19,12 +19,12 @@ jobs:
         with:
           python-version: "3.11"
           cache: pip
-          cache-dependency-path: requirements.txt
+          cache-dependency-path: requirements.lock
 
-      - name: Install dependencies
+      - name: Install dependencies (pinned lock; requirements.txt stays the range source)
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt pytest
+          pip install -r requirements.lock
 
       - name: Run pytest (known-red được dự kiến; gate ở bước kế tiếp quyết định)
         continue-on-error: true
