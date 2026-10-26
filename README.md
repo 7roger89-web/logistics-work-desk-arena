@@ -10,8 +10,9 @@ phân quyền, biểu thuế, đối soát.
 - **License:** All rights reserved — repo chưa phát hành giấy phép mở và cố ý
   không kèm file LICENSE (quyết định Owner, 2026-10-26).
 
-**Đây là tài liệu cài đặt DUY NHẤT.** `README_HOTFIX.md`, `README_UPGRADE.md`,
-`ROUTER_HOTFIX.md`, `BUILD_REPORT.md` là hồ sơ lịch sử — đọc khi cần truy vết, không
+**Đây là tài liệu cài đặt DUY NHẤT.** `docs/history/README_HOTFIX.md`,
+`docs/history/README_UPGRADE.md`, `docs/history/ROUTER_HOTFIX.md`,
+`docs/history/BUILD_REPORT.md` là hồ sơ lịch sử — đọc khi cần truy vết, không
 dùng để cài. Muốn hiểu kiến trúc và policy: `docs/ARCHITECTURE-PRINCIPLES.md`.
 
 ---
@@ -192,7 +193,7 @@ python -m pytest tests -q
 
 Sự thật hiện trạng của bộ test (đừng tin tài liệu cũ, đừng tin con số hard-code):
 
-- Bộ test có ~130+ file (`test_*.py`, hiện tại là 144 file — con số trôi theo thời
+- Bộ test có ~130+ file (`test_*.py`, hiện tại là 145 file — con số trôi theo thời
   gian) và suite **ĐANG ĐỎ CÓ CHỦ Ý**: một tập FAILED/ERROR đã biết được giữ
   nguyên như backlog sống. **Không hard-code số test pass vào tài liệu.**
 - Quy trình bắt buộc khi sửa bất cứ thứ gì: chạy **full suite 1 lần TRƯỚC** khi
@@ -222,10 +223,18 @@ Sự thật hiện trạng của bộ test (đừng tin tài liệu cũ, đừng
 
 ## Khoảng trống đã biết
 
-- LICENSE chưa có (GitHub báo `license: null`).
-- Không có repo description và topics.
-- `.agents/` bị ignore một phần nên file mới thêm vào đó vô hình với `git add .`.
-- 258 branch, 1 tag, 25 open issue.
-- Thiếu `pyproject.toml` / `pytest.ini` / `ruff.toml`.
-- `requirements.txt` không lock, còn `streamlit-option-menu` nghi đã chết.
-- Repo ~189 MB nên clone chậm.
+Đo lại ngày 2026-10-26; chỉ giữ những mục còn đúng sau khi verify với code/API:
+
+- Repo chưa có description và topics; branch protection trên `main` chưa bật. Cả hai
+  bị chặn với token tích hợp (HTTP 403) — lệnh Owner đã chuẩn bị sẵn ở
+  `docs/OWNER_REPO_SETTINGS.md`.
+- Chưa có `pyproject.toml` / `pytest.ini` / `ruff.toml` (chưa có công cụ lint);
+  bù lại đã có CI test + known-red gate ở `.github/workflows/tests.yml`.
+- Repo ~189 MB (GitHub diskUsage 193.868 KB) nên clone chậm; dọn lịch sử/LFS là
+  OPEN ITEM, không làm trong đợt này.
+- Số liệu hiện trạng sau đợt vệ sinh 2026-10-26: 115 remote head (trước đó 267),
+  1 tag, 10 open issue.
+- Đã đóng trong đợt 2026-10-26 (giữ lại để truy vết): lỗ hổng ignore `.agents/`
+  (đã có ngoại lệ `!.agents/skills/`); `requirements.lock` đã được tạo và
+  `streamlit-option-menu` đã gỡ sau khi xác nhận không còn import; LICENSE giữ
+  trạng thái All rights reserved theo quyết định Owner.

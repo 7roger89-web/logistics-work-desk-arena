@@ -33,16 +33,6 @@ If that profile cannot be read, apply this minimum capsule:
 - UI/API/provider/deployment/migration claims require representative real-path evidence when practical; otherwise downgrade the claim to the strongest truthful unverified/incomplete state.
 - Stop once bounded acceptance is proven; do not run broad mutation campaigns, extra reviewers, or full-suite ceremonies without decision value.
 
-## Mandatory prompt serialization contract
-
-Every P2P-generated operational prompt handed to another executor must explicitly serialize both gates below. Do not leave them implicit merely because the current chat already read the law.
-
-`P2P_LAW_PREFLIGHT` must tell the executor to read repository-root `AGENTS.md`, use canonical only if already successfully reachable; otherwise installed > valid portable > inline capsule > blocked; repo-scoped portable requires no cross-repo probe solely for fallback, and report exactly one `P2P_LAW_SOURCE=<actual source>`.
-
-`OE_GATE` must ask exactly `Không bị over engineering chứ?`, evaluate `SIMPLER_PATH`, `MATERIAL_PROGRESS`, `NECESSITY`, `CORE_BEFORE_SUPPORT`, and `SMALLER_VERIFIABLE_SLICE`, then return `OE_VERDICT=DO_IT|SKIP_IT|DEFER_UNTIL_NEEDED` with one concrete reason. A weak/negative answer means reduce, remove, or defer the step; never return a ceremonial PASS.
-
-This applies to NEW_CHAT and SAME_CHAT prompts for Arena, Codex, Manus, reviewers, supervisors, and other delegated executors. Do not repeat the whole law body when a valid law source is readable.
-
 ## Baseline hiện tại
 
 - `main` là baseline tích hợp hiện tại. Việc mới đi qua nhánh task + Pull Request vào `main`; lineage các đợt LOG-C13/C14/C15 chỉ còn ý nghĩa lịch sử (xem `docs/LOG_C15_HANDOFF.md` khi cần truy vết).
@@ -59,7 +49,7 @@ This applies to NEW_CHAT and SAME_CHAT prompts for Arena, Codex, Manus, reviewer
 
 ## Testing
 
-- Full suite: `python -m pytest tests -q`. Bộ test có ~130+ file (`test_*.py`, hiện tại 144 file) và suite **ĐANG ĐỎ CÓ CHỦ Ý** — một tập FAILED/ERROR đã biết được giữ làm backlog sống. Không hard-code số pass vào tài liệu; báo con số thực tế của lần chạy kèm commit, không dẫn số cũ.
+- Full suite: `python -m pytest tests -q`. Bộ test có ~130+ file (`test_*.py`, hiện tại 145 file) và suite **ĐANG ĐỎ CÓ CHỦ Ý** — một tập FAILED/ERROR đã biết được giữ làm backlog sống. Không hard-code số pass vào tài liệu; báo con số thực tế của lần chạy kèm commit, không dẫn số cũ.
 - Quy trình bắt buộc: chạy full suite 1 lần TRƯỚC khi sửa để lấy baseline tập FAILED/ERROR, chạy lại SAU khi sửa và so — thay đổi đúng phải giữ nguyên tập FAILED/ERROR cũ và chỉ thêm test mới. Tham chiếu lịch sử đã biết: ~1492–1541 passed / 24 failed, xem `CHANGELOG.md`. Nếu HEAD có file lỗi ngay khi collection, dùng `--continue-on-collection-errors` để lấy baseline trọn suite.
 - Tests runtime cần Streamlit/Mongo thực được skip theo thiết kế — không cố sửa chúng thành chạy được.
 - Auth/RBAC: `tests/test_logc15_auth_rbac.py` (pure, mock streamlit).
@@ -76,30 +66,7 @@ Chưa có user → app render form tạo Admin đầu tiên (không default cred
 ## Tài liệu
 
 - Cài đặt/cấu hình/chạy app: `README.md` là tài liệu DUY NHẤT — file này không lặp hướng dẫn cài đặt.
-- Kiến trúc và policy: `docs/ARCHITECTURE-PRINCIPLES.md`. Các `README_*_*.md`, `ROUTER_HOTFIX.md`, `BUILD_REPORT.md` ở gốc repo là hồ sơ lịch sử.
-
-## Native long-running goal bridge (P2P)
-
-For a clear long-running task on a host that supports native `/goal`, use `/goal` only as a session-continuation primitive. Canonical P2P GoalPlan/TaskPlan, durable task state, evidence, and verifier remain authoritative.
-
-- Prefer `.p2p/system/p2p_capabilities/native_goal_bridge.py` when an installed P2P runtime is present.
-- If installed runtime is absent in a fresh clone, derive the `/goal` completion condition directly from the active P2P goal/task contract. Do not create a second roadmap, state machine, memory authority, router, ledger, daemon, or scheduler.
-- Do not conflate host semantics. Only claim automatic continuation or evaluator behavior that is documented or directly verified for that host; do not assume Codex CLI has Claude Code's evaluator semantics.
-- Recovery remains failure-class adaptive. Never introduce a fixed retry-count hard stop such as `three strikes => BLOCKED`.
-- Before completion, compare the exact original baseline with the complete worktree: committed-after-baseline, staged, unstaged, deleted tracked, and untracked files. Prefer `.p2p/system/p2p_capabilities/worktree_evidence.py` when installed; otherwise use equivalent read-only Git inspection.
-- Before claiming done, replay the original task contract and re-check acceptance requirements and evidence. Host-native `/goal` evaluation and executor self-report are never P2P acceptance authority.
-- If the host has no native `/goal`, continue with the normal P2P execution path; do not add a substitute control plane just to imitate `/goal`.
-
-## Native `/goal` auto-activation (P2P)
-
-After law preflight and after durable P2P GoalPlan/TaskPlan state exists, but before the first substantive execution turn for that goal, decide native `/goal` activation automatically. Do not ask the Owner whether to use `/goal`.
-
-- If installed runtime contains `.p2p/system/p2p_capabilities/native_goal_activation.py`, run `python .p2p/system/p2p_capabilities/native_goal_activation.py --host <claude_code|codex_cli> --format json`. Host identity comes from the current executor; Claude Code may use its stable in-session markers, while Codex passes `codex_cli` from known executor identity and must not infer it from `CODEX_HOME` alone.
-- `decision=ACTIVATE_NATIVE_GOAL` -> if this same goal is not already active in the current host session, immediately invoke the returned `command` once, then continue the same P2P task.
-- `decision=NORMAL_P2P_PATH` -> continue the normal P2P path.
-- helper `status=BLOCKED` -> treat it as a durable-state/control-plane blocker; never fabricate a `/goal` condition.
-- If the helper is absent, apply the exact same deterministic rule directly from authoritative durable state: activate only for Goal `APPROVED|IN_PROGRESS` + TaskPlan `ACTIVE` + at least two tasks + unfinished work; otherwise use the normal P2P path. Do not create another detector, state machine, router, ledger, daemon, or scheduler.
-- Native `/goal` remains session continuation only. P2P task state, Owner Gates, evidence and independent verifier remain authoritative.
+- Kiến trúc và policy: `docs/ARCHITECTURE-PRINCIPLES.md`. Các `README_*_*.md`, `ROUTER_HOTFIX.md`, `BUILD_REPORT.md` đã chuyển vào `docs/history/` và là hồ sơ lịch sử.
 
 ## Prompt authoring discipline (P2P)
 
@@ -115,14 +82,6 @@ After law preflight and after durable P2P GoalPlan/TaskPlan state exists, but be
 - When revising an existing prompt, edit that prompt instead of restarting requirements collection. Preserve unaffected constraints and return the complete revised prompt unless the Owner explicitly asks for only a diff or fragment.
 - Use the output surface that fits the destination and workflow; do not force Markdown, files, XML, JSON, tables, or another wrapper unless the task contract, destination capability, machine parsing, or copy/paste workflow materially benefits.
 - Stop when the prompt is executable and aligned to outcome, destination, scope, acceptance, evidence, authority boundaries, and stop condition. Do not append optional prompt theory, examples, or future-proofing unless requested.
-
-## P2P portable Supreme Law entrypoint
-
-Bản portable law đầy đủ nằm trong khối managed P2P PORTABLE LAW
-ở cuối file này (entrypoint, actor separation, handoff freshness, experience,
-skill handoff, prompt serialization, native `/goal`). Không duy trì bản sao thứ
-hai ở phần này — khi cần, đọc thẳng khối managed và
-`.p2p/portable/P2P-OPERATIONS-NOTEBOOK.md`.
 
 ### Repo-native required skill handoff — phần prompt-writer (bổ sung ngoài khối managed)
 

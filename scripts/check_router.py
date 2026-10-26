@@ -2,7 +2,7 @@
 
 Từ PR #44 app chỉ còn MỘT shell React, nên bảng route duy nhất là
 ``component/src/App.tsx``; ``views/web_app.py`` chỉ còn là launcher và không
-còn ``ROUTES`` Streamlit nào (``ROUTER_HOTFIX.md`` là hồ sơ lịch sử). Script
+còn ``ROUTES`` Streamlit nào (``docs/history/ROUTER_HOTFIX.md`` là hồ sơ lịch sử). Script
 đọc thẳng bảng route đang ship đó — không dựng registry thứ hai — và kiểm tra:
 
 * mỗi ``<Route>`` trỏ tới một page component có thật và đã được import;
