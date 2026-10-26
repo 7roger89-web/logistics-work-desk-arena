@@ -88,7 +88,7 @@ def test_dashboard_returns_only_own_published_lots(seed_module, db):
     rendered = json.dumps(asdict(view), ensure_ascii=False)
     assert [card.reference for card in view.cards] == [seed_module.LOT_A1, seed_module.LOT_A2]
     assert view.denied_lots == 1  # DRAFT lot is rejected without showing its content
-    assert view.data_issues >= 3  # missing / empty / unknown customer_id
+    assert view.data_issues == 0  # foreign or unowned lots cannot affect this customer
     for sentinel in seed_module.INTERNAL_SENTINELS + (seed_module.FOREIGN_SENTINEL,):
         assert sentinel not in rendered
     assert seed_module.LOT_B1 not in rendered
@@ -98,23 +98,32 @@ def test_dashboard_returns_only_own_published_lots(seed_module, db):
     assert "margin" not in {field for card in view.cards for field in asdict(card)}
 
 
-def test_missing_customer_id_logged_for_internal_review_never_matched_by_name(
-    seed_module, db, caplog
-):
-    with caplog.at_level(logging.WARNING, logger="logistics.customer_portal"):
-        view = cp.load_customer_dashboard(
-            cp.build_customer_principal(
-                verified_email=seed_module.CUSTOMER_A_PORTAL_EMAIL, db=db
-            ),
-            db=db,
-        )
+def test_unowned_shipment_is_not_matched_by_customer_name(seed_module, db):
+    principal = cp.build_customer_principal(
+        verified_email=seed_module.CUSTOMER_A_PORTAL_EMAIL, db=db
+    )
+    view = cp.load_customer_dashboard(principal, db=db)
     references = {card.reference for card in view.cards}
     assert seed_module.LOT_MISSING_CUSTOMER not in references
     assert seed_module.LOT_NAME_ONLY not in references
     assert seed_module.LOT_UNKNOWN_CUSTOMER not in references
-    assert "CUSTOMER_PORTAL_INTERNAL_REVIEW" in caplog.text
-    assert "missing_customer_id" in caplog.text
-    assert "unknown_customer_id" in caplog.text
+    assert view.data_issues == 0
+
+
+def test_foreign_data_errors_do_not_change_customer_dashboard(seed_module, db):
+    principal = cp.build_customer_principal(
+        verified_email=seed_module.CUSTOMER_A_PORTAL_EMAIL, db=db
+    )
+    before = cp.load_customer_dashboard(principal, db=db)
+    assert before.data_issues == 0
+    # Another client's invalid ownership must not trigger this client's warning.
+    db.shipments.insert_many([
+        {"id": "G1-FOREIGN-UNKNOWN", "customer_id": "MISSING-CUSTOMER"},
+        {"id": "G1-UNOWNED-OTHER", "client": seed_module.CUSTOMER_A_ID},
+    ])
+    after = cp.load_customer_dashboard(principal, db=db)
+    assert after == before
+    assert after.data_issues == 0
 
 
 @pytest.mark.parametrize(
