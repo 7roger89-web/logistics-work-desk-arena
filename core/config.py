@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json
 import os
+import warnings
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, Iterable
@@ -32,6 +33,26 @@ except ImportError:
     get_script_run_ctx = None  # type: ignore[assignment]
 
 BASE_DIR = Path(__file__).resolve().parents[1]
+
+# ---------------------------------------------------------------------------
+# Phase E — shim tương thích ngược cho tên cấu hình cũ.
+# Chỉ ba alias có bằng chứng trong audit: env MONGODB_URI, section [mongodb],
+# section [google]. Tên mới luôn thắng; alias chỉ được xét sau khi mọi nguồn tên
+# mới đã trượt, nên thứ tự ưu tiên env > st.secrets > secrets.toml không đổi.
+# Cảnh báo phát đúng một lần/process cho mỗi alias, không dựng hệ config thứ hai.
+_WARNED_LEGACY_ALIASES: set[str] = set()
+
+
+def _warn_legacy_alias(alias_id: str, old_label: str, new_label: str) -> None:
+    if alias_id in _WARNED_LEGACY_ALIASES:
+        return
+    _WARNED_LEGACY_ALIASES.add(alias_id)
+    warnings.warn(
+        f"Cấu hình tên cũ '{old_label}' đã deprecated và sẽ bị gỡ ở phiên bản sau; "
+        f"đổi sang '{new_label}'. Tên cũ hiện vẫn được chấp nhận (tương thích ngược).",
+        DeprecationWarning,
+        stacklevel=3,
+    )
 
 
 def is_streamlit_runtime() -> bool:
@@ -124,6 +145,8 @@ def get_setting(
     env_name: str,
     *secret_paths: str | Iterable[str],
     default: str = "",
+    legacy_env: str = "",
+    legacy_secret_paths: Iterable[str | Iterable[str]] = (),
 ) -> str:
     env_value = os.getenv(env_name)
     if env_value not in (None, ""):
@@ -132,6 +155,23 @@ def get_setting(
     for path in secret_paths:
         value = _secret_value(*_normalize_path(path), default=None)
         if value not in (None, ""):
+            return str(value)
+
+    # Alias tên cũ chỉ được xét SAU khi mọi nguồn tên mới đã trượt.
+    if legacy_env:
+        legacy_value = os.getenv(legacy_env)
+        if legacy_value not in (None, ""):
+            _warn_legacy_alias(f"env:{legacy_env}", legacy_env, env_name)
+            return str(legacy_value)
+
+    for path in legacy_secret_paths:
+        normalized = _normalize_path(path)
+        value = _secret_value(*normalized, default=None)
+        if value not in (None, ""):
+            old_label = f"[{normalized[0]}].{normalized[-1]}"
+            new_first = _normalize_path(secret_paths[0]) if secret_paths else ()
+            new_label = f"[{new_first[0]}].{new_first[-1]}" if new_first else env_name
+            _warn_legacy_alias(f"secret:{'.'.join(normalized)}", old_label, new_label)
             return str(value)
     return default
 
@@ -173,6 +213,7 @@ def _parse_list_env_value(raw: str) -> list[str]:
 def get_list_setting(
     env_name: str,
     *secret_paths: str | Iterable[str],
+    legacy_secret_paths: Iterable[str | Iterable[str]] = (),
 ) -> list[str]:
     env_value = os.getenv(env_name)
     if env_value:
@@ -184,16 +225,43 @@ def get_list_setting(
             return [str(item).strip() for item in value if str(item).strip()]
         if value not in (None, ""):
             return [str(value).strip()]
+
+    # Alias section cũ ([google].api_keys) — chỉ khi nguồn tên mới không có giá trị.
+    for path in legacy_secret_paths:
+        normalized = _normalize_path(path)
+        value = _secret_value(*normalized, default=None)
+        if isinstance(value, (list, tuple)):
+            items = [str(item).strip() for item in value if str(item).strip()]
+            if items:
+                old_label = f"[{normalized[0]}].{normalized[-1]}"
+                new_first = _normalize_path(secret_paths[0]) if secret_paths else ()
+                new_label = f"[{new_first[0]}].{new_first[-1]}" if new_first else env_name
+                _warn_legacy_alias(f"secret:{'.'.join(normalized)}", old_label, new_label)
+                return items
+        if value not in (None, ""):
+            old_label = f"[{normalized[0]}].{normalized[-1]}"
+            new_first = _normalize_path(secret_paths[0]) if secret_paths else ()
+            new_label = f"[{new_first[0]}].{new_first[-1]}" if new_first else env_name
+            _warn_legacy_alias(f"secret:{'.'.join(normalized)}", old_label, new_label)
+            return [str(value).strip()]
     return []
 
 
 # Hỗ trợ cả định dạng mới [mongo] và định dạng cũ MONGO_URI = "...".
-MONGO_URI = get_setting("MONGO_URI", ("mongo", "uri"), "MONGO_URI")
+# Phase E: thêm alias tên cũ MONGODB_URI (env) và section [mongodb]; tên mới luôn thắng.
+MONGO_URI = get_setting(
+    "MONGO_URI",
+    ("mongo", "uri"),
+    "MONGO_URI",
+    legacy_env="MONGODB_URI",
+    legacy_secret_paths=(("mongodb", "uri"),),
+)
 MONGO_DB_NAME = get_setting(
     "MONGO_DB_NAME",
     ("mongo", "database"),
     "MONGO_DB_NAME",
     default="",
+    legacy_secret_paths=(("mongodb", "database"),),
 )
 
 # LOGI_SHIPMENT_DOCUMENTS_GRIDFS_RUNTIME_01 — the bounded attachment selector.
@@ -360,11 +428,14 @@ _single_gemini_key = get_setting(
     "GEMINI_API_KEY",
     ("gemini", "api_key"),
     "GEMINI_API_KEY",
+    # Phase E: section cũ [google].api_key vẫn đọc được, cảnh báo một lần/process.
+    legacy_secret_paths=(("google", "api_key"),),
 )
 GEMINI_API_KEYS = get_list_setting(
     "GEMINI_KEYS",
     ("gemini", "api_keys"),
     "GEMINI_KEYS",
+    legacy_secret_paths=(("google", "api_keys"),),
 )
 if _single_gemini_key:
     GEMINI_API_KEYS = [_single_gemini_key] + [
@@ -376,6 +447,7 @@ GEMINI_MODEL = get_setting(
     ("gemini", "model"),
     "GEMINI_MODEL",
     default="gemini-3.6-flash",
+    legacy_secret_paths=(("google", "model"),),
 )
 
 TELEGRAM_TOKEN = get_setting(

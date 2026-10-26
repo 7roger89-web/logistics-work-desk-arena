@@ -61,11 +61,13 @@ App đọc cấu hình theo thứ tự ưu tiên (nguồn đầu tiên có giá 
 Chỉ cần chọn **một** kênh. Cả hai file mẫu đã liệt kê đúng tên biến/section mà
 code thực tế đọc; khi thêm biến mới vào `core/config.py`, cập nhật cả hai file mẫu.
 
-> **Cảnh báo — `secrets.toml` viết theo tên cũ:** ai đang giữ
-> `.streamlit/secrets.toml` dùng tên cũ (`[mongodb]`, `[google]`, `MONGODB_URI`)
-> thì phải đổi sang tên hiện hành `[mongo]`, `[gemini]`, `MONGO_URI` — nếu không
-> app sẽ báo thiếu cấu hình dù file secrets vẫn tồn tại (code chỉ đọc tên mới;
-> xem `.streamlit/secrets.toml.example`).
+> **Tên cấu hình cũ vẫn chạy được (từ 2026-10-26):** các tên cũ `MONGODB_URI`
+> (env), section `[mongodb]` (uri/database) và `[google]` (api_key/api_keys/model)
+> vẫn được chấp nhận qua shim tương thích ngược trong `core/config.py`, kèm
+> `DeprecationWarning` đúng một lần mỗi process. Tên hiện hành `MONGO_URI`,
+> `[mongo]`, `[gemini]` luôn thắng khi cả hai cùng tồn tại; thứ tự ưu tiên
+> env > `st.secrets` > `secrets.toml` không đổi. Vẫn nên đổi sang tên mới vì
+> alias sẽ bị gỡ ở phiên bản sau (xem `.streamlit/secrets.toml.example`).
 
 | Việc cần cấu hình | Biến môi trường | `secrets.toml` | Ghi chú |
 |---|---|---|---|
