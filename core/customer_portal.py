@@ -30,7 +30,6 @@ LOGGER = logging.getLogger("logistics.customer_portal")
 PORTAL_ACCESS_EMAIL_FIELD = "portal_access_email"
 PUBLICATION_COLLECTION = "customer_publications"
 MAX_CUSTOMER_LOTS = 20
-MAX_INTEGRITY_SCAN = 200
 
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 _CUSTOMER_PROJECTION = {"_id": 0, "id": 1, "name": 1, PORTAL_ACCESS_EMAIL_FIELD: 1}
@@ -202,49 +201,6 @@ def _assert_principal_still_allowed(db: Any, principal: CustomerPrincipal) -> No
         raise PortalAccessDenied()
 
 
-def _known_customer_ids(db: Any) -> set[str]:
-    try:
-        rows = db.customers.find({"is_deleted": {"$ne": True}}, _CUSTOMER_ID_PROJECTION).limit(500)
-        return {cid for cid in (clean_id(row.get("id")) for row in rows if isinstance(row, Mapping)) if cid}
-    except Exception as exc:  # noqa: BLE001
-        LOGGER.warning("CUSTOMER_PORTAL_CUSTOMER_SCAN_FAILED type=%s", type(exc).__name__)
-        raise PortalDataError() from None
-
-
-def _scan_data_integrity(db: Any, known_customer_ids: set[str]) -> int:
-    """Record missing/unknown shipment.customer_id for INTERNAL review only.
-
-    The projection contains no name, cost, notes or documents.  A broken lot is
-    never attached by business name and never rendered to any customer; only a
-    generic data-error notice reaches the UI.
-    """
-    try:
-        rows = db.shipments.find(
-            {"is_deleted": {"$ne": True}},
-            {"_id": 0, "id": 1, "customer_id": 1},
-        ).limit(MAX_INTEGRITY_SCAN)
-        suspects: list[tuple[str, str]] = []
-        for row in rows:
-            if not isinstance(row, Mapping):
-                suspects.append(("(unreadable)", "invalid_row"))
-                continue
-            customer_id = clean_id(row.get("customer_id"))
-            shipment_id = clean_id(row.get("id")) or "(no-id)"
-            if not customer_id:
-                suspects.append((shipment_id, "missing_customer_id"))
-            elif customer_id not in known_customer_ids:
-                suspects.append((shipment_id, "unknown_customer_id"))
-    except Exception as exc:  # noqa: BLE001
-        LOGGER.warning("CUSTOMER_PORTAL_DATA_SCAN_FAILED type=%s", type(exc).__name__)
-        return 1
-    if suspects:
-        LOGGER.warning(
-            "CUSTOMER_PORTAL_INTERNAL_REVIEW count=%s sample=%s",
-            len(suspects), suspects[:5],
-        )
-    return len(suspects)
-
-
 def load_customer_dashboard(principal: CustomerPrincipal, *, db: Any = None) -> CustomerDashboardView:
     """Load only PUBLISHED, approved, version-pinned cards for this customer."""
     if (not isinstance(principal, CustomerPrincipal)
@@ -253,8 +209,8 @@ def load_customer_dashboard(principal: CustomerPrincipal, *, db: Any = None) -> 
         raise PortalAccessDenied()
     database = _resolve_db(db)
     _assert_principal_still_allowed(database, principal)
-    known_customer_ids = _known_customer_ids(database)
-    data_issues = _scan_data_integrity(database, known_customer_ids)
+    # Foreign shipment integrity must not affect customer-facing views.
+    data_issues = 0
     denied_lots = 0
     cards: list[PublicationCard] = []
 
@@ -273,8 +229,7 @@ def load_customer_dashboard(principal: CustomerPrincipal, *, db: Any = None) -> 
             continue
         shipment_id = clean_id(row.get("id"))
         shipment_customer_id = clean_id(row.get("customer_id"))
-        if (not shipment_id or shipment_customer_id != principal.customer_id
-                or shipment_customer_id not in known_customer_ids):
+        if not shipment_id or shipment_customer_id != principal.customer_id:
             data_issues += 1
             LOGGER.warning(
                 "CUSTOMER_PORTAL_SHIPMENT_REJECTED shipment_id=%s reason=customer_id_invalid",
