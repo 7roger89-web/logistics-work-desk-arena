@@ -128,6 +128,25 @@ streamlit run app.py
 - Trên máy Owner đang có instance production ở port `8501`/`8510`: khi chạy dev/test
   UI, mở port khác, ví dụ `streamlit run app.py --server.port 9501`, và tắt khi xong.
 
+### 4.1. Bootstrap dữ liệu demo cho clone mới (không cần secret)
+
+```bash
+python scripts/demo_bootstrap.py
+```
+
+Script idempotent, chỉ chạy ở chế độ không có `MONGO_URI` thật (tự chặn nếu phát
+hiện URI thật để không đụng production) và tái dùng đúng cơ chế của app:
+
+- tạo `demo_bootstrap/data/tariff.db` rỗng qua `scripts/initialize_tariff_db.py`;
+- sinh placeholder GNT/MA_NGAN_SACH/DOCX có gắn nhãn demo trong
+  `demo_bootstrap/templates/` — **không** nối vào `DOCGEN_TEMPLATE_DIR`, nên docgen
+  vẫn fail-closed với `TEMPLATE_ASSET_STORAGE_OWNER_GATE` cho đến khi Owner đặt
+  template pháp lý thật;
+- cài transport staging `mongomock` cô lập và seed dữ liệu mẫu đúng schema thật
+  (khách hàng, hợp đồng, báo giá, lô hàng...) qua `views.logi_sandbox`;
+- in sẵn hướng dẫn chạy tiếp. Sau đó `streamlit run app.py` mở được app với dữ
+  liệu mẫu; artifact nằm trong `demo_bootstrap/` (đã gitignore).
+
 ---
 
 ## 5. Build component (chỉ khi sửa UI vỏ)
