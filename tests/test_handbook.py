@@ -239,11 +239,22 @@ def test_no_authoring_or_search_surface_was_added():
     from views import logi_view_model as vm
 
     # The page needs no server-side action: no event, no writer, no index.
-    assert not any(
-        token in name
+    # Meaning: NO event belongs to the handbook surface. Event names are
+    # snake_case, so match whole name TOKENS, never raw substrings — the old
+    # substring scan false-matched two pre-existing, unrelated surfaces:
+    #   * ``notebooklm_registry_save`` — token ``notebooklm`` (the NotebookLM
+    #     registry integration), NOT a ``note``/team-notes authoring event;
+    #   * ``docgen_template_publish`` — publishing a docgen template, NOT
+    #     publishing handbook content (an article-publish event would carry a
+    #     handbook-domain token below, e.g. ``article_publish``).
+    # ``handbook_save`` / ``note_create`` still trip this guard (falsified).
+    _HANDBOOK_DOMAIN_TOKENS = {"handbook", "note", "notes", "knowledge", "article", "articles"}
+    offenders = [
+        name
         for name in vm.ALL_EVENTS
-        for token in ("note", "handbook", "knowledge", "article", "publish")
-    )
+        if _HANDBOOK_DOMAIN_TOKENS & set(name.split("_"))
+    ]
+    assert not offenders, offenders
     projection = hb.handbook_projection(field_paths={})
     assert "search" not in projection
     assert not any("index" in section for section in projection)

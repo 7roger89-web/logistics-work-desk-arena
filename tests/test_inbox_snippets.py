@@ -482,9 +482,16 @@ def test_search_finds_note_beyond_page(staging):
     session = {"seq": 0}
     needle = _create(session, 1, "REQ-NEEDLE", "NEEDLE-501-SYN unique older snippet")
     assert needle["ok"]
+    ids = [needle["id"]]
     for index in range(500):
         out = _create(session, index + 2, f"REQ-FILL-{index}", f"H-TEST filler {index:04d}")
         assert out["ok"], out
+        ids.append(out["id"])
+    # 501 creates land within milliseconds, so raw created_at values tie and
+    # the ``created_at``-desc page order is non-deterministic (the inbox query
+    # has no id tie-break) — the needle could surface on page 1 by luck.
+    # Backdate deterministically (needle oldest) like the paging tests below.
+    _backdate_created(ids)
     model = vm.build_view_model()["inbox"]
     assert model["count"] >= 501
     assert len(model["snippets"]) <= 50

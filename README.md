@@ -225,4 +225,3 @@ Sự thật hiện trạng của bộ test (đừng tin tài liệu cũ, đừng
 - Thiếu `pyproject.toml` / `pytest.ini` / `ruff.toml`.
 - `requirements.txt` không lock, còn `streamlit-option-menu` nghi đã chết.
 - Repo ~189 MB nên clone chậm.
-- Chưa có file LICENSE.
