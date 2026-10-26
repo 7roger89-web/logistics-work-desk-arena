@@ -1,11 +1,34 @@
 from __future__ import annotations
-import streamlit as st
 import unittest
 from contextlib import ExitStack
 from pathlib import Path
 from unittest.mock import patch
 from streamlit.testing.v1 import AppTest
+
+#: Current entry point: ``app.py`` → ``views.web_app.main`` → the ONE
+#: Logi-good component shell over ``views.logi_view_model.build_view_model()``.
+#: The sales workspace is the React ``/kinh-doanh-bao-gia`` page
+#: (``component/src/pages/SalesQuotes.tsx``) fed by the ``quotes`` slice.
 APP_PATH = Path(__file__).resolve().parents[1] / "app.py"
+
+#: Quote intake contract the sales workspace form binds to — exactly the fields
+#: ``views.logi_c1.quote_projection`` publishes for every quote document.
+INTAKE_FORM_FIELDS = frozenset({
+    "id",
+    "quoteNo",
+    "customerId",
+    "salesOwner",
+    "origin",
+    "destination",
+    "incoterm",
+    "transportMode",
+    "goodsDescription",
+    "expectedDeliveryDate",
+    "serviceLines",
+    "status",
+    "allowedTransitions",
+})
+
 
 def _login_fixture(user):
     """Set the login fixture user into the Streamlit session and return it."""
@@ -13,37 +36,44 @@ def _login_fixture(user):
     st.session_state.current_user = user
     return user
 
+
 class LogC12HostNativeRuntimeTests(unittest.TestCase):
     def test_sales_workspace_mounts_and_exposes_intake_form(self):
+        rendered: dict = {}
+
+        def _sales_login():
+            return (_login_fixture({"username": "fixture", "display_name": "Fixture",
+                                    "role": "sale"}), {"username": "fixture",
+                                                       "display_name": "Fixture",
+                                                       "role": "sale"})[-1]
+
         app = AppTest.from_file(str(APP_PATH), default_timeout=60)
-        app.session_state.active_page = "Kinh doanh & Báo giá"
-        app.session_state.db_customers = {
-            "CUS-FIXTURE": {"id": "CUS-FIXTURE", "name": "Fixture Customer"},
-        }
-        app.session_state.db_quotes = {}
-        app.session_state.db_rate_cards = {}
-        app.session_state.db_shipments = {}
-        app.session_state.data_loaded = True
-        # Approved Vietnamese navigation label: "Kinh doanh & Báo giá" — the
-        # workspace must still mount under it. Patches stay alive for ALL runs
-        # (click triggers a rerun that must also be covered).
         with ExitStack() as stack:
-            stack.enter_context(patch("views.web_app.require_login", side_effect=lambda: (_login_fixture({"display_name": "Fixture", "role": "SALE"}), {"display_name": "Fixture", "role": "SALE"})[-1]))
-            stack.enter_context(patch("views.web_app.has_permission", return_value=True))
-            stack.enter_context(patch("core.database.init_connection", return_value=None))
-            stack.enter_context(patch("views.web_app.refresh_core_data", return_value=None))
-            stack.enter_context(patch("views.quotations.load_quotes", return_value={}))
-            stack.enter_context(patch("views.quotations.load_customers", return_value=app.session_state.db_customers))
+            # The approved sales workspace (\"Kinh doanh & Báo giá\" → the
+            # ``/kinh-doanh-bao-gia`` component route) must mount for a SALE
+            # session and the ONE render must publish the quote intake payload.
+            stack.enter_context(patch("views.web_app.require_login", side_effect=_sales_login))
+            stack.enter_context(patch("views.logi_shell.render",
+                                      side_effect=lambda vm: rendered.update(vm)))
             app.run()
             self.assertFalse(app.exception)
-            sales_nav = next((item for item in app.button if "sale" in str(item.key).lower() or "b_o_gi" in str(item.key).lower()), None)
-            self.assertIsNotNone(sales_nav)
-            sales_nav.click()
-            app.run()
-            self.assertFalse(app.exception)
-        self.assertIn("new_quote_save", {item.key for item in app.button})
-        self.assertIn("new_quote_goods", {item.key for item in app.text_input})
-        self.assertIn("new_quote_bank_pct", {item.key for item in app.number_input})
-        self.assertIn("new_quote_swift", {item.key for item in app.number_input})
+
+        self.assertEqual(rendered["user"]["role"], "SALE")
+        # Customer picker of the intake form.
+        self.assertTrue(rendered["customers"], "sales intake needs the customer reader")
+        self.assertTrue(
+            all({"id", "name"} <= set(customer) for customer in rendered["customers"]),
+        )
+        quotes = rendered["quotes"]
+        self.assertTrue(quotes, "fresh quote reader must populate the sales workspace")
+        for quote in quotes:
+            self.assertTrue(
+                INTAKE_FORM_FIELDS <= set(quote),
+                f"quote {quote.get('id')!r} is missing intake-form fields: "
+                f"{sorted(INTAKE_FORM_FIELDS - set(quote))}",
+            )
+            self.assertTrue(quote["source"].startswith("core.database.load_quotes"))
+
+
 if __name__ == "__main__":
     unittest.main()

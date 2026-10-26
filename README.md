@@ -149,7 +149,15 @@ npm run build
 
 Ma trận phân quyền duy nhất nằm ở `core/auth.py` (`ROLE_PERMISSIONS`), gồm đủ
 **7 role**: `admin`, `sale`, `support`, `accounting`, `operations`, `sales`,
-`viewer` (fallback chỉ-đọc). Trong đó `accounting` / `operations` / `sales` là
+`viewer` (fallback chỉ-đọc).
+
+Chỉ có **3 role** tạo/gán được từ UI (`admin`, `sale`, `support` — theo
+`core/users.SUPPORTED_ROLES`); 4 role còn lại (`accounting`, `operations`,
+`sales`, `viewer`) chỉ tồn tại cho legacy/tương thích ngược và làm fallback,
+KHÔNG tạo được user mới với chúng. `views/user_access.py` đã hiển thị đúng
+phân biệt này (`roles.assignable` vs `roles.legacy`).
+
+Trong đó `accounting` / `operations` / `sales` là
 **tên role cũ được giữ để tương thích ngược** (với entry `secrets.toml` cũ và
 test fixture cũ) — không phải nhóm quyền mới; role chưa biết luôn rơi về
 `viewer`.
