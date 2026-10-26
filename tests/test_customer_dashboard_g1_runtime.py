@@ -217,7 +217,7 @@ def test_oauth_return_renders_only_own_publication_cards(seed_module):
         assert seed_module.FOREIGN_SENTINEL not in visible
         for sentinel in seed_module.INTERNAL_SENTINELS:
             assert sentinel not in visible
-        assert "Phát hiện lỗi dữ liệu công bố" in visible
+        assert "Phát hiện lỗi dữ liệu công bố" not in visible
         assert "bị từ chối công bố" in visible
         _click(app, "customer_portal_detail_0")
         detailed = _visible_text(app)
