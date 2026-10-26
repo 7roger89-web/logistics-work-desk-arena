@@ -7,6 +7,8 @@ phân quyền, biểu thuế, đối soát.
   component là UI vỏ (`component/`).
 - **Dữ liệu:** MongoDB là nguồn sự thật. `st.session_state` chỉ là cache theo phiên.
 - **Entry point:** `app.py`.
+- **License:** All rights reserved — repo chưa phát hành giấy phép mở và cố ý
+  không kèm file LICENSE (quyết định Owner, 2026-10-26).
 
 **Đây là tài liệu cài đặt DUY NHẤT.** `README_HOTFIX.md`, `README_UPGRADE.md`,
 `ROUTER_HOTFIX.md`, `BUILD_REPORT.md` là hồ sơ lịch sử — đọc khi cần truy vết, không
