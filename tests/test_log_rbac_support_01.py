@@ -182,18 +182,38 @@ class SupportContractPersistenceTests(TestCase):
         self.assertEqual(db.audit_logs.docs, {})
 
     def test_support_route_visibility_keeps_admin_only_user_route_hidden(self) -> None:
-        from views.web_app import _visible_routes
+        # The Streamlit route registry this test used to import — ``ROUTES`` and
+        # ``_visible_routes()`` in views.web_app — no longer exists, and it must
+        # not be re-created: the whole visible shell is ONE Components-v2 React
+        # root (views.logi_shell), so Streamlit no longer owns a route list to
+        # filter per role. What the old assertion was really testing is which
+        # route-level permissions each role holds, and that truth still lives in
+        # exactly one place: the ROLE_PERMISSIONS matrix in core.auth, which is
+        # also the matrix every mounted component action is authorized against
+        # server-side. So the same five assertions are kept, sourced from the
+        # matrix instead of from a second, dead route registry.
+        from core.auth import ROLE_PERMISSIONS, has_permission
+
+        # Route-permission vocabulary the shell pages need: every permission any
+        # non-wildcard role can hold, plus the admin-only marker.
+        employee_permissions = {
+            permission
+            for role, permissions in ROLE_PERMISSIONS.items()
+            if role != "admin"
+            for permission in permissions
+        }
+        vocabulary = employee_permissions | {"admin"}
+
+        def visible_permissions() -> set[str]:
+            return {permission for permission in vocabulary if has_permission(permission)}
 
         with self._with_user(SUPPORT):
-            support_permissions = {route.permission for route in _visible_routes()}
+            support_permissions = visible_permissions()
         with self._with_user(SALE):
-            sale_permissions = {route.permission for route in _visible_routes()}
+            sale_permissions = visible_permissions()
         with self._with_user(ADMIN):
-            admin_permissions = {route.permission for route in _visible_routes()}
+            admin_permissions = visible_permissions()
 
-        from views.web_app import ROUTES
-
-        employee_permissions = {route.permission for route in ROUTES if route.permission != "admin"}
         self.assertTrue(employee_permissions.issubset(support_permissions))
         self.assertTrue({"contracts", "customers", "shipment_create", "receivables"}.issubset(support_permissions))
         self.assertNotIn("admin", support_permissions)
@@ -305,21 +325,45 @@ class SupportContractMountedUiTests(TestCase):
         st.session_state.current_user = dict(SUPPORT)
         return dict(SUPPORT)
 
+    @staticmethod
+    def _with_user(user):
+        return patch("core.auth.st", type("AuthStreamlit", (), {"session_state": {"current_user": user}})())
+
     def test_support_contract_form_is_mounted_and_save_control_is_enabled(self) -> None:
-        db = _Database()
-        with patch("views.web_app.require_login", side_effect=self._login), \
-             patch("views.web_app.refresh_core_data", return_value=None), \
-             patch("views.dashboard.cached_load_data", return_value={}), \
-             patch("views.dashboard.load_tasks", return_value=[]), \
-             patch("views.contracts.load_proxy_payments", return_value={}), \
-             patch("views.contracts.load_entrustments", return_value={}), \
-             patch("core.database.get_db", return_value=db):
+        """The ONE mounted shell renders for support and its contract save is enabled.
+
+        This test used to click the Streamlit sidebar button "Hợp Đồng" and then
+        look for a Streamlit button "🚀 Lưu hợp đồng". Neither can exist any
+        more: the entire visible shell (routes included) is ONE Components-v2
+        React root mounted by views.logi_shell.render, so Streamlit renders no
+        route button and no save button — the route is resolved inside the React
+        app and the save control lives in component/src/pages/ContractDetail.tsx.
+        Those two lookups therefore asserted the transport, not the behaviour,
+        and the patches for views.web_app.refresh_core_data / views.dashboard.*
+        named symbols that no longer exist either.
+
+        The equivalent assertions that still hold, with the real RBAC boundary
+        intact:
+          1. the shell MOUNTS for a support session without raising;
+          2. the save control is wired — its event name is in the bounded
+             component event set Python accepts;
+          3. the save control is ENABLED for support. The React control has no
+             ``disabled`` state: it always dispatches ``contract_save`` and the
+             server answers, so the server's answer *is* the control's enabled
+             state. ``core.auth.can_edit_contract()`` is the exact gate that
+             ``views.logi_c1._handle_contract_save`` re-checks before writing,
+             so asserting it directly replaces the old ``disabled`` check
+             (True for support, False for viewer).
+        """
+        with patch("views.web_app.require_login", side_effect=self._login):
             app = AppTest.from_file(str(self.APP_PATH), default_timeout=60)
             app.run()
             self.assertEqual(list(app.exception), [])
-            route_button = next(button for button in app.sidebar.button if "Hợp Đồng" in button.label)
-            route_button.click()
-            app.run()
-            self.assertEqual(list(app.exception), [])
-            save_button = next(button for button in app.button if button.label == "🚀 Lưu hợp đồng")
-            self.assertFalse(save_button.disabled)
+
+        from views import logi_view_model
+
+        self.assertIn("contract_save", logi_view_model.ALL_EVENTS)
+        with self._with_user(SUPPORT):
+            self.assertTrue(can_edit_contract())
+        with self._with_user(VIEWER):
+            self.assertFalse(can_edit_contract())
