@@ -177,3 +177,33 @@ thật; config chỉ nằm trong `.streamlit/secrets.toml` gitignored.
 Next step (ngoài phạm vi G1 hiện tại, chỉ khi Owner cho phép): chạy lượt OIDC
 live staging đó, chụp màn hình thật, rồi mới quyết định bật production. Không
 làm phase 2, không tải tài liệu, không mở rộng role.
+
+## 7. G1 customer-only integrity hotfix (2026-10-26)
+
+- **Finding:** the customer read path previously scanned the entire `shipments`
+  collection to report missing/unknown `customer_id`. That could surface a
+  generic error warning for customer A due solely to records belonging to
+  customer B or with no owner. No foreign shipment details were directly
+  included in the public cards, but the customer UI still reflected foreign
+  data quality.
+- **Correction:** `core/customer_portal.py` no longer performs the global
+  integrity scan on customer dashboard reads. It only queries shipments by
+  the authenticated `principal.customer_id`; allowlisted, published,
+  version-pinned data and owner-email revalidation stay intact. Any global
+  ownership-data audit belongs to the *internal* operational lane, not to
+  customer-rendering code.
+- **Regression specifications:**
+  `test_foreign_data_errors_do_not_change_customer_dashboard` adds malformed
+  foreign/unowned shipments and demands an identical customer A view;
+  `test_unowned_shipment_is_not_matched_by_customer_name` retains rejection of
+  ownerless lots; AppTest now demands *no foreign-data integrity warning*.
+- **Verification boundary:** the prior 70 targeted passes / baseline with 35
+  failures in section 4 belong to the ORIGINAL G1 commit `1a3f627c`, **not**
+  to this follow-up repair. GitHub branch diff and scoped source checks were
+  verified, but pytest and live browser/OIDC were **not run** in this ChatGPT
+  executor environment (repository checkout and Python dependencies absent).
+  A capable executor must rerun targeted tests and the repo's baseline/full
+  suite comparison before accepting this repair as fully tested. Do not
+  represent these previous test totals as results of the new branch HEAD.
+- **Scope:** still staging only; no production writes, Drive-sharing changes,
+  PR #211 edits, merge or deployment.
