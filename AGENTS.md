@@ -59,14 +59,15 @@ This applies to NEW_CHAT and SAME_CHAT prompts for Arena, Codex, Manus, reviewer
 
 ## Testing
 
-- Full suite: `python -m pytest tests -q`. Số test pass/skip thay đổi theo thời gian — báo con số thực tế của lần chạy kèm commit; không dẫn số cũ trong tài liệu.
+- Full suite: `python -m pytest tests -q`. Bộ test có ~130+ file (`test_*.py`, hiện tại 144 file) và suite **ĐANG ĐỎ CÓ CHỦ Ý** — một tập FAILED/ERROR đã biết được giữ làm backlog sống. Không hard-code số pass vào tài liệu; báo con số thực tế của lần chạy kèm commit, không dẫn số cũ.
+- Quy trình bắt buộc: chạy full suite 1 lần TRƯỚC khi sửa để lấy baseline tập FAILED/ERROR, chạy lại SAU khi sửa và so — thay đổi đúng phải giữ nguyên tập FAILED/ERROR cũ và chỉ thêm test mới. Tham chiếu lịch sử đã biết: ~1492–1541 passed / 24 failed, xem `CHANGELOG.md`. Nếu HEAD có file lỗi ngay khi collection, dùng `--continue-on-collection-errors` để lấy baseline trọn suite.
 - Tests runtime cần Streamlit/Mongo thực được skip theo thiết kế — không cố sửa chúng thành chạy được.
 - Auth/RBAC: `tests/test_logc15_auth_rbac.py` (pure, mock streamlit).
 - DB users: `scripts/logc15_db_users_test.py` + runner — chạy trên DB test riêng, tự dọn.
 
 ## Quyền (ma trận duy nhất: core/auth.py ROLE_PERMISSIONS)
 
-admin=`*`, sale=sales_write + commercial_write + shipment_create + ops + knowledge + customers + tracking + tariff + commercial_view..., support=commercial_view + ops + finance_view + customers + tracking..., viewer=fallback read-only.
+admin=`*`, sale=sales_write + commercial_write + shipment_create + ops + knowledge + customers + tracking + tariff + commercial_view..., support=commercial_view + ops + finance_view + customers + tracking..., viewer=fallback read-only. `ROLE_PERMISSIONS` liệt kê đủ **7 role**: admin, sale, support, accounting, operations, sales, viewer — trong đó accounting/operations/sales là tên role cũ giữ tương thích ngược (entry secrets.toml cũ + test fixture cũ); role lạ luôn rơi về viewer.
 
 ## Bootstrap
 

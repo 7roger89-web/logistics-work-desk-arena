@@ -44,8 +44,13 @@ data/*.db
 *.bak
 *.backup
 
-# Machine-specific agent/editor state
-.agents/
+# Machine-specific agent/editor state.
+# NOTE: .agents/skills/** IS tracked in this repo (P2P skill projection +
+# vendored skills), so we must ignore the CONTENTS of .agents/ instead of the
+# directory itself, then re-include the tracked projection. A plain `.agents/`
+# hides every newly added skill file from `git add .`.
+.agents/*
+!.agents/skills/
 .claude/
 .codex/
 .anvien/
