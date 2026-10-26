@@ -54,6 +54,12 @@ App đọc cấu hình theo thứ tự ưu tiên (nguồn đầu tiên có giá 
 Chỉ cần chọn **một** kênh. Cả hai file mẫu đã liệt kê đúng tên biến/section mà
 code thực tế đọc; khi thêm biến mới vào `core/config.py`, cập nhật cả hai file mẫu.
 
+> **Cảnh báo — `secrets.toml` viết theo tên cũ:** ai đang giữ
+> `.streamlit/secrets.toml` dùng tên cũ (`[mongodb]`, `[google]`, `MONGODB_URI`)
+> thì phải đổi sang tên hiện hành `[mongo]`, `[gemini]`, `MONGO_URI` — nếu không
+> app sẽ báo thiếu cấu hình dù file secrets vẫn tồn tại (code chỉ đọc tên mới;
+> xem `.streamlit/secrets.toml.example`).
+
 | Việc cần cấu hình | Biến môi trường | `secrets.toml` | Ghi chú |
 |---|---|---|---|
 | MongoDB URI | `MONGO_URI` | `[mongo].uri` | Không đặt → staging `mongomock` (mục 7) |
@@ -81,6 +87,21 @@ Kiểm tra cấu hình đã nạp đúng mà không lộ giá trị bí mật:
 ```bash
 python scripts/check_config.py
 ```
+
+---
+
+## File nghiệp vụ ngoài repo (KHÔNG có trong git)
+
+Các file nghiệp vụ sau **không nằm trong git** (dữ liệu thật / template pháp lý
+local-only). Thiếu file nào thì tính năng tương ứng **không chạy được**:
+
+| File | Biến đường dẫn | Cách tạo / khôi phục |
+|---|---|---|
+| `tariff.db` (biểu thuế SQLite) | `TARIFF_DB_PATH` / `[paths].tariff_db` | `python scripts/initialize_tariff_db.py` (tạo file rỗng tương thích) hoặc upload qua màn hình Admin |
+| `GNT_MAU.xlsx` (template GNT) | `GNT_TEMPLATE_PATH` | File local trên máy Owner — không bao giờ commit bản đã điền dữ liệu |
+| `MA_NGAN_SACH.xlsx` (mã ngân sách) | `TREASURY_FILE_PATH` | File local trên máy Owner — không bao giờ commit bản đã điền dữ liệu |
+| `entrustment_database.json`, `knowledge_base.json`, `cbpg_saved_data.json` (dữ liệu JSON cũ ở gốc repo) | đường dẫn gốc repo, đọc bởi script | `python scripts/migrate_local_data.py` — idempotent (upsert theo id, chạy lại nhiều lần an toàn) |
+| Template DOCX/XLSX cho docgen (`HDMB` / `pl` / `pxk`...) | `DOCGEN_TEMPLATE_DIR` | Thư mục template local của Owner; thiếu thì luồng docgen fail-closed và báo **Owner gate**, không tự chế template |
 
 ---
 
@@ -126,8 +147,12 @@ npm run build
 | `docs/` | Kiến trúc, policy, hồ sơ/handoff các đợt việc |
 | `data/` | Dữ liệu tham chiếu local (vd `tariff.db`) — file DB đã có dữ liệu **không** commit |
 
-Ma trận phân quyền duy nhất nằm ở `core/auth.py` (`ROLE_PERMISSIONS`):
-`admin`, `sale`, `support`, `viewer` (fallback chỉ-đọc).
+Ma trận phân quyền duy nhất nằm ở `core/auth.py` (`ROLE_PERMISSIONS`), gồm đủ
+**7 role**: `admin`, `sale`, `support`, `accounting`, `operations`, `sales`,
+`viewer` (fallback chỉ-đọc). Trong đó `accounting` / `operations` / `sales` là
+**tên role cũ được giữ để tương thích ngược** (với entry `secrets.toml` cũ và
+test fixture cũ) — không phải nhóm quyền mới; role chưa biết luôn rơi về
+`viewer`.
 
 ---
 
@@ -153,9 +178,23 @@ Ma trận phân quyền duy nhất nằm ở `core/auth.py` (`ROLE_PERMISSIONS`)
 python -m pytest tests -q
 ```
 
-Một số test cần Streamlit/MongoDB thật được **skip theo thiết kế** khi chạy ở chế
-độ thuần (pure). Số lượng test pass/skip thay đổi theo thời gian — luôn báo con số
-thực tế của lần chạy kèm commit, không dựa vào số cũ ghi trong tài liệu.
+Sự thật hiện trạng của bộ test (đừng tin tài liệu cũ, đừng tin con số hard-code):
+
+- Bộ test có ~130+ file (`test_*.py`, hiện tại là 144 file — con số trôi theo thời
+  gian) và suite **ĐANG ĐỎ CÓ CHỦ Ý**: một tập FAILED/ERROR đã biết được giữ
+  nguyên như backlog sống. **Không hard-code số test pass vào tài liệu.**
+- Quy trình bắt buộc khi sửa bất cứ thứ gì: chạy **full suite 1 lần TRƯỚC** khi
+  sửa để lấy baseline danh sách FAILED/ERROR, rồi chạy lại **SAU** khi sửa và so
+  sánh — một thay đổi đúng phải **giữ nguyên tập FAILED/ERROR cũ** và chỉ thêm
+  test mới (pass). Số pass tăng mà tập fail đổi shape = có regression.
+- Lịch sử đã biết để đối chiếu: ~**1492–1541 passed / 24 failed** (xem
+  `CHANGELOG.md`); tập failed thực tế có thể đã lớn hơn ở HEAD hiện tại — luôn
+  báo con số của lần chạy kèm commit.
+- Test cần Streamlit/MongoDB **thật** được **skip theo thiết kế** khi chạy ở chế
+  độ thuần (pure) — không cố sửa chúng thành chạy được.
+- Một số file test có thể lỗi ngay ở bước collection trên HEAD hiện tại (ví dụ
+  import symbol không còn tồn tại); khi lấy baseline dùng
+  `--continue-on-collection-errors` để phần còn lại của suite vẫn chạy.
 
 ---
 
@@ -166,3 +205,16 @@ thực tế của lần chạy kèm commit, không dựa vào số cũ ghi trong
 - Không commit `.env`, `.streamlit/secrets.toml`, khóa service account
   (`google_key.json`, `*.pem`...) hay database đã có dữ liệu — `.gitignore` đã chặn
   sẵn; nếu `git status` vẫn hiện các file này thì dừng lại và kiểm tra trước khi commit.
+
+---
+
+## Khoảng trống đã biết
+
+- LICENSE chưa có (GitHub báo `license: null`).
+- Không có repo description và topics.
+- `.agents/` bị ignore một phần nên file mới thêm vào đó vô hình với `git add .`.
+- 258 branch, 1 tag, 25 open issue.
+- Thiếu `pyproject.toml` / `pytest.ini` / `ruff.toml`.
+- `requirements.txt` không lock, còn `streamlit-option-menu` nghi đã chết.
+- Repo ~189 MB nên clone chậm.
+- Chưa có file LICENSE.
