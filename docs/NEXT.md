@@ -1,3 +1,21 @@
+VỊ TRÍ: main
+BASE_SHA: ee31b0f3344cd9b23c39c01a8d14b7581ffa0d23
+
+> BASE_SHA đầu file là commit main ngay sau khi merge PR #220, trước commit cập nhật tài liệu này; không phải SHA tự tham chiếu của commit chứa file. Số liệu suite bên dưới vẫn thuộc baseline lịch sử a98884b, chưa chạy lại.
+
+## FALLBACK ĐỌC FILE
+
+Thử lần lượt khi URL raw trên main trả 404 (không kết luận file mất chỉ từ một URL):
+
+1. Raw main: https://raw.githubusercontent.com/7roger89-web/logistics-work-desk-arena/main/docs/NEXT.md
+2. GitHub main: https://github.com/7roger89-web/logistics-work-desk-arena/blob/main/docs/NEXT.md
+3. Contents API main: `gh api 'repos/7roger89-web/logistics-work-desk-arena/contents/docs/NEXT.md?ref=main' --jq .content | base64 -d`
+4. Git main: `git fetch origin main && git show origin/main:docs/NEXT.md`
+5. Nếu main thực sự chưa có file, đọc PR #220: `gh pr view 220 --json state,headRefName,mergeCommit`; dùng headRefName trả về để đọc Contents API với `ref=<headRefName>`. Bản nhánh phải ghi `VỊ TRÍ: nhánh <tên> — CHƯA MERGE`, không coi là bản main.
+6. Nếu nhánh PR đã bị xoá, lấy mergeCommit.oid từ bước 5 và đọc Contents API với `ref=<mergeCommit.oid>` hoặc `git show <mergeCommit.oid>:docs/NEXT.md`. Phân biệt lỗi mạng/quyền truy cập với HTTP 404; ghi lại cách đọc thực sự thành công.
+
+---
+
 # NEXT — Trạng thái bàn giao và việc tiếp theo
 
 Session: `LOG-NEXT-W1-BOOTSTRAP-HANDOFF`
@@ -116,3 +134,11 @@ Mỗi phiên append một entry mới ở cuối mục này. Không có entry = 
     - "Tài liệu bàn giao có sẵn số suite" — không dùng: mọi số liệu lấy từ lần đo này, không hard-code từ tài liệu cũ.
   - Còn lại: điều tra 18 test FAILED; xác minh raw URL khi có mạng.
   - Head sha: xem commit tương ứng trên nhánh `arena/19722cb4-logistics-work-desk-arena` (sha ghi trong PR).
+
+- [2026-10-26] SESSION LOG-NEXT-MAIN-RECOVERY — Đưa bàn giao lên main
+  - BASE_SHA: ee31b0f3344cd9b23c39c01a8d14b7581ffa0d23 (main ngay sau merge PR #220).
+  - Làm: xác nhận đủ TRẠNG THÁI / ĐO LẠI / VIỆC TIẾP THEO / LỊCH SỬ và template; undraft và merge PR #220; thêm VỊ TRÍ, BASE_SHA đầu file và chuỗi fallback; giữ nguyên mọi entry cũ.
+  - Đo được: không chạy lại suite (chỉ sửa docs); số liệu cũ không phải kết quả đo phiên này.
+  - Bị bác bỏ: không có; thông tin 404 và ràng buộc không merge trong entry bootstrap là lịch sử, không mô tả phiên này.
+  - Còn lại: điều tra 18 test FAILED theo baseline lịch sử; xác minh HTTP raw sau merge bản cập nhật.
+  - Head sha: xem commit cập nhật docs/NEXT.md và merge commit của PR kế tiếp #220 trên main.
