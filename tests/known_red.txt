@@ -1,0 +1,32 @@
+# Known-red registry — intentional FAILED/ERROR backlog ("đỏ có chủ ý").
+#
+# BASE_SHA=9e4190b278dd2ced8771c5249582753d34e561db (repo main, fetched fresh this session)
+# Source: hai lần chạy full suite tại BASE, tập FAILED giống hệt nhau, không có flip
+#         (run1: 18 failed/1948 passed/45 skipped trong 115.14s;
+#          run2: 18 failed/1948 passed/45 skipped trong 108.55s;
+#          pytest 9.1.1, Python 3.11.2, Ubuntu/Debian sandbox).
+# Quy tắc (scripts/check_known_red.py đọc file này):
+#   - FAILED/ERROR mới không có trong danh sách => gate FAIL (exit 1).
+#   - Nodeid trong danh sách nay pass => in DRIFT, không fail cứng; cập nhật lại file này
+#     trong chính PR sửa test đó.
+#   - Nodeid flaky (lúc đỏ lúc xanh ở BASE) thuộc tests/known_flaky.txt, không nhét vào đây.
+# Mỗi dòng một nodeid pytest; dòng trống và dòng bắt đầu bằng '#' được bỏ qua.
+
+tests/test_agreements_api.py::LoadAgreementsTests::test_load_agreements_returns_dict_from_load_dict
+tests/test_all_tabs_smoke.py::AllTabsSmokeTest::test_all_routes_render
+tests/test_inbox_snippets.py::test_dom_acceptance_inbox_desktop_and_mobile
+tests/test_intl_payment_comparator.py::ProvenanceImmutabilityTest::test_snapshot_immutability_via_mongomock_if_available
+tests/test_lg08_1_safety.py::test_identity_gate_enforcement
+tests/test_lg08_1_safety.py::test_production_identity_pass
+tests/test_logc15_auth_rbac.py::TestRoleMatrix::test_unknown_role_falls_back_to_viewer
+tests/test_logi_cn_truck_type_persist_01.py::test_whitelist_gained_exactly_the_one_approved_key
+tests/test_logi_finance_actual_entry_parity_01.py::test_service_catalog_is_not_hardcoded_in_react
+tests/test_logi_finance_actual_entry_parity_01.py::test_service_catalog_is_projected_from_core_config
+tests/test_logi_interaction_latency_repair_01.py::InteractionLatencyRepairTests::test_adversarial_reverting_to_baseline_produces_double_build_and_rerun
+tests/test_logi_interaction_latency_repair_01.py::InteractionLatencyRepairTests::test_duplicate_trigger_in_same_prefix_batch_does_not_double_dispatch
+tests/test_logi_shipment_operational_data_v1.py::test_lightweight_create_starts_one_canonical_leg_and_navigable_detail_data
+tests/test_login_visual_compact.py::test_bootstrap_path_still_reachable_with_hero
+tests/test_phase_a_component.py::test_view_model_shape_via_app
+tests/test_phase_b_real_data.py::test_pxk_operator_identity_generates_persisted_office_file
+tests/test_session_truth_repair.py::test_bootstrap_first_admin_flow_still_runs_with_no_session_and_no_users
+tests/test_shipment_slash_route_repair_01.py::TestBackendRouteProducers::test_primary_action_composes_encoded_segment_then_query_then_anchor

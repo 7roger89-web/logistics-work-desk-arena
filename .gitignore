@@ -27,6 +27,7 @@ htmlcov/
 # Generated test/browser artifacts
 test-results/
 playwright-report/
+/report.xml
 
 # Local data and backups
 tariff.db
