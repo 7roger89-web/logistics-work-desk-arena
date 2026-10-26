@@ -2,6 +2,8 @@
 # literal shell (LOGI-GOOD-V6). Official floor: streamlit >= 1.51.
 # Verified in recovery: 1.63.0.
 streamlit>=1.51,<2
+# Required by Streamlit st.login()/st.logout()/st.user Google OIDC.
+Authlib>=1.3.2
 streamlit-option-menu>=0.4,<1
 pymongo[srv]>=4.10,<5
 pandas>=2.2,<3

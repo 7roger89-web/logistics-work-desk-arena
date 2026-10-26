@@ -114,6 +114,14 @@ def ui_customers():
     # ==========================================
     if db_customers:
         df_display = pd.DataFrame(db_customers.values())
+        # G1: email portal là cấu hình Owner cho phép trên chính hồ sơ
+        # customers. Email liên hệ KHÔNG tự động cấp quyền. Cột này chỉ đọc
+        # trong bảng cũ; Owner/Admin cấp/thu hồi qua control riêng.
+        if "portal_access_email" not in df_display.columns:
+            df_display["portal_access_email"] = ""
+        else:
+            df_display["portal_access_email"] = df_display["portal_access_email"].fillna("")
+        st.caption("Email portal do Owner/Admin cấp riêng; mặc định không có quyền truy cập.")
         
         st.markdown(f"**Tổng số khách hàng:** {len(df_display)}")
         
@@ -128,6 +136,7 @@ def ui_customers():
                 "name": st.column_config.TextColumn("Tên Khách Hàng", required=True),
                 "phone": "Điện thoại",
                 "email": "Email",
+                "portal_access_email": st.column_config.TextColumn("Email portal (Owner)", disabled=True),
                 "contact_person": "Người liên hệ",
                 "tax_code": "Mã số thuế",
                 "address": "Địa chỉ",
@@ -146,6 +155,9 @@ def ui_customers():
                 payload = row.to_dict()
                 payload["id"] = cid
                 payload["name"] = name
+                # Không cho bảng chỉnh sửa hàng loạt ghi đè cấu hình portal.
+                # Owner/Admin thay đổi field này qua core.customer_portal.
+                payload.pop("portal_access_email", None)
                 if not save_customer_to_cloud(payload):
                     errors.append(f"Không lưu được {cid}.")
             if errors:

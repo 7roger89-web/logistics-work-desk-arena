@@ -208,6 +208,46 @@ Sự thật hiện trạng của bộ test (đừng tin tài liệu cũ, đừng
 
 ---
 
+## 10. Customer Dashboard G1 (chỉ staging, read-only)
+
+G1 là **một nhánh giao diện trong cùng entrypoint** `web_app.py` /
+`views/web_app.py` — không phải app thứ hai, không server HTTP mới. Admin và
+Support Sale vẫn đăng nhập nội bộ và dùng React shell như cũ; luồng Google OIDC
+chỉ chạy sau khi người dùng bấm **“Đăng nhập khách hàng bằng Google”** hoặc khi
+Streamlit quay lại từ `/oauth2callback`.
+
+- `requirements.txt` đã thêm `Authlib>=1.3.2` cho `st.login()` / `st.user` /
+  `st.logout()` của Streamlit. Cài lại bằng `pip install -r requirements.txt`.
+- Cấu hình OIDC nằm **duy nhất** trong `.streamlit/secrets.toml` (file local,
+  gitignored), theo mẫu `.streamlit/secrets.toml.example`: `[auth]` có
+  `redirect_uri` tuyệt đối tận cùng `/oauth2callback`, `cookie_secret` ngẫu
+  nhiên >=32 byte, và `[auth.google]` có `client_id`, `client_secret`,
+  `server_metadata_url`. Không đưa Client ID/Secret thật hay cookie secret vào
+  `.env`, source, test, PR hoặc README. Thiếu/cấu hình sai thì cổng khách hàng
+  đóng an toàn và không hiển thị dữ liệu.
+- Quyền portal **mặc định không có**. Email liên hệ trên profile `customers` là
+  thông tin liên lạc, không phải danh tính đăng nhập. Owner/Admin cấp tối đa
+  **một email portal** trên chính hồ sơ khách hàng (`portal_access_email`) qua
+  control trong UI nội bộ; email OIDC đã xác minh được đối chiếu server-side với
+  field này để suy ra `customers.id`. Không có bảng mapping mới, không có UI giả
+  lập danh tính trong production. Support không thấy control này.
+- Dữ liệu staging G1: thiết lập `ENV_IDENTITY=STAGING`,
+  `MONGO_DB_NAME=logistics_staging` (hoặc tên staging được allowlist),
+  `MONGO_URI` trỏ đúng database staging, rồi chạy
+  `python scripts/seed_customer_portal_staging.py --confirm-staging`. Script từ
+  chối `ENV_IDENTITY=PRODUCTION`, `logistics_db`, thiếu URI hoặc tên DB không
+  hợp lệ; fixture dùng email `.example` và không chứa credential thật.
+- Customer chỉ nhận thẻ lô đã công bố (mã lô, trạng thái “ĐÃ XÁC NHẬN”,
+  phiên bản duyệt, phương thức, thời điểm duyệt). Thông tin chi phí, lợi nhuận,
+  tài liệu nội bộ, view-model nội bộ hoặc dữ liệu khách B không đi vào customer
+  screen. G1 chưa tải tài liệu và chưa có phase 2.
+- Trạng thái trung thực tại bàn giao: `OIDC_LIVE=NOT_TESTED` và
+  `PRODUCTION_DEPLOY=NOT_DONE_BY_BOUNDARY`. Test staging dùng AppTest với claim
+  OIDC tổng hợp; cần một lượt Google OAuth thật trên môi trường staging có config
+  thật trước khi bật production. Xem `docs/CUSTOMER_DASHBOARD_G1_HANDOFF.md`.
+
+---
+
 ## Khoảng trống đã biết
 
 - LICENSE chưa có (GitHub báo `license: null`).
