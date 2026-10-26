@@ -20,6 +20,7 @@ __pycache__/
 .tmp_*
 .pytest_cache/
 .mypy_cache/
+.ruff_cache/
 .coverage
 htmlcov/
 
@@ -30,6 +31,10 @@ playwright-report/
 # Local data and backups
 tariff.db
 data/*.db
+# Machine-local template/reference workbooks app defaults point at (core/config.py).
+# Legal template binaries are local-only; never commit populated copies.
+/GNT_MAU.xlsx
+/MA_NGAN_SACH.xlsx
 .p2p/install-backups/
 *.rar
 *.zip
@@ -44,6 +49,12 @@ data/*.db
 .claude/
 .codex/
 .anvien/
+.idea/
+.vscode/
+
+# OS noise
+.DS_Store
+Thumbs.db
 
 # LOG-LG02 pre-release backups (owner's machine; never commit)
 backups/
@@ -51,4 +62,5 @@ docs/goals/LOG-LG02/backups/
 
 # Python venv / node deps (machine-specific; component/dist is committed)
 .venv/
-component/node_modules/
+venv/
+node_modules/
