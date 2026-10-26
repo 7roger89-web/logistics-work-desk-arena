@@ -154,13 +154,11 @@ Ma trận phân quyền duy nhất nằm ở `core/auth.py` (`ROLE_PERMISSIONS`)
 Chỉ có **3 role** tạo/gán được từ UI (`admin`, `sale`, `support` — theo
 `core/users.SUPPORTED_ROLES`); 4 role còn lại (`accounting`, `operations`,
 `sales`, `viewer`) chỉ tồn tại cho legacy/tương thích ngược và làm fallback,
-KHÔNG tạo được user mới với chúng. `views/user_access.py` đã hiển thị đúng
-phân biệt này (`roles.assignable` vs `roles.legacy`).
-
-Trong đó `accounting` / `operations` / `sales` là
-**tên role cũ được giữ để tương thích ngược** (với entry `secrets.toml` cũ và
-test fixture cũ) — không phải nhóm quyền mới; role chưa biết luôn rơi về
-`viewer`.
+KHÔNG tạo được user mới với chúng. Trong đó `accounting`, `operations`,
+`sales` là **tên role cũ được giữ để tương thích ngược** (với entry
+`secrets.toml` cũ và test fixture cũ) — không phải nhóm quyền mới; role chưa
+biết luôn rơi về `viewer`. `views/user_access.py` đã hiển thị đúng phân biệt
+này (`roles.assignable` vs `roles.legacy`).
 
 ---
 
@@ -225,4 +223,3 @@ Sự thật hiện trạng của bộ test (đừng tin tài liệu cũ, đừng
 - Thiếu `pyproject.toml` / `pytest.ini` / `ruff.toml`.
 - `requirements.txt` không lock, còn `streamlit-option-menu` nghi đã chết.
 - Repo ~189 MB nên clone chậm.
-- Chưa có file LICENSE.
