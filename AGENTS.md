@@ -59,6 +59,8 @@ If that profile cannot be read, apply this minimum capsule:
 
 admin=`*`, sale=sales_write + commercial_write + shipment_create + ops + knowledge + customers + tracking + tariff + commercial_view..., support=commercial_view + ops + finance_view + customers + tracking..., viewer=fallback read-only. `ROLE_PERMISSIONS` liệt kê đủ **7 role**: admin, sale, support, accounting, operations, sales, viewer — trong đó accounting/operations/sales là tên role cũ giữ tương thích ngược (entry secrets.toml cũ + test fixture cũ); role lạ luôn rơi về viewer.
 
+**Deprecation role legacy (Phase F, từ 2026-10-26):** 4 role `accounting`/`operations`/`sales`/`viewer` thuộc `core.auth.LEGACY_ROLES`: tài khoản/user cũ mang các role này VẪN đăng nhập và đọc quyền nguyên trạng (kèm `DeprecationWarning` một lần/process khi dùng), nhưng không tạo/gán mới được từ UI — chỉ 3 role trong `core.users.SUPPORTED_ROLES` (admin/sale/support) là assignable. Migration user cũ sang role mới là OPEN ITEM, không làm trong phase này; không tồn tại hệ quyền/router thứ hai.
+
 ## Bootstrap
 
 Chưa có user → app render form tạo Admin đầu tiên (không default credential). CLI: `python scripts/setup_first_user.py` (tương tác, mật khẩu không qua args).

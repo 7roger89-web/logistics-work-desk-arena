@@ -21,6 +21,7 @@ import hashlib
 import hmac
 import os
 import random
+import warnings
 from pathlib import Path
 from typing import Any
 
@@ -121,8 +122,38 @@ ROLE_PERMISSIONS: dict[str, set[str]] = {
 }
 
 
+# ---------------------------------------------------------------------------
+# Phase F — deprecation tường minh cho role legacy.
+# Bốn role này VẪN ĐỌC ĐƯỢC (ma trận quyền giữ nguyên cho user/secrets cũ) nhưng
+# không tạo/assign mới được từ UI vì không nằm trong core.users.SUPPORTED_ROLES.
+# Không migrate user trong phase này (xem OPEN ITEMS); không dựng hệ quyền thứ hai.
+LEGACY_ROLES = frozenset({"accounting", "operations", "sales", "viewer"})
+LEGACY_ROLE_DEPRECATION_DATE = "2026-10-26"
+_WARNED_LEGACY_ROLES: set[str] = set()
+
+
+def warn_legacy_role(role: str) -> None:
+    """Cảnh báo deprecation đúng một lần/process cho mỗi role legacy được dùng."""
+    normalized = str(role or "").lower()
+    if normalized not in LEGACY_ROLES or normalized in _WARNED_LEGACY_ROLES:
+        return
+    _WARNED_LEGACY_ROLES.add(normalized)
+    warnings.warn(
+        f"Role legacy '{normalized}' đã deprecated từ {LEGACY_ROLE_DEPRECATION_DATE}: "
+        "vẫn đọc được cho dữ liệu người dùng cũ nhưng không thể gán mới từ UI. "
+        "Migration sang admin/sale/support là OPEN ITEM, chưa thực hiện trong phase này.",
+        DeprecationWarning,
+        stacklevel=3,
+    )
+
+
+def is_legacy_role(role: str) -> bool:
+    return str(role or "").lower() in LEGACY_ROLES
+
+
 def _role_permissions(role: str) -> set[str]:
     normalized = str(role or "viewer").lower()
+    warn_legacy_role(normalized)
     return ROLE_PERMISSIONS.get(normalized, ROLE_PERMISSIONS["viewer"])
 
 
