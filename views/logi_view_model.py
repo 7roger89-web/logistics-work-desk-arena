@@ -2870,9 +2870,9 @@ def _handle_shipment_customer_save(payload: Mapping[str, Any]) -> dict[str, Any]
     it adds no field, no collection and no fallback name.
 
     Resolution mirrors ``_handle_shipment_create``: a known ``customerId`` wins
-    and its master name is what gets stored; a raw ``customer`` string is
-    accepted only when the operator typed it. Nothing is invented and a
-    mismatched picker never blanks the master data.
+    and its master name is what gets stored.  The canonical writer refuses a
+    free-text rename when the lot already has an ID; only legacy ID-less rows
+    may keep a typed historical name, and no ID is inferred from that name.
     """
     from core.auth import can_operate_business
     from core.database import get_last_db_error, load_customers, update_shipment_customer
@@ -4182,7 +4182,7 @@ def _handle_partner_payment_record(payload: Mapping[str, Any]) -> dict[str, Any]
 def _handle_shipment_create(payload: Mapping[str, Any]) -> dict[str, Any]:
     """Create Shipment via the existing creation logic; duplicate codes rejected."""
     from core.auth import can_operate_business
-    from core.database import get_last_db_error, load_customers, save_shipment_atomic
+    from core.database import get_last_db_error, save_shipment_atomic
     from core.database import get_db
     from core.logic import apply_financial_snapshot
     from core.validators import validate_shipment
@@ -4206,11 +4206,21 @@ def _handle_shipment_create(payload: Mapping[str, Any]) -> dict[str, Any]:
     if db is not None and db.shipments.find_one({"id": sid, "is_deleted": {"$ne": True}}):
         return _res(False, f"Mã lô {sid} đã tồn tại.")
 
-    customers = load_customers() or {}
-    customer_doc = customers.get(customer_id) if isinstance(customers.get(customer_id), Mapping) else {}
-    customer_name = rd.text(payload.get("customer")) or rd.text(customer_doc.get("name"))
+    if not customer_id:
+        return _res(False, "Vui lòng chọn khách hàng đang hoạt động trong danh bạ.")
+    # Validate against a fresh database read, not the 30-second render cache: a
+    # just-archived or deleted customer must never authorize this write.
+    customer_doc = db.customers.find_one(
+        {"id": customer_id, "is_deleted": {"$ne": True}}, {"_id": 0}
+    ) if db is not None else None
+    if not isinstance(customer_doc, Mapping):
+        return _res(False, f"Không có khách hàng {customer_id} đang hoạt động trong danh bạ.")
+    customer_name = rd.text(customer_doc.get("name"))
     if not customer_name:
-        return _res(False, "Vui lòng chọn khách hàng.")
+        return _res(False, f"Khách hàng {customer_id} chưa có tên trong danh bạ.")
+    # Directory identity is authoritative. Never persist a browser-supplied
+    # name beside this ID because that would create a contradictory link.
+    customer_id = rd.text(customer_doc.get("id")) or customer_id
 
     created_on = _normalize_date(payload.get("createdAt")) or __import__("datetime").date.today().strftime("%Y-%m-%d")
     transport = payload.get("transport") if isinstance(payload.get("transport"), Mapping) else {}

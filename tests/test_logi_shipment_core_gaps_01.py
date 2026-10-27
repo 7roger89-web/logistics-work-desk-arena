@@ -272,15 +272,79 @@ def test_lot_customer_refuses_unknown_and_empty_without_inventing(staging, event
     assert after.get("version") == before.get("version")
 
 
-def test_lot_customer_accepts_a_typed_name_exactly_like_create(staging, event_seq):
-    """Mirrors ``_handle_shipment_create``: a typed name is what the operator said."""
+def test_lot_with_customer_id_refuses_free_text_rename_without_mutation_or_audit(staging, event_seq):
+    """A free name may never contradict the customer ID already on the lot."""
+    from core.database import get_db
+
+    db = get_db()
+    assert db is not None
+    before = _stored("LO-0308")
+    audits_before = db.audit_logs.count_documents({
+        "entity_type": "shipment", "entity_id": "LO-0308", "action": "customer_updated",
+    })
+
     out = _dispatch(event_seq, "shipment_customer_save",
                     {"shipmentId": "LO-0308", "customer": "Khách tự gõ"})
-    assert out["ok"], out["error"]
-    fresh = _stored("LO-0308")
-    assert fresh["customer"] == "Khách tự gõ" == fresh["client"]
-    # No master match → no invented id: the stored id is left exactly as it was.
+
+    assert not out["ok"]
+    assert "gắn mã khách" in out["error"]
+    assert _stored("LO-0308") == before
+    assert db.audit_logs.count_documents({
+        "entity_type": "shipment", "entity_id": "LO-0308", "action": "customer_updated",
+    }) == audits_before
+
+
+def test_canonical_writer_ignores_typed_name_when_valid_customer_id_is_selected(staging):
+    from core.database import load_customers, update_shipment_customer
+
+    customers = load_customers() or {}
+    assert update_shipment_customer("LO-0306", "Tên giả từ browser", "CUST-MINHDUC")
+    fresh = _stored("LO-0306")
     assert fresh["customer_id"] == "CUST-MINHDUC"
+    assert fresh["customer"] == fresh["client"] == customers["CUST-MINHDUC"]["name"]
+    assert fresh["customer"] != "Tên giả từ browser"
+
+
+@pytest.mark.parametrize("customer_id,archive_first", [
+    ("CUST-KHONGCO", False),
+    ("CUST-HONGHA", True),
+])
+def test_canonical_writer_refuses_unknown_or_archived_customer_without_side_effects(
+    staging, customer_id, archive_first
+):
+    from core.database import get_db, update_shipment_customer
+
+    db = get_db()
+    assert db is not None
+    if archive_first:
+        db.customers.update_one({"id": customer_id}, {"$set": {"is_deleted": True}})
+    before = _stored("LO-0308")
+    audits_before = db.audit_logs.count_documents({
+        "entity_type": "shipment", "entity_id": "LO-0308", "action": "customer_updated",
+    })
+
+    assert not update_shipment_customer("LO-0308", "Tên không được lưu", customer_id)
+
+    assert _stored("LO-0308") == before
+    assert db.audit_logs.count_documents({
+        "entity_type": "shipment", "entity_id": "LO-0308", "action": "customer_updated",
+    }) == audits_before
+
+
+def test_legacy_idless_lot_keeps_name_only_history_without_guessing_an_id(staging):
+    from core.database import get_db, update_shipment_customer
+
+    db = get_db()
+    assert db is not None
+    result = db.shipments.update_one({"id": "LO-0299"}, {"$unset": {"customer_id": ""}})
+    assert result.matched_count == 1
+
+    # Even though this exactly matches a directory name, the legacy write does
+    # not infer/link an ID. Historical ID-less rows remain reviewable as-is.
+    assert update_shipment_customer("LO-0299", "An Phát JSC")
+    fresh = _stored("LO-0299")
+    assert fresh["customer"] == fresh["client"] == "An Phát JSC"
+    assert not fresh.get("customer_id")
 
 
 def test_rename_of_the_lot_code_is_deliberately_not_exposed(staging):
