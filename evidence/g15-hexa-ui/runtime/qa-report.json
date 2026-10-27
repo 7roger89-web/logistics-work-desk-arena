@@ -1,0 +1,139 @@
+{
+  "url": "http://127.0.0.1:9501/",
+  "generated_at": "2026-10-27T09:49:18.961Z",
+  "checks": [
+    {
+      "name": "desktop: two published lots listed",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop: 8 dashboard column headers",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop: unknown debt is explicit",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop: no fabricated demo figure",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "journey: 7 stage nodes 00..06",
+      "ok": true,
+      "detail": "nodes=7"
+    },
+    {
+      "name": "journey: ROAD stage labels match reference",
+      "ok": true,
+      "detail": "[\"KẾ HOẠCH\",\"LẤY HÀNG\",\"NHẬN & GHÉP\",\"VẬN CHUYỂN\",\"THÔNG QUAN\",\"GIAO HÀNG\",\"THANH TOÁN\"]"
+    },
+    {
+      "name": "journey: nodes contained in map viewport",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "journey: node states use only approved labels",
+      "ok": true,
+      "detail": "CHƯA ĐỐI SOÁT|CHƯA ĐỐI SOÁT|CHƯA ĐỐI SOÁT|CHƯA ĐỐI SOÁT|CHƯA ĐỐI SOÁT|CHƯA ĐỐI SOÁT|CHƯA ĐỐI SOÁT"
+    },
+    {
+      "name": "bubble: opens for clicked node",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "bubble: contained in map viewport",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "bubble: no approved documents claims none",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "modal: readonly detail sections present",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "modal: no download button for unpublished docs",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "modal: no fake comment/upload form",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "modal: back to map keeps bubble",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "back: dashboard restored with both lots",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "SEA: sea-specific stage label, never ROAD wording",
+      "ok": true,
+      "detail": "[\"KẾ HOẠCH\",\"LẤY HÀNG\",\"GOM HÀNG & ĐÓNG CONTAINER\",\"VẬN TẢI BIỂN\",\"THÔNG QUAN\",\"GIAO HÀNG\",\"THANH TOÁN\"]"
+    },
+    {
+      "name": "SEA: no ROAD consolidation label",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "zoom: in increases scale",
+      "ok": true,
+      "detail": "113%→128%"
+    },
+    {
+      "name": "zoom: out decreases scale",
+      "ok": true,
+      "detail": "128%→98%"
+    },
+    {
+      "name": "zoom: fit re-centres inside map",
+      "ok": true,
+      "detail": "113% "
+    },
+    {
+      "name": "mobile: card layout replaces the 8-column table",
+      "ok": true,
+      "detail": "{\"cards\":2,\"tableVisible\":false}"
+    },
+    {
+      "name": "mobile: journey map renders 7 nodes",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile: nodes contained at 390px",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile: bubble contained, no clipping",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "runtime: no uncaught page errors",
+      "ok": true,
+      "detail": ""
+    }
+  ],
+  "passed": 26,
+  "failed": 0,
+  "verdict": "VISUAL_PASS"
+}
