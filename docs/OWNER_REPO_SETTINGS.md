@@ -40,6 +40,11 @@ gh api -X PUT repos/7roger89-web/logistics-work-desk-arena/topics \
 
 ## 2. Branch protection cho `main`
 
+> **Thời điểm bật: SAU khi PR #222 đã merge.** Workflow `tests.yml` và registry
+> `tests/known_red.txt` phải có sẵn trên `main` thì check context `known-red-gate`
+> mới tồn tại để gắn vào rule; bật trước khi merge sẽ tạo rule trỏ tới context
+> chưa từng chạy.
+
 Quy tắc đề xuất (mức tối thiểu, đúng hợp đồng task: require PR + CI xanh):
 
 - Require a pull request before merging — bật; không cho push thẳng vào `main`.
@@ -49,6 +54,8 @@ Quy tắc đề xuất (mức tối thiểu, đúng hợp đồng task: require 
 - Require conversation resolution before merging — tùy Owner.
 - Không bật "Require signed commits" nếu máy Owner chưa cấu hình signing key.
 - Không bật ruleset làm tắt quyền xóa branch task đã merge (cần cho vệ sinh định kỳ).
+- **`enforce_admins=true`** — bắt buộc để lời hứa "không cho push thẳng vào
+  `main`" áp dụng cả cho tài khoản Owner/admin.
 
 Lệnh Owner (payload tương đương cấu hình trên):
 
@@ -58,14 +65,36 @@ gh api -X PUT repos/7roger89-web/logistics-work-desk-arena/branches/main/protect
   -F required_pull_request_reviews.dismiss_stale_reviews=false \
   -F required_status_checks.strict=true \
   -F 'required_status_checks.contexts[]=known-red-gate' \
-  -F enforce_admins=false \
+  -F enforce_admins=true \
   -F restrictions= \
   -F allow_force_pushes=false \
   -F allow_deletions=false
 ```
 
 Hoặc qua UI: **Settings → Branches → Add branch ruleset / rule → Branch name
-pattern `main`** rồi tick các mục trên.
+pattern `main`** rồi tick các mục trên. Khi nhập status check, lấy đúng tên từ
+ô autocomplete của GitHub (tên job `known-red-gate` sau khi đã có ít nhất một
+run xanh trên `main`) — không gõ phỏng đoán.
+
+**Đánh đổi của `enforce_admins=true`:** chính Owner/admin cũng không push thẳng
+được vào `main`; mọi thay đổi kể cả của Owner đều phải qua PR và chờ CI xanh.
+Khi cần thao tác khẩn cấp, Owner có thể tạm tắt rule này rồi bật lại — việc tắt
+được GitHub ghi audit log.
+
+### Xác nhận rule đã đăng ký đúng (bắt buộc sau khi bật)
+
+```bash
+gh api repos/7roger89-web/logistics-work-desk-arena/branches/main/protection \
+  --jq '{enforce_admins: .enforce_admins.enabled,
+         required_pr: .required_pull_request_reviews != null,
+         contexts: .required_status_checks.contexts,
+         strict: .required_status_checks.strict,
+         allow_force_pushes: .allow_force_pushes.enabled}'
+```
+
+`contexts` phải chứa đúng chuỗi `known-red-gate`, `enforce_admins` phải là
+`true`. Nếu GET trả 404 thì rule chưa được tạo; nếu context lệch tên thì sửa
+ngay (rule trỏ context sai sẽ chặn mọi PR hoặc không chặn được gì).
 
 Sau khi rule hoạt động, mọi thay đổi `main` bắt buộc đi qua PR và chỉ merge khi
 job `known-red-gate` xanh (không có FAILED/ERROR mới ngoài `tests/known_red.txt`).
