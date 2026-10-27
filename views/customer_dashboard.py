@@ -158,10 +158,18 @@ def render_owner_portal_access_control(
             "cấp quyền portal; chỉ Owner/Admin được thay đổi cấu hình này."
         )
         try:
-            rows = portal.list_customer_portal_access(db=db)
+            active_db = portal._resolve_db(db)
+            rows = portal.list_customer_portal_access(db=active_db)
         except portal.PortalDataError:
-            st.caption("Không tải được danh sách khách hàng.")
+            st.caption("Kết nối dữ liệu cổng khách hàng: CHƯA SẴN SÀNG.")
             return
+        oidc_status = oidc.inspect_oidc_config()
+        st.caption(
+            f"Database đang đọc: {str(getattr(active_db, 'name', 'UNKNOWN'))} | "
+            "Google OIDC: "
+            + ("ĐỦ CẤU HÌNH (chưa kiểm đăng nhập thật)" if oidc_status.ready
+               else "CHƯA ĐỦ CẤU HÌNH")
+        )
         if not rows:
             st.info("Chưa có hồ sơ khách hàng.")
             return

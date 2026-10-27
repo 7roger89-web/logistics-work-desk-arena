@@ -108,7 +108,7 @@ def test_oauth_return_yields_only_verified_email():
         ({"iss": "https://evil.example"}, oidc.STATE_DENIED),
         ({"iss": ""}, oidc.STATE_DENIED),
         ({"email": "not-an-email"}, oidc.STATE_DENIED),
-        ({"provider": "other"}, oidc.STATE_NONE),
+        ({"provider": "other"}, oidc.STATE_DENIED),
         ({"is_logged_in": False}, oidc.STATE_NONE),
     ],
 )
@@ -156,6 +156,7 @@ def test_origin_claim_is_still_enforced_when_a_host_exposes_it():
         ({"iss": "https://evil.example"}, "issuer_mismatch"),
         ({"email_verified": False}, "email_not_verified"),
         ({"exp": int(time.time()) - 10}, "identity_expired"),
+        ({"provider": "other"}, "provider_mismatch"),
     ],
 )
 def test_denial_reason_code_is_logged_without_identity_material(overrides, reason, caplog):

@@ -18,6 +18,7 @@ from streamlit.testing.v1 import AppTest
 
 from core import customer_portal as portal
 from core import customer_portal_oidc as oidc
+from views import web_app
 
 ROOT = Path(__file__).resolve().parents[1]
 APP_PATH = ROOT / "app.py"
@@ -166,6 +167,61 @@ def test_unauthenticated_customer_login_with_bad_oidc_config_fails_closed():
     assert "Lỗi cấu hình OIDC" in _visible_text(app)
 
 
+@pytest.mark.parametrize(
+    "portal,app_url,expected",
+    [
+        (None, "https://thu-log-g1-test.streamlit.app/", True),
+        (None, "https://thu-log-g1-test.streamlit.app/oauth2callback", True),
+        ("customer", "https://thu-log.streamlit.app/", True),
+        ("internal", "https://thu-log-g1-test.streamlit.app/", False),
+        (None, "https://thu-log.streamlit.app/", False),
+        (None, "http://localhost:8501/", False),
+        (None, "https://thu-log-g1-test.streamlit.app.evil.net/", False),
+        (None, "https://[invalid", False),
+    ],
+)
+def test_customer_entry_mode_after_google_callback(portal, app_url, expected):
+    assert web_app._customer_entry_mode(portal, app_url) is expected
+
+
+def test_staging_home_after_google_redirect_is_customer_only():
+    app = AppTest.from_file(str(APP_PATH), default_timeout=60)
+    with (
+        patch("views.web_app._current_app_url", return_value="https://thu-log-g1-test.streamlit.app/"),
+        patch(
+            "views.web_app.customer_portal_oidc.current_oidc_session",
+            return_value=oidc.OidcSessionState(oidc.STATE_NONE),
+        ),
+        patch("views.web_app.require_login") as internal_login,
+        patch("views.logi_view_model.build_view_model") as internal_vm,
+        patch("views.logi_shell.render") as internal_shell,
+    ):
+        app.run()
+    _assert_no_exceptions(app)
+    assert "Cổng khách hàng" in _visible_text(app)
+    assert "Đăng nhập khách hàng bằng Google" in _visible_text(app)
+    assert not app.get("form")
+    internal_login.assert_not_called()
+    internal_vm.assert_not_called()
+    internal_shell.assert_not_called()
+
+
+def test_staging_explicit_internal_url_keeps_password_login():
+    app = AppTest.from_file(str(APP_PATH), default_timeout=60)
+    app.query_params = {"portal": "internal"}
+    with (
+        patch("views.web_app._current_app_url", return_value="https://thu-log-g1-test.streamlit.app/"),
+        patch(
+            "views.web_app.customer_portal_oidc.current_oidc_session",
+            return_value=oidc.OidcSessionState(oidc.STATE_NONE),
+        ),
+        patch("views.web_app.require_login", return_value=None) as internal_login,
+    ):
+        app.run()
+    _assert_no_exceptions(app)
+    internal_login.assert_called_once()
+
+
 def test_customer_only_url_never_mounts_internal_login_or_shell():
     app = AppTest.from_file(str(APP_PATH), default_timeout=60)
     app.query_params = {"portal": "customer"}
@@ -249,6 +305,15 @@ def test_oauth_return_renders_only_own_publication_cards(seed_module):
         assert seed_module.LOT_B1 not in detailed
         for sentinel in seed_module.INTERNAL_SENTINELS:
             assert sentinel not in detailed
+
+
+def test_db_unavailable_none_logs_safe_reason_without_email(caplog):
+    with patch.object(portal, "get_db", return_value=None):
+        with caplog.at_level("WARNING", logger="logistics.customer_portal"):
+            with pytest.raises(portal.PortalDataError):
+                portal.build_customer_principal(verified_email="demo@example.com")
+    assert "CUSTOMER_PORTAL_DB_UNAVAILABLE type=None" in caplog.text
+    assert "demo@example.com" not in caplog.text
 
 
 def test_unauthorised_oidc_email_shows_no_customer_data(seed_module):

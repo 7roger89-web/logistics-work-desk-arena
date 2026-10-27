@@ -144,6 +144,7 @@ def _resolve_db(db: Any) -> Any:
         LOGGER.warning("CUSTOMER_PORTAL_DB_UNAVAILABLE type=%s", type(exc).__name__)
         raise PortalDataError() from None
     if resolved is None:
+        LOGGER.warning("CUSTOMER_PORTAL_DB_UNAVAILABLE type=None")
         raise PortalDataError()
     return resolved
 

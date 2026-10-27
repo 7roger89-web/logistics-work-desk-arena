@@ -211,11 +211,13 @@ Sự thật hiện trạng của bộ test (đừng tin tài liệu cũ, đừng
 ## 10. Customer Dashboard G1 (chỉ staging, read-only)
 
 G1 là **một nhánh giao diện trong cùng entrypoint** `web_app.py` /
-`views/web_app.py` — không phải app thứ hai, không server HTTP mới. Đường dẫn
-`https://thu-log-g1-test.streamlit.app/?portal=customer` dành riêng cho khách,
-chỉ hiện nút Google và không render form Admin; `portal` chỉ chọn UI, không
-mang thông tin định danh/quyền truy cập. Admin và Support Sale vẫn đăng nhập
-nội bộ tại URL gốc và dùng React shell như cũ; luồng Google OIDC
+`views/web_app.py` — không phải app thứ hai, không server HTTP mới. Trên host
+staging `thu-log-g1-test.streamlit.app`, trang chủ mặc định là **cổng Google
+khách hàng** để khớp với hành vi `st.login()` trả người dùng về HOME sau OIDC.
+Admin/Support vào đường `https://thu-log-g1-test.streamlit.app/?portal=internal`
+bằng mật khẩu nội bộ; `?portal=customer` vẫn hoạt động. Tham số `portal`
+chỉ chọn giao diện, không xác thực hay cấp quyền. Các host khác giữ nguyên
+hành vi cũ, và luồng Google OIDC
 chỉ chạy sau khi người dùng bấm **“Đăng nhập khách hàng bằng Google”** hoặc khi
 Streamlit quay lại từ `/oauth2callback`.
 

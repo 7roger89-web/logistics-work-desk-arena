@@ -13,11 +13,40 @@ branch renders native Streamlit only and never builds the internal view-model.
 
 from __future__ import annotations
 
+import logging
+from urllib.parse import urlparse
+
 import streamlit as st
 
 from core import customer_portal_oidc
 from core.auth import require_login
 from core.config import DISPLAY_COMPANY_NAME
+
+LOGGER = logging.getLogger("logistics.customer_portal_router")
+_STAGING_CUSTOMER_HOST = "thu-log-g1-test.streamlit.app"
+
+
+def _customer_entry_mode(portal_mode: str | None, app_url: str) -> bool:
+    """Route staging HOME to Google after the Streamlit OAuth callback.
+
+    st.login() redirects to the app homepage, dropping ?portal=customer.
+    This switch affects presentation only, never identity or permissions.
+    """
+    if portal_mode == "internal":
+        return False
+    if portal_mode == "customer":
+        return True
+    try:
+        return urlparse(app_url).hostname == _STAGING_CUSTOMER_HOST
+    except ValueError:
+        return False
+
+
+def _current_app_url() -> str:
+    try:
+        return str(st.context.url or "")
+    except Exception:  # noqa: BLE001 - older/bare Streamlit runtime
+        return ""
 
 
 def main() -> None:
@@ -30,8 +59,11 @@ def main() -> None:
         initial_sidebar_state="collapsed",
     )
 
-    # Presentation-only route: a query parameter can never grant customer access.
-    customer_only_entry = st.query_params.get("portal") == "customer"
+    # Google always returns to HOME: make staging HOME customer-first.
+    # Internal Admin remains available via ?portal=internal + password login.
+    customer_only_entry = _customer_entry_mode(
+        st.query_params.get("portal"), _current_app_url()
+    )
 
     # OAuth return lands on this SAME app URL after Streamlit's own
     # /oauth2callback route.  A verified Google session is detected here before
@@ -51,7 +83,12 @@ def main() -> None:
             principal = customer_portal.build_customer_principal(
                 verified_email=oidc_state.email
             )
-        except (customer_portal.PortalAccessDenied, customer_portal.PortalDataError):
+        except customer_portal.PortalAccessDenied:
+            LOGGER.warning("CUSTOMER_PORTAL_ACCESS kind=denied")
+            customer_dashboard.render_customer_denied()
+            return
+        except customer_portal.PortalDataError:
+            LOGGER.warning("CUSTOMER_PORTAL_ACCESS kind=data_unavailable")
             customer_dashboard.render_customer_denied()
             return
         customer_dashboard.render_customer_dashboard(principal)

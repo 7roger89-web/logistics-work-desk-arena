@@ -234,8 +234,10 @@ def current_oidc_session(auth_section: Mapping[str, Any] | None = None) -> OidcS
     before any customer lookup.
     """
     info = _read_user_info()
-    if info.get("is_logged_in") is not True or info.get("provider") != GOOGLE_PROVIDER:
+    if info.get("is_logged_in") is not True:
         return OidcSessionState(STATE_NONE)
+    if info.get("provider") != GOOGLE_PROVIDER:
+        return _state(STATE_DENIED, reason="provider_mismatch")
     config = inspect_oidc_config(auth_section)
     if not config.ready:
         return _state(STATE_CONFIG_ERROR, reason="oidc_config_incomplete")
@@ -259,8 +261,10 @@ def current_oidc_session(auth_section: Mapping[str, Any] | None = None) -> OidcS
 def start_customer_login(auth_section: Mapping[str, Any] | None = None) -> bool:
     """Start Google OIDC only when explicitly requested and config is valid."""
     if not inspect_oidc_config(auth_section).ready:
+        LOGGER.warning("CUSTOMER_PORTAL_LOGIN_BLOCKED reason=oidc_config_incomplete")
         return False
     try:
+        LOGGER.warning("CUSTOMER_PORTAL_LOGIN_ATTEMPT provider=google")
         st.login(GOOGLE_PROVIDER)
         return True
     except Exception as exc:  # noqa: BLE001 - show a generic config state, no secrets
