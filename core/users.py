@@ -23,6 +23,10 @@ from typing import Any, Iterable, Mapping
 
 from core.auth import hash_password, verify_password
 
+# Danh sách role DUY NHẤT tạo/assign được từ UI. Bốn role legacy
+# (accounting/operations/sales/viewer — xem core.auth.LEGACY_ROLES) cố ý vắng
+# mặt ở đây: user cũ mang role legacy vẫn đăng nhập và đọc quyền được, nhưng
+# normalize_role() từ chối mọi lệnh gán role legacy mới (deprecation Phase F).
 SUPPORTED_ROLES = ("admin", "sale", "support")
 
 USERNAME_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{2,29}$")

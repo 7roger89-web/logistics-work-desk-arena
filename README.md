@@ -7,9 +7,12 @@ phân quyền, biểu thuế, đối soát.
   component là UI vỏ (`component/`).
 - **Dữ liệu:** MongoDB là nguồn sự thật. `st.session_state` chỉ là cache theo phiên.
 - **Entry point:** `app.py`.
+- **License:** All rights reserved — repo chưa phát hành giấy phép mở và cố ý
+  không kèm file LICENSE (quyết định Owner, 2026-10-26).
 
-**Đây là tài liệu cài đặt DUY NHẤT.** `README_HOTFIX.md`, `README_UPGRADE.md`,
-`ROUTER_HOTFIX.md`, `BUILD_REPORT.md` là hồ sơ lịch sử — đọc khi cần truy vết, không
+**Đây là tài liệu cài đặt DUY NHẤT.** `docs/history/README_HOTFIX.md`,
+`docs/history/README_UPGRADE.md`, `docs/history/ROUTER_HOTFIX.md`,
+`docs/history/BUILD_REPORT.md` là hồ sơ lịch sử — đọc khi cần truy vết, không
 dùng để cài. Muốn hiểu kiến trúc và policy: `docs/ARCHITECTURE-PRINCIPLES.md`.
 
 ---
@@ -38,6 +41,10 @@ python -m pip install -r requirements.txt
 Khuyến nghị: tạo virtualenv trước khi cài (`python -m venv .venv` rồi kích hoạt)
 để không lẫn thư viện với các dự án khác trên cùng máy.
 
+`requirements.txt` là nguồn dải version (range) dùng cho deploy. Máy dev và CI
+muốn bản ghim tái lập 100% thì cài từ `requirements.lock` (sinh bằng `pip freeze`
+từ venv sạch; xem hướng dẫn tái tạo ở header file lock).
+
 ---
 
 ## 3. Cấu hình
@@ -54,11 +61,13 @@ App đọc cấu hình theo thứ tự ưu tiên (nguồn đầu tiên có giá 
 Chỉ cần chọn **một** kênh. Cả hai file mẫu đã liệt kê đúng tên biến/section mà
 code thực tế đọc; khi thêm biến mới vào `core/config.py`, cập nhật cả hai file mẫu.
 
-> **Cảnh báo — `secrets.toml` viết theo tên cũ:** ai đang giữ
-> `.streamlit/secrets.toml` dùng tên cũ (`[mongodb]`, `[google]`, `MONGODB_URI`)
-> thì phải đổi sang tên hiện hành `[mongo]`, `[gemini]`, `MONGO_URI` — nếu không
-> app sẽ báo thiếu cấu hình dù file secrets vẫn tồn tại (code chỉ đọc tên mới;
-> xem `.streamlit/secrets.toml.example`).
+> **Tên cấu hình cũ vẫn chạy được (từ 2026-10-26):** các tên cũ `MONGODB_URI`
+> (env), section `[mongodb]` (uri/database) và `[google]` (api_key/api_keys/model)
+> vẫn được chấp nhận qua shim tương thích ngược trong `core/config.py`, kèm
+> `DeprecationWarning` đúng một lần mỗi process. Tên hiện hành `MONGO_URI`,
+> `[mongo]`, `[gemini]` luôn thắng khi cả hai cùng tồn tại; thứ tự ưu tiên
+> env > `st.secrets` > `secrets.toml` không đổi. Vẫn nên đổi sang tên mới vì
+> alias sẽ bị gỡ ở phiên bản sau (xem `.streamlit/secrets.toml.example`).
 
 | Việc cần cấu hình | Biến môi trường | `secrets.toml` | Ghi chú |
 |---|---|---|---|
@@ -118,6 +127,25 @@ streamlit run app.py
   `python scripts/setup_first_user.py` (tương tác, mật khẩu không truyền qua args).
 - Trên máy Owner đang có instance production ở port `8501`/`8510`: khi chạy dev/test
   UI, mở port khác, ví dụ `streamlit run app.py --server.port 9501`, và tắt khi xong.
+
+### 4.1. Bootstrap dữ liệu demo cho clone mới (không cần secret)
+
+```bash
+python scripts/demo_bootstrap.py
+```
+
+Script idempotent, chỉ chạy ở chế độ không có `MONGO_URI` thật (tự chặn nếu phát
+hiện URI thật để không đụng production) và tái dùng đúng cơ chế của app:
+
+- tạo `demo_bootstrap/data/tariff.db` rỗng qua `scripts/initialize_tariff_db.py`;
+- sinh placeholder GNT/MA_NGAN_SACH/DOCX có gắn nhãn demo trong
+  `demo_bootstrap/templates/` — **không** nối vào `DOCGEN_TEMPLATE_DIR`, nên docgen
+  vẫn fail-closed với `TEMPLATE_ASSET_STORAGE_OWNER_GATE` cho đến khi Owner đặt
+  template pháp lý thật;
+- cài transport staging `mongomock` cô lập và seed dữ liệu mẫu đúng schema thật
+  (khách hàng, hợp đồng, báo giá, lô hàng...) qua `views.logi_sandbox`;
+- in sẵn hướng dẫn chạy tiếp. Sau đó `streamlit run app.py` mở được app với dữ
+  liệu mẫu; artifact nằm trong `demo_bootstrap/` (đã gitignore).
 
 ---
 
@@ -186,9 +214,23 @@ python -m pytest tests -q
 
 Sự thật hiện trạng của bộ test (đừng tin tài liệu cũ, đừng tin con số hard-code):
 
-- Bộ test có ~130+ file (`test_*.py`, hiện tại là 144 file — con số trôi theo thời
-  gian) và suite **ĐANG ĐỎ CÓ CHỦ Ý**: một tập FAILED/ERROR đã biết được giữ
-  nguyên như backlog sống. **Không hard-code số test pass vào tài liệu.**
+- Bộ test có ~130+ file (`test_*.py`, hiện tại là 149 file — đếm lại từ filesystem
+  ngày 2026-10-27; con số trôi theo thời gian) và suite **ĐANG ĐỎ CÓ CHỦ Ý**: một
+  tập FAILED/ERROR đã biết được giữ nguyên như backlog sống. **Không hard-code số
+  test pass vào tài liệu.**
+- Protocol "đỏ có chủ ý" được **CI cưỡng chế bằng máy** (workflow
+  `.github/workflows/tests.yml` + registry `tests/known_red.txt`), không còn dựa
+  vào tự giác. Chạy gate tại máy:
+
+  ```bash
+  python scripts/check_known_red.py --junit report.xml --registry tests/known_red.txt
+  ```
+
+  Quy tắc: **NEW** (FAILED/ERROR mới không có trong registry) => gate đỏ;
+  **DRIFT** (known-red nay pass, in `DRIFT_COUNT=<n>`) => xanh nhưng phải cập nhật
+  registry trong chính PR sửa test đó; **MISSING** (nodeid registry vắng mặt trong
+  junit do đổi tên/xóa test) => mặc định đỏ (registry lệch sự thật); cờ
+  `--allow-missing` chỉ dùng cho ngoại lệ có chủ ý và hạ MISSING xuống WARNING.
 - Quy trình bắt buộc khi sửa bất cứ thứ gì: chạy **full suite 1 lần TRƯỚC** khi
   sửa để lấy baseline danh sách FAILED/ERROR, rồi chạy lại **SAU** khi sửa và so
   sánh — một thay đổi đúng phải **giữ nguyên tập FAILED/ERROR cũ** và chỉ thêm
@@ -216,10 +258,18 @@ Sự thật hiện trạng của bộ test (đừng tin tài liệu cũ, đừng
 
 ## Khoảng trống đã biết
 
-- LICENSE chưa có (GitHub báo `license: null`).
-- Không có repo description và topics.
-- `.agents/` bị ignore một phần nên file mới thêm vào đó vô hình với `git add .`.
-- 258 branch, 1 tag, 25 open issue.
-- Thiếu `pyproject.toml` / `pytest.ini` / `ruff.toml`.
-- `requirements.txt` không lock, còn `streamlit-option-menu` nghi đã chết.
-- Repo ~189 MB nên clone chậm.
+Đo lại ngày 2026-10-26; chỉ giữ những mục còn đúng sau khi verify với code/API:
+
+- Repo chưa có description và topics; branch protection trên `main` chưa bật. Cả hai
+  bị chặn với token tích hợp (HTTP 403) — lệnh Owner đã chuẩn bị sẵn ở
+  `docs/OWNER_REPO_SETTINGS.md`.
+- Chưa có `pyproject.toml` / `pytest.ini` / `ruff.toml` (chưa có công cụ lint);
+  bù lại đã có CI test + known-red gate ở `.github/workflows/tests.yml`.
+- Repo ~189 MB (GitHub diskUsage 193.868 KB) nên clone chậm; dọn lịch sử/LFS là
+  OPEN ITEM, không làm trong đợt này.
+- Số liệu hiện trạng sau đợt vệ sinh 2026-10-26: 115 remote head (trước đó 267),
+  1 tag, 10 open issue.
+- Đã đóng trong đợt 2026-10-26 (giữ lại để truy vết): lỗ hổng ignore `.agents/`
+  (đã có ngoại lệ `!.agents/skills/`); `requirements.lock` đã được tạo và
+  `streamlit-option-menu` đã gỡ sau khi xác nhận không còn import; LICENSE giữ
+  trạng thái All rights reserved theo quyết định Owner.
