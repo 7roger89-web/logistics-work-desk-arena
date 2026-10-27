@@ -128,8 +128,13 @@ def _master_fields(record: Mapping[str, Any] | None) -> dict[str, str]:
 
 
 def _customer_match(shipment: Mapping[str, Any], customer_id: str, customer_name: str) -> bool:
-    if customer_id and _key(shipment.get("customer_id")) == _key(customer_id):
-        return True
+    """A stored customer_id wins; legacy names are not an ID override."""
+    saved_id = shipment.get("customer_id")
+    if saved_id is not None and str(saved_id).strip():
+        return bool(customer_id) and isinstance(saved_id, str) and saved_id.strip() == str(customer_id).strip()
+    primary, secondary = shipment.get("customer"), shipment.get("client")
+    if primary and secondary and _key(primary) != _key(secondary):
+        return False
     shipment_name = _first(shipment, ("customer", "customer_name", "client", "client_name"), "")
     return bool(customer_name) and _key(shipment_name) == _key(customer_name)
 

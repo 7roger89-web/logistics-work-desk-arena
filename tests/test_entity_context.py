@@ -71,6 +71,30 @@ class EntityContextTests(unittest.TestCase):
         self.assertEqual([row["shipment_id"] for row in view["history_shipments"]], ["S-002"])
         self.assertTrue(view["read_only"])
 
+    def test_g1_foreign_customer_id_never_falls_back_to_matching_name(self) -> None:
+        master = {"id": "CUS-1", "name": "Acme"}
+        foreign = _shipments()["S-003"]
+        foreign["customer"] = "Acme"
+        foreign["customer_id"] = "CUS-2"
+        result = build_customer_context("CUS-1", master, {"foreign": foreign},
+                                        quotes={"Q1": {"id": "Q1", "customer_id": "CUS-2",
+                                                       "customer_name": "Acme"}})
+        self.assertEqual(result["shipments"], [])
+        self.assertEqual(result["quotations"], [])
+
+        # Same canonical ID remains linked even if the cached legal name is old.
+        renamed = dict(foreign, customer_id="CUS-1", customer="Historical Acme")
+        result = build_customer_context("CUS-1", master, {"renamed": renamed})
+        self.assertEqual(len(result["shipments"]), 1)
+
+        # Legacy name-only rows remain internal review candidates, not portal grants.
+        legacy = dict(foreign, customer_id="", customer="Acme")
+        result = build_customer_context("CUS-1", master, {"legacy": legacy})
+        self.assertEqual(len(result["shipments"]), 1)
+        legacy["client"] = "Conflicting Legal Entity"
+        result = build_customer_context("CUS-1", master, {"legacy": legacy})
+        self.assertEqual(result["shipments"], [])
+
     def test_factory_context_keeps_multi_lot_unknowns_truthful(self) -> None:
         view = build_factory_context("Factory North", _shipments())
 
