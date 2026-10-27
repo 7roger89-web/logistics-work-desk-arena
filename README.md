@@ -214,9 +214,23 @@ python -m pytest tests -q
 
 Sự thật hiện trạng của bộ test (đừng tin tài liệu cũ, đừng tin con số hard-code):
 
-- Bộ test có ~130+ file (`test_*.py`, hiện tại là 145 file — con số trôi theo thời
-  gian) và suite **ĐANG ĐỎ CÓ CHỦ Ý**: một tập FAILED/ERROR đã biết được giữ
-  nguyên như backlog sống. **Không hard-code số test pass vào tài liệu.**
+- Bộ test có ~130+ file (`test_*.py`, hiện tại là 148 file — đếm lại từ filesystem
+  ngày 2026-10-27; con số trôi theo thời gian) và suite **ĐANG ĐỎ CÓ CHỦ Ý**: một
+  tập FAILED/ERROR đã biết được giữ nguyên như backlog sống. **Không hard-code số
+  test pass vào tài liệu.**
+- Protocol "đỏ có chủ ý" được **CI cưỡng chế bằng máy** (workflow
+  `.github/workflows/tests.yml` + registry `tests/known_red.txt`), không còn dựa
+  vào tự giác. Chạy gate tại máy:
+
+  ```bash
+  python scripts/check_known_red.py --junit report.xml --registry tests/known_red.txt
+  ```
+
+  Quy tắc: **NEW** (FAILED/ERROR mới không có trong registry) => gate đỏ;
+  **DRIFT** (known-red nay pass, in `DRIFT_COUNT=<n>`) => xanh nhưng phải cập nhật
+  registry trong chính PR sửa test đó; **MISSING** (nodeid registry vắng mặt trong
+  junit do đổi tên/xóa test) => mặc định đỏ (registry lệch sự thật); cờ
+  `--allow-missing` chỉ dùng cho ngoại lệ có chủ ý và hạ MISSING xuống WARNING.
 - Quy trình bắt buộc khi sửa bất cứ thứ gì: chạy **full suite 1 lần TRƯỚC** khi
   sửa để lấy baseline danh sách FAILED/ERROR, rồi chạy lại **SAU** khi sửa và so
   sánh — một thay đổi đúng phải **giữ nguyên tập FAILED/ERROR cũ** và chỉ thêm
