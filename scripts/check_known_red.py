@@ -7,11 +7,12 @@ registry ``tests/known_red.txt`` (và tùy chọn ``tests/known_flaky.txt``).
 Quy tắc thoát:
   * Có FAILED/ERROR mới không nằm trong registry (và không phải flaky đã đăng ký)
     => in rõ nodeid mới, exit 1. Registry không bao giờ "che" failure mới.
-  * Nodeid trong registry nay không còn đỏ => in khối DRIFT (liệt kê nodeid),
-    exit 0. Drift là tín hiệu cập nhật registry trong chính PR sửa được test,
-    không phải lỗi chặn cứng.
-  * Nodeid registry vắng mặt hoàn toàn trong junit (bị đổi tên/xóa?) => WARNING,
-    exit 0; không âm thầm coi là drift.
+  * Nodeid trong registry nay không còn đỏ => in khối DRIFT (liệt kê nodeid, kèm
+    dòng máy-đọc-được ``DRIFT_COUNT=<n>``), exit 0. Drift là tín hiệu cập nhật
+    registry trong chính PR sửa được test, không phải lỗi chặn cứng.
+  * Nodeid registry vắng mặt hoàn toàn trong junit (bị đổi tên/xóa?) => mặc định
+    là FATAL: registry đã không còn mô tả sự thật run, exit 1. Chỉ khi truyền
+    ``--allow-missing`` cho một ngoại lệ có chủ ý thì hạ xuống WARNING và exit 0.
   * Lỗi hạ tầng (thiếu file, XML hỏng, registry rỗng) => exit 2 (fail-closed).
 
 Chỉ dùng thư viện chuẩn. Không deselect/xfail test nào: script đọc báo cáo,
@@ -102,6 +103,12 @@ def main(argv: list[str] | None = None) -> int:
         default=Path("tests/known_flaky.txt"),
         help="Danh sách flaky tùy chọn; vắng mặt được coi là rỗng.",
     )
+    parser.add_argument(
+        "--allow-missing",
+        action="store_true",
+        help="Cố ý chấp nhận nodeid registry vắng mặt trong junit: hạ MISSING từ "
+             "FATAL (exit 1) xuống WARNING (exit 0). Chỉ dùng cho ngoại lệ có chủ ý.",
+    )
     args = parser.parse_args(argv)
 
     registered = _load_nodeid_list(args.registry)
@@ -121,7 +128,13 @@ def main(argv: list[str] | None = None) -> int:
     print(f"  registered flaky         : {len(flaky)}")
     print(f"  new failures/errors      : {len(new_failures)}")
     print(f"  drift (now passing)      : {len(drifted)}")
-    print(f"  registry missing in run  : {len(missing_from_run)}")
+    print(f"  registry missing in run  : {len(missing_from_run)}"
+          + ("" if args.allow_missing else " (FATAL; --allow-missing để hạ xuống WARNING)"))
+    print("-" * 72)
+    # Các dòng máy-đọc-được dưới đây giữ ổn định định dạng để CI/grep bám vào.
+    print(f"NEW_COUNT={len(new_failures)}")
+    print(f"DRIFT_COUNT={len(drifted)}")
+    print(f"MISSING_COUNT={len(missing_from_run)}")
     print("=" * 72)
 
     if flaky_red_now:
@@ -130,7 +143,13 @@ def main(argv: list[str] | None = None) -> int:
             print(f"  FLAKY-RED {nodeid}")
 
     if missing_from_run:
-        print("WARNING: nodeid registry vắng mặt trong junit (test bị đổi tên/xóa hoặc sai id?):")
+        if args.allow_missing:
+            print("WARNING (--allow-missing): nodeid registry vắng mặt trong junit — "
+                  "chấp nhận có chủ ý, hãy xác nhận đây không phải registry rot:")
+        else:
+            print("FATAL: nodeid registry vắng mặt trong junit (test bị đổi tên/xóa hoặc "
+                  "sai id?). Registry không còn mô tả sự thật run — cập nhật registry hoặc "
+                  "dùng --allow-missing cho ngoại lệ có chủ ý:")
         for nodeid in missing_from_run:
             print(f"  MISSING  {nodeid}")
 
@@ -143,6 +162,10 @@ def main(argv: list[str] | None = None) -> int:
         print("NEW FAILURES/ERRORS (không có trong known_red.txt) — gate FAIL:")
         for nodeid in new_failures:
             print(f"  NEW      {nodeid}")
+        return EXIT_NEW_FAILURE
+
+    if missing_from_run and not args.allow_missing:
+        print("GATE FAIL: registry lệch sự thật do có MISSING (mặc định FATAL).")
         return EXIT_NEW_FAILURE
 
     print("GATE PASS: không có failure/error mới ngoài tập known-red đã đăng ký.")

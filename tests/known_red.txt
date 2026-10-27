@@ -6,9 +6,12 @@
 #          run2: 18 failed/1948 passed/45 skipped trong 108.55s;
 #          pytest 9.1.1, Python 3.11.2, Ubuntu/Debian sandbox).
 # Quy tắc (scripts/check_known_red.py đọc file này):
-#   - FAILED/ERROR mới không có trong danh sách => gate FAIL (exit 1).
-#   - Nodeid trong danh sách nay pass => in DRIFT, không fail cứng; cập nhật lại file này
-#     trong chính PR sửa test đó.
+#   - FAILED/ERROR mới không có trong danh sách => gate FAIL (exit 1, NEW_COUNT>0).
+#   - Nodeid trong danh sách nay pass => in DRIFT (DRIFT_COUNT=<n>), không fail cứng;
+#     cập nhật lại file này trong chính PR sửa test đó.
+#   - Nodeid trong danh sách vắng mặt hoàn toàn trong junit (test bị đổi tên/xóa) =>
+#     mặc định FATAL exit 1 (MISSING_COUNT>0) vì registry đã lệch sự thật run; chỉ dùng
+#     cờ --allow-missing cho ngoại lệ có chủ ý để hạ xuống WARNING và cho gate xanh.
 #   - Nodeid flaky (lúc đỏ lúc xanh ở BASE) thuộc tests/known_flaky.txt, không nhét vào đây.
 # Mỗi dòng một nodeid pytest; dòng trống và dòng bắt đầu bằng '#' được bỏ qua.
 
