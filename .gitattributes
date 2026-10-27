@@ -1,0 +1,10 @@
+# Cầm máu diff/merge cho tài sản nhị phân (repo nặng ~189 MB, nhiều ảnh/fixture).
+# `binary` = -diff -merge -text: Git không thử sinh text diff hay auto-merge các
+# file này. Lưu ý: .gitattributes không thu nhỏ lịch sử cũ (việc đó cần history
+# rewrite/LFS — đang là OPEN ITEM), chỉ chặn tải trọng diff vô ích từ lúc thêm file.
+*.png binary
+*.jpg binary
+*.xlsx binary
+*.docx binary
+*.pdf binary
+*.zip binary
