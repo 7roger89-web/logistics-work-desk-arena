@@ -61,9 +61,16 @@ def render_oidc_problem(state: oidc.OidcSessionState, *, on_logout: Callable[[],
     _logout_button(key="customer_portal_problem_logout", on_logout=on_logout)
 
 
-def render_customer_login_choice() -> None:
-    """One explicit customer-login choice beneath the unchanged internal login."""
-    st.caption("Khách hàng?")
+def render_customer_login_choice(*, standalone: bool = False) -> None:
+    """Reuse the Google login button on a customer-only entry URL."""
+    if standalone:
+        st.title("Cổng khách hàng")
+        st.caption(
+            "Đăng nhập Google để xem các lô hàng đã được Trường Thành Logistics "
+            "công bố riêng cho tài khoản của bạn."
+        )
+    else:
+        st.caption("Khách hàng?")
     if st.button("Đăng nhập khách hàng bằng Google", key="customer_portal_google_login"):
         status = oidc.inspect_oidc_config()
         if not status.ready:

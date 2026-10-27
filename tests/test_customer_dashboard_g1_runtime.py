@@ -166,6 +166,28 @@ def test_unauthenticated_customer_login_with_bad_oidc_config_fails_closed():
     assert "Lỗi cấu hình OIDC" in _visible_text(app)
 
 
+def test_customer_only_url_never_mounts_internal_login_or_shell():
+    app = AppTest.from_file(str(APP_PATH), default_timeout=60)
+    app.query_params = {"portal": "customer"}
+    with (
+        patch(
+            "views.web_app.customer_portal_oidc.current_oidc_session",
+            return_value=oidc.OidcSessionState(oidc.STATE_NONE),
+        ),
+        patch("views.web_app.require_login") as internal_login,
+        patch("views.logi_view_model.build_view_model") as internal_vm,
+        patch("views.logi_shell.render") as internal_shell,
+    ):
+        app.run()
+    _assert_no_exceptions(app)
+    assert "Cổng khách hàng" in _visible_text(app)
+    assert "Đăng nhập khách hàng bằng Google" in _visible_text(app)
+    assert not app.get("form")
+    internal_login.assert_not_called()
+    internal_vm.assert_not_called()
+    internal_shell.assert_not_called()
+
+
 def test_customer_login_button_starts_google_oidc_only_when_clicked():
     app = AppTest.from_file(str(APP_PATH), default_timeout=60)
     app.secrets = {"auth": FAKE_AUTH}
@@ -196,6 +218,7 @@ def test_oauth_return_renders_only_own_publication_cards(seed_module):
     app.secrets = {"auth": FAKE_AUTH}
     # Browser-supplied ids must have zero effect on the server-side scope.
     app.query_params = {
+        "portal": "customer",
         "customer_id": seed_module.CUSTOMER_B_ID,
         "shipment_id": seed_module.LOT_B1,
         "lot": seed_module.LOT_A2,
@@ -232,6 +255,7 @@ def test_unauthorised_oidc_email_shows_no_customer_data(seed_module):
     db = _db(seed_module, negative_cases=False)
     app = AppTest.from_file(str(APP_PATH), default_timeout=60)
     app.secrets = {"auth": FAKE_AUTH}
+    app.query_params = {"portal": "customer"}
     with (
         patch("streamlit.user_info._get_user_info", return_value=_claims("not-allowed@example.com")),
         patch.object(portal, "get_db", return_value=db),

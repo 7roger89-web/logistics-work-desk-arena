@@ -30,6 +30,9 @@ def main() -> None:
         initial_sidebar_state="collapsed",
     )
 
+    # Presentation-only route: a query parameter can never grant customer access.
+    customer_only_entry = st.query_params.get("portal") == "customer"
+
     # OAuth return lands on this SAME app URL after Streamlit's own
     # /oauth2callback route.  A verified Google session is detected here before
     # the internal password gate; no query parameter carries a customer_id.
@@ -52,6 +55,14 @@ def main() -> None:
             customer_dashboard.render_customer_denied()
             return
         customer_dashboard.render_customer_dashboard(principal)
+        return
+
+    if customer_only_entry:
+        # Customers never see the internal password/first-admin form or shell.
+        # Successful Google callbacks use the OIDC branch above.
+        from views import customer_dashboard
+
+        customer_dashboard.render_customer_login_choice(standalone=True)
         return
 
     # AUTH GATE — must be before any business view-model is built or the
