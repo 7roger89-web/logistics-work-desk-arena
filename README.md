@@ -214,7 +214,7 @@ python -m pytest tests -q
 
 Sự thật hiện trạng của bộ test (đừng tin tài liệu cũ, đừng tin con số hard-code):
 
-- Bộ test có ~130+ file (`test_*.py`, hiện tại là 148 file — đếm lại từ filesystem
+- Bộ test có ~130+ file (`test_*.py`, hiện tại là 149 file — đếm lại từ filesystem
   ngày 2026-10-27; con số trôi theo thời gian) và suite **ĐANG ĐỎ CÓ CHỦ Ý**: một
   tập FAILED/ERROR đã biết được giữ nguyên như backlog sống. **Không hard-code số
   test pass vào tài liệu.**
