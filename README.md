@@ -263,3 +263,30 @@ Streamlit quay lại từ `/oauth2callback`.
 - `requirements.txt` không lock, còn `streamlit-option-menu` nghi đã chết.
 - Repo ~189 MB nên clone chậm.
 - Chưa có file LICENSE.
+
+### G1.5 — Dữ liệu nghiệp vụ được phép công bố (staging)
+
+Cổng Lục Giác chỉ nhận dữ liệu sau khi Trường Thành phát hành manifest
+`customer_publications` trạng thái `PUBLISHED`, đúng `customer_id`,
+`shipment_id` và phiên bản đã ghim trong shipment.
+
+- **Tiến độ:** đọc từ `public_events` theo cặp `id/version` trong
+  `event_versions`. Chỉ hiện bản ghi `verified=true`, có `verified_at`,
+  `visibility=CUSTOMER`, `public_title`, `occurred_at`, đúng khách và lô.
+  Một bước chỉ thành hoàn thành nếu có sự kiện đúng công đoạn được duyệt.
+- **Chứng từ:** đọc metadata từ `public_documents` theo `document_versions`.
+  Cần `verified=true`, `status=AVAILABLE`, `visibility=CUSTOMER`, loại chứng từ
+  thuộc allowlist. Không tải tệp/GridFS, không đọc tài liệu riêng của nội bộ.
+- **Báo giá bán:** đọc từ `quotes` chỉ khi `quote.id/version` được duyệt
+  trong manifest, `shipments.quote_id` trùng và quote thuộc khách, trạng thái
+  `SENT` hoặc `ACCEPTED`. Phía khách chỉ nhận
+  `calculation.selling_price_total_vnd`; không nhận giá vốn/lãi.
+- **Công nợ:** vẫn `UNKNOWN / Chưa đối soát`. Báo giá bán KHÔNG phải công nợ;
+  chưa có hợp đồng công bố đối soát tài chính để đọc các sổ thu/chi nội bộ.
+
+Các collection public là nguồn dữ liệu đã được phê duyệt, không đồng nghĩa
+mọi thông tin trong shipment/quote/attachment nội bộ đều được phép công bố.
+Không có bản release thì cổng tiếp tục hiện `CHƯA ĐỐI SOÁT`, không tự tạo
+dữ liệu hay suy diễn tiến độ từ trạng thái shipment. Việc deploy code
+không tự tạo collection hoặc bản ghi phát hành. Test:
+`tests/test_customer_portal_sources_g15.py`.

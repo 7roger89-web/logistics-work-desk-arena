@@ -474,15 +474,22 @@ def test_owner_granted_publication_fields_reach_the_ui_without_scope_change(seed
         ),
         db=db,
     ).cards[0]
-    # G1's loader still passes no event/document/quote source: the allowlist gate
-    # is upstream, so the UI honestly shows "nothing approved" rather than data.
-    assert card.timeline == ()
-    assert card.documents == ()
-    assert card.quote is None
+    # A TT-approved, version-pinned publication reads genuine source records
+    # and retains the independent tenant/visibility/verified allowlist.
+    assert len(card.timeline) == 1
+    assert card.timeline[0]["title"] == "Đã lấy hàng tại kho"
+    assert card.documents == ({
+        "id": "DOC-1", "version": "v1", "kind": "PL", "title": "Packing List",
+    },)
+    assert card.quote == {
+        "id": "QT-9", "version": "v1", "status": "SENT", "selling_total_vnd": 1000.0,
+    }
 
     model = journey.build_lot_model(card)
-    assert all(node["state"] == "UNKNOWN" for node in model["journey"]["nodes"])
-    assert model["documents"] == []
+    assert {n["id"] for n in model["journey"]["nodes"] if n["completed"]} == {"pickup"}
+    assert len(model["documents"]) == 1
+    assert model["quote"]["selling_total_vnd"] == 1000.0
+    assert model["debt_summary"]["status"] == "UNKNOWN"
 
 
 def test_revoked_access_after_mount_shows_no_data(seed_module):
