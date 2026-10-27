@@ -8,6 +8,7 @@ there is no identity-emulation control in the shipped UI.
 from __future__ import annotations
 
 import importlib.util
+import json
 import time
 from pathlib import Path
 from unittest.mock import patch
@@ -63,6 +64,22 @@ def _claims(email: str):
         "exp": int(time.time()) + 600,
         "sub": "staging-google-subject",
     }
+
+
+def _portal_payload(app: AppTest) -> dict:
+    """Payload of the ONE mounted HEXA reference portal (G1.5)."""
+    import json
+
+    components = app.get("bidi_component")
+    assert len(components) == 1, f"expected exactly one portal mount, got {len(components)}"
+    return json.loads(components[0].proto.json)
+
+
+def _portal_text(app: AppTest) -> str:
+    """Every customer-visible string the reference portal is about to render."""
+    import json
+
+    return json.dumps(_portal_payload(app)["model"], ensure_ascii=False)
 
 
 def _visible_text(app: AppTest) -> str:
@@ -286,25 +303,22 @@ def test_oauth_return_renders_only_own_publication_cards(seed_module):
     ):
         app.run()
         _assert_no_exceptions(app)
-        visible = _visible_text(app)
-        assert "Dashboard khách hàng" in visible
-        assert seed_module.LOT_A1 in visible
-        assert seed_module.LOT_A2 in visible
+        model = _portal_payload(app)["model"]
+        lots = model["lots"]
+        assert [lot["shipment_id"] for lot in lots] == [seed_module.LOT_A1, seed_module.LOT_A2]
+        assert model["notice"] and "chưa có bản duyệt hợp lệ" in model["notice"]["text"]
+        visible = _portal_text(app)
         assert seed_module.LOT_B1 not in visible
         assert seed_module.LOT_A_DRAFT not in visible
         assert seed_module.LOT_MISSING_CUSTOMER not in visible
         assert seed_module.FOREIGN_SENTINEL not in visible
         for sentinel in seed_module.INTERNAL_SENTINELS:
             assert sentinel not in visible
-        assert "Phát hiện lỗi dữ liệu công bố" not in visible
-        assert "bị từ chối công bố" in visible
-        _click(app, "customer_portal_detail_0")
-        detailed = _visible_text(app)
-        assert "Phiên bản công bố" in detailed
-        assert "v1" in detailed
-        assert seed_module.LOT_B1 not in detailed
-        for sentinel in seed_module.INTERNAL_SENTINELS:
-            assert sentinel not in detailed
+        # The published version is what the reference detail panel shows.
+        assert lots[0]["publication"]["version"] == "v1"
+        # ... and an approved publication still carries no invented stage/amount.
+        assert lots[0]["debt_summary"]["status"] == "UNKNOWN"
+        assert all(node["state"] == "UNKNOWN" for node in lots[0]["journey"]["nodes"])
 
 
 def test_db_unavailable_none_logs_safe_reason_without_email(caplog):
@@ -392,10 +406,11 @@ def test_logout_clears_dashboard_before_next_run(seed_module):
         patch("views.web_app.require_login", return_value=None),
     ):
         app.run()
-        assert seed_module.LOT_A1 in _visible_text(app)
+        assert seed_module.LOT_A1 in _portal_text(app)
         _click(app, "customer_portal_logout")
     _assert_no_exceptions(app)
     visible = _visible_text(app)
-    assert seed_module.LOT_A1 not in visible
-    assert seed_module.LOT_A2 not in visible
+    assert app.get("bidi_component") == []
+    assert seed_module.LOT_A1 not in json.dumps(visible)
+    assert seed_module.LOT_A2 not in json.dumps(visible)
     assert "Phiên đăng nhập đã kết thúc" in visible or "Đăng nhập khách hàng bằng Google" in visible

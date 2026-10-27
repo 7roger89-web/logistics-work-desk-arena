@@ -89,13 +89,23 @@ class CustomerPrincipal:
 
 @dataclass(frozen=True)
 class PublicationCard:
-    """A customer-safe card; no raw shipment, manifest or view-model object."""
+    """A customer-safe card; no raw shipment, manifest or view-model object.
+
+    ``timeline``/``documents``/``quote`` carry ONLY the already-allowlisted
+    HEXA public projection built by
+    :func:`core.hexa_customer_publication.build_customer_publication`.  They are
+    version-pinned public events/documents, not raw shipment rows, and they are
+    empty whenever the approved publication released nothing.
+    """
 
     reference: str
     status_label: str
     transport_mode: str | None
     publication_version: str
     approved_at: str
+    timeline: tuple[dict[str, Any], ...] = ()
+    documents: tuple[dict[str, Any], ...] = ()
+    quote: dict[str, Any] | None = None
 
 
 @dataclass(frozen=True)
@@ -305,6 +315,15 @@ def load_customer_dashboard(principal: CustomerPrincipal, *, db: Any = None) -> 
             transport_mode=safe_text(public.get("transport_mode"), 8).upper() or None,
             publication_version=expected_version,
             approved_at=safe_text(manifest.get("approved_at"), 40) or "Không rõ",
+            timeline=tuple(
+                event for event in (public.get("timeline") or ())
+                if isinstance(event, Mapping)
+            ),
+            documents=tuple(
+                document for document in (public.get("documents") or ())
+                if isinstance(document, Mapping)
+            ),
+            quote=dict(public["quote"]) if isinstance(public.get("quote"), Mapping) else None,
         ))
     return CustomerDashboardView(
         principal=principal,

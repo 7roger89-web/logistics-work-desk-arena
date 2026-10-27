@@ -1,30 +1,44 @@
-"""G1 read-only customer dashboard, rendered with native Streamlit only.
+"""G1 read-only customer portal: server principal + HEXA reference UI.
 
 This is NOT a second app or HTTP server.  It is imported by the existing
 ``views.web_app.main`` entrypoint after the one trusted principal has been
-built.  It deliberately has no URL/query-parameter shipment selector: all
-publication cards are preloaded server-side for that principal, and the detail
-button only reveals an already-allowlisted card.
+built.  The dashboard body is the Owner's ``HEXA_LucGiac_DEMO.html`` layout
+(Dashboard 8-column table → map-first Journey 00..06) mounted through the same
+Streamlit Components v2 technology already used by ``views.logi_shell``.
+
+There is deliberately no URL/query-parameter lot selector: every lot in the
+payload was already resolved server-side for that principal by
+``core.customer_portal.load_customer_dashboard``.  The component may change
+local UI state (selected lot, node bubble, modal, zoom) but it writes nothing.
 """
 from __future__ import annotations
 
+import html as html_lib
 from typing import Any, Callable, Mapping
 
 import streamlit as st
 
+from core import config
+from core import customer_journey
 from core import customer_portal as portal
 from core import customer_portal_oidc as oidc
+from views import customer_portal_component as component
 
-_MODE_LABELS = {
-    "ROAD": "Đường bộ",
-    "SEA": "Đường biển",
-    "AIR": "Đường hàng không",
-    "RAIL": "Đường sắt",
-}
-
-
-def _mode_label(mode: str | None) -> str:
-    return _MODE_LABELS.get(str(mode or "").upper(), "Chưa xác định")
+_CUSTOMER_CSS = """
+<style>
+  /* Only the customer entry is affected; the internal shell is untouched. */
+  section.main .block-container, div[data-testid="stMainBlockContainer"] {
+    padding-top: 1.2rem !important;
+    padding-bottom: 0.6rem !important;
+    max-width: 100% !important;
+  }
+  .g1-customer-account {
+    display: flex; align-items: center; justify-content: flex-end;
+    gap: 10px; flex-wrap: wrap; margin: 0 0 8px;
+    font-size: 11.5px; color: #475569;
+  }
+</style>
+"""
 
 
 def _logout_button(*, key: str, on_logout: Callable[[], None] | None = None) -> bool:
@@ -33,6 +47,33 @@ def _logout_button(*, key: str, on_logout: Callable[[], None] | None = None) -> 
         st.info("Phiên đăng nhập đã kết thúc. Bạn có thể đóng trang này.")
         return True
     return False
+
+
+def _demo_flag() -> str | None:
+    """Honest environment label; a non-production dataset is never implied to be live."""
+    identity = str(getattr(config, "ENV_IDENTITY", "") or "").upper()
+    if identity and identity != "PRODUCTION":
+        return "DỮ LIỆU STAGING — KHÔNG PHẢI SẢN XUẤT"
+    return None
+
+
+def _notice_from_view(view: portal.CustomerDashboardView) -> dict[str, str] | None:
+    if view.data_issues:
+        return {
+            "title": "LỖI DỮ LIỆU CÔNG BỐ:",
+            "text": (
+                "Nội bộ đang rà soát; không có thông tin lô lỗi nào được hiển thị."
+            ),
+        }
+    if view.denied_lots:
+        return {
+            "title": "MỘT SỐ LÔ CHƯA ĐƯỢC CÔNG BỐ:",
+            "text": (
+                "Có lô bị từ chối công bố hoặc chưa có bản duyệt hợp lệ; "
+                "hệ thống không hiển thị nội dung đó."
+            ),
+        }
+    return None
 
 
 def render_customer_denied(*, on_logout: Callable[[], None] | None = None) -> None:
@@ -84,19 +125,46 @@ def render_customer_login_choice(*, standalone: bool = False) -> None:
             st.error("Không khởi tạo được luồng đăng nhập Google. Không có dữ liệu được hiển thị.")
 
 
+def _account_label(email: str) -> str:
+    """Masked account hint: enough to recognise the session, not a data grant."""
+    value = str(email or "").strip()
+    if "@" not in value:
+        return ""
+    local, _, domain = value.partition("@")
+    head = local[:2] if len(local) > 2 else local[:1]
+    return f"{head}***@{domain}"
+
+
+def build_model(view: portal.CustomerDashboardView) -> dict[str, Any]:
+    """Build the exact component payload for one trusted dashboard view."""
+    return customer_journey.build_portal_model(
+        view,
+        demo_flag=_demo_flag(),
+        notice=_notice_from_view(view),
+        account_label=_account_label(view.principal.email),
+    )
+
+
 def render_customer_dashboard(
     principal: portal.CustomerPrincipal,
     *,
     db: Any = None,
     on_logout: Callable[[], None] | None = None,
 ) -> None:
-    """Render only the preloaded, allowlisted cards for one verified customer."""
-    st.title("Dashboard khách hàng")
-    st.caption("Thông tin lô hàng đã được Trường Thành Logistics xác nhận công bố.")
-    st.text(f"Khách hàng: {principal.display_name}")
-    st.text(f"Tài khoản: {principal.email}")
-    if _logout_button(key="customer_portal_logout", on_logout=on_logout):
-        return
+    """Render the reference dashboard + journey map for one verified customer."""
+    st.markdown(_CUSTOMER_CSS, unsafe_allow_html=True)
+    account_col, action_col = st.columns([3, 1])
+    with account_col:
+        st.markdown(
+            '<div class="g1-customer-account">'
+            f"Khách hàng: <b>{html_lib.escape(principal.display_name)}</b>"
+            f" · Tài khoản: <b>{html_lib.escape(_account_label(principal.email))}</b>"
+            "</div>",
+            unsafe_allow_html=True,
+        )
+    with action_col:
+        if _logout_button(key="customer_portal_logout", on_logout=on_logout):
+            return
 
     try:
         view = portal.load_customer_dashboard(principal, db=db)
@@ -107,40 +175,17 @@ def render_customer_dashboard(
         st.error("Dữ liệu công bố chưa sẵn sàng. Vui lòng thử lại sau hoặc liên hệ hỗ trợ.")
         return
 
-    if view.data_issues:
-        st.error(
-            "Phát hiện lỗi dữ liệu công bố. Nội bộ đang rà soát; "
-            "không có thông tin lô lỗi nào được hiển thị."
-        )
-    if view.denied_lots:
-        st.warning(
-            "Một số lô bị từ chối công bố hoặc chưa có bản duyệt hợp lệ; "
-            "hệ thống không hiển thị nội dung đó."
-        )
-    if view.no_lots and not view.denied_lots:
+    if view.no_lots and not view.denied_lots and not view.data_issues:
         st.info("Chưa có lô hàng nào được công bố cho tài khoản này.")
+        st.caption("Không có lô hàng hoặc thông tin công bố nào được hiển thị.")
 
-    for index, card in enumerate(view.cards):
-        with st.container(border=True):
-            st.subheader(f"Lô {card.reference}")
-            st.success(card.status_label)
-            st.caption("Trạng thái bản công bố đã được duyệt.")
-            if st.button(
-                "Xem thông tin được công bố",
-                key=f"customer_portal_detail_{index}",
-            ):
-                st.session_state[f"customer_portal_open_{index}"] = True
-            if st.session_state.get(f"customer_portal_open_{index}"):
-                st.table(
-                    [
-                        {"Thông tin": "Mã lô", "Giá trị": card.reference},
-                        {"Thông tin": "Trạng thái", "Giá trị": card.status_label},
-                        {"Thông tin": "Phiên bản công bố", "Giá trị": card.publication_version},
-                        {"Thông tin": "Phương thức vận chuyển", "Giá trị": _mode_label(card.transport_mode)},
-                        {"Thông tin": "Thời điểm duyệt", "Giá trị": card.approved_at},
-                    ]
-                )
-                st.caption("Chỉ các trường trong allowlist công bố được hiển thị.")
+    try:
+        component.render(build_model(view))
+    except component.PortalAssetError:
+        st.error(
+            "Giao diện cổng khách hàng chưa sẵn sàng trên máy chủ này. "
+            "Không có dữ liệu nào được hiển thị."
+        )
 
 
 def render_owner_portal_access_control(
