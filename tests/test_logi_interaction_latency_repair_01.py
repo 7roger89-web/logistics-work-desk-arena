@@ -375,9 +375,25 @@ class InteractionLatencyRepairTests(unittest.TestCase):
                 return ComponentResult({}, trigger)
             return ComponentResult({}, {})
 
+        from core import auth
+
+        # The post-mount fallback this simulated old baseline relies on
+        # (views.logi_shell.render) also gates dispatch on a REVALIDATED
+        # session via fresh_session_identity_for_action(), exactly like the
+        # real app where require_login() has already run before the script
+        # body. Without a canonical identity the fallback never dispatches and
+        # this test would measure 1 VM build / 0 reruns instead of the baseline
+        # double-build behaviour it asserts. This is a revalidation boundary,
+        # not a production defect.
+        users_db = {"test_user": {"username": "test_user", "display_name": "Test User",
+                                  "role": "admin", "active": True, "user_id": "u_test"}}
+        st.session_state["current_user"] = dict(users_db["test_user"])
+
         # Simulate OLD BASELINE: callback is lambda: None (no-op prefix),
         # so dispatch only runs post-render.
-        with patch("views.logi_view_model.build_view_model", side_effect=lambda: bvm_calls.append(1) or {"version": 1}), \
+        with patch.object(auth, "AUTH_REQUIRED", True), \
+             patch("core.database.load_users", return_value=users_db), \
+             patch("views.logi_view_model.build_view_model", side_effect=lambda: bvm_calls.append(1) or {"version": 1}), \
              patch("streamlit.rerun", side_effect=lambda: rerun_calls.append(1)), \
              patch("views.logi_shell._renderer", return_value=fake_renderer), \
              patch("views.web_app.require_login", return_value={"username": "test_user", "role": "admin"}), \
@@ -404,16 +420,32 @@ class InteractionLatencyRepairTests(unittest.TestCase):
                 "payload": {"shipmentId": "LO-0306", "fields": {"booking_no": "BK-MULTI-01"}},
             }
         }
-        st.session_state[COMPONENT_KEY] = trigger
-        st.session_state["current_user"] = {"username": "test_user", "role": "admin"}
+        from core import auth
 
-        with patch("core.database.save_shipment_atomic", return_value=True) as mock_save:
+        # _on_component_event() revalidates the session against the canonical
+        # user store (fresh_session_identity_for_action) BEFORE dispatching.
+        # Without a canonical identity the handler is never invoked and this
+        # test would measure 0 calls instead of exercising the batch guard.
+        users_db = {"test_user": {"username": "test_user", "display_name": "Test User",
+                                  "role": "admin", "active": True, "user_id": "u_test"}}
+        st.session_state[COMPONENT_KEY] = trigger
+        st.session_state["current_user"] = dict(users_db["test_user"])
+
+        with patch.object(auth, "AUTH_REQUIRED", True), \
+             patch("core.database.load_users", return_value=users_db), \
+             patch("views.logi_view_model.dispatch", wraps=logi_view_model.dispatch) as mock_dispatch, \
+             patch("core.database.save_shipment_atomic", return_value=True) as mock_save:
             # First callback in batch
             logi_shell._on_component_event()
             # Second callback in batch (e.g. fired by another trigger in aggregator)
             logi_shell._on_component_event()
 
             self.assertEqual(mock_save.call_count, 1, "Handler must be invoked exactly once across callback batch")
+            # The seq-replay guard inside dispatch() would mask a second writer
+            # call on its own, so also assert on the dispatcher: the
+            # CALLBACK_DISPATCHED_FLAG guard must stop the second callback
+            # BEFORE dispatch runs, not merely before the writer runs.
+            self.assertEqual(mock_dispatch.call_count, 1, "Dispatch must run once per callback batch")
 
     # -----------------------------------------------------------------------
     # CONTROL_TOWER_SECURITY_REPAIR_01: Canonical Auth Revalidation Regressions

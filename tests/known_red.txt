@@ -14,6 +14,12 @@
 #     cờ --allow-missing cho ngoại lệ có chủ ý để hạ xuống WARNING và cho gate xanh.
 #   - Nodeid flaky (lúc đỏ lúc xanh ở BASE) thuộc tests/known_flaky.txt, không nhét vào đây.
 # Mỗi dòng một nodeid pytest; dòng trống và dòng bắt đầu bằng '#' được bỏ qua.
+#
+# Cập nhật 2026-10-27 (LOGI_LATENCY_KNOWN_RED_REPAIR_01): 18 -> 16.
+#   2 nodeid latency_repair_01 đã xanh sau khi test được cấp canonical
+#   identity cho boundary revalidation (fresh_session_identity_for_action).
+#   Không phải defect production; revalidation đã được lock bởi 6 test
+#   regression A-F trong cùng file.
 
 tests/test_agreements_api.py::LoadAgreementsTests::test_load_agreements_returns_dict_from_load_dict
 tests/test_all_tabs_smoke.py::AllTabsSmokeTest::test_all_routes_render
@@ -25,8 +31,6 @@ tests/test_logc15_auth_rbac.py::TestRoleMatrix::test_unknown_role_falls_back_to_
 tests/test_logi_cn_truck_type_persist_01.py::test_whitelist_gained_exactly_the_one_approved_key
 tests/test_logi_finance_actual_entry_parity_01.py::test_service_catalog_is_not_hardcoded_in_react
 tests/test_logi_finance_actual_entry_parity_01.py::test_service_catalog_is_projected_from_core_config
-tests/test_logi_interaction_latency_repair_01.py::InteractionLatencyRepairTests::test_adversarial_reverting_to_baseline_produces_double_build_and_rerun
-tests/test_logi_interaction_latency_repair_01.py::InteractionLatencyRepairTests::test_duplicate_trigger_in_same_prefix_batch_does_not_double_dispatch
 tests/test_logi_shipment_operational_data_v1.py::test_lightweight_create_starts_one_canonical_leg_and_navigable_detail_data
 tests/test_login_visual_compact.py::test_bootstrap_path_still_reachable_with_hero
 tests/test_phase_a_component.py::test_view_model_shape_via_app

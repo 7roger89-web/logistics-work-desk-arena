@@ -82,6 +82,44 @@ tuần tự, một lần dựng view-model mỗi tương tác) là lý do tồn 
 `logi_sandbox.py` lẫn hai file latency test. Đây là khu vực ma sát framework rõ
 nhất, nhưng nó đã được **đo và có guard**, chưa phải lý do đủ để đổi stack.
 
+### 2.4.1. Ghi chú sau sửa — 2026-10-27 (LOGI_LATENCY_KNOWN_RED_REPAIR_01)
+
+**Đính chính trung thực.** §2.4 ở trên (và suy luận nối dài ở §3 mục 2, §4
+mục 1) mô tả hai test đỏ này là "hợp đồng một-batch-một-dispatch chưa được
+thỏa" / "dispatch trùng trong một batch". Cách đọc đó **sai**. Thông báo fail
+thật là `0 != 1 : Handler must be invoked exactly once across callback batch`
+(test batch) và `1 != 2 : Baseline MUST produce 2 VM builds` (test adversarial):
+handler **chưa từng được gọi**, nên đã không hề có dispatch trùng nào bị đo
+đạc. Đây là **stale test, không phải defect production**.
+
+Nguyên nhân: cả `views/logi_shell._on_component_event()` lẫn nhánh fallback
+post-mount trong `views/logi_shell.render()` đều gate bằng
+`core.auth.fresh_session_identity_for_action()`
+(`CONTROL_TOWER_SECURITY_REPAIR_01`). Với `AUTH_REQUIRED=True`, hàm này đòi
+`current_user` **và** `core.database.load_users()` trả user `active`; hai test
+cũ không dựng canonical identity nên boundary revalidation trả `None` và
+dispatch bị bỏ qua hoàn toàn. Sáu test `test_regression_a..f` trong cùng file
+đã lock đúng hợp đồng revalidation và đã dùng chính pattern patch này.
+
+Sửa đúng 3 file, **không đụng production**: cấp `patch.object(core.auth,
+"AUTH_REQUIRED", True)` + `patch("core.database.load_users", ...)` trả user
+active cho cả hai test; test batch còn assert thêm số lần gọi `dispatch` (vì
+seq-replay guard bên trong `dispatch()` tự nó đã che một lần gọi writer thứ
+hai, nên chỉ đếm writer là chưa đủ để khóa `CALLBACK_DISPATCHED_FLAG`).
+`tests/known_red.txt`: 18 -> 16 nodeid.
+
+Kết quả đo lại trên HEAD sau sửa: **16 failed / 1976 passed / 45 skipped**
+(trước: 18 failed / 1974 passed / 45 skipped, pytest 9.1.1). So sánh tập
+nodeid FAILED bằng máy trên junit: **0 nodeid mới, đúng 2 nodeid bị gỡ**, còn
+lại identical. Gate `scripts/check_known_red.py --junit ... --registry
+tests/known_red.txt`: `NEW_COUNT=0 DRIFT_COUNT=0 MISSING_COUNT=0`, exit 0. Số
+file test vẫn 149; không thêm/xóa file test.
+
+**Toàn bộ số đo ngày 2026-10-26 từ §1 đến §2.4 được giữ nguyên làm hồ sơ lịch
+sử.** Kết luận DEFER SPA ở §4 không đổi: nó dựa trên chi phí đọc dữ liệu
+(`READ_SHARED_SOURCES_MS=319.6ms`) và việc thiếu số browser/Atlas thật, không
+dựa trên hai test đỏ đã được làm rõ ở đây.
+
 ## 3. Trả lời admission gate cho ngôn ngữ/runtime mới
 
 Tham chiếu 6 câu trong `docs/ARCHITECTURE-PRINCIPLES.md`.
@@ -120,6 +158,10 @@ Việc nên làm tiếp (theo thứ tự, đều không cần rewrite):
 
 1. Sửa hai test đỏ trong `test_logi_interaction_latency_repair_01` để khóa hợp
    đồng dispatch-một-lần và hết double-build (backlog known-red đã định danh).
+   **ĐÃ XONG 2026-10-27** (`LOGI_LATENCY_KNOWN_RED_REPAIR_01`): 2 test được cấp
+   canonical identity ở boundary revalidation rồi xanh, `tests/known_red.txt`
+   18 -> 16, gate NEW=0 DRIFT=0 MISSING=0. Xem đính chính ở §2.4.1 — đây là
+   stale test, không phải defect production; không có module production nào đổi.
 2. Đo lại trên Atlas thật + trình duyệt thật (FCP/TTI/INP, payload mỗi lần
    rerun) ở N=95 và N=300; khi đó mới đủ dữ liệu tranh luận về SPA.
 3. Tối ưu `READ_SHARED_SOURCES_MS` (319.6ms, thành phần lớn nhất) nếu cần cải
