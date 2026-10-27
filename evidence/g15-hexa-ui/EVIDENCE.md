@@ -321,9 +321,11 @@ it resolves `puppeteer-core` from `--puppeteer-core`, `PUPPETEER_CORE_PATH`,
 | Field | Value |
 |---|---|
 | Session branch | `arena/baf65589-logistics-work-desk-arena` (active; cannot be renamed) |
-| Requested staging branch | `arena/ae5f9f47-logistics-work-desk-arena` — **not** pushed to; see blocker B1 |
+| Implementation commit | `b48cbbb6d706652294b4a6a8fa74e65c7409c73b` — `feat(g1.5): restore HEXA customer portal from the Owner reference HTML` |
 | Base SHA | `4eb3d127db71f810fd05a0e5eabbb985103efbab` (re-measured, matches the brief) |
-| Head SHA | see the commit on this branch carrying this file (base + this change) |
+| Pull request | [#224](https://github.com/7roger89-web/logistics-work-desk-arena/pull/224) → base `arena/ae5f9f47-logistics-work-desk-arena` |
+| Staging branch tip | `dea6c3f05a8177528cac4c0307f9dc72d64a1c93` (parent `4eb3d12…`, tree `e1e69217…` **identical** to `b48cbbb`) |
+| Merge shape | rebase-merge with the base tip still at `4eb3d12…` ⇒ one linear commit on top of the base, **no merge commit**, no force |
 | Changed/added | `core/customer_portal.py`, `views/customer_dashboard.py`, `core/customer_journey.py` *(new)*, `views/customer_portal_component.py` *(new)*, `assets/customer_portal/{hexa-portal.html,hexa-portal.css,hexa-portal.js,sea-chart.webp}` *(new)*, `tests/test_customer_portal_hexa_reference_ui_g15.py` *(new)*, `tests/test_customer_dashboard_g1_runtime.py`, `playwright/g15_hexa_portal_qa.mjs` *(new)*, `evidence/g15-hexa-ui/**` |
 | Not touched | `core/customer_portal_oidc.py`, `.streamlit/secrets*`, `core/auth.py`, `views/logi_*`, `component/**`, `main` |
 
@@ -331,11 +333,13 @@ it resolves `puppeteer-core` from `--puppeteer-core`, `PUPPETEER_CORE_PATH`,
 
 ## 8. Blockers / open items
 
-- **B1 — branch identity.** The session is pinned to
-  `arena/baf65589-logistics-work-desk-arena`; pushing
-  `arena/ae5f9f47-logistics-work-desk-arena` is out of scope for this session and
-  no force-push is allowed. The fast-forward with an expected-SHA guard must be
-  run by whoever owns that branch (see §9).
+- ~~**B1 — branch identity.**~~ **RESOLVED.** Sessions may not push directly to a
+  second branch, so delivery went through PR #224
+  (`arena/baf65589-logistics-work-desk-arena` → `arena/ae5f9f47-…`) after
+  re-checking the guard `base_tip == 4eb3d12…`. The resulting staging commit
+  `dea6c3f0…` has parent `4eb3d12…` and a tree byte-identical to `b48cbbb`, i.e.
+  a true fast-forward with no merge commit and no force. `main` was not touched
+  (still `9e4190b2…` at merge time).
 - **B2 — `LIVE_GOOGLE`** (§4.5) can only be confirmed on the staging host.
 - **B3 — approved stage/doc/quote data does not exist yet in staging.** The
   publication documents in `scripts/seed_customer_portal_staging.py` carry
@@ -351,17 +355,19 @@ it resolves `puppeteer-core` from `--puppeteer-core`, `PUPPETEER_CORE_PATH`,
 
 ---
 
-## 9. Handoff — fast-forward with SHA guard (owner of the staging branch)
+## 9. Delivery receipt (guarded fast-forward)
 
 ```bash
-BASE=4eb3d127db71f810fd05a0e5eabbb985103efbab
-HEAD_SHA=$(git rev-parse arena/baf65589-logistics-work-desk-arena)  # recorded after commit
-git fetch origin
-[ "$(git rev-parse origin/arena/ae5f9f47-logistics-work-desk-arena)" = "$BASE" ] || { echo "STALE: refusing"; exit 1; }
-git push origin "$HEAD_SHA":refs/heads/arena/ae5f9f47-logistics-work-desk-arena
+# guard re-measured immediately before merging
+git ls-remote origin refs/heads/arena/ae5f9f47-logistics-work-desk-arena
+# -> 4eb3d127db71f810fd05a0e5eabbb985103efbab   (== base == parent of b48cbbb)
+gh pr merge 224 --rebase     # no-op replay onto the same parent
+# staging tip -> dea6c3f05a8177528cac4c0307f9dc72d64a1c93
+# parent      -> 4eb3d127db71f810fd05a0e5eabbb985103efbab
+# tree        -> e1e69217aa05fb1ad1819b82c2452741e4c01b45  (identical to b48cbbb)
 ```
 
-No `--force`, no merge into `main`.
+No `--force`, no merge commit, no merge into `main`.
 
 ---
 
@@ -374,6 +380,6 @@ No `--force`, no merge into `main`.
 - `VISUAL_PASS=PROVEN` (26/26 real-browser checks, desktop 1440×900 + mobile
   390×844, containment and negative-data assertions)
 - `LIVE_GOOGLE=NOT_RE-VERIFIED_IN_SANDBOX` (B2)
-- `BRANCH_ALIGNMENT=BLOCKED_SESSION_SCOPE` (B1)
+- `BRANCH_ALIGNMENT=PROVEN` (PR #224 merged as a guarded fast-forward; staging tip `dea6c3f0…`)
 - `APPROVED_STAGE_DATA=NOT_YET_PUBLISHED_IN_STAGING` (B3) — renders as
   `CHƯA ĐỐI SOÁT` / `Chưa xác minh` by design
