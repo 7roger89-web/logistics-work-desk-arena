@@ -194,33 +194,65 @@ def _normalize_verified_email(value: Any) -> str:
     return normalize_email(value)
 
 
+def _state(kind: str, *, reason: str = "", email: str = "") -> OidcSessionState:
+    """Build a denial state and log ONLY the safe reason code.
+
+    Staging diagnosis needs the exact denial reason; claims, email, tokens,
+    cookies, client secrets and credentials must never reach the log.
+    """
+    if reason:
+        LOGGER.warning("CUSTOMER_PORTAL_OIDC_STATE kind=%s reason=%s", kind, reason)
+    return OidcSessionState(kind, email=email, reason=reason)
+
+
+def _origin_binding_ok(info: Mapping[str, Any], config: OidcConfigStatus) -> bool:
+    """Check the cookie's ``origin`` binding when the host still exposes it.
+
+    Streamlit validates the signed identity cookie's ``origin`` claim against
+    the live request origin and then DELETES that claim before surfacing
+    ``st.user`` (``BrowserWebSocketHandler._parse_user_cookie`` in the 1.51 line;
+    ``_parse_decoded_user_cookie`` in the starlette line, verified up to
+    1.66.1).  A cookies-from-another-origin attempt therefore already ends in an
+    empty ``st.user`` -> ``STATE_NONE``, never in a verified identity.
+
+    So an ABSENT ``origin`` is the normal verified-session shape, while a
+    PRESENT but different ``origin`` stays a hard denial for any host/version
+    that does expose the claim.  ``aud``/``iss``/``email_verified``/``exp``
+    below remain the deployment binding that this module itself enforces.
+    """
+    if "origin" not in info:
+        return True
+    return str(info.get("origin") or "") == config.redirect_origin
+
+
 def current_oidc_session(auth_section: Mapping[str, Any] | None = None) -> OidcSessionState:
     """Interpret the post-redirect Streamlit OIDC session, fail-closed.
 
-    ``provider``, ``origin``, ``aud`` and ``is_logged_in`` bind the cookie to
-    this app's Google provider.  Google's ``email_verified`` claim and the ID
-    token's ``exp`` claim are also checked before any customer lookup.
+    ``provider``, ``is_logged_in`` and Streamlit's own origin-bound cookie bind
+    the session to this deployment; ``aud``, ``iss``, Google's
+    ``email_verified`` claim and the ID token's ``exp`` claim are checked here
+    before any customer lookup.
     """
     info = _read_user_info()
     if info.get("is_logged_in") is not True or info.get("provider") != GOOGLE_PROVIDER:
         return OidcSessionState(STATE_NONE)
     config = inspect_oidc_config(auth_section)
     if not config.ready:
-        return OidcSessionState(STATE_CONFIG_ERROR, reason="oidc_config_incomplete")
-    if str(info.get("origin") or "") != config.redirect_origin:
-        return OidcSessionState(STATE_DENIED, reason="origin_mismatch")
+        return _state(STATE_CONFIG_ERROR, reason="oidc_config_incomplete")
+    if not _origin_binding_ok(info, config):
+        return _state(STATE_DENIED, reason="origin_mismatch")
     if str(info.get("aud") or "") != config.client_id:
-        return OidcSessionState(STATE_DENIED, reason="audience_mismatch")
+        return _state(STATE_DENIED, reason="audience_mismatch")
     issuer = str(info.get("iss") or "").strip().rstrip("/")
     if issuer not in {"https://accounts.google.com", "accounts.google.com"}:
-        return OidcSessionState(STATE_DENIED, reason="issuer_mismatch")
+        return _state(STATE_DENIED, reason="issuer_mismatch")
     if not _email_verified(info.get("email_verified")):
-        return OidcSessionState(STATE_DENIED, reason="email_not_verified")
+        return _state(STATE_DENIED, reason="email_not_verified")
     if not _not_expired(info.get("exp")):
-        return OidcSessionState(STATE_EXPIRED, reason="identity_expired")
+        return _state(STATE_EXPIRED, reason="identity_expired")
     email = _normalize_verified_email(info.get("email"))
     if not email:
-        return OidcSessionState(STATE_DENIED, reason="email_missing")
+        return _state(STATE_DENIED, reason="email_missing")
     return OidcSessionState(STATE_AUTHENTICATED, email=email)
 
 

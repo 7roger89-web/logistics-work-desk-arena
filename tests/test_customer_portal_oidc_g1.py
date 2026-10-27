@@ -25,7 +25,9 @@ def _claims(**overrides):
     claims = {
         "is_logged_in": True,
         "provider": "google",
-        "origin": "http://localhost:8501",
+        # No "origin": Streamlit validates the cookie origin itself and deletes
+        # the claim before exposing st.user (G1.5). This fixture mirrors the
+        # REAL post-callback shape; adding "origin" back would re-hide the bug.
         "aud": FAKE_AUTH["google"]["client_id"],
         "iss": "https://accounts.google.com",
         "email": "PORTAL.LucGiac@Example.com",
@@ -115,6 +117,70 @@ def test_invalid_or_stale_oidc_claims_fail_closed(overrides, expected):
         state = oidc.current_oidc_session(FAKE_AUTH)
     assert state.kind == expected
     assert state.email == ""
+
+
+def test_streamlit_strips_origin_claim_and_session_still_authenticates():
+    """G1.5 regression: the REAL post-callback st.user has no "origin" claim.
+
+    Streamlit validates the identity cookie origin itself and then pops the
+    claim (`_parse_decoded_user_cookie` / `BrowserWebSocketHandler`). Requiring
+    the claim made every live Google login end in DENIED/origin_mismatch.
+    """
+    live_shape = _claims()
+    live_shape.pop("origin", None)
+    assert "origin" not in live_shape
+    with patch.object(oidc, "_read_user_info", return_value=live_shape):
+        state = oidc.current_oidc_session(FAKE_AUTH)
+    assert state.kind == oidc.STATE_AUTHENTICATED
+    assert state.reason == ""
+    assert state.email == "portal.lucgiac@example.com"
+
+
+def test_origin_claim_is_still_enforced_when_a_host_exposes_it():
+    with patch.object(
+        oidc,
+        "_read_user_info",
+        return_value=_claims(origin="https://evil.example"),
+    ):
+        state = oidc.current_oidc_session(FAKE_AUTH)
+    assert state.kind == oidc.STATE_DENIED
+    assert state.reason == "origin_mismatch"
+    with patch.object(oidc, "_read_user_info", return_value=_claims()):
+        assert oidc.current_oidc_session(FAKE_AUTH).reason == ""
+
+
+@pytest.mark.parametrize(
+    "overrides,reason",
+    [
+        ({"aud": "another-client.apps.googleusercontent.com"}, "audience_mismatch"),
+        ({"iss": "https://evil.example"}, "issuer_mismatch"),
+        ({"email_verified": False}, "email_not_verified"),
+        ({"exp": int(time.time()) - 10}, "identity_expired"),
+    ],
+)
+def test_denial_reason_code_is_logged_without_identity_material(overrides, reason, caplog):
+    """Staging diagnosis needs the reason code only — never claims/email/tokens."""
+    with patch.object(oidc, "_read_user_info", return_value=_claims(**overrides)):
+        with caplog.at_level("WARNING", logger="logistics.customer_portal_oidc"):
+            state = oidc.current_oidc_session(FAKE_AUTH)
+    assert state.reason == reason
+    text = caplog.text
+    assert f"reason={reason}" in text
+    for secret in (
+        "portal.lucgiac@example.com",
+        "staging-google-subject",
+        FAKE_AUTH["google"]["client_id"],
+        "STAGING_TEST_ONLY_CLIENT_SECRET",
+        FAKE_AUTH["cookie_secret"],
+    ):
+        assert secret not in text
+
+
+def test_anonymous_session_is_not_logged_as_a_denial(caplog):
+    with patch.object(oidc, "_read_user_info", return_value={}):
+        with caplog.at_level("WARNING", logger="logistics.customer_portal_oidc"):
+            assert oidc.current_oidc_session(FAKE_AUTH).kind == oidc.STATE_NONE
+    assert "CUSTOMER_PORTAL_OIDC_STATE" not in caplog.text
 
 
 def test_oauth_return_with_broken_config_is_config_error():

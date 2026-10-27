@@ -54,7 +54,7 @@ def _claims(email: str):
     return {
         "is_logged_in": True,
         "provider": "google",
-        "origin": "http://localhost:8501",
+        # Real st.user shape: Streamlit strips the cookie "origin" claim (G1.5).
         "aud": FAKE_AUTH["google"]["client_id"],
         "iss": "https://accounts.google.com",
         "email": email,
