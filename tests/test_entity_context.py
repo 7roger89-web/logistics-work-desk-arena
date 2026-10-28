@@ -87,13 +87,109 @@ class EntityContextTests(unittest.TestCase):
         result = build_customer_context("CUS-1", master, {"renamed": renamed})
         self.assertEqual(len(result["shipments"]), 1)
 
-        # Legacy name-only rows remain internal review candidates, not portal grants.
+        # Legacy name-only rows never auto-link into shipments/quotes/agreements/contracts;
+        # they stay strictly in reconciliation_candidates with zero portal/profile grant.
         legacy = dict(foreign, customer_id="", customer="Acme")
-        result = build_customer_context("CUS-1", master, {"legacy": legacy})
-        self.assertEqual(len(result["shipments"]), 1)
+        result = build_customer_context(
+            "CUS-1",
+            master,
+            {"legacy": legacy},
+            quotes={"Q-LEG": {"id": "Q-LEG", "quote_no": "BG-LEG", "customer_id": "", "customer_name": "Acme",
+                              "calculation": {"selling_price_total_vnd": 99_000_000, "estimated_margin_vnd": 25_000_000}}},
+            agreements={"AGR-LEG": {"agreement_id": "AGR-LEG", "agreement_no": "TT-LEG", "customer_id": None, "customer_name": "Acme"}},
+            contracts={"HD-LEG": {"id": "HD-LEG", "contract_no": "HDMB-LEG", "customer_id": "   ", "client": "Acme"}},
+        )
+        self.assertEqual(result["shipments"], [])
+        self.assertEqual(result["quotations"], [])
+        self.assertEqual(result["agreements"], [])
+        self.assertEqual(result["contracts"], [])
+        self.assertEqual(
+            [(row["record_type"], row["bucket"], row["auto_linked"], row["portal_grant"])
+             for row in result["reconciliation_candidates"]],
+            [
+                ("agreement", "CANDIDATE_REVIEW", False, False),
+                ("contract", "CANDIDATE_REVIEW", False, False),
+                ("quotation", "CANDIDATE_REVIEW", False, False),
+                ("shipment", "CANDIDATE_REVIEW", False, False),
+            ],
+        )
+
         legacy["client"] = "Conflicting Legal Entity"
         result = build_customer_context("CUS-1", master, {"legacy": legacy})
         self.assertEqual(result["shipments"], [])
+        self.assertEqual(result["reconciliation_candidates"][0]["bucket"], "CONFLICT")
+        self.assertEqual(result["reconciliation_candidates"][0]["reason_code"], "CACHED_CUSTOMER_NAMES_DIFFER")
+
+    def test_g1_duplicate_customer_names_never_leak_idless_records_across_profiles(self) -> None:
+        import json
+
+        customers = {
+            "CUST-DUP-A": {"id": "CUST-DUP-A", "name": "Công Ty Trùng Tên G1"},
+            "CUST-DUP-B": {"id": "CUST-DUP-B", "name": "Công Ty Trùng Tên G1"},
+        }
+        shipments = {
+            "LO-NOID": dict(_shipments()["S-001"], id="LO-NOID", shipment_id="LO-NOID",
+                            customer="Công Ty Trùng Tên G1", client="Công Ty Trùng Tên G1", customer_id=""),
+        }
+        quotes = {
+            "Q-NOID": {
+                "id": "Q-NOID",
+                "quote_no": "BG-NOID-01",
+                "customer_name": "Công Ty Trùng Tên G1",
+                "customer_id": "",
+                "status": "APPROVED",
+                "calculation": {"selling_price_total_vnd": 158_765_432, "estimated_margin_vnd": 41_234_567},
+            }
+        }
+        agreements = {
+            "AGR-NOID": {
+                "agreement_id": "AGR-NOID",
+                "agreement_no": "TT-NOID-01",
+                "customer_name": "Công Ty Trùng Tên G1",
+                "customer_id": None,
+                "status": "ACTIVE",
+                "commercial_snapshot": {"incoterm": "DDP"},
+            }
+        }
+        contracts = {
+            "HD-NOID": {
+                "id": "HD-NOID",
+                "contract_no": "HDMB-NOID-01",
+                "client": "Công Ty Trùng Tên G1",
+                "customer_id": "",
+                "status": "active",
+                "value": 999_888_777,
+            }
+        }
+
+        for cid in ("CUST-DUP-A", "CUST-DUP-B"):
+            ctx = build_customer_context(
+                cid,
+                customers[cid],
+                shipments,
+                quotes=quotes,
+                agreements=agreements,
+                contracts=contracts,
+                customers=customers,
+            )
+            self.assertEqual(ctx["shipments"], [])
+            self.assertEqual(ctx["active_shipments"], [])
+            self.assertEqual(ctx["quotations"], [])
+            self.assertEqual(ctx["active_quotations"], [])
+            self.assertEqual(ctx["agreements"], [])
+            self.assertEqual(ctx["active_agreements"], [])
+            self.assertEqual(ctx["contracts"], [])
+            self.assertEqual(ctx["active_contracts"], [])
+            self.assertEqual(len(ctx["reconciliation_candidates"]), 4)
+            for row in ctx["reconciliation_candidates"]:
+                self.assertEqual(row["bucket"], "CONFLICT")
+                self.assertEqual(row["reason_code"], "CUSTOMER_NAME_AMBIGUOUS")
+                self.assertFalse(row["auto_linked"])
+                self.assertFalse(row["portal_grant"])
+            dumped = json.dumps(ctx, ensure_ascii=False)
+            self.assertNotIn("158765432", dumped)
+            self.assertNotIn("41234567", dumped)
+            self.assertNotIn("999888777", dumped)
 
     def test_factory_context_keeps_multi_lot_unknowns_truthful(self) -> None:
         view = build_factory_context("Factory North", _shipments())

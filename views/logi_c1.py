@@ -1568,24 +1568,28 @@ def _handle_contract_save(payload: Mapping[str, Any]) -> dict[str, Any]:
         supplied = payload.get("date") if "date" in payload else payload.get("contract_date")
         contract["date"] = _text(supplied)
     if "customerId" in payload or "customer_id" in payload:
-        supplied_customer = _text(payload.get("customerId") or payload.get("customer_id")).upper()
+        supplied_customer = _text(payload.get("customerId") or payload.get("customer_id"))
         if not supplied_customer:
             # A contract always has a counterparty: clearing the picker is a
             # mistake, not a business fact, so it is refused rather than stored.
             return _result("contract_save", cid, False,
                            "Hợp đồng luôn cần một khách hàng — hãy chọn khách khác thay vì để trống.")
-        from core.database import load_customers
+        from core.database import get_db
 
-        customers = load_customers() or {}
-        customer = customers.get(supplied_customer)
-        if not isinstance(customer, Mapping):
+        db = get_db()
+        customer = (
+            db.customers.find_one({"id": supplied_customer}, {"_id": 0})
+            if db is not None
+            else None
+        )
+        if not isinstance(customer, Mapping) or bool(customer.get("is_deleted")):
             return _result("contract_save", cid, False,
-                           f"Không có khách hàng {supplied_customer} trong danh bạ.")
+                           f"Không có khách hàng {supplied_customer} đang hoạt động trong danh bạ.")
         customer_name = _text(customer.get("name"))
         if not customer_name:
             return _result("contract_save", cid, False,
                            f"Khách hàng {supplied_customer} chưa có tên trong danh bạ.")
-        contract["customer_id"] = supplied_customer
+        contract["customer_id"] = _text(customer.get("id")) or supplied_customer
         contract["customer"] = customer_name
         contract["client"] = customer_name
     if "value" in payload:

@@ -2875,7 +2875,7 @@ def _handle_shipment_customer_save(payload: Mapping[str, Any]) -> dict[str, Any]
     may keep a typed historical name, and no ID is inferred from that name.
     """
     from core.auth import can_operate_business
-    from core.database import get_last_db_error, load_customers, update_shipment_customer
+    from core.database import get_db, get_last_db_error, update_shipment_customer
 
     sid = rd.text(payload.get("shipmentId"))
     # Issue #195 follow-up: echo the caller's requestId on every success and
@@ -2893,18 +2893,23 @@ def _handle_shipment_customer_save(payload: Mapping[str, Any]) -> dict[str, Any]
     if shipment is None:
         return out(False, f"Không tìm thấy lô {sid}.")
 
-    customer_id = rd.text(payload.get("customerId")).upper()
+    customer_id = rd.text(payload.get("customerId"))
     typed_name = rd.text(payload.get("customer"))
-    customers = load_customers() or {}
     if customer_id:
-        document = customers.get(customer_id)
-        if not isinstance(document, Mapping):
+        db = get_db()
+        document = (
+            db.customers.find_one({"id": customer_id}, {"_id": 0})
+            if db is not None
+            else None
+        )
+        if not isinstance(document, Mapping) or bool(document.get("is_deleted")):
             return out(False,
-                       f"Không có khách hàng {customer_id} trong danh bạ.")
+                       f"Không có khách hàng {customer_id} đang hoạt động trong danh bạ.")
         name = rd.text(document.get("name"))
         if not name:
             return out(False,
                        f"Khách hàng {customer_id} chưa có tên trong danh bạ.")
+        customer_id = rd.text(document.get("id")) or customer_id
     else:
         # No invented identity: an empty picker with no typed name is a
         # mistake, not a business fact, and is refused rather than written.
@@ -2915,12 +2920,13 @@ def _handle_shipment_customer_save(payload: Mapping[str, Any]) -> dict[str, Any]
         customer_id = ""
 
     previous = rd.text(shipment.get("customer") or shipment.get("client"))
-    if name == previous and (not customer_id or customer_id == rd.text(shipment.get("customer_id"))):
+    existing_customer_id = rd.text(shipment.get("customer_id"))
+    if name == previous and customer_id == existing_customer_id:
         # Nothing to write: report the unchanged truth instead of a no-op
         # version bump that would look like a change in the audit trail.
         return out(True, "Không có thay đổi để lưu.",
                    readback=_projection_for(shipment), noop=True,
-                   persisted={"customer": previous})
+                   persisted={"customer": previous, "customerId": existing_customer_id})
 
     if not update_shipment_customer(sid, name, customer_id):
         return out(False,
@@ -5417,7 +5423,7 @@ def _resolve_uploaded_template_customer(
     on a customer document.  Zero or several matches resolve to NO customer,
     which readiness then reports as missing information.
     """
-    customer_id = rd.text(shipment.get("customer_id")).upper()
+    customer_id = rd.text(shipment.get("customer_id"))
     linked = customers.get(customer_id)
     if isinstance(linked, Mapping):
         return dict(linked)

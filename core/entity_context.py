@@ -12,6 +12,7 @@ from __future__ import annotations
 from collections.abc import Iterable, Mapping
 from typing import Any
 
+from core.customer_link_review import CANDIDATE_REVIEW, CONFLICT
 from core.shipment_360 import UNKNOWN
 from core.shipment_dashboard import build_shipment_dashboard_view
 from core.shipment_workspace import build_shipment_workspace_view
@@ -127,16 +128,146 @@ def _master_fields(record: Mapping[str, Any] | None) -> dict[str, str]:
     }
 
 
-def _customer_match(shipment: Mapping[str, Any], customer_id: str, customer_name: str) -> bool:
-    """A stored customer_id wins; legacy names are not an ID override."""
-    saved_id = shipment.get("customer_id")
-    if saved_id is not None and str(saved_id).strip():
-        return bool(customer_id) and isinstance(saved_id, str) and saved_id.strip() == str(customer_id).strip()
-    primary, secondary = shipment.get("customer"), shipment.get("client")
-    if primary and secondary and _key(primary) != _key(secondary):
+def _customer_id_match(record: Mapping[str, Any], customer_id: str) -> bool:
+    """Strict canonical ID match: records missing customer_id never auto-link."""
+    canonical_id = str(customer_id or "").strip()
+    if not canonical_id:
         return False
-    shipment_name = _first(shipment, ("customer", "customer_name", "client", "client_name"), "")
-    return bool(customer_name) and _key(shipment_name) == _key(customer_name)
+    saved_id = record.get("customer_id")
+    return isinstance(saved_id, str) and bool(saved_id.strip()) and saved_id.strip() == canonical_id
+
+
+def _is_missing_customer_id(record: Mapping[str, Any]) -> bool:
+    saved_id = record.get("customer_id")
+    return saved_id is None or (isinstance(saved_id, str) and not saved_id.strip())
+
+
+def _is_ambiguous_customer_name(
+    customer_name: str,
+    customers: Mapping[str, Mapping[str, Any]] | None,
+) -> bool:
+    wanted = _key(customer_name)
+    if not wanted or customer_name == UNKNOWN or not isinstance(customers, Mapping):
+        return False
+    matches = [
+        row for row in customers.values()
+        if isinstance(row, Mapping)
+        and not bool(row.get("is_deleted"))
+        and _key(row.get("name") or row.get("customer_name")) == wanted
+    ]
+    return len(matches) > 1
+
+
+def _reconciliation_candidate(
+    record: Mapping[str, Any],
+    *,
+    record_type: str,
+    record_id: str,
+    reference: str,
+    customer_name: str,
+    ambiguous_name: bool,
+) -> dict[str, Any] | None:
+    """Classify an ID-less name match into a read-only reconciliation bucket.
+
+    Returns only minimal diagnostic identity — never commercial prices, margins,
+    operational details, or automatic access grants.
+    """
+    if record.get("is_deleted") is True or not _is_missing_customer_id(record):
+        return None
+    wanted = _key(customer_name)
+    if not wanted or customer_name == UNKNOWN:
+        return None
+    primary = _first(record, ("customer", "customer_name"), "")
+    secondary = _first(record, ("client", "client_name"), "")
+    if _key(primary) != wanted and _key(secondary) != wanted:
+        return None
+    if primary and secondary and _key(primary) != _key(secondary):
+        bucket, reason_code = CONFLICT, "CACHED_CUSTOMER_NAMES_DIFFER"
+    elif ambiguous_name:
+        bucket, reason_code = CONFLICT, "CUSTOMER_NAME_AMBIGUOUS"
+    else:
+        bucket, reason_code = CANDIDATE_REVIEW, "NAME_ONLY_REQUIRES_REVIEW"
+    return {
+        "record_type": record_type,
+        "record_id": record_id,
+        "reference": reference,
+        "bucket": bucket,
+        "reason_code": reason_code,
+        "auto_linked": False,
+        "portal_grant": False,
+    }
+
+
+def _collect_reconciliation_candidates(
+    *,
+    customer_name: str,
+    shipments: Mapping[str, Mapping[str, Any]] | Iterable[Mapping[str, Any]],
+    quotes: Mapping[str, Mapping[str, Any]] | None,
+    agreements: Mapping[str, Mapping[str, Any]] | None,
+    contracts: Mapping[str, Mapping[str, Any]] | None,
+    customers: Mapping[str, Mapping[str, Any]] | None,
+) -> list[dict[str, Any]]:
+    ambiguous = _is_ambiguous_customer_name(customer_name, customers)
+    candidates: list[dict[str, Any]] = []
+    for shipment in _shipment_rows(shipments):
+        sid = _shipment_id(shipment)
+        item = _reconciliation_candidate(
+            shipment,
+            record_type="shipment",
+            record_id=sid,
+            reference=sid,
+            customer_name=customer_name,
+            ambiguous_name=ambiguous,
+        )
+        if item is not None:
+            candidates.append(item)
+    if isinstance(quotes, Mapping):
+        for key, quote in quotes.items():
+            if not isinstance(quote, Mapping):
+                continue
+            qid = _text(quote.get("id"), str(key))
+            item = _reconciliation_candidate(
+                quote,
+                record_type="quotation",
+                record_id=qid,
+                reference=_text(quote.get("quote_no"), qid),
+                customer_name=customer_name,
+                ambiguous_name=ambiguous,
+            )
+            if item is not None:
+                candidates.append(item)
+    if isinstance(agreements, Mapping):
+        for key, agreement in agreements.items():
+            if not isinstance(agreement, Mapping):
+                continue
+            aid = _text(agreement.get("agreement_id") or agreement.get("id"), str(key))
+            item = _reconciliation_candidate(
+                agreement,
+                record_type="agreement",
+                record_id=aid,
+                reference=_text(agreement.get("agreement_no"), aid),
+                customer_name=customer_name,
+                ambiguous_name=ambiguous,
+            )
+            if item is not None:
+                candidates.append(item)
+    if isinstance(contracts, Mapping):
+        for key, contract in contracts.items():
+            if not isinstance(contract, Mapping):
+                continue
+            cid = _text(contract.get("id") or contract.get("contract_id"), str(key))
+            item = _reconciliation_candidate(
+                contract,
+                record_type="contract",
+                record_id=cid,
+                reference=_text(contract.get("contract_no"), cid),
+                customer_name=customer_name,
+                ambiguous_name=ambiguous,
+            )
+            if item is not None:
+                candidates.append(item)
+    candidates.sort(key=lambda row: (str(row["record_type"]), str(row["reference"]), str(row["record_id"])))
+    return candidates
 
 
 def build_customer_context(
@@ -146,6 +277,8 @@ def build_customer_context(
     *,
     quotes: Mapping[str, Mapping[str, Any]] | None = None,
     agreements: Mapping[str, Mapping[str, Any]] | None = None,
+    contracts: Mapping[str, Mapping[str, Any]] | None = None,
+    customers: Mapping[str, Mapping[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Build one customer workspace without changing customer or shipment data."""
 
@@ -154,11 +287,21 @@ def build_customer_context(
     related = [
         _related_row(shipment)
         for shipment in _shipment_rows(shipments)
-        if _customer_match(shipment, customer_id, customer_name)
+        if _customer_id_match(shipment, customer_id)
     ]
-    # LOG-C13: add related quotations and agreements (read-only projections).
-    customer_quotations = _customer_quotation_rows(quotes, customer_id, customer_name)
-    customer_agreements = _customer_agreement_rows(agreements, customer_id, customer_name)
+    # LOG-C13 / G1: related quotations, agreements, and contracts require an
+    # exact canonical customer_id; ID-less name matches go to reconciliation_candidates.
+    customer_quotations = _customer_quotation_rows(quotes, customer_id)
+    customer_agreements = _customer_agreement_rows(agreements, customer_id)
+    customer_contracts = _customer_contract_rows(contracts, customer_id)
+    reconciliation_candidates = _collect_reconciliation_candidates(
+        customer_name=customer_name,
+        shipments=shipments,
+        quotes=quotes,
+        agreements=agreements,
+        contracts=contracts,
+        customers=customers,
+    )
     related.sort(key=lambda row: str(row.get("shipment_id")))
     active = [row for row in related if row.get("status_code") not in {"done", "cancel"}]
     attention = [row for row in related if row.get("attention") not in (None, UNKNOWN)]
@@ -169,6 +312,7 @@ def build_customer_context(
     }.items() if value in (None, "")]
     active_agreements = [row for row in customer_agreements if row.get("status_code") not in {"VOID"}]
     active_quotations = [row for row in customer_quotations if row.get("status_code") not in {"REJECTED", "EXPIRED"}]
+    active_contracts = [row for row in customer_contracts if row.get("status_code").casefold() not in {"void", "cancelled", "canceled"}]
     return {
         "entity_type": "customer",
         "entity_key": customer_id or customer_name,
@@ -195,6 +339,9 @@ def build_customer_context(
         "active_quotations": active_quotations,
         "agreements": customer_agreements,
         "active_agreements": active_agreements,
+        "contracts": customer_contracts,
+        "active_contracts": active_contracts,
+        "reconciliation_candidates": reconciliation_candidates,
         "gaps": gaps or ["No known customer master gaps"],
         "read_only": True,
     }
@@ -218,7 +365,6 @@ def _quotation_row(quote: Mapping[str, Any]) -> dict[str, Any]:
 def _customer_quotation_rows(
     quotes: Mapping[str, Mapping[str, Any]] | None,
     customer_id: str,
-    customer_name: str,
 ) -> list[dict[str, Any]]:
     if not isinstance(quotes, Mapping):
         return []
@@ -226,7 +372,8 @@ def _customer_quotation_rows(
         _quotation_row(quote)
         for quote in quotes.values()
         if isinstance(quote, Mapping)
-        and _customer_match(quote, customer_id, customer_name)
+        and quote.get("is_deleted") is not True
+        and _customer_id_match(quote, customer_id)
     ]
     rows.sort(key=lambda row: str(row.get("quote_reference")))
     return rows
@@ -257,7 +404,6 @@ def _agreement_row(agreement: Mapping[str, Any]) -> dict[str, Any]:
 def _customer_agreement_rows(
     agreements: Mapping[str, Mapping[str, Any]] | None,
     customer_id: str,
-    customer_name: str,
 ) -> list[dict[str, Any]]:
     if not isinstance(agreements, Mapping):
         return []
@@ -265,9 +411,40 @@ def _customer_agreement_rows(
         _agreement_row(agreement)
         for agreement in agreements.values()
         if isinstance(agreement, Mapping)
-        and _customer_match(agreement, customer_id, customer_name)
+        and agreement.get("is_deleted") is not True
+        and _customer_id_match(agreement, customer_id)
     ]
     rows.sort(key=lambda row: str(row.get("agreement_reference")))
+    return rows
+
+
+def _contract_row(contract: Mapping[str, Any], fallback_id: str = "") -> dict[str, Any]:
+    cid = _text(contract.get("id") or contract.get("contract_id"), fallback_id)
+    return {
+        "contract_id": cid,
+        "contract_reference": _text(contract.get("contract_no"), cid),
+        "status_code": _text(contract.get("status"), "active"),
+        "kind": _text(contract.get("kind") or contract.get("type")),
+        "contract_date": _text(contract.get("date") or contract.get("contract_date")),
+        "shipments": ", ".join(str(item) for item in contract.get("shipment_ids") or []) or "Chưa liên kết",
+        "source": "contracts store; exact customer_id match only",
+    }
+
+
+def _customer_contract_rows(
+    contracts: Mapping[str, Mapping[str, Any]] | None,
+    customer_id: str,
+) -> list[dict[str, Any]]:
+    if not isinstance(contracts, Mapping):
+        return []
+    rows = [
+        _contract_row(contract, str(key))
+        for key, contract in contracts.items()
+        if isinstance(contract, Mapping)
+        and contract.get("is_deleted") is not True
+        and _customer_id_match(contract, customer_id)
+    ]
+    rows.sort(key=lambda row: str(row.get("contract_reference")))
     return rows
 
 
@@ -448,13 +625,22 @@ def build_entity_context(
     shipments: Mapping[str, Mapping[str, Any]] | Iterable[Mapping[str, Any]],
     quotes: Mapping[str, Mapping[str, Any]] | None = None,
     agreements: Mapping[str, Mapping[str, Any]] | None = None,
+    contracts: Mapping[str, Mapping[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Dispatch the public entity context contract."""
 
     normalized = str(entity_type or "").casefold()
     if normalized == "customer":
         customer = customers.get(entity_key) if isinstance(customers, Mapping) else None
-        return build_customer_context(entity_key, customer, shipments, quotes=quotes, agreements=agreements)
+        return build_customer_context(
+            entity_key,
+            customer,
+            shipments,
+            quotes=quotes,
+            agreements=agreements,
+            contracts=contracts,
+            customers=customers,
+        )
     if normalized == "factory":
         return build_factory_context(entity_key, shipments)
     if normalized == "partner":
