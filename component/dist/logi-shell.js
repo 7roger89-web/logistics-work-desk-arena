@@ -23146,24 +23146,6 @@ function Qu() {
 		h?.shipmentDocumentPicker?.catalog,
 		Le
 	]), Ke = h?.authority?.agents ?? [], qe = h?.authority?.companies ?? [], Je = Ke.find((e) => e.id === le), Ye = qe.find((e) => e.id === de), Xe = (0, _.useMemo)(() => s.filter((e) => e.shipmentId === n).slice(0, 5), [s, n]);
-	if (!v) return /* @__PURE__ */ (0, W.jsxs)("div", {
-		className: "rounded-2xl bg-white border p-10 text-center max-w-[600px] mx-auto",
-		children: [
-			/* @__PURE__ */ (0, W.jsxs)("p", {
-				className: "font-extrabold text-[19px]",
-				children: ["Không tìm thấy lô ", n]
-			}),
-			/* @__PURE__ */ (0, W.jsx)("p", {
-				className: "text-slate-500 mt-1 text-[15px]",
-				children: "Mã lô có thể sai. Về danh sách để tìm lại."
-			}),
-			/* @__PURE__ */ (0, W.jsx)(U, {
-				to: "/lo-hang",
-				className: "btn-press touch-target mt-4 inline-flex rounded-xl bg-[#0f2a4a] text-white font-bold px-6 min-h-[48px] items-center",
-				children: "Về danh sách lô"
-			})
-		]
-	});
 	let Ze = v.finance.currency || "VND", Qe = v.journey?.nodes.find((e) => e.id === r.get("stage")), $e = r.get("work") || "info", et = Qe?.moduleId ? Qe : void 0, tt = !Qe || $e !== "overview" && ($e !== "info" || !["si-vgm", "gate-in"].includes(Qe.id) && !et), nt = (e, t) => {
 		let n = t === "docs" ? "chung-tu" : t === "costs" ? "tai-chinh" : t === "history" ? "lich-su" : e.targetTab;
 		return n === "lay-hang" && Sn ? (R(!0), !1) : (i({
