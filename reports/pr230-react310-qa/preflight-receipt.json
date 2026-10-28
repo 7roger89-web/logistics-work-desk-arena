@@ -1,0 +1,37 @@
+{
+  "schema": "p2p-skill-consumption-receipt/1",
+  "status": "PASS",
+  "selected_skills": [
+    {
+      "path": ".agents/skills/p2p-uiux/SKILL.md",
+      "sha256": "98f26873e48cc87e34d132478f73672a80d20b3a8e1a2256bdcdab4d6107e7b2",
+      "source_match": true,
+      "checkout_byte_match": true,
+      "read": true,
+      "applied": true
+    },
+    {
+      "path": ".agents/skills/frontend-development/SKILL.md",
+      "sha256": "95b93f5c4209db5ffbc54f807e54ced080a7d53ec9fcc981ee5570c2502db956",
+      "source_match": true,
+      "checkout_byte_match": true,
+      "read": true,
+      "applied": true
+    },
+    {
+      "path": ".agents/skills/react-best-practices/SKILL.md",
+      "sha256": "71ed7794962fa6e803ee83030517b5b93a9f70fbfeb431ec4535c5480a8d8355",
+      "source_match": true,
+      "checkout_byte_match": true,
+      "read": true,
+      "applied": true
+    }
+  ],
+  "law_check": "PASS",
+  "law_source": "LOCAL_PORTABLE",
+  "law_source_content_sha256": "11ce33bb9c514d32ad3aec3eb7d8b40f0d0290b1dbe79eaa15751ef34668bd4b",
+  "experience_check": "USE_ACTIVE_EXPERIENCE",
+  "experience_ids": [
+    "shared-exp-b2611df4c9393f0017f07dcb"
+  ]
+}
