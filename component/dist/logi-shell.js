@@ -22956,6 +22956,28 @@ function Zu(e) {
 		block: e === "fld-tk" ? "center" : "start"
 	}), e === "fld-tk" && n instanceof HTMLElement && n.focus({ preventScroll: !0 });
 }
+function QuGate() {
+	let { id: e } = gt(), { pathname: t } = dt(), n = qn(t, e), { shipments: o } = Wn();
+	if (o.some((e) => e.id === n)) return /* @__PURE__ */ (0, W.jsx)(Qu, { key: n });
+	return /* @__PURE__ */ (0, W.jsxs)("div", {
+		className: "rounded-2xl bg-white border p-10 text-center max-w-[600px] mx-auto",
+		children: [
+			/* @__PURE__ */ (0, W.jsxs)("p", {
+				className: "font-extrabold text-[19px]",
+				children: ["Không tìm thấy lô ", n]
+			}),
+			/* @__PURE__ */ (0, W.jsx)("p", {
+				className: "text-slate-500 mt-1 text-[15px]",
+				children: "Mã lô có thể sai. Về danh sách để tìm lại."
+			}),
+			/* @__PURE__ */ (0, W.jsx)(U, {
+				to: "/lo-hang",
+				className: "btn-press touch-target mt-4 inline-flex rounded-xl bg-[#0f2a4a] text-white font-bold px-6 min-h-[48px] items-center",
+				children: "Về danh sách lô"
+			})
+		]
+	});
+}
 function Qu() {
 	let { id: e } = gt(), { pathname: t } = dt(), n = qn(t, e), [r, i] = Pn(), a = r.get("tab") || "van-tai", { shipments: o, attention: s, updateShipment: c, toast: l, contracts: u, customers: d, dispatch: f, financeServices: p, environment: m } = Wn(), h = (0, _.useSyncExternalStore)(C, S, S), g = mt(), v = o.find((e) => e.id === n), [y, b] = (0, _.useState)(!1), [x, w] = (0, _.useState)(!1), [T, E] = (0, _.useState)(!1), [D, O] = (0, _.useState)(0), [k, A] = (0, _.useState)(0), [j, M] = (0, _.useState)(!1), [N, P] = (0, _.useState)(!1), [F, I] = (0, _.useState)(!1), [L, R] = (0, _.useState)(!1), [z, ee] = (0, _.useState)(""), [te, B] = (0, _.useState)("Thu tiền khách"), [ne, re] = (0, _.useState)(""), [ie, ae] = (0, _.useState)({}), [oe, se] = (0, _.useState)(0), [V, ce] = (0, _.useState)(""), [le, ue] = (0, _.useState)(""), [de, fe] = (0, _.useState)(""), [pe, me] = (0, _.useState)(""), [he, ge] = (0, _.useState)(""), [_e, ve] = (0, _.useState)(""), [ye, be] = (0, _.useState)(null), [xe, Se] = (0, _.useState)(""), [Ce, we] = (0, _.useState)(null), [Te, Ee] = (0, _.useState)(""), [De, Oe] = (0, _.useState)(!1), [ke, Ae] = (0, _.useState)([]), [je, Me] = (0, _.useState)(""), [Ne, Pe] = (0, _.useState)(""), [Fe, Ie] = (0, _.useState)("");
 	(0, _.useEffect)(() => {
@@ -42122,7 +42144,7 @@ function Hm() {
 		}),
 		/* @__PURE__ */ (0, W.jsx)(Bt, {
 			path: "/lo-hang/:id",
-			element: /* @__PURE__ */ (0, W.jsx)(Qu, {})
+			element: /* @__PURE__ */ (0, W.jsx)(QuGate, {})
 		}),
 		/* @__PURE__ */ (0, W.jsx)(Bt, {
 			path: "/tao-lo-moi",
