@@ -29,7 +29,7 @@ if (!globalThis.MessageChannel) globalThis.MessageChannel = window.MessageChanne
 window.HTMLElement.prototype.scrollIntoView = () => {};
 
 const $ = (selector, root = document) => [...root.querySelectorAll(selector)];
-const text = (node) => (node?.textContent || "").replace(/\\s+/g, " ").trim();
+const text = (node) => (node?.textContent || "").replace(/\s+/g, " ").trim();
 const click = async (label, selector = "button", root = document) => {
   const target = $(selector, root).find((node) => text(node) === label)
     || $(selector, root).find((node) => text(node).includes(label));
