@@ -244,8 +244,6 @@ def build_lot_model(card: Any) -> dict[str, Any]:
     mode = mode_key(getattr(card, "transport_mode", None))
     public_events = [dict(e) for e in (getattr(card, "timeline", ()) or ()) if isinstance(e, Mapping)]
     documents = [dict(d) for d in (getattr(card, "documents", ()) or ()) if isinstance(d, Mapping)]
-    raw_quote = getattr(card, "quote", None)
-    quote = dict(raw_quote) if isinstance(raw_quote, Mapping) else None
 
     raw_approved_at = _text(getattr(card, "approved_at", ""), 40)
     publication = {
@@ -283,14 +281,7 @@ def build_lot_model(card: Any) -> dict[str, Any]:
         for d in documents
         if _text(d.get("id"), 40)
     ]
-    public_quote = None
-    if quote is not None and _text(quote.get("id"), 40):
-        public_quote = {
-            "id": _text(quote.get("id"), 40),
-            "version": _text(quote.get("version"), 20),
-            "status": _text(quote.get("status"), 20),
-            "selling_total_vnd": _money(quote.get("selling_total_vnd")),
-        }
+    # Owner 5C: legacy quote prices cannot reach portal model.
     public_timeline = [
         {
             "stage": _text(e.get("title"), 80),
@@ -321,7 +312,7 @@ def build_lot_model(card: Any) -> dict[str, Any]:
         # debt block is explicitly unknown instead of guessing from the quote.
         "debt_summary": {"status": "UNKNOWN", "currency": "VND"},
         "finance_detail": None,
-        "quote": public_quote,
+        "quote": None,
         "documents": public_documents,
         "timeline": public_timeline,
         "journey": {

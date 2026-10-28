@@ -9,14 +9,13 @@ query/body parameters.  Nothing here writes records.
 """
 from __future__ import annotations
 
-import math
 from collections.abc import Mapping, Sequence
 from typing import Any
 
 PUBLICATION_SCHEMA = "hexa-customer-publication/v0"
 ALLOWED_DOCUMENT_KINDS = frozenset({
     "PL", "PI", "BOOKING", "SI", "BL", "AWB", "POD", "CUSTOMS",
-    "CUSTOMER_INVOICE", "CUSTOMER_CONTRACT", "PAYMENT_REQUEST",
+    "CUSTOMER_INVOICE", "CUSTOMER_CONTRACT", "CUSTOMER_QUOTE", "PAYMENT_REQUEST",
 })
 ALLOWED_MODES = frozenset({"ROAD", "SEA", "AIR", "RAIL"})
 
@@ -60,13 +59,6 @@ def _belongs(row: Any, cust: str, shipment_id: str) -> bool:
                 and _id(item.get("shipment_id")) == shipment_id)
 
 
-def _money_or_unknown(value: Any) -> float | None:
-    if isinstance(value, bool) or not isinstance(value, (int, float)):
-        return None
-    n = float(value)
-    return n if math.isfinite(n) and n >= 0 else None
-
-
 def _public_docs(documents: Sequence[Mapping[str, Any]], publication: Mapping[str, Any],
                  cust: str, shipment_id: str) -> list[dict[str, Any]]:
     allowed = _map(publication.get("document_versions"))
@@ -106,23 +98,6 @@ def _public_events(events: Sequence[Mapping[str, Any]], publication: Mapping[str
     return sorted(result[:100], key=lambda x: (x["occurred_at"], x["id"]), reverse=True)
 
 
-def _public_quote(quote: Mapping[str, Any] | None, shipment: Mapping[str, Any],
-                  publication: Mapping[str, Any], cust: str) -> dict[str, Any] | None:
-    q, released = _map(quote), _map(publication.get("quote"))
-    quote_id, version = _id(q.get("id")), _id(q.get("version"))
-    if not (quote_id and version and _id(shipment.get("quote_id")) == quote_id
-            and _id(q.get("customer_id")) == cust
-            and quote_id == _id(released.get("id"))
-            and version == _id(released.get("version"))
-            and q.get("status") in {"SENT", "ACCEPTED"}):
-        return None
-    # This is the *customer selling* total recorded by TT's quotation engine.
-    # Do not include buy/cost/margin, raw Excel goods, FX, or internal ledgers.
-    total = _money_or_unknown(_map(q.get("calculation")).get("selling_price_total_vnd"))
-    return {"id": quote_id, "version": version, "status": q["status"],
-            "selling_total_vnd": total}
-
-
 def build_customer_publication(*, shipment: Mapping[str, Any],
                                principal: Mapping[str, Any],
                                publication: Mapping[str, Any],
@@ -136,7 +111,8 @@ def build_customer_publication(*, shipment: Mapping[str, Any],
             "transport_mode": mode if mode in ALLOWED_MODES else None,
             "timeline": _public_events(events, publication, cust, shipment_id),
             "documents": _public_docs(documents, publication, cust, shipment_id),
-            "quote": _public_quote(quote, shipment, publication, cust)}
+            # Owner 5C: versioned quote FILE metadata comes from documents.
+            "quote": None}
 
 
 def authorize_document_download(*, shipment: Mapping[str, Any],

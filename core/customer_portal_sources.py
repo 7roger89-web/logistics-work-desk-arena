@@ -1,8 +1,7 @@
 """Bounded read-only adapters for Owner-approved customer publication sources.
 
 Manifest pins candidate ids; core.hexa_customer_publication independently
-checks tenant, verification, visibility, kinds and customer selling-price
-allowlists. This adapter never reads raw attachments, internal ledger, margin
+checks tenant, verification, visibility and approved document kinds. This adapter never reads raw attachments, internal ledger, margin
 or shipment notes. Missing public collections simply yield no approved data.
 """
 from __future__ import annotations
@@ -21,12 +20,6 @@ _DOCUMENT_PROJECTION = {
     "_id": 0, "id": 1, "version": 1, "customer_id": 1, "shipment_id": 1,
     "kind": 1, "public_title": 1, "status": 1, "visibility": 1, "verified": 1,
 }
-_QUOTE_PROJECTION = {
-    "_id": 0, "id": 1, "version": 1, "customer_id": 1, "status": 1,
-    "calculation.selling_price_total_vnd": 1,
-}
-
-
 class PublicSourceUnavailable(RuntimeError):
     """Invalid or ambiguous published source: never reveal partial data."""
 
@@ -102,21 +95,6 @@ def read_approved_sources(
         database, "public_documents", _DOCUMENT_PROJECTION, customer_id,
         shipment_id, _pins(publication, "document_versions"),
     )
-    released = publication.get("quote", {})
-    if not isinstance(released, Mapping):
-        raise PublicSourceUnavailable("invalid quote release")
-    quote_id, version = _id(released.get("id")), _id(released.get("version"))
-    quote: Mapping[str, Any] | None = None
-    if quote_id and version and quote_id == _id(shipment_quote_id):
-        rows = list(database["quotes"].find(
-            {
-                "id": quote_id, "version": {"$in": _versions(version)},
-                "customer_id": customer_id,
-            },
-            _QUOTE_PROJECTION,
-        ).limit(2))
-        if len(rows) > 1:
-            raise PublicSourceUnavailable("ambiguous published quote version")
-        if rows:
-            quote = rows[0]
-    return events, documents, quote
+    # Owner policy 5C: no internal quote reads for customer UI.
+    # Approved quote file metadata is in public_documents/CUSTOMER_QUOTE.
+    return events, documents, None

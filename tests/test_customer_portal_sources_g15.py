@@ -75,11 +75,34 @@ def test_approved_sources_reach_only_the_customer_safe_card(db):
         "id": "DOC-1", "version": "v1", "kind": "PL",
         "title": "Packing List",
     },)
-    assert card.quote == {
-        "id": "QT-1", "version": "1", "status": "SENT",
-        "selling_total_vnd": 250000.0,
-    }
+    assert card.quote is None  # 5C: quotation money not exposed.
+    assert "250000" not in str(asdict(card))
     assert "SECRET_" not in str(asdict(card))
+
+
+def test_published_quote_document_has_only_approved_metadata(db):
+    _insert_sources(db)
+    db.public_documents.insert_one({
+        "id": "QUOTE-PDF-1", "version": "v7", "customer_id": CUSTOMER,
+        "shipment_id": LOT, "kind": "CUSTOMER_QUOTE",
+        "public_title": "Báo giá đã duyệt bản 7",
+        "status": "AVAILABLE", "verified": True, "visibility": "CUSTOMER",
+        "internal_locator": "INTERNAL_ONLY",
+        "selling_total_vnd": 987654321,
+    })
+    db.customer_publications.update_one({"shipment_id": LOT}, {"$set": {
+        "document_versions.QUOTE-PDF-1": "v7",
+    }})
+    card = _view(db).cards[0]
+    assert {"id": "QUOTE-PDF-1", "version": "v7", "kind": "CUSTOMER_QUOTE",
+            "title": "Báo giá đã duyệt bản 7"} in card.documents
+    assert card.quote is None
+    assert "INTERNAL_ONLY" not in str(asdict(card))
+    assert "987654321" not in str(asdict(card))
+    db.customer_publications.update_one({"shipment_id": LOT}, {"$set": {
+        "document_versions.QUOTE-PDF-1": "v6",
+    }})
+    assert all(d["id"] != "QUOTE-PDF-1" for d in _view(db).cards[0].documents)
 
 
 def test_no_manifest_release_keeps_customer_data_empty(db):
@@ -115,10 +138,10 @@ def test_unpinned_versions_stay_hidden(db):
     assert _view(db).cards[0].timeline == ()
 
 
-def test_quote_requires_matching_shipment_reference(db):
+def test_published_quote_pin_does_not_read_internal_quotes(db):
     _insert_sources(db)
-    db.shipments.update_one({"id": LOT}, {"$set": {"quote_id": "QT-OTHER"}})
-    assert _view(db).cards[0].quote is None
+    with patch.object(db["quotes"], "find", side_effect=AssertionError("forbidden quotation query")):
+        assert _view(db).cards[0].quote is None
 
 
 def test_invalid_or_duplicate_release_fails_closed(db):

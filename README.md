@@ -277,10 +277,11 @@ Cổng Lục Giác chỉ nhận dữ liệu sau khi Trường Thành phát hành
 - **Chứng từ:** đọc metadata từ `public_documents` theo `document_versions`.
   Cần `verified=true`, `status=AVAILABLE`, `visibility=CUSTOMER`, loại chứng từ
   thuộc allowlist. Không tải tệp/GridFS, không đọc tài liệu riêng của nội bộ.
-- **Báo giá bán:** đọc từ `quotes` chỉ khi `quote.id/version` được duyệt
-  trong manifest, `shipments.quote_id` trùng và quote thuộc khách, trạng thái
-  `SENT` hoặc `ACCEPTED`. Phía khách chỉ nhận
-  `calculation.selling_price_total_vnd`; không nhận giá vốn/lãi.
+- **Tài liệu báo giá:** chỉ hiện metadata của tệp `CUSTOMER_QUOTE`
+  từ `public_documents` khi đúng `document_versions` được duyệt,
+  đúng khách/lô, `verified=true`, `status=AVAILABLE`,
+  `visibility=CUSTOMER`. Không đọc giá từ `quotes.calculation`,
+  không trả số tiền hay tải tệp/GridFS; `quote` luôn null (Owner 5C).
 - **Công nợ:** vẫn `UNKNOWN / Chưa đối soát`. Báo giá bán KHÔNG phải công nợ;
   chưa có hợp đồng công bố đối soát tài chính để đọc các sổ thu/chi nội bộ.
 
