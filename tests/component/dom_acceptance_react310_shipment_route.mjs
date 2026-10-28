@@ -39,6 +39,14 @@ const click = async (label, selector = "button", root = document) => {
 };
 const tick = (ms = 150) => new Promise((resolve) => setTimeout(resolve, ms));
 const byTestId = (id) => document.querySelector(`[data-testid="${id}"]`);
+const renderErrors = [];
+const originalConsoleError = console.error;
+console.error = (...args) => {
+  const message = args.map(String).join(" ");
+  renderErrors.push(message);
+  originalConsoleError(...args);
+};
+window.addEventListener("error", (event) => renderErrors.push(String(event.error ?? event.message)));
 const mount = (await import(path.join(ROOT, "component/dist/logi-shell.js"))).default;
 const host = document.createElement("div");
 document.body.appendChild(host);
@@ -72,4 +80,14 @@ await tick();
 assert.equal(byTestId("shipment-header-edit-toggle")?.getAttribute("aria-expanded"), "true");
 assert.ok(byTestId("shipment-customer-picker"), "edit disclosure contains customer selector");
 assert.ok(!text(document.body).includes("Logi-good shell gặp lỗi"), "opening edit must not crash shell");
-console.log("G1 React #310 shipment route transition + edit PASS");
+
+// The same instance must also close the edit disclosure without a hook error.
+byTestId("shipment-header-edit-toggle").dispatchEvent(new window.MouseEvent("click", { bubbles: true, cancelable: true }));
+await tick();
+assert.equal(byTestId("shipment-header-edit-toggle")?.getAttribute("aria-expanded"), "false", "edit disclosure closes");
+assert.ok(!byTestId("shipment-customer-picker"), "closed disclosure hides the customer selector");
+assert.ok(!renderErrors.some((message) => /Rendered (more|fewer) hooks|Minified React error #310|React error #310/i.test(message)),
+  `React hook-order warning/error: ${renderErrors.join(" | ")}`);
+assert.ok(!text(document.body).includes("Logi-good shell gặp lỗi"), "closing edit must not crash shell");
+console.error = originalConsoleError;
+console.log("G1 React #310 shipment route transition + edit open/close PASS");
