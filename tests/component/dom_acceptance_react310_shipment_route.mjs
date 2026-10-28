@@ -4,7 +4,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { createRequire } from "node:module";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
@@ -30,10 +30,18 @@ window.HTMLElement.prototype.scrollIntoView = () => {};
 
 const $ = (selector, root = document) => [...root.querySelectorAll(selector)];
 const text = (node) => (node?.textContent || "").replace(/\s+/g, " ").trim();
+const waitFor = async (read, message) => {
+  const deadline = Date.now() + 5000;
+  while (Date.now() < deadline) {
+    const result = read();
+    if (result) return result;
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+  assert.fail(message);
+};
 const click = async (label, selector = "button", root = document) => {
-  const target = $(selector, root).find((node) => text(node) === label)
-    || $(selector, root).find((node) => text(node).includes(label));
-  assert.ok(target, `Missing clickable: ${label}`);
+  const target = await waitFor(() => $(selector, root).find((node) => text(node) === label)
+    || $(selector, root).find((node) => text(node).includes(label)), `Missing clickable: ${label}`);
   target.dispatchEvent(new window.MouseEvent("click", { bubbles: true, cancelable: true }));
   await new Promise((resolve) => setTimeout(resolve, 140));
 };
@@ -47,7 +55,7 @@ console.error = (...args) => {
   originalConsoleError(...args);
 };
 window.addEventListener("error", (event) => renderErrors.push(String(event.error ?? event.message)));
-const mount = (await import(path.join(ROOT, "component/dist/logi-shell.js"))).default;
+const mount = (await import(pathToFileURL(path.join(ROOT, "component/dist/logi-shell.js")).href)).default;
 const host = document.createElement("div");
 document.body.appendChild(host);
 const before = { ...FIX.shipmentBefore, lastWrites: [] };
@@ -60,34 +68,49 @@ await tick(180);
 await click("Lô Hàng", "a", $("aside")[0]);
 await click("Tất cả thời gian", "button", byTestId("shipment-period-controls"));
 await click(LOT, "a", $("main")[0]);
+await waitFor(() => byTestId("journey-global-page"), "shipment detail must mount");
 if (!byTestId("shipment-header-edit-toggle")) {
-  const info = document.querySelector('[data-testid="journey-global-page"]');
-  if (info) { info.dispatchEvent(new window.MouseEvent("click", { bubbles: true })); await tick(); }
+  await click("MỞ THÔNG TIN LÔ");
 }
-assert.ok(byTestId("shipment-header-edit-toggle"), "detail must render with a real shipment");
+await waitFor(() => byTestId("shipment-header-edit-toggle"), "detail must render with a real shipment");
+
+// A fresh shipment can acquire Journey nodes on the same mounted detail.
+// Use a real existing Journey projection; only transport it onto this test lot.
+const journeyFixture = JSON.parse(readFileSync(path.join(ROOT, "tests/component/fixtures/view_model_journey_fresh_188.json"), "utf8"));
+const journeyShipment = journeyFixture.before.shipments.find((row) => row.id === LOT);
+assert.ok(journeyShipment?.journey?.nodes?.length, "real Journey projection for this lot must exist in fixture");
+deliver({ ...before, shipments: before.shipments.map((row) => row.id === LOT ? { ...row, journey: journeyShipment.journey } : row) });
+await tick();
+await waitFor(() => byTestId("shipment-journey") && byTestId("shipment-journey").getAttribute("data-empty-journey") !== "true", "Journey nodes must arrive");
+assert.ok(!text(document.body).includes("Logi-good shell gặp lỗi"), "adding Journey nodes must not change Hook order");
+assert.ok(byTestId("shipment-journey"), "Journey renders after nodes arrive");
+deliver(before);
+await tick();
+await waitFor(() => byTestId("shipment-journey")?.getAttribute("data-empty-journey") === "true", "Journey nodes must clear");
+assert.ok(!text(document.body).includes("Logi-good shell gặp lỗi"), "removing Journey nodes must not change Hook order");
 
 deliver({ ...before, shipments: before.shipments.filter((row) => row.id !== LOT) });
 await tick();
-assert.ok(text(document.body).includes(`Không tìm thấy lô ${LOT}`), "safe fallback with missing shipment");
+await waitFor(() => text(document.body).includes(`Không tìm thấy lô ${LOT}`), "safe fallback with missing shipment");
 assert.ok(!text(document.body).includes("Logi-good shell gặp lỗi"), "no React error boundary for missing shipment");
 
 deliver(before);
 await tick();
-const toggle = byTestId("shipment-header-edit-toggle");
+const toggle = await waitFor(() => byTestId("shipment-header-edit-toggle"), "shipment must return without React #310");
 assert.ok(toggle, "shipment must return without React #310");
 toggle.dispatchEvent(new window.MouseEvent("click", { bubbles: true, cancelable: true }));
 await tick();
-assert.equal(byTestId("shipment-header-edit-toggle")?.getAttribute("aria-expanded"), "true");
+await waitFor(() => byTestId("shipment-header-edit-toggle")?.getAttribute("aria-expanded") === "true", "edit disclosure opens");
 assert.ok(byTestId("shipment-customer-picker"), "edit disclosure contains customer selector");
 assert.ok(!text(document.body).includes("Logi-good shell gặp lỗi"), "opening edit must not crash shell");
 
 // The same instance must also close the edit disclosure without a hook error.
 byTestId("shipment-header-edit-toggle").dispatchEvent(new window.MouseEvent("click", { bubbles: true, cancelable: true }));
 await tick();
-assert.equal(byTestId("shipment-header-edit-toggle")?.getAttribute("aria-expanded"), "false", "edit disclosure closes");
+await waitFor(() => byTestId("shipment-header-edit-toggle")?.getAttribute("aria-expanded") === "false", "edit disclosure closes");
 assert.ok(!byTestId("shipment-customer-picker"), "closed disclosure hides the customer selector");
 assert.ok(!renderErrors.some((message) => /Rendered (more|fewer) hooks|Minified React error #310|React error #310/i.test(message)),
   `React hook-order warning/error: ${renderErrors.join(" | ")}`);
 assert.ok(!text(document.body).includes("Logi-good shell gặp lỗi"), "closing edit must not crash shell");
 console.error = originalConsoleError;
-console.log("G1 React #310 shipment route transition + edit open/close PASS");
+console.log("G1 React #310 Journey empty/ready + shipment absent/present + edit open/close PASS");

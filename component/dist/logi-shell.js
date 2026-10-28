@@ -9637,16 +9637,11 @@ function Wn() {
 	return e;
 }
 //#endregion
-//#region src/lib/contractRoute.ts
-function Gn(e) {
-	return "/hop-dong/" + encodeURIComponent(e);
-}
-//#endregion
 //#region src/lib/shipmentRoute.ts
-function Kn(e) {
+function Gn(e) {
 	return "/lo-hang/" + encodeURIComponent(e);
 }
-function qn(e, t) {
+function Kn(e, t) {
 	let n = t ?? "";
 	if (!e.startsWith("/lo-hang/")) return n;
 	let r = e.slice(9).replace(/\/+$/, "");
@@ -9656,6 +9651,11 @@ function qn(e, t) {
 	} catch {
 		return n;
 	}
+}
+//#endregion
+//#region src/lib/contractRoute.ts
+function qn(e) {
+	return "/hop-dong/" + encodeURIComponent(e);
 }
 //#endregion
 //#region node_modules/lucide-react/dist/esm/shared/src/utils/toKebabCase.mjs
@@ -13275,7 +13275,7 @@ function Gs({ children: e }) {
 										]
 									}),
 									j.lots.map((e) => /* @__PURE__ */ (0, W.jsxs)("button", {
-										onClick: () => M(Kn(e.id)),
+										onClick: () => M(Gn(e.id)),
 										className: "w-full text-left px-3 py-2.5 rounded-xl hover:bg-slate-50 flex items-center gap-3",
 										children: [/* @__PURE__ */ (0, W.jsx)("span", {
 											className: "w-9 h-9 rounded-lg bg-blue-100 grid place-items-center",
@@ -13296,7 +13296,7 @@ function Gs({ children: e }) {
 										})] })]
 									}, e.id)),
 									j.cts.map((e) => /* @__PURE__ */ (0, W.jsxs)("button", {
-										onClick: () => M(Gn(e.id)),
+										onClick: () => M(qn(e.id)),
 										className: "w-full text-left px-3 py-2.5 rounded-xl hover:bg-slate-50 flex items-center gap-3",
 										children: [/* @__PURE__ */ (0, W.jsx)("span", {
 											className: "w-9 h-9 rounded-lg bg-emerald-100 grid place-items-center",
@@ -13508,7 +13508,7 @@ function Gs({ children: e }) {
 						className: "mt-2 bg-white rounded-2xl border shadow-xl divide-y max-h-[50vh] overflow-auto",
 						children: [
 							j.lots.map((e) => /* @__PURE__ */ (0, W.jsxs)("button", {
-								onClick: () => M(Kn(e.id)),
+								onClick: () => M(Gn(e.id)),
 								className: "w-full text-left p-3.5 flex items-center gap-3",
 								children: [/* @__PURE__ */ (0, W.jsx)(xa, {
 									size: 18,
@@ -13530,7 +13530,7 @@ function Gs({ children: e }) {
 								})] })]
 							}, e.id)),
 							j.cts.map((e) => /* @__PURE__ */ (0, W.jsxs)("button", {
-								onClick: () => M(Gn(e.id)),
+								onClick: () => M(qn(e.id)),
 								className: "w-full text-left p-3.5 flex items-center gap-3",
 								children: [/* @__PURE__ */ (0, W.jsx)(zi, {
 									size: 18,
@@ -14297,7 +14297,7 @@ function Zs() {
 								children: ["XỬ LÝ NGAY ", /* @__PURE__ */ (0, W.jsx)(mr, { size: 18 })]
 							}),
 							/* @__PURE__ */ (0, W.jsxs)("button", {
-								onClick: () => i(Kn(o.id)),
+								onClick: () => i(Gn(o.id)),
 								className: "btn-press touch-target inline-flex items-center gap-2 rounded-xl border-2 border-white/40 text-white font-bold text-[15px] px-5 min-h-[48px]",
 								children: ["Mở ", o.id]
 							}),
@@ -15658,7 +15658,7 @@ function Vc() {
 										/* @__PURE__ */ (0, W.jsxs)("div", {
 											className: "flex flex-wrap items-center gap-1.5",
 											children: [/* @__PURE__ */ (0, W.jsx)(U, {
-												to: Kn(e.id),
+												to: Gn(e.id),
 												className: "font-extrabold text-[#1e5aa8] hover:underline text-[15px]",
 												children: e.id
 											}), /* @__PURE__ */ (0, W.jsx)(Y, {
@@ -15714,7 +15714,7 @@ function Vc() {
 										className: "btn-press touch-target inline-flex items-center rounded-lg bg-[#0f2a4a] text-white text-[13px] font-bold px-3.5 min-h-[44px]",
 										children: "XỬ LÝ"
 									}), /* @__PURE__ */ (0, W.jsxs)(U, {
-										to: Kn(e.id),
+										to: Gn(e.id),
 										className: "btn-press touch-target inline-flex items-center gap-1 rounded-lg border-2 border-slate-200 text-[13px] font-bold px-3 min-h-[44px]",
 										children: [/* @__PURE__ */ (0, W.jsx)(K, { size: 15 }), " 360°"]
 									})]
@@ -15796,7 +15796,7 @@ function Vc() {
 							className: "touch-target flex items-center justify-center gap-1.5 bg-[#0f2a4a] text-white font-extrabold text-[15px] min-h-[52px]",
 							children: ["XỬ LÝ ", /* @__PURE__ */ (0, W.jsx)(mr, { size: 17 })]
 						}), /* @__PURE__ */ (0, W.jsxs)(U, {
-							to: Kn(e.id),
+							to: Gn(e.id),
 							className: "touch-target flex items-center justify-center gap-1.5 font-bold text-[15px] text-[#0f2a4a] min-h-[52px]",
 							children: [/* @__PURE__ */ (0, W.jsx)(K, { size: 17 }), " XEM 360°"]
 						})]
@@ -19101,7 +19101,7 @@ function Gl() {
 										"Hợp đồng:",
 										" ",
 										(e.contractIds ?? []).map((e) => /* @__PURE__ */ (0, W.jsx)(U, {
-											to: Gn(e),
+											to: qn(e),
 											className: "font-bold text-[#1e5aa8] mr-2",
 											children: e
 										}, e))
@@ -19113,7 +19113,7 @@ function Gl() {
 										"Lô hàng:",
 										" ",
 										(e.shipmentIds ?? []).map((e) => /* @__PURE__ */ (0, W.jsx)(U, {
-											to: Kn(e),
+											to: Gn(e),
 											className: "font-bold text-[#1e5aa8] mr-2",
 											children: e
 										}, e))
@@ -21397,17 +21397,10 @@ function wu({ shipment: e, activeStage: t, work: n, onOpen: r, onGlobal: i, runP
 		c
 	]);
 	let P = e.journey, F = (0, _.useMemo)(() => P?.modules ?? [], [P]), I = N?.lastWrites?.find((e) => e.event === "work_module_attach" && e.requestId === O), L = !(!O || I);
-	if ((0, _.useEffect)(() => {
+	(0, _.useEffect)(() => {
 		I && (I.ok ? (T(!1), D(""), k(""), j("")) : (j(String(I.error || "Backend từ chối gắn quy trình.")), k("")));
-	}, [I]), !P?.nodes.length) return /* @__PURE__ */ (0, W.jsx)(Cu, {
-		shipment: e,
-		onGlobal: i,
-		runPrimary: a,
-		globalActive: s,
-		globalTab: c,
-		children: o
-	});
-	let R = P.nodes, z = R.filter((e) => !e.moduleId), ee = z.find((e) => e.state === "PROBLEM" || e.blockers.length), te = R.find((e) => e.id === d) ?? R.find((e) => e.id === t) ?? ee ?? z.find((e) => e.current) ?? z[0] ?? R[0], B = R.find((e) => e.id === t), ne = N?.workModules, re = ne?.templates ?? [], ie = !!ne?.canAttach, ae = () => {
+	}, [I]);
+	let R = P?.nodes ?? [], z = R.filter((e) => !e.moduleId), ee = z.find((e) => e.state === "PROBLEM" || e.blockers.length), te = R.find((e) => e.id === d) ?? R.find((e) => e.id === t) ?? ee ?? z.find((e) => e.current) ?? z[0] ?? R[0], B = R.find((e) => e.id === t), ne = N?.workModules, re = ne?.templates ?? [], ie = !!ne?.canAttach, ae = () => {
 		if (!E) {
 			j("Chọn một quy trình đang dùng (ACTIVE).");
 			return;
@@ -21429,9 +21422,16 @@ function wu({ shipment: e, activeStage: t, work: n, onOpen: r, onGlobal: i, runP
 		u !== ue.current && (ue.current = u, pe(!0), T(!0));
 	}, [u]);
 	let de = ee, [fe, pe] = (0, _.useState)(() => F.some((e) => e.status === "BLOCKING")), me = (0, _.useRef)(F.length);
-	(0, _.useEffect)(() => {
+	if ((0, _.useEffect)(() => {
 		F.length > me.current && pe(!0), me.current = F.length;
-	}, [F]);
+	}, [F]), !P?.nodes.length) return /* @__PURE__ */ (0, W.jsx)(Cu, {
+		shipment: e,
+		onGlobal: i,
+		runPrimary: a,
+		globalActive: s,
+		globalTab: c,
+		children: o
+	});
 	let he = z.find((e) => e.current)?.label || "Chưa xác định", ge = (t) => /* @__PURE__ */ (0, W.jsxs)("aside", {
 		className: q("journey-side border-l-2 border-slate-400 bg-white shadow-[-6px_0_16px_-8px_rgba(15,23,42,0.25)]", t),
 		"data-testid": "journey-side-panel",
@@ -22956,30 +22956,8 @@ function Zu(e) {
 		block: e === "fld-tk" ? "center" : "start"
 	}), e === "fld-tk" && n instanceof HTMLElement && n.focus({ preventScroll: !0 });
 }
-function QuGate() {
-	let { id: e } = gt(), { pathname: t } = dt(), n = qn(t, e), { shipments: o } = Wn();
-	if (o.some((e) => e.id === n)) return /* @__PURE__ */ (0, W.jsx)(Qu, { key: n });
-	return /* @__PURE__ */ (0, W.jsxs)("div", {
-		className: "rounded-2xl bg-white border p-10 text-center max-w-[600px] mx-auto",
-		children: [
-			/* @__PURE__ */ (0, W.jsxs)("p", {
-				className: "font-extrabold text-[19px]",
-				children: ["Không tìm thấy lô ", n]
-			}),
-			/* @__PURE__ */ (0, W.jsx)("p", {
-				className: "text-slate-500 mt-1 text-[15px]",
-				children: "Mã lô có thể sai. Về danh sách để tìm lại."
-			}),
-			/* @__PURE__ */ (0, W.jsx)(U, {
-				to: "/lo-hang",
-				className: "btn-press touch-target mt-4 inline-flex rounded-xl bg-[#0f2a4a] text-white font-bold px-6 min-h-[48px] items-center",
-				children: "Về danh sách lô"
-			})
-		]
-	});
-}
 function Qu() {
-	let { id: e } = gt(), { pathname: t } = dt(), n = qn(t, e), [r, i] = Pn(), a = r.get("tab") || "van-tai", { shipments: o, attention: s, updateShipment: c, toast: l, contracts: u, customers: d, dispatch: f, financeServices: p, environment: m } = Wn(), h = (0, _.useSyncExternalStore)(C, S, S), g = mt(), v = o.find((e) => e.id === n), [y, b] = (0, _.useState)(!1), [x, w] = (0, _.useState)(!1), [T, E] = (0, _.useState)(!1), [D, O] = (0, _.useState)(0), [k, A] = (0, _.useState)(0), [j, M] = (0, _.useState)(!1), [N, P] = (0, _.useState)(!1), [F, I] = (0, _.useState)(!1), [L, R] = (0, _.useState)(!1), [z, ee] = (0, _.useState)(""), [te, B] = (0, _.useState)("Thu tiền khách"), [ne, re] = (0, _.useState)(""), [ie, ae] = (0, _.useState)({}), [oe, se] = (0, _.useState)(0), [V, ce] = (0, _.useState)(""), [le, ue] = (0, _.useState)(""), [de, fe] = (0, _.useState)(""), [pe, me] = (0, _.useState)(""), [he, ge] = (0, _.useState)(""), [_e, ve] = (0, _.useState)(""), [ye, be] = (0, _.useState)(null), [xe, Se] = (0, _.useState)(""), [Ce, we] = (0, _.useState)(null), [Te, Ee] = (0, _.useState)(""), [De, Oe] = (0, _.useState)(!1), [ke, Ae] = (0, _.useState)([]), [je, Me] = (0, _.useState)(""), [Ne, Pe] = (0, _.useState)(""), [Fe, Ie] = (0, _.useState)("");
+	let { id: e } = gt(), { pathname: t } = dt(), n = Kn(t, e), [r, i] = Pn(), a = r.get("tab") || "van-tai", { shipments: o, attention: s, updateShipment: c, toast: l, contracts: u, customers: d, dispatch: f, financeServices: p, environment: m } = Wn(), h = (0, _.useSyncExternalStore)(C, S, S), g = mt(), v = o.find((e) => e.id === n), [y, b] = (0, _.useState)(!1), [x, w] = (0, _.useState)(!1), [T, E] = (0, _.useState)(!1), [D, O] = (0, _.useState)(0), [k, A] = (0, _.useState)(0), [j, M] = (0, _.useState)(!1), [N, P] = (0, _.useState)(!1), [F, I] = (0, _.useState)(!1), [L, R] = (0, _.useState)(!1), [z, ee] = (0, _.useState)(""), [te, B] = (0, _.useState)("Thu tiền khách"), [ne, re] = (0, _.useState)(""), [ie, ae] = (0, _.useState)({}), [oe, se] = (0, _.useState)(0), [V, ce] = (0, _.useState)(""), [le, ue] = (0, _.useState)(""), [de, fe] = (0, _.useState)(""), [pe, me] = (0, _.useState)(""), [he, ge] = (0, _.useState)(""), [_e, ve] = (0, _.useState)(""), [ye, be] = (0, _.useState)(null), [xe, Se] = (0, _.useState)(""), [Ce, we] = (0, _.useState)(null), [Te, Ee] = (0, _.useState)(""), [De, Oe] = (0, _.useState)(!1), [ke, Ae] = (0, _.useState)([]), [je, Me] = (0, _.useState)(""), [Ne, Pe] = (0, _.useState)(""), [Fe, Ie] = (0, _.useState)("");
 	(0, _.useEffect)(() => {
 		ae({}), re("");
 	}, [n, a]), (0, _.useEffect)(() => {
@@ -23145,8 +23123,7 @@ function Qu() {
 		v?.uploadedTemplates,
 		h?.shipmentDocumentPicker?.catalog,
 		Le
-	]), Ke = h?.authority?.agents ?? [], qe = h?.authority?.companies ?? [], Je = Ke.find((e) => e.id === le), Ye = qe.find((e) => e.id === de), Xe = (0, _.useMemo)(() => s.filter((e) => e.shipmentId === n).slice(0, 5), [s, n]);
-	let Ze = v.finance.currency || "VND", Qe = v.journey?.nodes.find((e) => e.id === r.get("stage")), $e = r.get("work") || "info", et = Qe?.moduleId ? Qe : void 0, tt = !Qe || $e !== "overview" && ($e !== "info" || !["si-vgm", "gate-in"].includes(Qe.id) && !et), nt = (e, t) => {
+	]), Ke = h?.authority?.agents ?? [], qe = h?.authority?.companies ?? [], Je = Ke.find((e) => e.id === le), Ye = qe.find((e) => e.id === de), Xe = (0, _.useMemo)(() => s.filter((e) => e.shipmentId === n).slice(0, 5), [s, n]), Ze = v.finance.currency || "VND", Qe = v.journey?.nodes.find((e) => e.id === r.get("stage")), $e = r.get("work") || "info", et = Qe?.moduleId ? Qe : void 0, tt = !Qe || $e !== "overview" && ($e !== "info" || !["si-vgm", "gate-in"].includes(Qe.id) && !et), nt = (e, t) => {
 		let n = t === "docs" ? "chung-tu" : t === "costs" ? "tai-chinh" : t === "history" ? "lich-su" : e.targetTab;
 		return n === "lay-hang" && Sn ? (R(!0), !1) : (i({
 			tab: n,
@@ -23540,7 +23517,7 @@ function Qu() {
 		switch (t) {
 			case "GENERATE_CONTRACT":
 			case "OPEN_CONTRACT":
-				g(He ? `${Gn(He.id)}?tab=chung-tu` : "/hop-dong");
+				g(He ? `${qn(He.id)}?tab=chung-tu` : "/hop-dong");
 				return;
 			case "GENERATE_PXK":
 				an();
@@ -25363,11 +25340,11 @@ function Qu() {
 											/* @__PURE__ */ (0, W.jsxs)("div", {
 												className: "grid grid-cols-2 gap-2 mt-3",
 												children: [/* @__PURE__ */ (0, W.jsxs)(U, {
-													to: Gn(Be.id),
+													to: qn(Be.id),
 													className: "btn-press touch-target flex items-center justify-center gap-1.5 rounded-xl border-2 border-slate-200 font-bold text-[14.5px] min-h-[48px]",
 													children: [/* @__PURE__ */ (0, W.jsx)(K, { size: 16 }), " MỞ HỢP ĐỒNG"]
 												}), /* @__PURE__ */ (0, W.jsxs)(U, {
-													to: Gn(Be.id) + "?tab=chung-tu",
+													to: qn(Be.id) + "?tab=chung-tu",
 													onClick: () => l("Chứng từ hợp đồng " + Be.id, "Mở workdesk chứng từ HDNT/PL/HDMB của hợp đồng (core.docgen).", "blue"),
 													className: "btn-press touch-target flex items-center justify-center gap-1.5 rounded-xl bg-[#0f2a4a] text-white font-bold text-[14.5px] min-h-[48px]",
 													children: [/* @__PURE__ */ (0, W.jsx)(ji, { size: 16 }), " MỞ CHỨNG TỪ"]
@@ -26232,7 +26209,7 @@ function $u() {
 	return (0, _.useEffect)(() => {
 		if (!w || !o) return;
 		let e = (o.lastWrites ?? []).find((e) => e.event === "shipment_create" && e.requestId === w.requestId);
-		e && (e.ok ? (o.shipments ?? []).some((e) => e.id === w.shipmentId) ? (T(null), i("Đã tạo lô " + w.shipmentId, "Backend ghi + audit thành công; lô đã có trong dữ liệu mới.", "green"), a(Kn(w.shipmentId) + "?tab=van-tai")) : (T(null), D("Backend báo thành công nhưng lô chưa xuất hiện trong dữ liệu mới — chưa chuyển màn hình.")) : (T(null), D(e.error || "Backend từ chối yêu cầu tạo lô."), i("Không tạo được lô", e.error || "Backend từ chối.", "red")));
+		e && (e.ok ? (o.shipments ?? []).some((e) => e.id === w.shipmentId) ? (T(null), i("Đã tạo lô " + w.shipmentId, "Backend ghi + audit thành công; lô đã có trong dữ liệu mới.", "green"), a(Gn(w.shipmentId) + "?tab=van-tai")) : (T(null), D("Backend báo thành công nhưng lô chưa xuất hiện trong dữ liệu mới — chưa chuyển màn hình.")) : (T(null), D(e.error || "Backend từ chối yêu cầu tạo lô."), i("Không tạo được lô", e.error || "Backend từ chối.", "red")));
 	}, [
 		o,
 		w,
@@ -26726,7 +26703,7 @@ function ed() {
 							className: "hover:bg-slate-50",
 							children: [
 								/* @__PURE__ */ (0, W.jsx)("td", { children: /* @__PURE__ */ (0, W.jsx)(U, {
-									to: Kn(e.id) + "?tab=tai-chinh",
+									to: Gn(e.id) + "?tab=tai-chinh",
 									className: "font-extrabold text-[#1e5aa8] hover:underline text-[15px]",
 									children: e.id
 								}) }),
@@ -26768,7 +26745,7 @@ function ed() {
 								/* @__PURE__ */ (0, W.jsx)("td", { children: /* @__PURE__ */ (0, W.jsxs)("div", {
 									className: "flex gap-1.5",
 									children: [/* @__PURE__ */ (0, W.jsxs)(U, {
-										to: Kn(e.id) + "?tab=tai-chinh",
+										to: Gn(e.id) + "?tab=tai-chinh",
 										className: "btn-press touch-target inline-flex items-center gap-1 rounded-lg border-2 border-slate-200 text-[13px] font-bold px-3 min-h-[44px]",
 										children: [/* @__PURE__ */ (0, W.jsx)(K, { size: 15 }), " Mở lô"]
 									}), (e.outstanding ?? 0) > 0 && /* @__PURE__ */ (0, W.jsxs)("button", {
@@ -26860,7 +26837,7 @@ function ed() {
 					}), /* @__PURE__ */ (0, W.jsxs)("div", {
 						className: "grid grid-cols-2 border-t",
 						children: [/* @__PURE__ */ (0, W.jsxs)(U, {
-							to: Kn(e.id) + "?tab=tai-chinh",
+							to: Gn(e.id) + "?tab=tai-chinh",
 							className: "touch-target flex items-center justify-center gap-1.5 font-bold text-[15px] text-[#0f2a4a] min-h-[52px]",
 							children: [/* @__PURE__ */ (0, W.jsx)(K, { size: 17 }), " MỞ LÔ"]
 						}), (e.outstanding ?? 0) > 0 ? /* @__PURE__ */ (0, W.jsxs)("button", {
@@ -27200,7 +27177,7 @@ function nd() {
 							className: "hover:bg-slate-50",
 							children: [
 								/* @__PURE__ */ (0, W.jsx)("td", { children: /* @__PURE__ */ (0, W.jsx)(U, {
-									to: Kn(e.shipmentId) + "?tab=tai-chinh",
+									to: Gn(e.shipmentId) + "?tab=tai-chinh",
 									className: "font-extrabold text-[#1e5aa8] hover:underline text-[15px]",
 									children: e.shipmentId
 								}) }),
@@ -27245,7 +27222,7 @@ function nd() {
 								/* @__PURE__ */ (0, W.jsx)("td", { children: /* @__PURE__ */ (0, W.jsxs)("div", {
 									className: "flex gap-1.5",
 									children: [/* @__PURE__ */ (0, W.jsxs)(U, {
-										to: Kn(e.shipmentId) + "?tab=tai-chinh",
+										to: Gn(e.shipmentId) + "?tab=tai-chinh",
 										className: "btn-press touch-target inline-flex items-center gap-1 rounded-lg border-2 border-slate-200 text-[13px] font-bold px-3 min-h-[44px]",
 										children: [/* @__PURE__ */ (0, W.jsx)(K, { size: 15 }), " Mở lô"]
 									}), (e.remaining ?? 0) > 0 && /* @__PURE__ */ (0, W.jsxs)("button", {
@@ -27335,7 +27312,7 @@ function nd() {
 					}), /* @__PURE__ */ (0, W.jsxs)("div", {
 						className: "grid grid-cols-2 border-t",
 						children: [/* @__PURE__ */ (0, W.jsxs)(U, {
-							to: Kn(e.shipmentId) + "?tab=tai-chinh",
+							to: Gn(e.shipmentId) + "?tab=tai-chinh",
 							className: "touch-target flex items-center justify-center gap-1.5 font-bold text-[15px] text-[#0f2a4a] min-h-[52px]",
 							children: [/* @__PURE__ */ (0, W.jsx)(K, { size: 17 }), " MỞ LÔ"]
 						}), (e.remaining ?? 0) > 0 ? /* @__PURE__ */ (0, W.jsxs)("button", {
@@ -28242,7 +28219,7 @@ function cd() {
 								children: [/* @__PURE__ */ (0, W.jsxs)("div", {
 									className: "flex min-w-0 flex-wrap items-center gap-2",
 									children: [/* @__PURE__ */ (0, W.jsx)(U, {
-										to: Kn(e.id),
+										to: Gn(e.id),
 										className: "touch-target min-w-0 break-all font-extrabold text-[14px] text-[#1e5aa8] underline-offset-2 hover:underline",
 										"data-testid": "customer-playbook-shipment-link",
 										children: e.id
@@ -29298,7 +29275,7 @@ function jd({ match: e, selected: t, onSelect: n }) {
 					className: q("btn-press touch-target inline-flex items-center rounded-xl px-3.5 min-h-[44px] text-[13.5px] font-bold disabled:opacity-50 disabled:cursor-not-allowed", t ? "bg-emerald-700 text-white" : "border-2 border-emerald-700 bg-white text-emerald-800"),
 					children: t ? "ĐÃ CHỌN LÀM THAM CHIẾU" : "DÙNG LÀM GIÁ VỐN"
 				}), e.shipmentId && /* @__PURE__ */ (0, W.jsxs)(U, {
-					to: Kn(e.shipmentId) + "?tab=tai-chinh",
+					to: Gn(e.shipmentId) + "?tab=tai-chinh",
 					"data-testid": "cost-result-open",
 					className: "btn-press touch-target inline-flex items-center gap-1.5 rounded-xl border-2 border-[#0f2a4a] bg-white text-[#0f2a4a] font-bold text-[13.5px] px-3.5 min-h-[44px]",
 					children: ["XEM LÔ GỐC ", /* @__PURE__ */ (0, W.jsx)(mr, { size: 15 })]
@@ -34031,7 +34008,7 @@ function Tf() {
 							className: "hover:bg-slate-50",
 							children: [
 								/* @__PURE__ */ (0, W.jsx)("td", { children: /* @__PURE__ */ (0, W.jsx)(U, {
-									to: Gn(e.id),
+									to: qn(e.id),
 									className: "font-extrabold text-[#1e5aa8] hover:underline text-[15px]",
 									children: e.id
 								}) }),
@@ -34061,7 +34038,7 @@ function Tf() {
 								/* @__PURE__ */ (0, W.jsx)("td", { children: /* @__PURE__ */ (0, W.jsx)("div", {
 									className: "flex gap-1.5",
 									children: /* @__PURE__ */ (0, W.jsxs)(U, {
-										to: Gn(e.id),
+										to: qn(e.id),
 										className: "btn-press touch-target inline-flex items-center gap-1 rounded-lg bg-[#0f2a4a] text-white text-[13px] font-bold px-3.5 min-h-[44px]",
 										children: [/* @__PURE__ */ (0, W.jsx)(K, { size: 15 }), " MỞ"]
 									})
@@ -34126,7 +34103,7 @@ function Tf() {
 					}), /* @__PURE__ */ (0, W.jsx)("div", {
 						className: "border-t",
 						children: /* @__PURE__ */ (0, W.jsxs)(U, {
-							to: Gn(e.id),
+							to: qn(e.id),
 							className: "touch-target flex items-center justify-center gap-1.5 bg-[#0f2a4a] text-white font-extrabold text-[15px] min-h-[52px]",
 							children: ["MỞ HỢP ĐỒNG ", /* @__PURE__ */ (0, W.jsx)(mr, { size: 17 })]
 						})
@@ -35067,7 +35044,7 @@ function Mf() {
 	(0, _.useEffect)(() => {
 		if (!o || a.current !== o) return;
 		let e = r?.lastWrites?.find((e) => e.event === "contract_create" && e.requestId === o.requestId);
-		e && (e.ok === !1 ? (a.current = null, s(null), l(String(e.error || "Máy chủ từ chối tạo hợp đồng."))) : e.ok === !0 && r?.contracts.some((e) => e.id === o.id) && (a.current = null, s(null), i(Gn(o.id))));
+		e && (e.ok === !1 ? (a.current = null, s(null), l(String(e.error || "Máy chủ từ chối tạo hợp đồng."))) : e.ok === !0 && r?.contracts.some((e) => e.id === o.id) && (a.current = null, s(null), i(qn(o.id))));
 	}, [
 		r,
 		o,
@@ -38014,7 +37991,7 @@ function hp() {
 										className: "flex items-center gap-2 flex-wrap",
 										children: [
 											e.shipmentId && R.has(e.shipmentId.toLowerCase()) ? /* @__PURE__ */ (0, W.jsx)(U, {
-												to: Kn(e.shipmentId) + "?tab=tai-chinh",
+												to: Gn(e.shipmentId) + "?tab=tai-chinh",
 												className: "font-extrabold text-[15.5px] text-[#1e5aa8] hover:underline break-all",
 												children: e.shipmentId
 											}) : /* @__PURE__ */ (0, W.jsx)("span", {
@@ -42107,6 +42084,27 @@ function Vm() {
 	});
 }
 function Hm() {
+	let { id: e } = gt(), { pathname: t } = dt(), n = Kn(t, e), { shipments: r } = Wn();
+	return r.some((e) => e.id === n) ? /* @__PURE__ */ (0, W.jsx)(Qu, {}, n) : /* @__PURE__ */ (0, W.jsxs)("div", {
+		className: "rounded-2xl bg-white border p-10 text-center max-w-[600px] mx-auto",
+		children: [
+			/* @__PURE__ */ (0, W.jsxs)("p", {
+				className: "font-extrabold text-[19px]",
+				children: ["Không tìm thấy lô ", n]
+			}),
+			/* @__PURE__ */ (0, W.jsx)("p", {
+				className: "text-slate-500 mt-1 text-[15px]",
+				children: "Mã lô có thể sai. Về danh sách để tìm lại."
+			}),
+			/* @__PURE__ */ (0, W.jsx)(U, {
+				to: "/lo-hang",
+				className: "btn-press touch-target mt-4 inline-flex rounded-xl bg-[#0f2a4a] text-white font-bold px-6 min-h-[48px] items-center",
+				children: "Về danh sách lô"
+			})
+		]
+	});
+}
+function Um() {
 	let e = (0, _.useSyncExternalStore)(C, S, S);
 	return /* @__PURE__ */ (0, W.jsx)(Un, { children: /* @__PURE__ */ (0, W.jsx)(Rt, { children: /* @__PURE__ */ (0, W.jsx)(Gs, { children: e ? /* @__PURE__ */ (0, W.jsxs)(Ht, { children: [
 		/* @__PURE__ */ (0, W.jsx)(Bt, {
@@ -42126,7 +42124,7 @@ function Hm() {
 		}),
 		/* @__PURE__ */ (0, W.jsx)(Bt, {
 			path: "/lo-hang/:id",
-			element: /* @__PURE__ */ (0, W.jsx)(QuGate, {})
+			element: /* @__PURE__ */ (0, W.jsx)(Hm, {})
 		}),
 		/* @__PURE__ */ (0, W.jsx)(Bt, {
 			path: "/tao-lo-moi",
@@ -42238,7 +42236,7 @@ function Hm() {
 }
 //#endregion
 //#region src/component-entry.tsx
-var Um = class extends _.Component {
+var Wm = class extends _.Component {
 	constructor(...e) {
 		super(...e), fs(this, "state", { error: null });
 	}
@@ -42282,23 +42280,23 @@ var Um = class extends _.Component {
 			})
 		}) : this.props.children;
 	}
-}, Wm = null, Gm = null;
-function Km(e) {
-	return Gm && e.contains(Gm) ? Gm : (Gm = document.createElement("div"), Gm.className = "logi-shell", e.appendChild(Gm), Gm);
-}
+}, Gm = null, Km = null;
 function qm(e) {
+	return Km && e.contains(Km) ? Km : (Km = document.createElement("div"), Km.className = "logi-shell", e.appendChild(Km), Km);
+}
+function Jm(e) {
 	A(e.setTriggerValue ?? null);
-	let t = Km(e.parentElement);
-	return Wm || (Wm = (0, v.createRoot)(t), Wm.render(/* @__PURE__ */ (0, W.jsx)(Um, { children: /* @__PURE__ */ (0, W.jsx)(Hm, {}) }))), e.data && typeof e.data == "object" && x(e.data), () => {
+	let t = qm(e.parentElement);
+	return Gm || (Gm = (0, v.createRoot)(t), Gm.render(/* @__PURE__ */ (0, W.jsx)(Wm, { children: /* @__PURE__ */ (0, W.jsx)(Um, {}) }))), e.data && typeof e.data == "object" && x(e.data), () => {
 		try {
-			Wm?.unmount();
+			Gm?.unmount();
 		} catch {}
-		Wm = null;
+		Gm = null;
 		try {
-			Gm?.remove();
+			Km?.remove();
 		} catch {}
-		Gm = null, A(null);
+		Km = null, A(null);
 	};
 }
 //#endregion
-export { qm as default };
+export { Jm as default };
