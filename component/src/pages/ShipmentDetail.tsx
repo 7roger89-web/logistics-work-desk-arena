@@ -127,7 +127,8 @@ export default function ShipmentDetail() {
   // fresh view-model (`lastWrites`), never from the transport.
   const vm = useSyncExternalStore(subscribeViewModel, getViewModel, getViewModel);
   const nav = useNavigate();
-  const s = shipments.find((x) => x.id === id);
+  // The route boundary mounts this component only while this shipment exists.
+  const s = shipments.find((x) => x.id === id)!;
   const [showPay, setShowPay] = useState(false);
   const [showDeliver, setShowDeliver] = useState(false);
   // P1.4 — metadata maintenance lives behind an explicit disclosure so the
@@ -441,7 +442,6 @@ export default function ShipmentDetail() {
   const selectedFlowCompany = authorityCompanies.find((a) => a.id === flowCompanyDraft);
   const shipmentAttention = useMemo(() => attention.filter((item) => item.shipmentId === id).slice(0, 5), [attention, id]);
 
-  if (!s) return <div className="rounded-2xl bg-white border p-10 text-center max-w-[600px] mx-auto"><p className="font-extrabold text-[19px]">Không tìm thấy lô {id}</p><p className="text-slate-500 mt-1 text-[15px]">Mã lô có thể sai. Về danh sách để tìm lại.</p><Link to="/lo-hang" className="btn-press touch-target mt-4 inline-flex rounded-xl bg-[#0f2a4a] text-white font-bold px-6 min-h-[48px] items-center">Về danh sách lô</Link></div>;
 
   // The ONE authoritative currency of this shipment (shipments.currency →
   // data["3.4"].currency). The backend has no FX engine, so every amount is
