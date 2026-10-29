@@ -134,6 +134,9 @@ export default function ShipmentDetail() {
   // P1.4 — metadata maintenance lives behind an explicit disclosure so the
   // operational tab content sits closer to the next action.
   const [headerEditOpen, setHeaderEditOpen] = useState(false);
+  const [headerDatePending, setHeaderDatePending] = useState<{ requestId: string; date: string } | null>(null);
+  const headerDatePendingRef = useRef(false);
+  const [headerDateError, setHeaderDateError] = useState("");
   // ---------------------------------------------------------------------------
   // LOGI_SHIPMENT_GLANCEABLE_SUPPORT_UX_01 · OWNER_RUNTIME_UAT_REPAIR (#86)
   //
@@ -646,14 +649,53 @@ export default function ShipmentDetail() {
    * fabricated date and an UNKNOWN one never becomes 0/today.
    */
   const saveHeaderDate = () => {
+    if (headerDatePendingRef.current) return;
     const edited = form.createdAt != null ? form.createdAt.trim() : null;
     if (edited === null) {
       toast("Chưa sửa ngày", "Chọn/ghi Ngày tạo rồi bấm Lưu — app không tự điền hôm nay.", "amber");
       return;
     }
-    dispatch("shipment_field_save", { shipmentId: s.id, fields: { created_at: edited } });
-    afterSave(edited ? "Đã lưu ngày tạo " + edited : "Đã xoá ngày tạo (để trống = chưa biết)");
+    const requestId = mintRequestId("HDRD");
+    headerDatePendingRef.current = true;
+    setHeaderDateError("");
+    setHeaderDatePending({ requestId, date: edited });
+    if (!dispatch("shipment_field_save", { shipmentId: s.id, fields: { created_at: edited }, requestId })) {
+      headerDatePendingRef.current = false;
+      setHeaderDatePending(null);
+      setHeaderDateError("Component chưa kết nối backend.");
+    }
   };
+
+  useEffect(() => {
+    if (!headerDatePending) return;
+    const outcome = vm?.lastWrites?.find(row => row.event === "shipment_field_save"
+      && row.shipmentId === id && row.requestId === headerDatePending.requestId);
+    if (!outcome) return;
+    headerDatePendingRef.current = false;
+    setHeaderDatePending(null);
+    if (!outcome.ok) {
+      setHeaderDateError(String(outcome.error || "Không lưu được ngày tạo lô."));
+      return;
+    }
+    const normalizeDate = (value: string) => value.trim().replace(/^(\d{2})\/(\d{2})\/(\d{4})$/, "$3-$2-$1");
+    const persisted = outcome.persisted as Record<string, unknown> | undefined;
+    if (typeof persisted?.created_at !== "string"
+      || normalizeDate(persisted.created_at) !== normalizeDate(headerDatePending.date)
+      || normalizeDate(s.createdAt ?? "") !== normalizeDate(headerDatePending.date)) {
+      setHeaderDateError("Backend đã xử lý nhưng ngày tạo đọc lại chưa khớp. Kiểm tra dữ liệu trước khi lưu lại.");
+      return;
+    }
+    setForm(f => { const next = { ...f }; delete next.createdAt; return next; });
+    setSavedTick(Date.now());
+    toast(headerDatePending.date ? "Đã lưu ngày tạo " + headerDatePending.date : "Đã xoá ngày tạo (để trống = chưa biết)",
+      "Backend đã xác nhận và dữ liệu đọc lại khớp.", "green");
+  }, [vm?.lastWrites, headerDatePending, id, s.createdAt, toast]);
+
+  useEffect(() => {
+    headerDatePendingRef.current = false;
+    setHeaderDatePending(null);
+    setHeaderDateError("");
+  }, [id]);
 
   const saveHeaderCustomer = () => {
     const picked = (form.lotCustomer ?? "").trim();
@@ -1566,9 +1608,11 @@ export default function ShipmentDetail() {
               />
             </Field>
             <div className="flex flex-wrap items-center gap-2">
-              <PrimaryBtn onClick={saveHeaderDate} className="min-h-[44px] px-4 text-[13.5px]">
+              <PrimaryBtn onClick={saveHeaderDate} disabled={!!headerDatePending} className="min-h-[44px] px-4 text-[13.5px]">
                 💾 LƯU NGÀY TẠO
               </PrimaryBtn>
+              {headerDatePending && <p role="status" data-testid="shipment-header-date-pending">Đang chờ backend xác nhận qua đọc lại…</p>}
+              {headerDateError && <p role="alert" data-testid="shipment-header-date-error" className="text-red-700">{headerDateError}</p>}
               {form.createdAt != null && form.createdAt.trim() === "" && (
                 <span className="text-[12.5px] font-semibold text-amber-700">
                   Đang lưu = để trống (chưa biết)

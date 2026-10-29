@@ -2822,14 +2822,20 @@ def _handle_field_save(payload: Mapping[str, Any]) -> dict[str, Any]:
 
     sid = rd.text(payload.get("shipmentId"))
     fields = payload.get("fields") if isinstance(payload.get("fields"), Mapping) else {}
+    request_id = rd.text(payload.get("requestId"))
+
+    def out(ok: bool, error: str = "", **extra: Any) -> dict:
+        return _result("shipment_field_save", sid, ok, error,
+                       **({"requestId": request_id} if request_id else {}), **extra)
+
     if not sid or not fields:
-        return _result("shipment_field_save", sid, False, "Thiếu shipmentId hoặc fields.")
+        return out(False, "Thiếu shipmentId hoặc fields.")
     if not can_operate_business("shipment_edit"):
-        return _result("shipment_field_save", sid, False, "RBAC: không có quyền shipment_edit.")
+        return out(False, "RBAC: không có quyền shipment_edit.")
 
     shipment = read_shipment(sid)
     if shipment is None:
-        return _result("shipment_field_save", sid, False, f"Không tìm thấy lô {sid}.")
+        return out(False, f"Không tìm thấy lô {sid}.")
 
     applied: dict[str, Any] = {}
     rejected: list[str] = []
@@ -2842,15 +2848,14 @@ def _handle_field_save(payload: Mapping[str, Any]) -> dict[str, Any]:
         _set_path(shipment, path, applied[str(key)])
 
     if not applied:
-        return _result("shipment_field_save", sid, False,
-                       "Không có trường nào được phép ghi.", rejected=rejected)
+        return out(False, "Không có trường nào được phép ghi.", rejected=rejected)
 
     apply_financial_snapshot(shipment)
     if not save_shipment_atomic(shipment, expected_version=shipment.get("version"), actor=_actor()):
-        return _result("shipment_field_save", sid, False, get_last_db_error() or "Không lưu được.")
+        return out(False, get_last_db_error() or "Không lưu được.")
 
     fresh = read_shipment(sid)
-    return _result("shipment_field_save", sid, True, readback=_projection_for(fresh or {}),
+    return out(True, readback=_projection_for(fresh or {}),
                    applied=applied, rejected=rejected,
                    version=int((fresh or {}).get("version") or 0),
                    persisted={k: _get_path(fresh or {}, FIELD_PATHS[k]) for k in applied},

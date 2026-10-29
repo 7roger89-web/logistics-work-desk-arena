@@ -83,6 +83,30 @@ def _head(sid: str):
 # 1. Shipment header date
 # ---------------------------------------------------------------------------
 
+@pytest.mark.parametrize("case", ["saved", "denied", "missing", "empty", "unknown-field", "write-failed"])
+def test_header_date_outcome_keeps_request_identity(monkeypatch, case):
+    """Every settlement can identify its intent, including a denied write."""
+    from core import auth, database, logic
+
+    stored = {"id": "QA-LOT", "version": 1, "data": {"0.0": {"created_at": "2026-10-21"}}}
+    writes = []
+    monkeypatch.setattr(auth, "can_operate_business", lambda permission: case != "denied")
+    monkeypatch.setattr(vm, "read_shipment", lambda sid: None if case == "missing" else stored)
+    monkeypatch.setattr(logic, "apply_financial_snapshot", lambda shipment: None)
+    monkeypatch.setattr(database, "save_shipment_atomic", lambda *args, **kwargs: writes.append(args) or case != "write-failed")
+    monkeypatch.setattr(database, "get_last_db_error", lambda: "QA write refused")
+    monkeypatch.setattr(vm, "_projection_for", lambda shipment: {"id": shipment["id"], "createdAt": "21/10/2026"})
+    monkeypatch.setattr(vm, "_audit_trail", lambda sid: [])
+    monkeypatch.setattr(vm, "_actor", lambda: "qa.admin")
+    fields = {} if case == "empty" else {"unapproved": "x"} if case == "unknown-field" else {"created_at": "2026-10-21"}
+    outcome = vm._handle_field_save({"shipmentId": "QA-LOT", "fields": fields, "requestId": "HDRD-QA"})
+    assert outcome["requestId"] == "HDRD-QA"
+    assert outcome["shipmentId"] == "QA-LOT"
+    assert outcome["ok"] is (case == "saved")
+    assert bool(writes) is (case in {"saved", "write-failed"})
+    if case == "saved":
+        assert outcome["persisted"]["created_at"] == "2026-10-21"
+
 def test_created_at_is_now_in_the_write_whitelist():
     """The whitelist is the only gate the component has — it must list the field.
 

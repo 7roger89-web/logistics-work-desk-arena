@@ -59,8 +59,9 @@ const mount = (await import(pathToFileURL(path.join(ROOT, "component/dist/logi-s
 const host = document.createElement("div");
 document.body.appendChild(host);
 const before = { ...FIX.shipmentBefore, lastWrites: [] };
+const triggers = [];
 const deliver = (data) => mount({
-  name: "logi_shell", data, parentElement: host, setTriggerValue: () => {},
+  name: "logi_shell", data, parentElement: host, setTriggerValue: (event, value) => triggers.push({ event, value }),
 });
 
 deliver(before);
@@ -109,6 +110,54 @@ byTestId("shipment-header-edit-toggle").dispatchEvent(new window.MouseEvent("cli
 await tick();
 await waitFor(() => byTestId("shipment-header-edit-toggle")?.getAttribute("aria-expanded") === "false", "edit disclosure closes");
 assert.ok(!byTestId("shipment-customer-picker"), "closed disclosure hides the customer selector");
+
+// A date send is not a save: only this request's backend success AND matching
+// canonical readback may display success. This catches the runtime viewer
+// failure: the writer refused while saveHeaderDate toasted green immediately.
+await click("Sửa thông tin lô");
+const editDate = async (value) => {
+  const input = document.querySelector('#fld-created-at');
+  Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set.call(input, value);
+  input.dispatchEvent(new window.Event('input', { bubbles: true }));
+  await tick();
+};
+const sendDate = async (value) => {
+  await editDate(value);
+  await click('LƯU NGÀY TẠO');
+  return triggers.filter(t => t.event === 'shipment_field_save').at(-1).value.payload;
+};
+const pending = await sendDate('21/10/2026');
+assert.ok(pending.requestId);
+assert.ok(byTestId('shipment-header-date-pending'));
+assert.ok(!text(document.body).includes('Đã lưu ngày tạo'), 'sending must never toast success');
+await click('LƯU NGÀY TẠO');
+assert.equal(triggers.filter(t => t.event === 'shipment_field_save').length, 1, 'pending date must not send twice');
+const outcome = (requestId, ok, extra = {}) => ({event:'shipment_field_save',shipmentId:LOT,requestId,ok,...extra});
+deliver({...before,lastWrites:[outcome('stale-request',true,{persisted:{created_at:'2026-10-21'}})]});
+await tick();
+assert.ok(byTestId('shipment-header-date-pending'), 'stale success cannot settle new intent');
+deliver({...before,lastWrites:[outcome(pending.requestId,false,{error:'RBAC: không có quyền shipment_edit.'})]});
+await tick();
+assert.match(text(byTestId('shipment-header-date-error')),/RBAC/);
+assert.ok(!text(document.body).includes('Đã lưu ngày tạo'), 'denied date must not toast success');
+const mismatched = await sendDate('21/10/2026');
+deliver({...before,lastWrites:[outcome(mismatched.requestId,true,{persisted:{created_at:'2026-10-21'}})]});
+await tick();
+assert.match(text(byTestId('shipment-header-date-error')),/đọc lại chưa khớp/);
+assert.ok(!text(document.body).includes('Đã lưu ngày tạo'), 'success without matching VM is unconfirmed');
+const accepted = await sendDate('21/10/2026');
+const saved = {...before, shipments:before.shipments.map(s=>s.id===LOT?{...s,createdAt:'21/10/2026'}:s),
+  lastWrites:[outcome(accepted.requestId,true,{persisted:{created_at:'2026-10-21'}})]};
+deliver(saved);await tick();
+assert.ok(text(document.body).includes('Đã lưu ngày tạo 21/10/2026'));
+assert.ok(!byTestId('shipment-header-date-pending'));
+assert.equal(document.querySelector('#fld-created-at').value,'21/10/2026');
+const cleared = await sendDate('');
+deliver({...saved,shipments:saved.shipments.map(s=>s.id===LOT?{...s,createdAt:''}:s),
+  lastWrites:[outcome(cleared.requestId,true,{persisted:{created_at:''}})]});await tick();
+assert.equal(document.querySelector('#fld-created-at').value,'');
+assert.ok(text(document.body).includes('Đã xoá ngày tạo'));
+console.log('Header date pending/stale/denied/mismatched/confirmed/blank outcomes PASS');
 assert.ok(!renderErrors.some((message) => /Rendered (more|fewer) hooks|Minified React error #310|React error #310/i.test(message)),
   `React hook-order warning/error: ${renderErrors.join(" | ")}`);
 assert.ok(!text(document.body).includes("Logi-good shell gặp lỗi"), "closing edit must not crash shell");
