@@ -47,10 +47,10 @@
     }
   },
   "artifact_sha256": {
-    "chromium-results.json": "4dea1ac3e4ea389a614b33de6b573a82501ae86f554dd81bddf6957b664b4b6b",
+    "chromium-results.json": "b6c01e38ebdbede87991dc683ce5098c04a4be4610dd1259b8439c8f1793c906",
     "failed-error-node-sets.json.gz": "679a83fc2ba019ef2824afaecc4f42d2780b432fccefe7024c222af4781dbe02",
     "README.md": "46da6f04e785719a0b334a566458b5a9abbd5b932f61a840f890b75af243016a",
-    "save-readback-viewer-denial.json": "5c7db999e60fa145c7abc8000ed1abc8b6a03f3ed3557f9df95faed74b51ace4",
+    "save-readback-viewer-denial.json": "85fa653aba5a32b8980294990f6db4469db7d04cc25b0d349c277747b451aa0d",
     "saved-readback.png": "fcdab2977f27d50a04939883c000c7fa95a85e8437aab26a2470a3401825ecac",
     "viewer-denied.png": "b625c03d14c165fa9d13441a01f900ada965895c07da1f4cc1aa19f72fc951ab"
   },
@@ -110,5 +110,6 @@
     "report": "reports/pr230-react310-qa/QA_REPORT.md"
   },
   "independent_review": "PENDING; this packet is ready for review, not merge approval",
-  "learning_reconciliation": "NONE"
+  "learning_reconciliation": "NONE",
+  "artifact_hash_semantics": "Authoritative Git blob bytes; text EOL is LF. Raw original input hashes remain separately recorded."
 }
