@@ -1,0 +1,114 @@
+{
+  "packet": "PR231_FAST_GATE_EXISTING_EVIDENCE",
+  "packaging_parent_head": "3c310e9def14d76ae59d3b0bf895fe94770259f4",
+  "tested_code_commit": "9fbff3b86bc06be9ee6ad11f200ddfab500efb8a",
+  "staging_baseline_commit": "00901511759882cd25039ac97de990e0c332687e",
+  "browser_command": "node tests/component/browser_react310_shipment_route.mjs *> .tmp/browser-final.log; $LASTEXITCODE | Set-Content .tmp/browser-final.exit",
+  "browser_exit_status": 0,
+  "new_runtime_or_full_suite_runs": false,
+  "source_changed": false,
+  "source_hash_semantics": "Git blob content hashes are platform-neutral; observed checkout byte hashes preserve original Windows EOL provenance.",
+  "source_hashes": {
+    "component/dist/logi-shell.css": {
+      "git_blob_content_sha256": "24a83320368fc9fa6610623033a4a1ac03e4a2753490ffca29432667d5867a27",
+      "observed_checkout_bytes_sha256": "24a83320368fc9fa6610623033a4a1ac03e4a2753490ffca29432667d5867a27"
+    },
+    "component/dist/logi-shell.js": {
+      "git_blob_content_sha256": "8ed2a4504f7ee3820429b14f34c8ad6f54781793f079c67f206b6c8b2d8171c5",
+      "observed_checkout_bytes_sha256": "8ed2a4504f7ee3820429b14f34c8ad6f54781793f079c67f206b6c8b2d8171c5"
+    },
+    "component/src/pages/ShipmentDetail.tsx": {
+      "git_blob_content_sha256": "0a87e6d35bbaafc219790e6ea6ad9b002ee2d07a6a20a11ae88609609836a842",
+      "observed_checkout_bytes_sha256": "1032ac46a718669d3bd8447754f9ee734cb1a5a0374fe7cc2c794f7cd976b7b4"
+    },
+    "tests/component/browser_react310_shipment_route.mjs": {
+      "git_blob_content_sha256": "b649f6b7af319e2f904292cd8fe1aed8e57d648dd30b35208210b2f461a2d086",
+      "observed_checkout_bytes_sha256": "9d4bf9d6c21bf633e4ed61c05948c2820042574edff4f5660432527be132d7e7"
+    },
+    "tests/component/dom_acceptance_react310_shipment_route.mjs": {
+      "git_blob_content_sha256": "36437dec18588907d70544bd2f517141c28c2ee526d071bd1be8607f4734a2da",
+      "observed_checkout_bytes_sha256": "0ebb9282f112e9e089c0d6dd5d7ece4941bdbc47e7697dc147d443d664ac6c6e"
+    },
+    "tests/component/dom_acceptance_shipment_header_edit.mjs": {
+      "git_blob_content_sha256": "f10e5ce688340a50804297832d252e81d1c2b82495a61b0ef3c2591ef3591547",
+      "observed_checkout_bytes_sha256": "ae95aaef6f9a6b13cf383cfb5e2d00cc909f9e1d6be51b18ab83e8901c57e180"
+    },
+    "tests/component/react310_streamlit_host.py": {
+      "git_blob_content_sha256": "a44fa973f7efb30790cd76342391983d51c5713af5afeec5cfe6537cab68eec5",
+      "observed_checkout_bytes_sha256": "fbcf55a082bab1bf4ac0707ffc652be505a95e82232e9e384a0c39f1c706a66f"
+    },
+    "tests/test_logi_shipment_core_gaps_01.py": {
+      "git_blob_content_sha256": "038ab9bb837d284997c4ad4f423e40c5ea8f62095783a41c4d8f481088b0958d",
+      "observed_checkout_bytes_sha256": "245d75888eb8c3d8a4f1dca8519469cd523600ea95c5c3a72787744d9afd5170"
+    },
+    "views/logi_view_model.py": {
+      "git_blob_content_sha256": "e4019dc5904226ccc08423781d4f0017f7a8ea1bb4b19539dafd940ef7b7a554",
+      "observed_checkout_bytes_sha256": "c5bf2f1faca0ae8841fe34d7a05ddbec2a1f3f4df3877c5a15c69afeabbe52f2"
+    }
+  },
+  "artifact_sha256": {
+    "chromium-results.json": "4dea1ac3e4ea389a614b33de6b573a82501ae86f554dd81bddf6957b664b4b6b",
+    "failed-error-node-sets.json.gz": "679a83fc2ba019ef2824afaecc4f42d2780b432fccefe7024c222af4781dbe02",
+    "README.md": "46da6f04e785719a0b334a566458b5a9abbd5b932f61a840f890b75af243016a",
+    "save-readback-viewer-denial.json": "5c7db999e60fa145c7abc8000ed1abc8b6a03f3ed3557f9df95faed74b51ace4",
+    "saved-readback.png": "fcdab2977f27d50a04939883c000c7fa95a85e8437aab26a2470a3401825ecac",
+    "viewer-denied.png": "b625c03d14c165fa9d13441a01f900ada965895c07da1f4cc1aa19f72fc951ab"
+  },
+  "node_set_uncompressed_json_sha256": "079f68fac7e35542f32059919b7f18827f9c2cc627a712f13c2eb8d1da978ab3",
+  "raw_input_sha256": {
+    ".tmp/evidence/save-readback.json": "f08dfe4ddd95e51d975280b86520314dec26bd0e90aa31143c1713085485f2cc",
+    ".tmp/evidence/viewer-readback.json": "045cab6e48d7bac8ca046b9da68a1855b6107a3d2afe7a966a42034fd148d81e",
+    ".tmp/browser-final.log": "d13dd6927daa70fd0b33a3d951d6f81aac2c65f4bc5c75cfb520c857218b087f",
+    ".tmp/browser-final.exit": "13bf7b3039c63bf5a50491fa3cfd8eb4e699d1ba1436315aef9cbe5711530354",
+    ".tmp/python-suite-comparison.json": "2da2ede16c881832c0526c32400b1fa329c0dd6f59c3b22ec2764001a9a2ae05",
+    ".tmp/failed-error-before.txt": "eef1f9c0fe114b980a16f1d2e93ece0992c1e1d78a7fa01dc5f13b97f560a79c",
+    ".tmp/failed-error-after.txt": "42e36d42147c21970107b6768d3fe4c0d5b7e26b48a6592786338cf1a057d839"
+  },
+  "sanitization": {
+    "json": "explicit field allowlist; no full DB documents or stdout exported",
+    "screenshots": "two original PNGs visually reviewed; only synthetic lot/customer labels and non-secret UI",
+    "node_ids": "exact test IDs; synthetic oversized x workbook parameter retained compressed; sensitive-value pattern scan passed",
+    "excluded": [
+      "password files",
+      "auth cookies",
+      "secrets",
+      "full stdout",
+      "customer contacts",
+      "tax IDs",
+      "addresses",
+      "financial records",
+      "unrelated screenshots"
+    ]
+  },
+  "preflight": {
+    "law_check": "PASS",
+    "law_source": "LOCAL_PORTABLE",
+    "source_content_sha256": "11ce33bb9c514d32ad3aec3eb7d8b40f0d0290b1dbe79eaa15751ef34668bd4b",
+    "experience_check": "USE_ACTIVE_EXPERIENCE",
+    "experience_ids": [
+      "shared-exp-b2611df4c9393f0017f07dcb"
+    ],
+    "skill_receipt": {
+      "schema": "p2p-skill-consumption-receipt/1",
+      "status": "CONSUMED",
+      "skills": [
+        {
+          "id": "scope-reality-check",
+          "invoked_installed_path": "C:/Users/Admin/.codex/skills/scope-reality-check/SKILL.md",
+          "installed_bytes_sha256": "7a6eb1fd6633e4736088b769c2978a89ccf49a708c5c8390d92d8d52a174ca45",
+          "repo_path": ".agents/skills/scope-reality-check/SKILL.md",
+          "repo_git_blob_sha256": "e2b894509e4c8987d5d509edb98a06ee85ad98ebae088b88edde6efe40bd7688",
+          "read": true,
+          "application": "Reuse existing bounded evidence; no source changes or repeat QA."
+        }
+      ]
+    }
+  },
+  "react310_reference": {
+    "pr": 230,
+    "commit": "e09ea1146eae38d80bc9857f2ad4b3cf6c9c70a3",
+    "report": "reports/pr230-react310-qa/QA_REPORT.md"
+  },
+  "independent_review": "PENDING; this packet is ready for review, not merge approval",
+  "learning_reconciliation": "NONE"
+}
