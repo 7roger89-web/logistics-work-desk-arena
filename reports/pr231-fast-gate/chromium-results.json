@@ -1,0 +1,25 @@
+{
+  "tested_code_commit": "9fbff3b86bc06be9ee6ad11f200ddfab500efb8a",
+  "evidence": "existing completed run; not rerun for this packet",
+  "url": "http://127.0.0.1:9501/?portal=internal",
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "browser": "headless Chromium via bundled Playwright",
+  "browser_version": "not recorded in original run",
+  "streamlit": "1.60.0",
+  "python": "3.12",
+  "transport": "SANDBOX_STAGING / mongomock / logistics_staging",
+  "command": "node tests/component/browser_react310_shipment_route.mjs *> .tmp/browser-final.log; $LASTEXITCODE | Set-Content .tmp/browser-final.exit",
+  "exit_status": 0,
+  "console_errors": [],
+  "assertion_markers_observed": [
+    "SAVE_DB_READBACK_PASS",
+    "RELOAD_READBACK_PASS",
+    "VIEWER_DENIED_NO_FALSE_SUCCESS_PASS",
+    "BROWSER_QA_PASS"
+  ],
+  "react310_evidence_reused_from": "https://github.com/7roger89-web/logistics-work-desk-arena/pull/230#issuecomment-6461832176",
+  "scope_limit": "local synthetic test data only; no Cloud or production certification"
+}
