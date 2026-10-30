@@ -1,0 +1,167 @@
+<div class="hexa-portal" data-testid="customer-portal-root">
+  <div id="portal-demo-strip" class="demo-badge-fixed hidden">DỮ LIỆU STAGING — KHÔNG PHẢI SẢN XUẤT</div>
+
+  <header class="portal-header" data-testid="shipment-identity-bar">
+    <div class="portal-header-inner">
+      <div class="brand-group">
+        <span class="brand-badge" id="customer-brand-badge">HEXA</span>
+        <div>
+          <h1 class="brand-title" id="customer-brand-title">Cổng khách hàng</h1>
+          <div class="brand-sub" id="customer-brand-sub">Theo dõi trực quan trên hải đồ theo dữ liệu Trường Thành đã xác minh</div>
+        </div>
+      </div>
+      <div class="brand-group" id="header-auth-controls">
+        <span class="brand-badge" id="header-published-count">0 lô đã công bố</span>
+        <span class="brand-badge" id="header-account" style="font-weight:600; letter-spacing:0;"></span>
+      </div>
+    </div>
+  </header>
+
+  <div id="portal-notice" class="demo-notice hidden"></div>
+
+  <main class="portal-main">
+    <section id="journey-workspace-shell" data-testid="journey-workspace-shell">
+      <div id="portal-logout-slot" class="portal-toolbar-slot"></div>
+
+      <div class="customer-kpi-strip">
+        <div class="kpi-pills">
+          <span class="kpi-pill">Đang theo dõi: <strong id="kpi-active-tracking">0</strong></span>
+          <span class="kpi-pill">Có ETA kho đã xác minh: <strong id="kpi-arriving-soon">0</strong></span>
+          <span class="kpi-pill">Cần khách xử lý: <strong id="kpi-customer-action">0</strong> (<span id="kpi-customer-action-sub">Chưa có yêu cầu được xác nhận</span>)</span>
+        </div>
+        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+          <span style="font-size:11.5px; color:#475569; font-weight:600;">Chọn lô để mở hải đồ Journey Map →</span>
+        </div>
+      </div>
+
+      <div id="customer-shipment-selector" class="shipment-selector-bar" data-testid="customer-shipment-selector">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:8px;">
+          <div id="dashboard-heading" style="font-size:13px; font-weight:800; color:#0f2942;">Dashboard tổng quan (chọn một lô để mở hải đồ Journey Map 00–06):</div>
+        </div>
+        <div class="illustrative-note" id="dashboard-note" style="margin-bottom:10px;"></div>
+        <table class="dash-table-desktop">
+          <thead>
+            <tr>
+              <th>Mã lô</th>
+              <th>Hàng hóa &amp; Tuyến</th>
+              <th>Phương thức</th>
+              <th>Chặng xác minh</th>
+              <th>ETA được xác minh</th>
+              <th>Công nợ</th>
+              <th>Cập nhật cuối</th>
+              <th>Hành trình</th>
+            </tr>
+          </thead>
+          <tbody id="dash-shipments-tbody"></tbody>
+        </table>
+        <div id="dash-shipments-cards" class="dash-cards-mobile" data-testid="dash-shipments-cards"></div>
+      </div>
+
+      <div id="shipment-journey-view" class="journey-demo hidden" data-testid="shipment-journey">
+        <div class="journey-toolbar" data-testid="journey-compact-toolbar">
+          <button id="btn-back-to-dashboard" type="button" class="journey-toolbar-btn hidden" data-testid="btn-back-to-dashboard">
+            ← Quay lại Dashboard
+          </button>
+          <span id="toolbar-id" class="journey-toolbar-id">—</span>
+          <span id="toolbar-mode" class="journey-toolbar-chip">—</span>
+          <span id="toolbar-customer" class="journey-toolbar-customer">—</span>
+          <span id="toolbar-route" class="journey-toolbar-route">—</span>
+          <span id="toolbar-here" class="journey-toolbar-chip journey-toolbar-here">Đang ở: —</span>
+          <span id="toolbar-eta" class="journey-toolbar-chip">ETA kho: Chưa xác minh</span>
+          <span id="toolbar-next" class="journey-toolbar-next">—</span>
+          <button type="button" class="journey-toolbar-btn" id="btn-global-docs" data-testid="journey-global-open">
+            ▤ Chứng từ &amp; Báo giá
+          </button>
+        </div>
+
+        <div class="journey-split journey-map-first">
+          <div id="journey-map-viewport" class="journey-canvas" data-testid="journey-map-viewport" style="cursor:grab; user-select:none;">
+            <div id="journey-sea-chart" class="journey-sea-chart" data-testid="journey-sea-chart" aria-hidden="true"></div>
+            <div data-testid="journey-map-texture" aria-hidden="true" class="journey-map-texture"></div>
+            <div data-testid="journey-map-grid" aria-hidden="true" class="journey-map-grid"></div>
+
+            <div id="journey-utility-anchor" class="journey-utility-anchor" style="position:absolute; top:12px; right:12px; z-index:18; pointer-events:auto;">
+              <button id="journey-utility-trigger" type="button" data-testid="journey-utility-trigger" style="display:inline-flex; align-items:center; gap:7px; padding:6px 11px; border-radius:6px; border:1px solid rgba(26, 75, 117, 0.42); background:rgba(255, 255, 255, 0.94); color:#0f2236; font-size:11.5px; font-weight:800; cursor:pointer;">
+                <span>▤ Hồ sơ &amp; Chứng từ</span>
+                <span id="utility-doc-count" style="padding:1px 6px; border-radius:4px; background:#eff6ff; color:#1d4ed8; font-family:var(--mono); font-size:10.5px; font-weight:800;">0 tệp</span>
+              </button>
+              <div id="journey-utility-bubble" data-testid="journey-utility-bubble" class="hidden" style="margin-top:6px; width:280px; border-radius:8px; border:1px solid rgba(26, 75, 117, 0.38); background:rgba(255, 255, 255, 0.98); overflow:hidden;">
+                <div style="padding:8px 11px; background:#0f2236; color:#f8fafc; font-size:10.5px; font-weight:800; text-transform:uppercase; display:flex; justify-content:space-between; align-items:center;">
+                  <span>Dữ liệu Trường Thành đã duyệt</span>
+                  <button type="button" id="journey-utility-close" title="Đóng" aria-label="Đóng" style="border:none; background:transparent; color:#cbd5e1; cursor:pointer; font-size:15px; line-height:1;">×</button>
+                </div>
+                <div style="padding:6px; display:grid; gap:4px;">
+                  <button type="button" id="utility-open-docs" style="display:flex; align-items:center; justify-content:space-between; padding:7px 9px; border-radius:6px; border:1px solid #e2e8f0; background:#f8fafc; color:#0f172a; font-size:11.5px; font-weight:700; cursor:pointer;">
+                    <span>Chứng từ được công bố</span>
+                    <span id="utility-docs-sub" style="font-size:10.5px; color:#1d4ed8; font-family:var(--mono);">0 tệp</span>
+                  </button>
+                  <button type="button" id="utility-open-quote" style="display:flex; align-items:center; justify-content:space-between; padding:7px 9px; border-radius:6px; border:1px solid #e2e8f0; background:#f8fafc; color:#0f172a; font-size:11.5px; font-weight:700; cursor:pointer;">
+                    <span>Tài liệu báo giá đã duyệt</span>
+                    <span id="utility-quote-sub" style="font-size:10.5px; color:#15803d; font-family:var(--mono);">—</span>
+                  </button>
+                </div>
+                <div class="illustrative-note" id="utility-note" style="margin:6px;">Chỉ hiển thị trường nằm trong allowlist công bố.</div>
+              </div>
+            </div>
+
+            <div id="journey-zero-notice" class="journey-zero-notice hidden" data-testid="journey-zero-state" style="position:relative; z-index:12; margin:48px auto; max-width:520px; background:rgba(255,255,255,0.95);">
+              <span class="journey-zero-kicker">TRẠNG THÁI CÔNG BỐ</span>
+              <strong id="journey-zero-title" class="journey-zero-title">Trường Thành chưa công bố thông tin cho lô này</strong>
+              <span id="journey-zero-summary" class="journey-zero-summary">Hành trình xác minh, báo giá bán và chứng từ sẽ xuất hiện trên hải đồ ngay khi Trường Thành duyệt công bố.</span>
+            </div>
+
+            <div id="journey-map-transform" data-testid="journey-map-transform" style="position:relative; width:1080px; height:520px; transform:translate(0px, 0px) scale(1); transform-origin:0 0; z-index:2;">
+              <svg id="journey-edges-svg" class="journey-edges" viewBox="0 0 1080 520" preserveAspectRatio="none"></svg>
+              <div id="journey-nodes-layer"></div>
+            </div>
+
+            <div id="journey-map-hint" class="journey-map-hint" data-testid="journey-status-legend">
+              <span><b>✓</b> Có bằng chứng</span>
+              <span class="sep">·</span>
+              <span><b>◐</b> Đang xử lý</span>
+              <span class="sep">·</span>
+              <span><b>◷</b> Chờ thông tin</span>
+              <span class="sep">·</span>
+              <span><b>·</b> Chưa đối soát</span>
+              <span class="sep">·</span>
+              <span id="journey-zoom-pct">100%</span>
+            </div>
+
+            <div id="journey-zoom-bar" class="journey-zoom-bar">
+              <button type="button" id="journey-zoom-in" class="journey-zoom-btn" data-testid="journey-zoom-in" title="Phóng to">+</button>
+              <button type="button" id="journey-zoom-out" class="journey-zoom-btn" data-testid="journey-zoom-out" title="Thu nhỏ">−</button>
+              <div id="journey-zoom-level" class="journey-zoom-level" data-testid="journey-zoom-level">100%</div>
+              <button type="button" id="journey-zoom-fit" class="journey-zoom-btn journey-zoom-text" data-testid="journey-zoom-fit">Fit Journey</button>
+              <button type="button" id="journey-zoom-readable" class="journey-zoom-btn journey-zoom-text" data-testid="journey-zoom-readable">↺ Đọc rõ</button>
+            </div>
+
+            <div id="journey-bubble-slot" class="journey-bubble-layer"></div>
+          </div>
+
+          <div id="journey-modal-layer" class="journey-modal-layer hidden" data-testid="journey-modal" role="dialog" aria-modal="true">
+            <div class="journey-modal-backdrop" data-testid="journey-modal-backdrop"></div>
+            <aside class="journey-side journey-modal-card" data-testid="journey-stage-workspace">
+              <div class="journey-side-head">
+                <div class="journey-side-title-row">
+                  <div>
+                    <div id="modal-kicker" class="journey-side-kicker">CHI TIẾT ĐÃ XÁC MINH (CHỈ ĐỌC)</div>
+                    <h3 id="modal-title" class="journey-side-title">—</h3>
+                    <div id="modal-sub" class="journey-side-sub">—</div>
+                  </div>
+                  <div style="display:flex; align-items:center; gap:8px;">
+                    <span id="modal-badge" class="journey-side-badge">—</span>
+                    <button type="button" class="journey-modal-close" id="journey-modal-close" data-testid="journey-modal-close">× Đóng</button>
+                  </div>
+                </div>
+              </div>
+              <div id="journey-modal-body" class="journey-side-body"></div>
+            </aside>
+          </div>
+        </div>
+        <div id="journey-hint-bar" class="journey-hint-bar"></div>
+      </div>
+
+      <div id="download-status-banner" class="status-note hidden"></div>
+    </section>
+  </main>
+</div>

@@ -132,6 +132,10 @@ class _FinancialWriteOracle:
         del args, kwargs
         self.calls.append(target)
         return False
+def _selectbox(app: AppTest, key: str):
+    return next(element for element in app.selectbox if element.key == key)
+def _button(app: AppTest, key: str):
+    return next(element for element in app.button if element.key == key)
 def _assert_no_streamlit_exceptions(test_case: TestCase, app: AppTest) -> None:
     exceptions = [(element.type, str(element.value)) for element in app.exception]
     test_case.assertEqual(exceptions, [], msg=f"mounted dashboard exceptions: {exceptions}")
@@ -140,15 +144,6 @@ class DashboardFinancialWriteOracleTests(TestCase):
         shipments = _fixture_shipments()
         financial_before = _financial_snapshot(shipments)
         oracle = _FinancialWriteOracle()
-        # Fixture-only oracle: never observe a real database.
-        from views import logi_sandbox
-        if logi_sandbox.ensure_backend() != logi_sandbox.SANDBOX_TRANSPORT:
-            self.skipTest("financial write oracle runs on the isolated staging fixtures only")
-        # The isolated staging transport seeds itself ONCE through the canonical
-        # writers (bootstrap, not dashboard flow). Bootstrap BEFORE the oracle is
-        # armed, so a recorded call can only come from the bounded mount.
-        logi_sandbox.reset_backend()
-        self.assertEqual(logi_sandbox.ensure_backend(), logi_sandbox.SANDBOX_TRANSPORT)
         # The pure projection is part of the same bounded flow and must label
         # its financial result as read-only before the mounted UI is exercised.
         projection = build_shipment_dashboard_view(
@@ -157,7 +152,6 @@ class DashboardFinancialWriteOracleTests(TestCase):
         )
         self.assertTrue(projection["read_only_financial"])
         self.assertTrue(projection["financial_projection"].get("read_only"))
-        model: dict = {}
         with ExitStack() as stack:
             for target in FINANCIAL_WRITE_TARGETS:
                 stack.enter_context(
@@ -169,28 +163,56 @@ class DashboardFinancialWriteOracleTests(TestCase):
                     )
                 )
             stack.enter_context(patch("views.web_app.require_login", side_effect=lambda: (_login_fixture({"username": "fixture", "display_name": "Fixture", "role": "admin"}), {"username": "fixture", "display_name": "Fixture", "role": "admin"})[-1]))
-            # Current entry point: app.py -> views.web_app.main -> the ONE
-            # Logi-good component shell. The bounded dashboard flow is the
-            # view-model render the shell mounts; the fixture shipments take
-            # the place of the fresh shipment read, exactly as
-            # views.dashboard.cached_load_data did for the retired shell.
-            stack.enter_context(patch("views.logi_view_model.load_shipments", return_value=shipments))
-            stack.enter_context(patch("views.logi_shell.render", side_effect=lambda vm: model.update(vm)))
+            stack.enter_context(patch("views.web_app.refresh_core_data", return_value=None))
+            stack.enter_context(patch("views.dashboard.cached_load_data", return_value=shipments))
+            stack.enter_context(patch("views.dashboard.load_tasks", return_value=[]))
             app = AppTest.from_file(str(APP_PATH), default_timeout=60)
             app.run()
             _assert_no_streamlit_exceptions(self, app)
-            self.assertEqual(sorted(row["id"] for row in model["shipments"]), ["LG-001", "LG-002"])
-            # The dashboard still renders the separate financial status and a
-            # deterministic next action, from the same read-only projection.
-            self.assertGreaterEqual(model["home"]["summary"]["financialAttention"], 1)
-            self.assertEqual(model["home"]["summary"]["total"], 2)
-            self.assertTrue(model["home"]["focus"]["id"])
-            self.assertTrue(model["home"]["focus"]["nextAction"])
-            # Every rendered row carries the read-only finance slice; opening
-            # one row is navigation only (no writer is reachable from it).
-            for row in model["shipments"]:
-                self.assertIn("finance", row)
-                self.assertIn("payments", row["finance"])
-                self.assertEqual(oracle.financial_write_count, 0)
+            self.assertTrue(
+                any("Tài chính:" in element.value for element in app.markdown),
+                "dashboard did not render the separate financial status",
+            )
+            self.assertTrue(
+                any(("Next action" in element.value or "Việc tiếp theo" in element.value) for element in app.markdown),
+                "dashboard did not render a deterministic alert action",
+            )
+            # Owner semantics: SALE Thành is a real fixture owner, not a
+            # value inferred from notes/customer/address text.
+            _selectbox(app, "dashboard_owner_filter").set_value("SALE Thành")
+            app.run()
+            _assert_no_streamlit_exceptions(self, app)
+            self.assertIn("dashboard_process_LG-001", {element.key for element in app.button})
+            self.assertNotIn("dashboard_process_LG-002", {element.key for element in app.button})
+            # Warning semantics: the factory-data warning isolates LG-001.
+            _selectbox(app, "dashboard_owner_filter").set_value("Tất cả")
+            _selectbox(app, "dashboard_attention_filter").set_value("Nhà máy chưa đủ dữ liệu")
+            app.run()
+            _assert_no_streamlit_exceptions(self, app)
+            self.assertIn("dashboard_process_LG-001", {element.key for element in app.button})
+            self.assertNotIn("dashboard_process_LG-002", {element.key for element in app.button})
+            # First shipment: open the real mounted detail path, then return.
+            _selectbox(app, "dashboard_attention_filter").set_value("Tất cả")
+            app.run()
+            _button(app, "dashboard_process_LG-001").click()
+            app.run()
+            _assert_no_streamlit_exceptions(self, app)
+            self.assertIn("btn_close_top", {element.key for element in app.button})
+            self.assertTrue(
+                any("lg04_tab_export" in element.value for element in app.markdown),
+                "first shipment did not render the editable work tabs",
+            )
+            _button(app, "btn_close_top").click()
+            app.run()
+            _assert_no_streamlit_exceptions(self, app)
+            self.assertNotIn("btn_close_top", {element.key for element in app.button})
+            # Second shipment: verify the list is restored and the second row
+            # opens independently on the next click.
+            _button(app, "dashboard_process_LG-002").click()
+            app.run()
+            _assert_no_streamlit_exceptions(self, app)
+            self.assertIn("btn_close_top", {element.key for element in app.button})
+            self.assertTrue(any("LG-002" in element.value for element in app.markdown))
+        self.assertEqual(oracle.financial_write_count, 0)
         self.assertEqual(oracle.calls, [])
         self.assertEqual(_financial_snapshot(shipments), financial_before)

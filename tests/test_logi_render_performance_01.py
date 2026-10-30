@@ -482,25 +482,12 @@ def test_fast_path_output_equals_legacy_per_call_readers(dataset):
     references = vm._load_references()
     shipments = vm.load_shipments()
     views = vm._dashboard_views(shipments)
-    # ``companies``/``agents`` are caller-supplied masters, not a snapshot the
-    # projection can fall back to reading itself: ``project_commercial_flow``
-    # is pure, and BOTH production callers (the build loop and
-    # ``vm.read_shipment``) pass ``load_authority_companies()`` explicitly.
-    # Omitting them here made the TT_ENTRUSTED_DIRECT row LO-0460 lose its
-    # legal importer (name/tax code -> ``ready=False``), which then drifted
-    # ``commercialFlow``, the tax-payment step reason and the import tax gate
-    # — a reconstruction gap in this test, not fast-path drift. Supply them
-    # through the same per-call readers the legacy path used.
-    legacy_companies = core_database.load_authority_companies() or {}
-    legacy_agents = core_database.load_authority_agents() or {}
     legacy_rows = {
         sid: rd.shipment_projection(
             ship,
             customers=references["customers"],
             contracts=references["contracts"],
             quotes=references["quotes"],
-            companies=legacy_companies,
-            agents=legacy_agents,
             dashboard=views.get(sid, {}),
             history=rd.timeline_projection(sid),
         )

@@ -445,8 +445,7 @@ export default function ShipmentJourney({ shipment: s, activeStage, work, onOpen
     if (attachOutcome.ok) { setAttachOpen(false); setChosen(''); setAttachPending(''); setAttachError(''); }
     else { setAttachError(String(attachOutcome.error || 'Backend từ chối gắn quy trình.')); setAttachPending(''); }
   }, [attachOutcome]);
-  if (!journey?.nodes.length) return <FreshShipmentCockpit shipment={s} onGlobal={onGlobal} runPrimary={runPrimary} globalActive={globalActive} globalTab={globalTab}>{children}</FreshShipmentCockpit>;
-  const nodes = journey.nodes;
+  const nodes = journey?.nodes ?? [];
   // Issue #162 — the base map stays the base map. Module steps are NOT drawn as
   // extra branches by default; they live inside the rollup card and are
   // revealed on demand (the graph is still fully present in the payload).
@@ -504,6 +503,8 @@ export default function ShipmentJourney({ shipment: s, activeStage, work, onOpen
     if (modules.length > prevModuleCount.current) setModulesOpen(true);
     prevModuleCount.current = modules.length;
   }, [modules]);
+  // Keep every Hook above the fresh/ready split: Journey nodes can arrive or disappear on a rerun.
+  if (!journey?.nodes.length) return <FreshShipmentCockpit shipment={s} onGlobal={onGlobal} runPrimary={runPrimary} globalActive={globalActive} globalTab={globalTab}>{children}</FreshShipmentCockpit>;
   // Issue #195 — ONE shared side-panel render: the detail map hosts it in
   // the 451px right rail, the compact overview stacks it below the step
   // strip. Same nodes, same pick, same panels — no duplicated journey

@@ -27,7 +27,7 @@
 import { readFileSync } from "node:fs";
 import assert from "node:assert/strict";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { createRequire } from "node:module";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
@@ -69,6 +69,11 @@ const bodyText = () => text(window.document.body);
 const byTestId = (id) => $(`[data-testid="${id}"]`)[0] ?? null;
 const attr = (id, name) => byTestId(id)?.getAttribute(name) ?? null;
 const dateInput = () => $("#fld-created-at")[0];
+async function waitFor(read) {
+  const deadline = Date.now() + 5000;
+  while (Date.now() < deadline) { const value = read(); if (value) return value; await tick(25); }
+  assert.fail('Expected header test state did not arrive');
+}
 
 function findClickable(needle, sel = "a,button", root = window.document) {
   const els = $(sel, root);
@@ -76,7 +81,7 @@ function findClickable(needle, sel = "a,button", root = window.document) {
 }
 
 async function click(needle, sel = "a,button", root = window.document) {
-  const el = findClickable(needle, sel, root);
+  const el = await waitFor(() => findClickable(needle, sel, root));
   assert.ok(el, `clickable "${needle}" not found`);
   el.dispatchEvent(new window.MouseEvent("click", { bubbles: true, cancelable: true }));
   await tick();
@@ -84,7 +89,7 @@ async function click(needle, sel = "a,button", root = window.document) {
 }
 
 async function clickTestId(id) {
-  const el = byTestId(id);
+  const el = await waitFor(() => byTestId(id));
   assert.ok(el, `element [data-testid="${id}"] not found`);
   el.dispatchEvent(new window.MouseEvent("click", { bubbles: true, cancelable: true }));
   await tick();
@@ -125,9 +130,12 @@ function invoke(data) {
 /** A fresh view-model to the SAME mounted page — Streamlit rerun semantics: the
  *  operator's form state survives, only the read-back data changes. */
 function deliver(data) {
+  const request = triggers.filter(t => t.event === 'shipment_field_save').at(-1)?.value.payload.requestId;
+  const correlated = request ? { ...data, lastWrites: (data.lastWrites ?? []).map(row =>
+    row.event === 'shipment_field_save' ? { ...row, requestId: request } : row) } : data;
   mountRef.current({
     name: "logi_shell",
-    data,
+    data: correlated,
     parentElement: host,
     setTriggerValue: (event, value) => triggers.push({ event, value }),
   });
@@ -137,8 +145,11 @@ async function bootOnLot(state) {
   invoke(state);
   await tick(120);
   await click("Lô Hàng", "a", $("aside")[0]);
+  await click("Tất cả thời gian", "button", await waitFor(() => byTestId("shipment-period-controls")));
   await click(LOT, "a", $("main")[0]);
   await tick(80);
+  if (!byTestId('shipment-header-edit-toggle')) await clickTestId('journey-global-page');
+  await waitFor(() => byTestId('shipment-header-edit-toggle'));
 }
 
 const bundlePath = path.join(ROOT, "component/dist/logi-shell.js");
@@ -154,7 +165,7 @@ async function bootOnLotOpen(state) {
 // ---------------------------------------------------------------------------
 console.log("STEP 1 — the lot header shows both facts; maintenance is a disclosure (P1.4)");
 {
-  const mod = await import(bundlePath);
+  const mod = await import(pathToFileURL(bundlePath).href);
   assert.equal(typeof mod.default, "function");
   mountRef.current = mod.default;
   await bootOnLot(FIX.shipmentBefore);
@@ -204,7 +215,9 @@ console.log("STEP 2 — the date edit emits ONE shipment_field_save, sent ≠ sa
   assert.equal(triggers.slice(before).filter((tr) => tr.event === "shipment_customer_save").length, 0);
 
   // Until the backend read arrives the page must still show the STORED value.
-  assert.equal(dateInput().value, "03/09/2026", "an unconfirmed send must not look like a save");
+  assert.equal(dateInput().value, "12/09/2026", "unconfirmed draft is retained until backend settlement");
+  assert.ok(byTestId('shipment-header-date-pending'), "sent is still pending");
+  assert.ok(!bodyText().includes('Đã lưu ngày tạo'), "unconfirmed send must not toast saved");
 
   deliver(FIX.shipmentDateSaved);
   await tick(120);

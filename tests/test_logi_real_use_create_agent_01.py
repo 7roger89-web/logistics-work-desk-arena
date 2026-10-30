@@ -88,7 +88,7 @@ def _shipment_count() -> int:
 _CREATE_PAYLOAD = {
     "shipmentId": "LO-0470",
     "customerId": "CUST-ANPHAT",
-    "customer": "An Phát",
+    "customer": "Tên giả từ browser",
     "contractId": "",
     "currency": "VND",
     "requestId": "CSX-REQ-1",
@@ -110,7 +110,8 @@ def test_valid_create_persists_exactly_one_shipment(staging, event_seq):
     assert out["ok"], out["error"]
     assert _shipment_count() == before + 1, "exactly one shipment may be created"
     fresh = vm.read_shipment("LO-0470")
-    assert fresh is not None and fresh["customer"] == "An Phát"
+    assert fresh is not None and fresh["customer"] == "An Phát JSC"
+    assert fresh["customer"] != _CREATE_PAYLOAD["customer"]
     assert out["persisted"]["id"] == "LO-0470"
     actions = [row.get("action") for row in load_audit_logs("shipment", "LO-0470", limit=5)]
     assert "create" in actions, "the canonical writer must produce real audit"
