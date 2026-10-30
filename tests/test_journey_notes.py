@@ -1464,3 +1464,79 @@ def test_staff_inline_download_matches_a_note_in_the_same_open_scope(db, store):
     assert len(outcomes) == 1 and outcomes[0]["ok"] is True
     assert slot is True and slot_len > 0
     assert store.reads >= 1
+
+
+def test_inline_download_bytes_are_one_shot_tenant_bound_and_repeatable():
+    """A repeated click on the SAME attachment must get a new sequence number."""
+    fake = FakeStreamlit()
+    session_key = journey_inline.STAFF_DOWNLOAD_KEY
+    saved = {"data": PNG_1PX, "name": "repeat.png", "mime": "image/png"}
+    kwargs = {
+        "shipment_id": LOT_A, "stage_id": "pickup", "customer_id": CUSTOMER_A,
+        "note_id": "jn-repeat", "attachment_id": "att-repeat", "outcome": saved,
+    }
+    with patch.object(journey_inline, "st", fake):
+        seq_1 = journey_inline._store_download(session_key, **kwargs)
+        first = journey_inline._take_download(session_key, LOT_A, "pickup", CUSTOMER_A)
+        assert seq_1 == 1 and first["seq"] == 1
+        assert base64.b64decode(first["base64"]) == PNG_1PX
+        assert session_key not in fake.session_state
+
+        # This was broken: the consumed slot made each click start again at 1,
+        # so the React/jsdom download dedupe ignored subsequent clicks.
+        seq_2 = journey_inline._store_download(session_key, **kwargs)
+        second = journey_inline._take_download(session_key, LOT_A, "pickup", CUSTOMER_A)
+        assert seq_2 == 2 and second["seq"] == 2
+        assert base64.b64decode(second["base64"]) == PNG_1PX
+
+        # Even a matching lot+stage is not enough if ownership has changed.
+        seq_3 = journey_inline._store_download(session_key, **kwargs)
+        assert seq_3 == 3
+        assert journey_inline._take_download(session_key, LOT_A, "pickup", CUSTOMER_B) is None
+        assert session_key not in fake.session_state
+
+
+def test_denied_download_clears_previously_queued_bytes_even_with_known_ids(db):
+    """A denied request may not accidentally emit a pending prior file."""
+    fake = FakeStreamlit()
+    session_key = journey_inline.STAFF_DOWNLOAD_KEY
+    kwargs = {
+        "shipment_id": LOT_A, "stage_id": "pickup", "customer_id": CUSTOMER_A,
+        "note_id": "jn-old", "attachment_id": "att-old",
+        "outcome": {"data": PNG_1PX, "name": "old.png", "mime": "image/png"},
+    }
+    rows = [{"id": LOT_A, "customerId": CUSTOMER_A}]
+    user = {"username": "sale.thanh", "role": "sale"}
+    with patch.object(journey_inline, "st", fake):
+        journey_inline._store_download(session_key, **kwargs)
+        refused = journey_inline.consume_staff_triggers(
+            {"seq": 0},
+            {"journey_note_download": {
+                "seq": 1, "payload": {
+                    "shipmentId": LOT_A, "stageId": "pickup",
+                    "noteId": "jn-nonexistent", "attachmentId": "att-old",
+                    "requestId": "REQ-DENIED-QUEUED",
+                },
+            }},
+            user=user, shipments=rows, db=db,
+        )
+        assert len(refused) == 1 and refused[0]["ok"] is False
+        assert session_key not in fake.session_state
+        assert journey_inline._take_download(session_key, LOT_A, "pickup", CUSTOMER_A) is None
+
+        # A forged focus outside the current staff projection also clears it.
+        journey_inline._store_download(session_key, **kwargs)
+        refused_focus = journey_inline.consume_staff_triggers(
+            {"seq": 0},
+            {"journey_note_download": {
+                "seq": 2, "payload": {
+                    "shipmentId": "LOT-HIDDEN", "stageId": "pickup",
+                    "noteId": "jn-old", "attachmentId": "att-old",
+                    "requestId": "REQ-DENIED-FOCUS",
+                },
+            }},
+            user=user, shipments=rows, db=db,
+        )
+        assert len(refused_focus) == 1
+        assert refused_focus[0]["gate"] == "INVALID_SCOPE"
+        assert session_key not in fake.session_state

@@ -96,3 +96,7 @@ không còn `_render_journey_focus_pane`, `views/customer_dashboard.py` không c
 `render_customer_discussion`, và test khẳng định app thật không render `expander`/`text_area`/
 `file_uploader` nào cho trao đổi. Pane Streamlit còn lại chỉ ở trang chi tiết lô
 (`views/shipment.py`), một màn khác — không thuộc đường đi của Journey Map.
+
+## Bổ sung kiểm tra session download trong cùng PR #237
+
+Kiểm tra nguồn sau commit `9354a9da` phát hiện byte đã queue có thể còn trong session nếu lần tải sau bị từ chối; đồng thời `seq` của tệp lặp bị trả về 1 sau mỗi lần consume, khiến React bỏ qua lần tải thứ hai cùng tệp. Adapter nay clear slot ở mọi download intent mới (kể cả invalid scope), consume-and-drop dù scope không khớp, buộc slot với customer hiện tại, và dùng counter tuần tự riêng. Thêm 2 regression test trong `tests/test_journey_notes.py` để bắt stale bytes, đổi chủ, tải lặp. Cần chạy test trên môi trường có Streamlit/mongomock; chưa có browser roundtrip thật thì `VISUAL_PASS=NOT_VERIFIED`.

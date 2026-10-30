@@ -147,7 +147,8 @@ def _node_label(rows: Sequence[Any], shipment_id: str, node_id: str) -> str:
     return ""
 
 
-def _take_download(session_key: str, shipment_id: str, stage_id: str) -> dict[str, Any] | None:
+def _take_download(session_key: str, shipment_id: str, stage_id: str,
+                   customer_id: str) -> dict[str, Any] | None:
     """Return the ONE just-read file for THIS lot+stage and drop its bytes.
 
     Bytes are session-scoped exactly like the inbox / shipment attachment
@@ -156,15 +157,16 @@ def _take_download(session_key: str, shipment_id: str, stage_id: str) -> dict[st
     """
     if st is None:
         return None
-    stored = st.session_state.get(session_key)
+    # Consume before matching: a stale file must not survive a scope/actor switch.
+    stored = st.session_state.pop(session_key, None)
     if not isinstance(stored, Mapping):
         return None
     if (
         _text(stored.get("shipmentId"), 120) != shipment_id
         or _text(stored.get("stageId"), 40).lower() != stage_id
+        or _text(stored.get("customerId"), 120) != customer_id
     ):
         return None
-    st.session_state.pop(session_key, None)
     encoded = _text(stored.get("base64"))
     if not encoded:
         return None
@@ -228,7 +230,9 @@ def _discussion_payload(
         "maxBytes": _max_upload_bytes(),
         "notes": [],
         "count": 0,
-        "download": _take_download(session_key, shipment_id, stage_id),
+        "download": _take_download(
+            session_key, shipment_id, stage_id, _text(focus.get("customer_id"), 120),
+        ),
         "outcome": _take_outcome(outcome_key, shipment_id, stage_id),
         "downloadOutcome": _take_outcome(
             CUSTOMER_DOWNLOAD_OUTCOME_KEY if outcome_key == CUSTOMER_OUTCOME_KEY else "",
@@ -393,15 +397,21 @@ def _store_download(
     *,
     shipment_id: str,
     stage_id: str,
+    customer_id: str,
     note_id: str,
     attachment_id: str,
     outcome: Mapping[str, Any],
 ) -> int:
-    previous = st.session_state.get(session_key) if st is not None else None
-    seq = int((previous or {}).get("seq") or 0) + 1 if isinstance(previous, Mapping) else 1
+    # A file is consumed on the next payload, so its slot cannot be used as
+    # the sequence counter. Keep a separate monotonic counter per session.
+    counter_key = f"{session_key}_seq"
+    previous_seq = st.session_state.get(counter_key, 0)
+    seq = previous_seq + 1 if type(previous_seq) is int and previous_seq >= 0 else 1
+    st.session_state[counter_key] = seq
     data = bytes(outcome.get("data") or b"")
     st.session_state[session_key] = {
         "shipmentId": shipment_id,
+        "customerId": customer_id,
         "stageId": stage_id,
         "noteId": note_id,
         "attachmentId": attachment_id,
@@ -525,6 +535,7 @@ def _handle_download(
         session_key,
         shipment_id=shipment_id,
         stage_id=stage_id,
+        customer_id=_text(focus.get("customer_id"), 120),
         note_id=note_id,
         attachment_id=attachment_id,
         outcome=outcome,
@@ -565,6 +576,10 @@ def _consume(
         if seq <= session.get("seq", 0):
             continue
         session["seq"] = seq
+        # Clear any previously queued file for every *new* download attempt,
+        # including malformed and invalid-focus requests. No bytes on denial.
+        if event_name == "journey_note_download" and st is not None:
+            st.session_state.pop(download_key, None)
         data = payload.get("payload")
         if not isinstance(data, Mapping):
             outcomes.append(_result(event_name, "", False, "Payload không hợp lệ."))
