@@ -1,0 +1,120 @@
+name: LOGI isolated agent tool capability pilot
+
+on:
+  push:
+    branches:
+      - experiments/agent-tools-20261030
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: logi-agent-tools-pilot
+  cancel-in-progress: true
+
+jobs:
+  serena-symbolic-mcp:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: a74e41f326422d7636329c0393483c63b6adb5aa
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install Serena in disposable venv, never app deps
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install "uv>=0.13,<0.14"
+          uv venv "$RUNNER_TEMP/serena-env" --python 3.13
+          uv pip install --python "$RUNNER_TEMP/serena-env/bin/python" "serena-agent==2.1.0"
+          "$RUNNER_TEMP/serena-env/bin/serena" --help | head -n 15
+      - name: Make small source snapshot outside repository and initialize Python LS
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "a74e41f326422d7636329c0393483c63b6adb5aa"
+          ROOT="$RUNNER_TEMP/serena-logi"
+          mkdir -p "$ROOT/core" "$ROOT/views"
+          cp core/journey_notes.py core/inbox_attachments.py "$ROOT/core/"
+          cp views/journey_inline.py "$ROOT/views/"
+          cd "$ROOT"
+          timeout 170s "$RUNNER_TEMP/serena-env/bin/serena" project create "$ROOT" --ls python --index --timeout 20
+      - name: Prove Serena MCP can navigate symbol and find real caller
+        shell: bash
+        run: |
+          set -euo pipefail
+          timeout 170s "$RUNNER_TEMP/serena-env/bin/python" tests/experiments/serena_mcp_smoke.py "$RUNNER_TEMP/serena-env/bin/serena" "$RUNNER_TEMP/serena-logi" > "$RUNNER_TEMP/serena-evidence.txt" 2>&1 || {
+            tail -n 90 "$RUNNER_TEMP/serena-evidence.txt"
+            exit 1
+          }
+          cat "$RUNNER_TEMP/serena-evidence.txt"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: serena-mcp-20261030
+          path: ${{ runner.temp }}/serena-evidence.txt
+          retention-days: 7
+          if-no-files-found: warn
+
+  playwright-cli-local:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright CLI outside application
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --prefix "$RUNNER_TEMP/pw-cli" --no-audit --no-fund --no-save "@playwright/cli@0.1.22"
+          "$RUNNER_TEMP/pw-cli/node_modules/.bin/playwright-cli" --help > "$RUNNER_TEMP/pw-help.txt"
+          grep -q 'open' "$RUNNER_TEMP/pw-help.txt"
+          google-chrome --version
+      - name: Exercise real Chrome UI through CLI and save screenshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          CLI="$RUNNER_TEMP/pw-cli/node_modules/.bin/playwright-cli"
+          OUT="$RUNNER_TEMP/logi-tool-screens"
+          mkdir -p "$OUT" "$RUNNER_TEMP/page"
+          cp tests/experiments/agent_browser_fixture.html "$RUNNER_TEMP/page/index.html"
+          python3 -m http.server 9750 --bind 127.0.0.1 --directory "$RUNNER_TEMP/page" > "$OUT/server.log" 2>&1 &
+          server_pid=$!
+          trap '"$CLI" close >/dev/null 2>&1 || true; kill "$server_pid" || true' EXIT
+          for i in $(seq 1 20); do
+            if curl -fsS http://127.0.0.1:9750/ >/dev/null; then break; fi
+            sleep 1
+          done
+          "$CLI" open --browser=chrome "http://127.0.0.1:9750/" > "$OUT/open.txt"
+          "$CLI" snapshot > "$OUT/before.txt"
+          grep -q 'Open QA shipment' "$OUT/before.txt"
+          REF="$(sed -nE 's/.*button "Open QA shipment".*\[ref=(e[0-9]+)\].*/\1/p' "$OUT/before.txt" | head -n 1)"
+          if [ -z "$REF" ]; then
+            cat "$OUT/before.txt"
+            echo "PLAYWRIGHT_CLI_REF_NOT_FOUND"
+            exit 1
+          fi
+          "$CLI" click "$REF" > "$OUT/click.txt"
+          "$CLI" snapshot > "$OUT/after.txt"
+          grep -q 'QA shipment: SI/VGM confirmed' "$OUT/after.txt"
+          "$CLI" screenshot --filename="$OUT/playwright-cli-actual-chrome.png" > "$OUT/screenshot.txt"
+          test -s "$OUT/playwright-cli-actual-chrome.png"
+          echo "PLAYWRIGHT_CLI=PASS"
+          echo "PLAYWRIGHT_ACTION=open > snapshot > click > snapshot > screenshot"
+          "$CLI" close >/dev/null
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-cli-20261030
+          path: ${{ runner.temp }}/logi-tool-screens/
+          retention-days: 7
+          if-no-files-found: warn
