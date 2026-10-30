@@ -155,3 +155,21 @@ def test_unapproved_customer_cannot_read_after_admin_publishes(db):
     db.customers.update_one({"id": CUSTOMER}, {"$unset": {"portal_access_email": ""}})
     with pytest.raises(customer_portal.PortalAccessDenied):
         customer_portal.build_customer_principal(verified_email=EMAIL, db=db)
+
+
+def test_orphan_customer_id_cannot_create_publication(db):
+    db.customers.delete_one({"id": CUSTOMER})
+    with pytest.raises(publication.PublicationWriteDenied):
+        _release(db)
+    assert db.customer_publications.count_documents({}) == 0
+
+
+def test_viewer_has_no_admin_publication_ui(monkeypatch):
+    import streamlit as st
+    from views.customer_dashboard import render_owner_portal_access_control
+
+    def should_not_open(*_args, **_kwargs):
+        raise AssertionError("Viewer reached Admin-only publishing widgets")
+
+    monkeypatch.setattr(st, "expander", should_not_open)
+    render_owner_portal_access_control({"username": "readonly", "role": "viewer"})
