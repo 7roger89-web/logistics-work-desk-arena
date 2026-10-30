@@ -63,7 +63,7 @@ jobs:
           url="http://127.0.0.1:9504/"
           marker="INDEPENDENT-QA-"+str(int(time.time()))
           def choose_customer(page,name="Lục Giác"):
-              page.get_by_role("radio",name=name).check(timeout=25000)
+              page.get_by_text(name,exact=True).first.click(timeout=25000)
               page.get_by_text("QA-LOT",exact=True).first.wait_for(timeout=30000)
           def open_thread(page):
               page.get_by_text("QA-LOT",exact=True).first.click(timeout=30000)
@@ -87,7 +87,7 @@ jobs:
               open_thread(page)
               page.get_by_text(marker,exact=False).first.wait_for(timeout=30000)
               page.screenshot(path=str(evidence/"after-reload.png"))
-              page.get_by_role("radio",name="Khách khác").check(timeout=30000)
+              page.get_by_text("Khách khác",exact=True).first.click(timeout=30000)
               page.wait_for_timeout(1800)
               assert page.get_by_text("QA-LOT",exact=True).count()==0, "foreign customer sees QA-LOT"
               assert page.get_by_text(marker,exact=False).count()==0, "foreign customer sees customer note"
