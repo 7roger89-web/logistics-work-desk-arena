@@ -20,8 +20,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: a74e41f326422d7636329c0393483c63b6adb5aa
+          fetch-depth: 0
           persist-credentials: false
+      - name: Confirm app code unchanged from staging snapshot
+        run: git diff --exit-code a74e41f326422d7636329c0393483c63b6adb5aa -- core views component assets
       - uses: actions/setup-python@v5
         with:
           python-version: '3.13'
