@@ -16,6 +16,13 @@ Xây **Logistics Work Desk có thể sử dụng thật**, tập trung giao di�
 - **PR [#232](https://github.com/7roger89-web/logistics-work-desk-arena/pull/232):** đã chuyển từ `main` sang staging, tích hợp lịch sử staging không force. HEAD `1a16b4d7d40922af8b4ab7fef63766090523f11b`, Draft; đã thêm backend Admin công bố phiên bản và UI chọn nguồn, test mới **chưa chạy**. 12 file thay đổi so với staging. PR #226 vẫn Draft, giữ nguyên và đang chồng lấn logic reader.
 - **`main` tham chiếu:** `9e4190b278dd2ced8771c5249582753d34e561db`. **Không được tự merge/deploy production**; đây chỉ là ref tại thời điểm quan sát.
 
+## QA follow-up — nhánh Arena phiên hiện tại, KHÔNG phải PR #232
+
+- 2026-10-30: HEAD PR #232 đo lại `b67f306d44650c4f039e2b1275941e0e7e597c48`, vẫn Draft. Khi đổi mô hình khách trên cùng trang, Chromium tái hiện modal khách cũ còn hiện dữ liệu lô/chứng từ/sự kiện; ảnh và phạm vi tại `evidence/g15-followup-qa/README.md`.
+- Bản sửa + test ở commit `c2ba70b74c6a4506137084c23b7fb4f75cbe928f` trên `arena/a1cadc10-logistics-work-desk-arena`, **chưa nằm trong PR #232**. Phiên Arena không được phép push nhánh PR. Đừng đánh dấu PR sẵn sàng hoặc tích hợp staging trước khi đưa bản sửa vào PR, chạy lại trên HEAD PR mới, và có review độc lập.
+- QA cục bộ: pytest G1/G1.5 143 pass tại cây sửa trước định dạng test; Chromium với dữ liệu/danh tính giả đã qua công bố, reload, Journey và đổi khách; kiểm thử Viewer trực tiếp vào hàm backend bị từ chối và dữ liệu không đổi. Full suite còn lỗi nền và có một thay đổi tập lỗi cần xem `evidence/g15-followup-qa/README.md`. Đăng nhập Google thật, Mongo server thật và nghiệp vụ Lục Giác thật chưa được chứng minh.
+- `CLOUD_QA=BLOCKED`: chưa chứng minh deployed SHA và DB identity an toàn; không ghi Cloud, production hay dữ liệu thật.
+
 ## CURRENT — phạm vi phát triển đang mở
 
 **G1.5 / PR #232 — hoàn thiện và kiểm chứng luồng Admin Trường Thành → Lục Giác trên staging**, tái sử dụng nguồn và giao diện đang có. Phân biệt ba lớp nghiệm thu: (1) code/test với fixture; (2) tính đầy đủ, tính đúng của manifest/provenance nghiệp vụ được duyệt; (3) trải nghiệm khách hàng tại runtime thật. PASS lớp này không đồng nghĩa PASS lớp khác.

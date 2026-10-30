@@ -1,0 +1,66 @@
+{
+  "url": "http://127.0.0.1:9501/",
+  "environment": "disposable mongomock; synthetic identities; real Streamlit components; no Google OAuth",
+  "checks": [
+    {
+      "name": "admin chosen lot",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "cannot submit before confirm",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "confirm enables publish",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "release pointer read back",
+      "pass": true,
+      "detail": "g15-05c0da1600454e418c50300339916b70"
+    },
+    {
+      "name": "same pointer after browser reload",
+      "pass": true,
+      "detail": "g15-05c0da1600454e418c50300339916b70"
+    },
+    {
+      "name": "LG dashboard approved lot",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "foreign or secrets absent from customer component",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "approved event visible in Journey",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "approved doc version visible",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "private and foreign information absent",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "other customer cannot see LG lot",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "viewer has no publication control",
+      "pass": true,
+      "detail": ""
+    }
+  ]
+}
