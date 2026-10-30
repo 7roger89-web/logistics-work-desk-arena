@@ -257,3 +257,129 @@ def render_owner_portal_access_control(
                 st.rerun()
             else:
                 st.error(message)
+
+    # Keep the two Owner controls together; publication is never a customer
+    # action and never bypasses the server's Admin-only writer.
+    _render_admin_publication_control(user, key_prefix=key_prefix, db=db)
+
+
+def _render_admin_publication_control(
+    user: Mapping[str, Any], *, key_prefix: str, db: Any = None,
+) -> None:
+    """Admin selects already verified versions and explicitly approves release."""
+    from core import customer_portal_publish as publisher
+
+    role = str(user.get("role") or "").strip().lower()
+    if role != "admin":
+        return
+    with st.expander("Cổng khách hàng — duyệt và công bố tiến độ/chứng từ", expanded=False):
+        st.caption(
+            "Chỉ công bố các mốc/chứng từ đã xác minh và đúng phiên bản. "
+            "Không công bố giá, chi phí hay nội dung tệp. "
+            "Không tự tạo mốc hoàn thành khi thiếu nguồn."
+        )
+        try:
+            database = portal._resolve_db(db)
+            customers = portal.list_customer_portal_access(db=database)
+            if not customers:
+                st.info("Chưa có hồ sơ khách hàng để công bố.")
+                return
+            by_customer = {r["id"]: r for r in customers}
+            customer_id = st.selectbox(
+                "Khách hàng nhận bản công bố",
+                options=list(by_customer),
+                format_func=lambda key: f"{key} — {by_customer[key]['name']}",
+                key=f"{key_prefix}_publish_customer",
+            )
+            shipments = publisher.list_customer_shipments(
+                customer_id, actor_role=role, db=database,
+            )
+            if not shipments:
+                st.info("Khách hàng này chưa có lô được liên kết bằng mã chính xác.")
+                return
+            by_shipment = {r["id"]: r for r in shipments}
+            shipment_id = st.selectbox(
+                "Lô hàng",
+                options=list(by_shipment),
+                key=f"{key_prefix}_publish_shipment_{customer_id}",
+            )
+            previous = by_shipment[shipment_id]["published_version"]
+            st.caption(f"Bản đang công bố: {previous or 'Chưa có'}")
+            candidates = publisher.list_verified_sources(
+                customer_id, shipment_id, actor_role=role, db=database,
+            )
+        except (portal.PortalDataError, publisher.PublicationWriteDenied):
+            st.error("Không đọc được danh sách công bố hợp lệ. Chưa có dữ liệu nào được thay đổi.")
+            return
+        except Exception:  # noqa: BLE001 - no internal source detail in UI
+            st.error("Không tải được nguồn công bố. Vui lòng thử lại.")
+            return
+
+        event_options = {str(i): item for i, item in enumerate(candidates["events"])}
+        document_options = {str(i): item for i, item in enumerate(candidates["documents"])}
+        if not event_options and not document_options:
+            st.info(
+                "Chưa có mốc/chứng từ đã xác minh trong nguồn công bố cho lô này. "
+                "Không thể công bố một bước chưa có chứng cứ."
+            )
+            return
+        event_ids = st.multiselect(
+            "Mốc tiến độ được duyệt",
+            options=list(event_options),
+            format_func=lambda key: (
+                f"{event_options[key]['title']} — "
+                f"{event_options[key]['id']} / {event_options[key]['version']}"
+            ),
+            key=f"{key_prefix}_publish_events_{customer_id}_{shipment_id}",
+        )
+        document_ids = st.multiselect(
+            "Chứng từ được duyệt (chỉ metadata, không tải tệp)",
+            options=list(document_options),
+            format_func=lambda key: (
+                f"{document_options[key]['kind']}: {document_options[key]['title']} — "
+                f"{document_options[key]['id']} / {document_options[key]['version']}"
+            ),
+            key=f"{key_prefix}_publish_docs_{customer_id}_{shipment_id}",
+        )
+        event_versions = {
+            event_options[key]["id"]: event_options[key]["version"] for key in event_ids
+        }
+        document_versions = {
+            document_options[key]["id"]: document_options[key]["version"]
+            for key in document_ids
+        }
+        conflicting_versions = (
+            len(event_versions) != len(event_ids)
+            or len(document_versions) != len(document_ids)
+        )
+        if conflicting_versions:
+            st.error("Không được chọn hai phiên bản cho cùng một mã mốc/chứng từ.")
+        confirmed = st.checkbox(
+            "Tôi đã đối chiếu nguồn nghiệp vụ và xác nhận chỉ công bố những mục đã duyệt.",
+            key=f"{key_prefix}_publish_confirmation_{customer_id}_{shipment_id}",
+        )
+        ready = bool(confirmed and (event_versions or document_versions) and not conflicting_versions)
+        if st.button(
+            "Duyệt và công bố phiên bản mới",
+            type="primary",
+            disabled=not ready,
+            key=f"{key_prefix}_publish_submit_{customer_id}_{shipment_id}",
+        ):
+            try:
+                success, message = publisher.publish_verified_sources(
+                    customer_id, shipment_id,
+                    event_versions=event_versions,
+                    document_versions=document_versions,
+                    expected_current_version=previous,
+                    actor_role=role,
+                    actor_username=str(user.get("username") or ""),
+                    db=database,
+                )
+            except publisher.PublicationWriteDenied as exc:
+                st.error(str(exc))
+                return
+            if success:
+                st.success(message)
+                st.rerun()
+            else:
+                st.error(message)
