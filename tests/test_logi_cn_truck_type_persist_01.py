@@ -73,11 +73,22 @@ def test_whitelist_gained_exactly_the_one_approved_key():
 
     LOGI_CONTRACT_AND_SHIPMENT_CORE_GAPS_01 later added one further key
     (``created_at`` — the lot's header date, under ``data/0.0``, not under the
-    transport section), so the total is now 31; the ``under_12`` pin below still
-    proves this ruling contributed exactly its one key.
+    transport section) → 31, and LOGI_GNT_CANONICAL_FIELDS_01 added the three
+    explicit GNT taxpayer facts under ``data.2.4.gnt`` (``nguoi_nop`` / ``mst``
+    / ``dia_chi``) that the fail-closed NDKT check reads → 34.  Each addition
+    is named below, so the ``under_12`` pin still proves THIS ruling
+    contributed exactly its one transport key and nothing else slipped in.
     """
     assert vm.FIELD_PATHS["pickup_truck_type"] == ("data", "1.2", "pickup_truck_type")
-    assert len(vm.FIELD_PATHS) == 31
+    assert len(vm.FIELD_PATHS) == 34
+    assert {
+        key: vm.FIELD_PATHS[key]
+        for key in ("gnt_taxpayer_name", "gnt_taxpayer_tax_code", "gnt_taxpayer_address")
+    } == {
+        "gnt_taxpayer_name": ("data", "2.4", "gnt", "nguoi_nop"),
+        "gnt_taxpayer_tax_code": ("data", "2.4", "gnt", "mst"),
+        "gnt_taxpayer_address": ("data", "2.4", "gnt", "dia_chi"),
+    }
 
     # No smuggled extra field under the transport section: the nine
     # pre-existing 1.2 keys plus the one the Owner has now ruled on.

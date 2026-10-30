@@ -222,7 +222,23 @@ class ProvenanceImmutabilityTest(unittest.TestCase):
             "outputs": {"total": 1},
             "formula_version": FORMULA_VERSION,
         }
-        with patch.object(dbmod, "get_db", return_value=db):
+        # The writer is RBAC-gated on sales_write.  Declare the fixture actor
+        # explicitly instead of depending on whatever session a previous test
+        # happened to leave behind (bare-mode Streamlit cannot be written to).
+        from types import SimpleNamespace
+
+        sale_actor = SimpleNamespace(
+            session_state={
+                "current_user": {
+                    "user_id": "u-intl-01",
+                    "username": "sale.intl",
+                    "display_name": "Sale Intl",
+                    "role": "sale",
+                }
+            }
+        )
+        with patch.object(dbmod, "get_db", return_value=db), \
+                patch("core.auth.st", sale_actor):
             # First save succeeds
             ok = dbmod.save_contract_intl_snapshot(payload)
             assert ok, dbmod.get_last_db_error()

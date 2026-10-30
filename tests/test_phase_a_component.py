@@ -53,18 +53,46 @@ def test_seed_shape():
 
 
 def test_view_model_shape_via_app():
+    """Boot the REAL entrypoint as an authenticated operator and inspect the ONE
+    payload the shell receives.
+
+    The app is fail-closed: with no session it renders the login/bootstrap
+    screen and never builds a view-model, so this acceptance must run under a
+    real staged identity (``views.logi_sandbox`` staging actor, revalidated by
+    ``core.auth`` against the staging user store) — not by disabling AUTH.
+    """
+    from unittest.mock import patch
+
+    from streamlit.components.v2.bidi_component.state import ComponentResult
     from streamlit.testing.v1 import AppTest
 
-    at = AppTest.from_file(str(REPO_ROOT / "app.py"), default_timeout=60)
-    at.run()
-    assert not at.exception, f"app raised: {[str(e.value) for e in at.exception]}"
-    assert logi_view_model.STATE_KEY in at.session_state
+    from views import logi_sandbox, logi_shell
 
-    vm = at.session_state[logi_view_model.STATE_KEY]
+    logi_sandbox.reset_backend()
+    assert logi_sandbox.ensure_backend() == logi_sandbox.SANDBOX_TRANSPORT
+
+    captured: dict = {}
+
+    def fake_renderer(**kwargs):
+        captured.update(kwargs)
+        return ComponentResult({}, {})
+
+    at = AppTest.from_file(str(REPO_ROOT / "app.py"), default_timeout=60)
+    # The seeded staging operator that REALLY exists in the staging user store
+    # (admin); core.auth revalidates it on the run, so this is a live session.
+    at.session_state["current_user"] = {"username": "admin", "role": "admin"}
+    with patch("views.logi_shell._renderer", return_value=fake_renderer):
+        at.run()
+    assert not at.exception, f"app raised: {[str(e.value) for e in at.exception]}"
+    assert captured, "the single v2 shell component must be mounted"
+    assert captured.get("key") == logi_shell.COMPONENT_KEY
+
+    vm = captured["data"]
     for key in ("version", "shipments", "tasks", "contracts",
                 "customers", "quotes", "notifications"):
         assert key in vm
-    s = next(x for x in vm["shipments"].values() if x["id"] == "LO-0306")
+    rows = {row["id"]: row for row in vm["shipments"]}
+    s = rows["LO-0306"]
     for key in ("pickup", "cargo", "exportInfo", "importInfo", "finance", "pxk",
                 "timeline", "docs", "missingDocs", "nextRoute"):
         assert key in s

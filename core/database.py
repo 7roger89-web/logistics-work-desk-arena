@@ -4224,6 +4224,23 @@ def save_contract_intl_snapshot(document: Mapping[str, Any], actor: str | None =
     payload.setdefault("created_by_role", actor_ctx["role"])
     payload.setdefault("is_deleted", False)
     payload.pop("_id", None)
+    # Immutability must not depend on the unique index being present.  The
+    # index (uq_contract_intl_snapshot_id) is the atomic race guard, but a
+    # database/fixture where ensure_indexes() has not run would otherwise let a
+    # second, TAMPERED snapshot with the same id be appended silently — the
+    # exact drift the receipt path must never allow.  Read the existing row
+    # first and apply the SAME fingerprint rule as the DuplicateKey branch.
+    try:
+        existing = db.contract_intl_payment_snapshots.find_one({"id": snap_id}, {"_id": 0})
+    except Exception:  # noqa: BLE001 - a failed guard check must fail closed below
+        existing = None
+    if existing is not None:
+        if _financial_fingerprint(existing) == _financial_fingerprint(dict(payload)):
+            return True
+        if _financial_fingerprint(existing) == _financial_fingerprint(dict(document)):
+            return True
+        _set_last_error("Snapshot đã tồn tại và không thể ghi đè (immutable).")
+        return False
     try:
         db.contract_intl_payment_snapshots.insert_one(payload)
     except DuplicateKeyError:

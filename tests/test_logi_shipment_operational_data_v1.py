@@ -519,7 +519,15 @@ def test_lightweight_create_starts_one_canonical_leg_and_navigable_detail_data(s
     assert legs[0]["mode"] == "Air"
     assert legs[0]["origin"] == "CAN"
     assert legs[0]["destination"] == "HAN"
-    assert out["readback"]["transportLegsStructured"] is True
+    # Create now answers with the documented MINIMAL authoritative readback
+    # (id / customer / version, straight from a fresh database read) instead of
+    # the full projection: the complete row — including the structured-leg
+    # flag — is delivered by the forced rerun.  Prove the navigable detail data
+    # on the SAME fresh document the readback was taken from.
+    assert out["readback"]["id"] == "LO-OPS-V1"
+    assert out["readback"]["customer"] == fresh["customer"]
+    assert out["readback"]["version"] == int(fresh.get("version") or 0)
+    assert rd.shipment_projection(fresh)["transportLegsStructured"] is True
 
 
 def test_component_exposes_progressive_mode_specific_operational_editor():

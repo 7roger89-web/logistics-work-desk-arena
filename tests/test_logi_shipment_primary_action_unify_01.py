@@ -180,8 +180,10 @@ def test_cif_no_insurance_red_mismatch_wins_over_a_dashboard_warning():
     assert row["nextAction"] == profile_action["label"]
     assert row["priority"] == "Khan", "a red profile blocker is Khan, like a critical alert"
     assert row["nextLabel"] == "XỬ LÝ NGAY"
-    assert row["nextRoute"].endswith("#shipment-execution-profile"), row["nextRoute"]
-    assert "?tab=nhap" in row["nextRoute"], "the existing status tab is kept, only the anchor is added"
+    # Issue #188 Supervisor B1: the execution-profile editor is mounted by the
+    # "van-tai" tab, so every profile-section code routes THERE — never to the
+    # shipment's current status tab (which does not host the editor).
+    assert row["nextRoute"] == f"/lo-hang/{row['id']}?tab=van-tai#shipment-execution-profile", row["nextRoute"]
 
 
 # ===========================================================================
@@ -244,7 +246,8 @@ def test_profile_incomplete_routes_to_the_existing_profile_section():
     assert row["executionProfile"]["nextAction"]["code"] == "PROFILE_INCOMPLETE"
     assert row["nextAction"] == row["executionProfile"]["nextAction"]["label"]
     assert "Bổ sung hồ sơ thực hiện lô" in row["nextAction"]
-    assert row["nextRoute"] == f"/lo-hang/{row['id']}?tab=lay-hang#shipment-execution-profile"
+    # Issue #188 B1 — the profile editor lives in the van-tai tab.
+    assert row["nextRoute"] == f"/lo-hang/{row['id']}?tab=van-tai#shipment-execution-profile"
     assert row["priority"] == "CanXuLy"
     assert row["nextLabel"] == "XỬ LÝ NGAY"
 
@@ -383,9 +386,11 @@ def test_tasks_home_and_notifications_carry_the_same_composed_route():
     ("ROAD_CONSOLIDATION", "van-tai", ""),
     ("IMPORT_CUSTOMS", "nhap", "#fld-tk"),
     ("DELIVERY", "nhap", ""),
-    ("PROFILE_INCOMPLETE", "lay-hang", "#shipment-execution-profile"),
-    ("CONFIG_CHECK", "lay-hang", "#shipment-execution-profile"),
-    ("INSURANCE_EVIDENCE", "lay-hang", "#shipment-execution-profile"),
+    # Issue #188 Supervisor B1 — the profile editor is mounted by the van-tai
+    # tab, so the profile-section codes route there regardless of status tab.
+    ("PROFILE_INCOMPLETE", "van-tai", "#shipment-execution-profile"),
+    ("CONFIG_CHECK", "van-tai", "#shipment-execution-profile"),
+    ("INSURANCE_EVIDENCE", "van-tai", "#shipment-execution-profile"),
 ])
 def test_every_profile_code_routes_to_an_existing_surface(code, expected_tab, expected_anchor):
     composed = rd.compose_primary_action(

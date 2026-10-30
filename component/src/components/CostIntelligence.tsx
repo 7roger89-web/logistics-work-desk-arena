@@ -59,7 +59,10 @@ const EMPTY_CATALOG: CatalogForm = {
   aliases: "",
   active: true,
   unit: "Lần",
-  group: "DỊCH VỤ XNK",
+  // Group is NOT owned here: the backend catalog is the only place a service
+  // group label lives (core/cost_intelligence.py defaults it), so a copy on
+  // this side could silently drift from the canonical Finance catalog.
+  group: "",
   legacyCodes: "",
   country: "",
   unlocode: "",
@@ -364,7 +367,7 @@ function CatalogEditor() {
       aliases: (entry.aliases || []).join(", "),
       active: entry.active !== false,
       unit: entry.unit || "Lần",
-      group: entry.group || "DỊCH VỤ XNK",
+      group: entry.group || "",
       legacyCodes: (entry.legacy_codes || []).join(", "),
       country: entry.country || "",
       unlocode: entry.unlocode || "",

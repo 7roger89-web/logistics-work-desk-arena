@@ -1,8 +1,13 @@
 # -*- coding: utf-8 -*-
-"""LG05: Comprehensive tab-by-tab smoke test.
+"""Comprehensive workspace smoke test for the live shell entrypoint.
 
-Navigates through ALL routes in the sidebar and checks that each renders
-without Streamlit exceptions. Uses fixture data with proper patches.
+One mounted app run, one view-model payload: every workspace slice the shell
+mounts must be present and the shipment row behind the operational routes must
+be complete — and the run must raise no Streamlit exception.
+
+(The Streamlit sidebar SPA and its ``refresh_core_data`` fixture were retired by
+LOGI-GOOD-V6 Phase A; the fixture helpers below are still imported by other
+regression tests, so they stay.)
 """
 
 import unittest
@@ -130,73 +135,55 @@ def _assert_no_exceptions(test_case, app):
 
 
 class AllTabsSmokeTest(unittest.TestCase):
-    """Navigate every sidebar route and verify no Streamlit exception."""
+    """Every workspace the shell can open is delivered without an exception.
+
+    The Streamlit sidebar SPA this test was written for was retired by
+    LOGI-GOOD-V6 Phase A: ``app.py`` now mounts ONE Components-v2 shell whose
+    routes live in the React bundle, so "click every sidebar tab" no longer
+    exists.  The invariant it protected — no workspace raises, and every route
+    has real data behind it — is asserted here against the live entrypoint and
+    the ONE payload the shell receives.
+    """
+
+    #: Every workspace slice the shell mounts. Losing one is a broken tab.
+    WORKSPACE_SLICES = (
+        "home", "tasks", "shipments", "quotes", "contracts", "customers",
+        "receivables", "payables", "reconciliation", "tariff", "handbook",
+        "userAccess", "costIntelligence", "inbox", "notifications",
+        "translation", "partnerContext", "workModules",
+    )
 
     def test_all_routes_render(self):
-        shipments = _shipments()
-        customers = _customers()
-        with patch("views.web_app.refresh_core_data", return_value=None):
-            with patch("views.web_app.require_login",
-                         return_value=_login_fixture()):
-                with patch("views.dashboard.load_data",
-                           return_value=shipments):
-                    with patch("views.dashboard.load_tasks", return_value=[]):
-                        with patch("views.customers.load_customers",
-                                   return_value=customers):
-                            app = AppTest.from_file(str(APP_PATH),
-                                                    default_timeout=120)
-                            app.run()
-                            _assert_no_exceptions(self, app)
+        from streamlit.components.v2.bidi_component.state import ComponentResult
+        from views import logi_sandbox, logi_shell
 
-                            # Navigate via sidebar buttons
-                            sidebar_buttons = [
-                                b for b in app.sidebar.button
-                                if hasattr(b, "label")
-                            ]
-                            sidebar_selectboxes = app.sidebar.selectbox
+        logi_sandbox.reset_backend()
+        self.assertEqual(logi_sandbox.ensure_backend(), logi_sandbox.SANDBOX_TRANSPORT)
 
-                            # Collect route labels from buttons
-                            route_labels = []
-                            for b in sidebar_buttons:
-                                label = getattr(b, "label", "")
-                                if label and label not in route_labels:
-                                    route_labels.append(label)
+        captured: dict = {}
 
-                            # Also check selectboxes for page selection
-                            for sb in sidebar_selectboxes:
-                                opts = getattr(sb, "options", [])
-                                for opt in opts:
-                                    if opt not in route_labels:
-                                        route_labels.append(opt)
+        def fake_renderer(**kwargs):
+            captured.update(kwargs)
+            return ComponentResult({}, {})
 
-                            # Test each route by clicking/selecting
-                            for label in route_labels:
-                                # Try clicking a button with this label
-                                found = False
-                                for b in app.sidebar.button:
-                                    if getattr(b, "label", "") == label:
-                                        b.click()
-                                        found = True
-                                        break
-                                if not found:
-                                    # Try selecting from a selectbox
-                                    for sb in app.sidebar.selectbox:
-                                        opts = getattr(sb, "options", [])
-                                        if label in opts:
-                                            sb.set_value(label)
-                                            found = True
-                                            break
-                                if found:
-                                    app.run()
-                                    _assert_no_exceptions(self, app)
-                                    # Close any open shipment detail
-                                    if "btn_close_top" in {e.key for e in app.button}:
-                                        for b in app.button:
-                                            if b.key == "btn_close_top":
-                                                b.click()
-                                                break
-                                        app.run()
-                                        _assert_no_exceptions(self, app)
+        app = AppTest.from_file(str(APP_PATH), default_timeout=120)
+        app.session_state["current_user"] = {"username": "admin", "role": "admin"}
+        with patch("views.logi_shell._renderer", return_value=fake_renderer):
+            app.run()
+            _assert_no_exceptions(self, app)
+
+        vm = captured.get("data")
+        self.assertIsInstance(vm, dict, "the shell must receive the view-model")
+        missing = [key for key in self.WORKSPACE_SLICES if key not in vm]
+        self.assertEqual(missing, [], f"workspace slices missing from the payload: {missing}")
+        # A shipment row backs every operational route; it must be complete.
+        self.assertTrue(vm["shipments"], "the worklist must carry real rows")
+        row = vm["shipments"][0]
+        for key in ("id", "nextRoute", "status", "journey", "executionProfile"):
+            self.assertIn(key, row)
+        # Logged-in, i.e. NOT the login/bootstrap screen.
+        self.assertNotIn("login_username", app.session_state)
+        self.assertEqual(logi_shell.COMPONENT_KEY, captured.get("key"))
 
 
 if __name__ == "__main__":

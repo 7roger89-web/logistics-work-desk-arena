@@ -131,7 +131,10 @@ def test_failed_login_does_not_switch_background() -> None:
     # first render: pick background
     mock_st.text_input.side_effect = ["sale.one", "wrong-passphrase-1"]
     mock_st.form_submit_button.return_value = False
-    with patch("core.database.load_users", return_value=_users_db()), \
+    # The deployment HAS accounts (that is what makes require_login() show
+    # the login form rather than the first-admin bootstrap screen).
+    with patch("core.database.has_any_users", return_value=True), \
+         patch("core.database.load_users", return_value=_users_db()), \
          patch.object(auth, "st", mock_st), patch.object(auth, "AUTH_REQUIRED", True):
         auth.require_login()
         idx_before = mock_st.session_state.get(auth._LOGIN_BG_SESSION_KEY)
@@ -139,7 +142,10 @@ def test_failed_login_does_not_switch_background() -> None:
     # now failed submit: should keep same idx, not rotate
     mock_st.text_input.side_effect = ["sale.one", "wrong-passphrase-1"]
     mock_st.form_submit_button.return_value = True
-    with patch("core.database.load_users", return_value=_users_db()), \
+    # The deployment HAS accounts (that is what makes require_login() show
+    # the login form rather than the first-admin bootstrap screen).
+    with patch("core.database.has_any_users", return_value=True), \
+         patch("core.database.load_users", return_value=_users_db()), \
          patch.object(auth, "st", mock_st), patch.object(auth, "AUTH_REQUIRED", True):
         auth.require_login()
         idx_after_fail = mock_st.session_state.get(auth._LOGIN_BG_SESSION_KEY)
@@ -154,7 +160,10 @@ def test_successful_login_preserves_auth_and_clears_per_visit_key() -> None:
     mock_st = _mock_st()
     mock_st.text_input.side_effect = ["sale.one", "sale-passphrase-1"]
     mock_st.form_submit_button.return_value = True
-    with patch("core.database.load_users", return_value=_users_db()), \
+    # The deployment HAS accounts (that is what makes require_login() show
+    # the login form rather than the first-admin bootstrap screen).
+    with patch("core.database.has_any_users", return_value=True), \
+         patch("core.database.load_users", return_value=_users_db()), \
          patch.object(auth, "st", mock_st), patch.object(auth, "AUTH_REQUIRED", True):
         # first pick idx
         mock_st.session_state[auth._LOGIN_BG_SESSION_KEY] = 3
@@ -200,7 +209,10 @@ def test_login_screen_injects_hero_once_and_renders_the_form() -> None:
     mock_st = _mock_st()
     mock_st.text_input.side_effect = ["  sale.one  ", "sale-passphrase-1"]
     mock_st.form_submit_button.return_value = False  # render only, no submit
-    with patch("core.database.load_users", return_value=_users_db()), \
+    # The deployment HAS accounts (that is what makes require_login() show
+    # the login form rather than the first-admin bootstrap screen).
+    with patch("core.database.has_any_users", return_value=True), \
+         patch("core.database.load_users", return_value=_users_db()), \
          patch.object(auth, "st", mock_st), patch.object(auth, "AUTH_REQUIRED", True):
         result = auth.require_login()
     assert result is None
@@ -221,7 +233,10 @@ def test_valid_login_still_sets_session_and_reruns() -> None:
     mock_st = _mock_st()
     mock_st.text_input.side_effect = ["sale.one", "sale-passphrase-1"]
     mock_st.form_submit_button.return_value = True
-    with patch("core.database.load_users", return_value=_users_db()), \
+    # The deployment HAS accounts (that is what makes require_login() show
+    # the login form rather than the first-admin bootstrap screen).
+    with patch("core.database.has_any_users", return_value=True), \
+         patch("core.database.load_users", return_value=_users_db()), \
          patch.object(auth, "st", mock_st), patch.object(auth, "AUTH_REQUIRED", True):
         result = auth.require_login()
     assert result is None
@@ -236,7 +251,10 @@ def test_invalid_login_still_rejected_with_generic_error() -> None:
     mock_st = _mock_st()
     mock_st.text_input.side_effect = ["sale.one", "wrong-passphrase-1"]
     mock_st.form_submit_button.return_value = True
-    with patch("core.database.load_users", return_value=_users_db()), \
+    # The deployment HAS accounts (that is what makes require_login() show
+    # the login form rather than the first-admin bootstrap screen).
+    with patch("core.database.has_any_users", return_value=True), \
+         patch("core.database.load_users", return_value=_users_db()), \
          patch.object(auth, "st", mock_st), patch.object(auth, "AUTH_REQUIRED", True):
         result = auth.require_login()
     assert result is None
@@ -268,7 +286,10 @@ def test_authenticated_run_does_not_carry_login_css() -> None:
         "email": "",
     }
     mock_st = _mock_st(session_user)
-    with patch("core.database.load_users", return_value=_users_db()), \
+    # The deployment HAS accounts (that is what makes require_login() show
+    # the login form rather than the first-admin bootstrap screen).
+    with patch("core.database.has_any_users", return_value=True), \
+         patch("core.database.load_users", return_value=_users_db()), \
          patch.object(auth, "st", mock_st), patch.object(auth, "AUTH_REQUIRED", True):
         result = auth.require_login()
     assert result is not None
