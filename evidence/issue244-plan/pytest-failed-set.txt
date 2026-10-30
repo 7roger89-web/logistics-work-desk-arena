@@ -1,15 +1,20 @@
-# Issue #244 — real FAILED-set comparison (base 2fcb74e vs branch 28b1821)
+# Issue #244 / PR #245 — real FAILED-set comparison (base vs repair HEAD)
 # Both runs: clean git worktree of the same repo, same venv, same command:
 #   /tmp/venv/bin/python -m pytest -q --tb=no -p no:cacheprovider
 
-BASE  2fcb74ea7fc37890589601c43d5c74a3271ab10e : 40 failed, 2263 passed, 45 skipped
-FINAL 28b1821 (this branch)                      : 40 failed, 2293 passed, 45 skipped
+BASE  2fcb74ea7fc37890589601c43d5c74a3271ab10e (staging arena/ae5f9f47-…)
+      : 41 failed, 2262 passed, 45 skipped
+FINAL d9b5c91 (this branch, 3 acceptance blockers repaired)
+      : 40 failed, 2302 passed, 45 skipped
 
-Fixed by this change (in base, not in final): 0
-Introduced by this change (in final, not base): 0
-=> the FAILED set is IDENTICAL; +30 newly passing tests are the new #244 suite.
+Newly failing in FINAL (regressions introduced): 0
+Failing in BASE but not in FINAL:
+  tests/test_inbox_snippets.py::test_search_finds_note_beyond_page
+    -> unrelated to Node 00 and NOT claimed as a fix: the historical baseline
+       itself alternates 40F/41F on this one inbox-search case.
+=> no regression; +40 newly passing tests (the #244 suite plus its blockers).
 
-## FAILED set (both revisions, identical)
+## FAILED set in FINAL (40)
 tests/test_agreements_api.py::LoadAgreementsTests::test_load_agreements_returns_dict_from_load_dict
 tests/test_all_tabs_smoke.py::AllTabsSmokeTest::test_all_routes_render
 tests/test_customer_portal_tenant_reset_g15.py::test_customer_component_clears_previous_model_on_rerun

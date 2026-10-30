@@ -40,6 +40,30 @@ non-plan BL, `SECRET_PRIVATE_CONTRACT`, `SECRET_DRIVE`, `QA-244-QUOTE-V1`
 internal amounts `385.000.000` / `192.500.000` / `20.000.000`.
 Raw results: `customer-plan-results.json`.
 
+## Repair cycle — the three independent-review blockers (HEAD `d9b5c91`)
+
+| blocker | defect | fix | proof |
+| --- | --- | --- | --- |
+| 1 | a linked quote with `status=DRAFT/SENT/REJECTED` could still make Node 00 `COMPLETED` | `_node_state()` now requires `quote.accepted` (the quote record itself says `ACCEPTED`) before completion; no-quote and unreadable-link keep distinct evidence text | pytest `DRAFT/SENT/REJECTED/EXPIRED` → `WAITING`, `ACCEPTED` → `COMPLETED`; browser `data-plan-state=WAITING` on desktop + mobile |
+| 2 | `customer_confirmation` was mapped to the same `ATTESTED` label as a signature | `_signature_evidence()` separates the two canonical flags and only attests when the contract record itself carries a signature, or an AGREED agreement names **this** contract and sets `signed_contract`; unattributable evidence is ignored and confirmation-only is stated as “Khách đã xác nhận điều khoản thương mại (chưa phải chữ ký hợp đồng)” | pytest: confirmation-only, no-identity, different-identity, instrument-tied positive; browser: `data-signature=UNVERIFIED`, no `Đã ký` / `Đã có xác nhận ký` |
+| 3 | a brand-new lot (zero operational nodes) fell into the fresh cockpit with **no** Node 00 | `FreshShipmentCockpit` renders a `00 KẾ HOẠCH` card and opens the SAME `PlanQuickPanel` from the same `s.plan` inside the fresh Journey rail; no BOOKING/SI/VGM/transport node is invented | jsdom STEP 9; Chromium `desktop-9-fresh-journey-node00.png`, `mobile-9-fresh-journey-node00.png` |
+
+New isolated lot for the browser/DOM proof: **`LO-0309`** in
+`tests/component/issue244_staff_runtime.py` (no mode/Incoterm → `journey.nodes == []`),
+quote `BG-0309` = `SENT`, contract `HDMB-0309` unsigned, agreement `AGR-0309`
+carrying `customer_confirmation` only.
+
+Re-run results at `d9b5c91`:
+
+- `tests/test_issue244_plan_node.py` → **39 passed** (+9 blocker regressions).
+- jsdom `ISSUE244_PLAN_DOM_ACCEPTANCE=PASS (9 checks)`.
+- `ISSUE244_STAFF_BROWSER=PASS` (26 checks, desktop + mobile, includes the empty-Journey lot).
+- `ISSUE244_CUSTOMER_BROWSER=PASS` (15 checks) — no regression on the customer side.
+- `tsc --noEmit` clean, `npm run build` clean, `scan_process.py dist` → 0 hits.
+- Full suite in clean worktrees: base `2fcb74e` **41F / 2262P / 45S** → `d9b5c91`
+  **40F / 2302P / 45S**, with **0** newly failing tests
+  (`evidence/issue244-plan/pytest-failed-set.txt`).
+
 ## How to reproduce
 
 ```bash
