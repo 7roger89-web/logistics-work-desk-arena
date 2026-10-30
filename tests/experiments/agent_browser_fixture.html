@@ -1,0 +1,10 @@
+<!doctype html>
+<html lang="en"><head><meta charset="UTF-8"><title>Logistics tool test</title></head>
+<body><main><h1>Logistics work desk - browser pilot</h1>
+<button id="qa-shipment" type="button">Open QA shipment</button>
+<p id="qa-result" aria-live="polite">No shipment selected</p>
+</main>
+<script>document.querySelector('#qa-shipment').addEventListener('click', () => {
+document.querySelector('#qa-result').textContent='QA shipment: SI/VGM confirmed';
+});</script>
+</body></html>
