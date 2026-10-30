@@ -79,7 +79,14 @@ const state = {
   nodeW: JOURNEY_NODE_W,
   nodeH: JOURNEY_NODE_H,
   bound: false,
+  // Components v2 transport (setTriggerValue). The ONLY thing this UI may send
+  // back to Python is an intent: "open the existing discussion pane for this
+  // lot + stage". It never sends a customer id, a note body or a permission.
+  transport: null,
+  triggerSeq: 0,
 };
+
+const FOCUS_EVENT = 'journey_focus';
 
 function q(id) {
   return state.root ? state.root.querySelector('#' + id) : null;
@@ -680,6 +687,23 @@ function selectJourneyNode(nodeId) {
   renderJourneyMapForShipment(state.lot);
 }
 
+// Journey Map node → the ONE existing stage-discussion pane (Streamlit).
+// Sends an intent only; the server re-resolves the lot against this customer's
+// own published cards and the stage against the canonical 00..06 ids.
+function emitJourneyFocus(nodeId, node) {
+  if (!state.transport || !state.lot) return false;
+  const stage = String(nodeId || (node && node.id) || '');
+  const lot = String(state.lot.shipment_id || '');
+  if (!stage || !lot) return false;
+  state.triggerSeq += 1;
+  state.transport(FOCUS_EVENT, {
+    seq: state.triggerSeq,
+    event: FOCUS_EVENT,
+    payload: { shipment_id: lot, stage_id: stage },
+  });
+  return true;
+}
+
 function renderNodeBubble(node, pos, docs) {
   const bubbleSlot = q('journey-bubble-slot');
   if (!bubbleSlot) return;
@@ -769,6 +793,9 @@ function renderNodeBubble(node, pos, docs) {
 
   const foot = document.createElement('div');
   foot.className = 'journey-bubble-foot';
+  foot.style.display = 'flex';
+  foot.style.flexDirection = 'column';
+  foot.style.gap = '6px';
   const openBtn = document.createElement('button');
   openBtn.type = 'button';
   openBtn.className = 'journey-bubble-open';
@@ -776,6 +803,30 @@ function renderNodeBubble(node, pos, docs) {
   openBtn.textContent = 'Xem chi tiết chỉ-đọc →';
   openBtn.addEventListener('click', () => openStageModal(String(node.id), 'info'));
   foot.appendChild(openBtn);
+  // Map-first: jump straight to the discussion/chứng từ pane of THIS lot and
+  // THIS stage. The pane itself is the existing Streamlit one — this button
+  // only asks for it to be opened, it never renders a second comment surface.
+  const talkBtn = document.createElement('button');
+  talkBtn.type = 'button';
+  talkBtn.className = 'journey-bubble-open';
+  talkBtn.dataset.testid = 'journey-open-discussion';
+  talkBtn.setAttribute('aria-label', `Trao đổi / Chứng từ công đoạn ${String(node.label || node.id)}`);
+  talkBtn.style.cssText = [
+    'margin-top:2px', 'min-height:32px', 'padding:6px 8px', 'border-radius:8px',
+    'border:1px solid #1D5B8F', 'background:#1D5B8F', 'color:#fff',
+    'font-size:12px', 'font-weight:800', 'cursor:pointer',
+  ].join(';');
+  talkBtn.textContent = '💬 Trao đổi / Chứng từ';
+  talkBtn.disabled = !state.transport;
+  if (!state.transport) {
+    talkBtn.title = 'Chưa kết nối được phiên Streamlit để mở trao đổi.';
+  }
+  talkBtn.addEventListener('click', () => {
+    if (!emitJourneyFocus(String(node.id), node)) return;
+    talkBtn.textContent = '⏳ Đang mở trao đổi…';
+    talkBtn.disabled = true;
+  });
+  foot.appendChild(talkBtn);
 
   wrap.appendChild(head);
   wrap.appendChild(listDiv);
@@ -1127,7 +1178,9 @@ function paintHeader(model) {
     hint.appendChild(strong('node 00–06'));
     hint.appendChild(document.createTextNode(' trên hải đồ → bubble tóm tắt → '));
     hint.appendChild(strong('Xem chi tiết chỉ-đọc'));
-    hint.appendChild(document.createTextNode(' → '));
+    hint.appendChild(document.createTextNode(' hoặc '));
+    hint.appendChild(strong('💬 Trao đổi / Chứng từ'));
+    hint.appendChild(document.createTextNode(' để mở trao đổi của đúng công đoạn → '));
     hint.appendChild(strong('← Quay lại hải đồ'));
     hint.appendChild(document.createTextNode(' để về hải đồ → '));
     hint.appendChild(strong('← Quay lại Dashboard'));
@@ -1141,6 +1194,11 @@ export default function mount(component) {
   const root = component.parentElement;
   const first = state.root !== root;
   state.root = root;
+  // The v2 transport is (re)bound on every invocation; a static mount (tests,
+  // or a renderer without the API) simply leaves the discussion action off.
+  state.transport = component && typeof component.setTriggerValue === 'function'
+    ? component.setTriggerValue
+    : null;
   if (first) {
     state.bound = false;
     state.seaChart = (component.data && component.data.assets && component.data.assets.sea_chart) || '';

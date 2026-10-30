@@ -189,7 +189,14 @@ export type LogiEventName =
   | "inbox_snippet_link"
   | "inbox_snippet_attach"
   | "inbox_snippet_download"
-  | "inbox_snippet_search";
+  | "inbox_snippet_search"
+  // Map-first Journey: clicking "Trao đổi / Chứng từ" on ONE journey node asks
+  // Python to open the EXISTING stage-discussion pane for that lot + stage.
+  // It is a READ-ONLY intent (no shipment field, no note, no attachment, no
+  // audit write): the payload is { shipment_id, stage_id } only, and the server
+  // re-validates the lot against this operator's own RBAC projection before the
+  // pane reads anything. There is deliberately no second comment system.
+  | "journey_focus";
 
 const ALLOWED_EVENTS: ReadonlySet<string> = new Set<LogiEventName>([
   "shipment_update",
@@ -273,6 +280,8 @@ const ALLOWED_EVENTS: ReadonlySet<string> = new Set<LogiEventName>([
   "inbox_snippet_attach",
   "inbox_snippet_download",
   "inbox_snippet_search",
+  // LOGI Journey Map → existing stage-discussion pane (read-only intent).
+  "journey_focus",
 ]);
 
 type Transport = (event: string, value: unknown) => void;

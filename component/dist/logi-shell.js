@@ -8082,7 +8082,7 @@ function E() {
 }
 //#endregion
 //#region src/lib/dispatcher.ts
-var D = /* @__PURE__ */ new Set(/* @__PURE__ */ "shipment_update.navigate.shipment_field_save.shipment_customer_save.shipment_transport_save.shipment_sea_facts_save.shipment_profile_save.shipment_commercial_flow_save.shipment_document_selection_save.work_module_template_save.work_module_attach.work_module_step_complete.delivery_confirm.finance_actual_save.payment_record.payment_correction.partner_payable_record.partner_payment_record.shipment_create.pxk_generate.gnt_generate.form07_generate.uploaded_template_generate.docgen_template_upload.docgen_template_mapping_save.docgen_template_publish.docgen_template_status_set.docgen_template_preview.getfly_preview.getfly_import.customer_create.customer_edit.customer_archive.customer_import.customer_getfly_import.quote_create.quote_edit.quote_transition.quote_export_xlsx.quote_import_excel.quote_preview.quote_source_download.quote_source_workbook_view.agreement_create.agreement_edit.agreement_transition.contract_create.contract_save.contract_goods_save.contract_docgen_generate.contract_docgen_issue.contract_shipment_link.tariff_lookup.translate_text.partner_context_select.authority_agent_save.reconciliation_filter.user_create.user_role_set.user_active_set.user_password_reset.notebooklm_registry_save.tariff_source_upload.shipment_attachment_upload.attachment_download.shipment_document_review.contract_intl_snapshot_save.contract_payment_snapshot_save.cost_rate_parse.cost_rate_save.cost_rate_status_set.cost_catalog_save.cost_market_benchmark_fetch.inbox_snippet_create.inbox_snippet_link.inbox_snippet_attach.inbox_snippet_download.inbox_snippet_search".split(".")), O = null, k = 0;
+var D = /* @__PURE__ */ new Set(/* @__PURE__ */ "shipment_update.navigate.shipment_field_save.shipment_customer_save.shipment_transport_save.shipment_sea_facts_save.shipment_profile_save.shipment_commercial_flow_save.shipment_document_selection_save.work_module_template_save.work_module_attach.work_module_step_complete.delivery_confirm.finance_actual_save.payment_record.payment_correction.partner_payable_record.partner_payment_record.shipment_create.pxk_generate.gnt_generate.form07_generate.uploaded_template_generate.docgen_template_upload.docgen_template_mapping_save.docgen_template_publish.docgen_template_status_set.docgen_template_preview.getfly_preview.getfly_import.customer_create.customer_edit.customer_archive.customer_import.customer_getfly_import.quote_create.quote_edit.quote_transition.quote_export_xlsx.quote_import_excel.quote_preview.quote_source_download.quote_source_workbook_view.agreement_create.agreement_edit.agreement_transition.contract_create.contract_save.contract_goods_save.contract_docgen_generate.contract_docgen_issue.contract_shipment_link.tariff_lookup.translate_text.partner_context_select.authority_agent_save.reconciliation_filter.user_create.user_role_set.user_active_set.user_password_reset.notebooklm_registry_save.tariff_source_upload.shipment_attachment_upload.attachment_download.shipment_document_review.contract_intl_snapshot_save.contract_payment_snapshot_save.cost_rate_parse.cost_rate_save.cost_rate_status_set.cost_catalog_save.cost_market_benchmark_fetch.inbox_snippet_create.inbox_snippet_link.inbox_snippet_attach.inbox_snippet_download.inbox_snippet_search.journey_focus".split(".")), O = null, k = 0;
 function A(e) {
 	O = e;
 }
@@ -8094,7 +8094,7 @@ function j(e, t) {
 	}), !0);
 }
 //#endregion
-//#region ../../logi-react310-qa/component/node_modules/react-router/dist/development/chunk-BV7QT456.mjs
+//#region node_modules/react-router/dist/development/chunk-BV7QT456.mjs
 var M = /^(?:[a-z][a-z0-9+.-]*:|[\\/]{2})/i, N = /^[\\/]{2}/;
 function P(e, t) {
 	return t + e.replace(/\\/g, "/");
@@ -9491,7 +9491,7 @@ function zn(e, { relative: t } = {}) {
 	return ve(i.pathname, o) != null || ve(i.pathname, a) != null;
 }
 //#endregion
-//#region ../../logi-react310-qa/component/node_modules/react/cjs/react-jsx-runtime.production.js
+//#region node_modules/react/cjs/react-jsx-runtime.production.js
 var Bn = /* @__PURE__ */ o(((e) => {
 	var t = Symbol.for("react.transitional.element"), n = Symbol.for("react.fragment");
 	function r(e, n, r) {
@@ -9658,10 +9658,10 @@ function qn(e) {
 	return "/hop-dong/" + encodeURIComponent(e);
 }
 //#endregion
-//#region ../../logi-react310-qa/component/node_modules/lucide-react/dist/esm/shared/src/utils/toKebabCase.mjs
+//#region node_modules/lucide-react/dist/esm/shared/src/utils/toKebabCase.mjs
 var Jn = (e) => e?.replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase();
 //#endregion
-//#region ../../logi-react310-qa/component/node_modules/lucide-react/dist/esm/shared/src/utils/toLucideIconData.mjs
+//#region node_modules/lucide-react/dist/esm/shared/src/utils/toLucideIconData.mjs
 function Yn(e, t, n = []) {
 	if (t == null) throw Error("[lucide]: iconNode is required when icon name is used");
 	return {
@@ -9672,7 +9672,7 @@ function Yn(e, t, n = []) {
 	};
 }
 //#endregion
-//#region ../../logi-react310-qa/component/node_modules/lucide-react/dist/esm/shared/src/utils/toCamelCase.mjs
+//#region node_modules/lucide-react/dist/esm/shared/src/utils/toCamelCase.mjs
 var Xn = (e) => {
 	let t = "", n = !1;
 	for (let r of e) {
@@ -9698,7 +9698,7 @@ var Xn = (e) => {
 	"stroke-linejoin": "round"
 };
 //#endregion
-//#region ../../logi-react310-qa/component/node_modules/lucide-react/dist/esm/shared/src/build/buildLucideIconNode.mjs
+//#region node_modules/lucide-react/dist/esm/shared/src/build/buildLucideIconNode.mjs
 function er(e) {
 	return e != null;
 }
@@ -9735,7 +9735,7 @@ function tr(e, t = {}) {
 	];
 }
 //#endregion
-//#region ../../logi-react310-qa/component/node_modules/lucide-react/dist/esm/shared/src/build/buildLucideIconForReact.mjs
+//#region node_modules/lucide-react/dist/esm/shared/src/build/buildLucideIconForReact.mjs
 function nr(e, t = {}) {
 	return tr(e, {
 		...t,
@@ -9750,7 +9750,7 @@ function nr(e, t = {}) {
 	});
 }
 //#endregion
-//#region ../../logi-react310-qa/component/node_modules/lucide-react/dist/esm/shared/src/utils/hasA11yProp.mjs
+//#region node_modules/lucide-react/dist/esm/shared/src/utils/hasA11yProp.mjs
 var rr = (e) => {
 	for (let t in e) if (t.startsWith("aria-") || t === "role" || t === "title") return !0;
 	return !1;
@@ -9776,7 +9776,7 @@ var rr = (e) => {
 	}, [...C.map(([e, t]) => (0, _.createElement)(e, t)), ...Array.isArray(c) ? c : [c]]);
 });
 //#endregion
-//#region ../../logi-react310-qa/component/node_modules/lucide-react/dist/esm/createLucideIcon.mjs
+//#region node_modules/lucide-react/dist/esm/createLucideIcon.mjs
 function G(e, t = [], n = []) {
 	let r = typeof e == "string" ? Yn(e, t, n) : e, i = (0, _.forwardRef)(({ className: e, ...t }, n) => (0, _.createElement)(or, {
 		ref: n,
@@ -9787,7 +9787,7 @@ function G(e, t = [], n = []) {
 	return r.name && (i.displayName = Zn(r.name)), i;
 }
 //#endregion
-//#region ../../logi-react310-qa/component/node_modules/lucide-react/dist/esm/icons/archive.mjs
+//#region node_modules/lucide-react/dist/esm/icons/archive.mjs
 var sr = {
 	name: "archive",
 	size: 24,
@@ -19977,6 +19977,30 @@ function lu({ shipment: e, nodes: t, selectedId: n, onPick: r, collapsed: i, onE
 						},
 						children: "RÀ SOÁT HOÀN TẤT"
 					})] }),
+					t.map((t) => {
+						let n = g.get(t.id);
+						return /* @__PURE__ */ (0, W.jsx)("button", {
+							type: "button",
+							"data-testid": `journey-node-discussion-${t.id}`,
+							"aria-label": `Trao đổi / Chứng từ công đoạn ${t.label}`,
+							title: `Trao đổi / Chứng từ · ${t.label}`,
+							onPointerDown: (e) => e.stopPropagation(),
+							onClick: (n) => {
+								n.stopPropagation(), j("journey_focus", {
+									shipment_id: e.id,
+									stage_id: t.id
+								});
+							},
+							style: {
+								left: n.x + n.w - 34,
+								top: n.y + n.h - 34,
+								width: 30,
+								height: 30
+							},
+							className: "absolute z-20 flex items-center justify-center rounded-full border border-slate-300 bg-white text-[13px] shadow-sm hover:bg-slate-50",
+							children: "💬"
+						}, `talk-${t.id}`);
+					}),
 					t.map((t, r) => {
 						let i = g.get(t.id), a = au[t.state];
 						return /* @__PURE__ */ (0, W.jsxs)("button", {

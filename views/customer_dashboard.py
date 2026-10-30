@@ -25,6 +25,7 @@ from core import customer_journey
 from core import customer_portal as portal
 from core import customer_portal_oidc as oidc
 from views import customer_portal_component as component
+from views import journey_focus
 
 _CUSTOMER_CSS = """
 <style>
@@ -147,6 +148,40 @@ def build_model(view: portal.CustomerDashboardView) -> dict[str, Any]:
     )
 
 
+def _text(value: Any, limit: int = 0) -> str:
+    if value is None or isinstance(value, bool):
+        return ""
+    if not isinstance(value, (str, int, float)):
+        return ""
+    cleaned = str(value).replace("\r", " ").strip()
+    return cleaned[:limit] if limit else cleaned
+
+
+def _render_customer_focus_pane(
+    view: portal.CustomerDashboardView,
+    principal: portal.CustomerPrincipal,
+    focus: Mapping[str, Any],
+    *,
+    db: Any = None,
+) -> None:
+    """The ONE existing pane, opened on the lot + stage a node click asked for."""
+    from views.journey_discussion import render_customer_discussion
+
+    lot = _text(focus.get("shipment_id"), 120)
+    header_col, close_col = st.columns([4, 1])
+    with header_col:
+        st.markdown(
+            f"<div class='g1-customer-account'>Mở từ Journey Map · "
+            f"lô <b>{html_lib.escape(lot)}</b></div>",
+            unsafe_allow_html=True,
+        )
+    with close_col:
+        if st.button("Đóng", key=f"customer_focus_close_{lot}"):
+            journey_focus.clear(st.session_state)
+            st.rerun()
+    render_customer_discussion(view.cards, principal, db=db, focus=focus)
+
+
 def render_customer_dashboard(
     principal: portal.CustomerPrincipal,
     *,
@@ -181,22 +216,45 @@ def render_customer_dashboard(
         st.info("Chưa có lô hàng nào được công bố cho tài khoản này.")
         st.caption("Không có lô hàng hoặc thông tin công bố nào được hiển thị.")
 
+    # Journey Map node → the EXISTING stage-discussion pane. The stored intent
+    # is re-resolved against THIS principal's own server-built lots, so a lot
+    # belonging to another customer (however it reached the browser) can only
+    # fail closed here.
+    focus = journey_focus.for_customer(
+        journey_focus.current(st.session_state),
+        _text(getattr(principal, "customer_id", ""), 120),
+        view.cards,
+    )
+    if focus:
+        _render_customer_focus_pane(view, principal, focus, db=db)
+
     try:
-        component.render(build_model(view))
+        component_result = component.render(build_model(view))
     except component.PortalAssetError:
+        component_result = None
         st.error(
             "Giao diện cổng khách hàng chưa sẵn sàng trên máy chủ này. "
             "Không có dữ liệu nào được hiển thị."
         )
 
+    # Fallback capture for a runtime where the v2 prefix callback did not run:
+    # the same one-shot intent is stored here, then ONE rerun moves the pane
+    # above the map (the seq guard prevents a second capture, hence no loop).
+    if journey_focus.capture_from_result(
+        st.session_state, component_result,
+        scope={"customer_id": _text(getattr(principal, "customer_id", ""), 120)},
+    ):
+        st.rerun()
+
     # Trao đổi theo công đoạn: chỉ lô của chính khách này, chỉ nội dung đã cho
     # phép, cùng luồng với màn hình lô hàng của Trường Thành.
-    try:
-        from views.journey_discussion import render_customer_discussion
+    if not focus:
+        try:
+            from views.journey_discussion import render_customer_discussion
 
-        render_customer_discussion(view.cards, principal, db=db)
-    except Exception as exc:  # noqa: BLE001 - never take the portal down
-        st.caption(f"Không tải được trao đổi công đoạn ({type(exc).__name__}).")
+            render_customer_discussion(view.cards, principal, db=db)
+        except Exception as exc:  # noqa: BLE001 - never take the portal down
+            st.caption(f"Không tải được trao đổi công đoạn ({type(exc).__name__}).")
 
 
 def render_owner_portal_access_control(

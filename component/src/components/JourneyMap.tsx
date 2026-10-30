@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { CheckCircle2, Circle, Clock, CircleAlert, MapPin } from 'lucide-react';
 import type { JourneyNode, Shipment } from '../lib/viewmodel';
 import { cx } from '../lib/format';
+import { dispatchLogiEvent } from '../lib/dispatcher';
 
 // Approved prototype B, original ZIP cfe20232…: the canvas geometry, branch,
 // edge routing and fit/pan/zoom interaction are retained. Only IDs/data access
@@ -122,6 +123,20 @@ export default function JourneyMap({ shipment: s, nodes, selectedId, onPick, col
         {sea && last && <path d={journeyEdgePath(positions.get(last.id)!, DEMO_POS.completed)} fill="none" stroke="#94a3b8" strokeWidth="2.5" markerEnd="url(#journey-arr-s)" />}
       </svg>
       {sea && <><span className="absolute z-10 flex items-center justify-center gap-2 rounded-full border-2 border-slate-400 bg-white text-xs font-bold tracking-wide text-slate-600" style={{ left: DEMO_POS.start.x, top: DEMO_POS.start.y, width: W, height: 44 }}>START</span><span className="absolute z-10 flex items-center justify-center gap-2 rounded-full border-2 border-dashed border-slate-400 bg-white text-xs font-bold tracking-wide text-slate-500" style={{ left: DEMO_POS.completed.x, top: DEMO_POS.completed.y, width: W, height: 44 }}>RÀ SOÁT HOÀN TẤT</span></>}
+      {/* Map-first discussion: ONE node-level action that opens the EXISTING
+          stage-discussion pane for this lot + stage. It is a sibling of the
+          node button (never a nested button) and a read-only intent only. */}
+      {nodes.map((n) => { const p = positions.get(n.id)!; return <button
+        key={`talk-${n.id}`}
+        type="button"
+        data-testid={`journey-node-discussion-${n.id}`}
+        aria-label={`Trao đổi / Chứng từ công đoạn ${n.label}`}
+        title={`Trao đổi / Chứng từ · ${n.label}`}
+        onPointerDown={(e) => e.stopPropagation()}
+        onClick={(e) => { e.stopPropagation(); dispatchLogiEvent('journey_focus', { shipment_id: s.id, stage_id: n.id }); }}
+        style={{ left: p.x + p.w - 34, top: p.y + p.h - 34, width: 30, height: 30 }}
+        className="absolute z-20 flex items-center justify-center rounded-full border border-slate-300 bg-white text-[13px] shadow-sm hover:bg-slate-50"
+      >💬</button>; })}
       {nodes.map((n, i) => { const p = positions.get(n.id)!, m = JOURNEY_META[n.state]; return <button key={n.id} type="button" data-testid={`journey-node-${n.id}`} data-state={n.state} aria-pressed={selectedId === n.id} onClick={e => pick(n.id, e)} style={{ left: p.x, top: p.y, width: p.w, height: p.h }} className={cx('absolute z-10 flex flex-col rounded-xl p-2.5 text-left transition-shadow hover:shadow-lg', m.cls, selectedId === n.id && 'outline outline-[3px] outline-offset-4 outline-slate-900')}>
         {n.current && <span className="absolute -top-3 left-3 rounded-full bg-blue-600 px-2 py-0.5 text-[10px] font-bold tracking-wide text-white shadow">📍 LÔ ĐANG Ở ĐÂY</span>}
         {n.state === 'PROBLEM' && <span className={cx('absolute left-3 rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-bold tracking-wide text-white shadow', n.current ? '-top-7' : '-top-3')}>⚠ VẤN ĐỀ</span>}
