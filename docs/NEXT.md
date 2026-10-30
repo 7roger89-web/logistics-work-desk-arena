@@ -22,13 +22,13 @@ Xây **Logistics Work Desk có thể sử dụng thật**, tập trung giao di�
 
 ## NEXT — bước có giá trị lớn nhất (một lát chức năng)
 
-1. **PR #232 là nhánh chức năng đang hoạt động.** Chạy test trên đúng HEAD mới (đặc biệt `tests/test_customer_portal_publish_g15.py` và G1.5 source/tenant), kiểm tra luồng Admin chọn lô → duyệt bản nguồn đã xác minh → phiên bản PUBLISHED → Lục Giác đọc đúng Journey. Fix lỗi phát hiện ngay trong PR #232, không tạo PR song song.
+1. **PR #232 là nhánh chức năng đang hoạt động.** Chạy bộ pytest gốc trên đúng HEAD mới (đặc biệt `tests/test_customer_portal_publish_g15.py` và G1.5 source/tenant), kiểm tra luồng Admin chọn lô → duyệt bản nguồn đã xác minh → phiên bản PUBLISHED → Lục Giác đọc đúng Journey. Fix lỗi phát hiện ngay trong PR #232, không tạo PR song song.
 2. Kiểm tra dữ liệu giả cô lập: đúng khách, khác khách, chưa công bố, sai version, người xem gửi lệnh ghi bị backend từ chối. Kiểm chứng nguồn nghiệp vụ được xác minh, không biến fixture PASS thành chứng nhận dữ liệu thật. Chỉ tích hợp staging sau review độc lập/QA đầy đủ. Nếu Cloud thiếu SHA hoặc DB identity thì Cloud QA BLOCKED, không chặn test cô lập.
 3. Khi luồng công bố G1.5 có bằng chứng và đã tích hợp staging, chuyển sang **trao đổi/comment + đính chứng từ theo công đoạn**. Nguồn sự kiện/chứng từ thật cần nhập/xác minh và duyệt bởi nghiệp vụ trước khi công bố; không giả định có sẵn. Kế hoạch/thanh toán/công nợ là các lát sau, không trộn vào PR #232.
 
 ## BLOCKERS / GATES — đừng biến thành vòng lặp
 
-- Code Admin publisher mới trong PR #232 có source readback nhưng **chưa chạy test mới/Chromium tại đúng HEAD**; không gắn nhãn QA PASS cho commit này.
+- **Backend publisher** (ba module byte-exact: `customer_portal_publish.py`, `customer_portal_sources.py`, `hexa_customer_publication.py`) đã qua **27/27 test logic cô lập dùng fake Mongo tối giản**. **Chưa chạy pytest gốc với `mongomock` thật, Streamlit AppTest hoặc Chromium tại HEAD mới**; chưa được đánh QA PASS tích hợp.
 - Chưa có chứng cứ `CLOUD_DEPLOYED_HEAD` và DB identity của ứng dụng `thu-log-g1-test.streamlit.app`: **cấm ghi Cloud để thử QA** khi chưa xác thực runtime an toàn. Nếu bị chặn, ghi `BLOCKED` cho riêng Cloud QA và tiếp tục công việc phát triển/test cô lập.
 - Dữ liệu công bố thật cho Lục Giác chưa được xác minh; **không tự tạo manifest PUBLISHED thật hoặc coi fixture là nghiệm thu nghiệp vụ**.
 - Chính sách Owner 5C: không lộ báo giá tiền, chi phí, margin, ghi chú nội bộ, GridFS bytes/download; báo giá khách chỉ là metadata tệp được duyệt; công nợ thiếu đối soát = UNKNOWN.
@@ -47,5 +47,7 @@ Xây **Logistics Work Desk có thể sử dụng thật**, tập trung giao di�
 - **2026-10-29:** #231 merged staging tại `b02c6db`; #226 vẫn Draft `9978e0a`; Cloud/browser và nghiệp vụ thật chưa được chứng minh.
 - **2026-10-30:** Owner xác nhận phải ưu tiên phát triển sản phẩm, không tiếp tục vòng QA/review prompt lặp lại. Tạo checkpoint này để các AI khác tiếp tục đúng việc.
 - **2026-10-30 (mốc phát triển):** PR #232 chuyển khỏi `main` sang staging, tích hợp base `b02c6db` và thu gọn còn 12 file; bổ sung Admin publisher/Streamlit UI/test tại `1a16b4d`. Source-bound guards có; QA runtime của HEAD mới chưa có, không merge/deploy.
+
+- **2026-10-30 (QA cô lập):** các bản sao ba module GitHub được đối chiếu Git blob SHA chính xác; 27/27 kiểm thử logic publisher trên fake DB nội bộ đã PASS. Giới hạn: không chứng minh PyMongo/mongomock thật, UI, OIDC hoặc Cloud; PR #232 vẫn Draft, chưa merge.
 
 **Hướng dẫn duy trì:** Trước khi chọn task, so mục tiêu Owner + GoalPlan/TaskPlan với GitHub thực tế và checkpoint này. Chỉ cập nhật GOAL/CURRENT/NEXT/BLOCKERS và append **một dòng mốc có PR/SHA/bằng chứng** khi kết quả hoặc ưu tiên thực sự đổi. Không ghi nhật ký mỗi lệnh; không tự nhận đã cập nhật nếu chưa commit thành công.
