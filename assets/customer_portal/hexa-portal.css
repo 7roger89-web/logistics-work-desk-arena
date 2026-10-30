@@ -414,3 +414,42 @@
   .journey-discussion-list { max-height: 190px; }
   .journey-bubble { max-width: calc(100% - 16px); }
 }
+
+/* Journey discussion readability fix (30/10/2026): one scroller, persistent composer. */
+.journey-bubble { min-width: 0; }
+.journey-bubble-head { padding: 11px 14px; }
+.journey-bubble-kicker { font-size: 12px; letter-spacing: .035em; }
+.journey-bubble-state { font-size: 11.5px; }
+.journey-bubble-close { min-width: 40px; min-height: 40px; }
+.journey-bubble-list {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+}
+.journey-bubble-task { padding: 10px 14px; }
+.journey-bubble-title { font-size: 13px; line-height: 1.45; }
+.journey-bubble-meta { font-size: 11.5px; line-height: 1.4; }
+.journey-bubble-foot { padding: 10px 14px 12px; }
+.journey-bubble-open { font-size: 12.5px; }
+.journey-discussion { padding: 12px 14px 4px; margin-top: 0; }
+.journey-discussion-head { font-size: 12px; margin-bottom: 8px; }
+.journey-discussion-list { max-height: none; overflow: visible; gap: 10px; }
+.journey-discussion-note { padding: 9px 11px; }
+.journey-discussion-note-head { font-size: 11.5px; gap: 5px; }
+.journey-discussion-body-text { font-size: 13px; line-height: 1.55; }
+.journey-discussion-empty { font-size: 12.5px; line-height: 1.5; }
+.journey-discussion-replies { margin-left: 14px; padding-left: 10px; }
+.journey-discussion-reply { font-size: 12px; min-height: 32px; }
+.journey-discussion-file-download { font-size: 12px; min-height: 36px; }
+.journey-discussion-input { min-height: 72px; max-height: 180px; padding: 9px 10px; font-size: 13.5px; }
+.journey-discussion-actions { gap: 9px; }
+.journey-discussion-attach, .journey-discussion-send { min-height: 40px; font-size: 12.5px; }
+.journey-discussion-picked { max-width: 180px; font-size: 11.5px; }
+@media (max-width: 720px) {
+  .journey-bubble-head { padding: 8px 10px; }
+  .journey-bubble-foot { padding: 8px 10px 10px; }
+  .journey-discussion { padding: 8px 10px 4px; }
+  .journey-discussion-list { max-height: none; }
+  .journey-discussion-input { min-height: 60px; }
+}
