@@ -39,6 +39,10 @@ def _admin(actor_role: Any) -> None:
 def _scope(db: Any, customer_id: str, shipment_id: str) -> Mapping[str, Any]:
     if not customer_id or not shipment_id:
         raise PublicationWriteDenied("Chưa chọn đúng khách hàng và lô hàng.")
+    if db.customers.find_one(
+        {"id": customer_id, "is_deleted": {"$ne": True}}, {"_id": 0, "id": 1},
+    ) is None:
+        raise PublicationWriteDenied("Không tìm thấy hồ sơ khách hàng hợp lệ.")
     row = db.shipments.find_one(
         {"id": shipment_id, "customer_id": customer_id, "is_deleted": {"$ne": True}},
         {"_id": 0, "id": 1, "customer_id": 1, "transport_mode": 1,
