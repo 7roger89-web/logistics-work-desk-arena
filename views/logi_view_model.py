@@ -909,6 +909,9 @@ def build_view_model() -> dict:
             attachment_download=sources["attachmentDownload"],
             work_module_templates=sources["workModuleTemplates"],
             document_catalog=document_catalog,
+            # Issue #244 — Node 00 Kế hoạch signature evidence, from the SAME
+            # render-local agreements read C1 already performs.
+            agreements=sources["agreements"],
         )
         for sid, ship in shipments.items()
     ]
@@ -2366,6 +2369,7 @@ def _projection_for(shipment: Mapping[str, Any], *, db: Any = _UNSET_DB) -> dict
     from core.database import (
         _load_contracts_impl,
         _load_customers_impl,
+        load_agreements,
         load_authority_agents,
         load_authority_companies,
         load_quotes,
@@ -2392,6 +2396,10 @@ def _projection_for(shipment: Mapping[str, Any], *, db: Any = _UNSET_DB) -> dict
         "quotes": lambda: load_quotes(db=db),
         "agents": lambda: load_authority_agents(db=db),
         "companies": lambda: load_authority_companies(db=db),
+        # Issue #244 — the readback's Node 00 needs the SAME recorded signature
+        # evidence the build uses; it joins this existing concurrent batch
+        # instead of adding a sequential read.
+        "agreements": lambda: load_agreements(db=db) or {},
         "history": lambda: rd.timeline_projection(sid, db=db),
         # A fresh, shipment-scoped attachment read: the readback proves the
         # metadata write landed instead of echoing what the browser sent.
@@ -2409,6 +2417,9 @@ def _projection_for(shipment: Mapping[str, Any], *, db: Any = _UNSET_DB) -> dict
         companies=loaded["companies"] or {},
         attachments={sid: loaded["attachments"]} if sid else None,
         attachment_download=_attachment_download_state(),
+        # Issue #244 — Node 00 reads recorded signature evidence from the SAME
+        # render-local agreements snapshot C1 already consumes.
+        agreements=loaded["agreements"],
     )
 
 

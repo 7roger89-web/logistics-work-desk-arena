@@ -12,7 +12,10 @@ const W = 164, H = 136, PITCH = 212, PX = 48;
 const col = (c: number) => PX + c * PITCH;
 export interface JourneyPosition { x: number; y: number; w: number; h: number }
 export const DEMO_POS: Record<string, JourneyPosition> = {
-  start: { x: col(0), y: 30, w: W, h: 44 },
+  // Issue #244 — Node 00 sits ABOVE the booking/pickup row, so "Kế hoạch"
+  // is read before anything moves. The START marker keeps the first slot.
+  start: { x: col(0), y: 4, w: W, h: 32 },
+  plan: { x: col(0), y: 48, w: W, h: 84 },
   booking: { x: col(0), y: 140, w: W, h: H },
   pickup: { x: col(1), y: 140, w: W, h: H },
   'customs-export': { x: col(2), y: 140, w: W, h: H },
@@ -34,6 +37,54 @@ export const JOURNEY_META = {
   PROBLEM: { label: 'Cần xử lý', icon: CircleAlert, cls: 'border-red-600 bg-red-50 border-[3px] journey-problem-pulse', text: 'text-red-700' },
   UPCOMING: { label: 'Chưa xác định / sắp tới', icon: Circle, cls: 'border-slate-300 bg-slate-50/80 border-2 border-dashed', text: 'text-slate-500' },
 };
+/**
+ * Issue #244 — the Journey node for 00 KẾ HOẠCH.
+ *
+ * It is a JourneyNode so the SAME map / rail / quick-panel machinery renders it,
+ * but its state is decided server-side (`core.shipment_plan`): PROBLEM only when
+ * the lot has no resolvable quote, WAITING while the contract/advance facts are
+ * unverified, COMPLETED only when all three items carry evidence. Notes, files
+ * and comments never make it COMPLETED.
+ */
+export type PlanJourneyNode = JourneyNode;
+
+/**
+ * Issue #244 — the visible journey number of a node.
+ *
+ * Node 00 is numbered "00" (it is the plan step, not the first transport step),
+ * and every pre-existing node keeps exactly the number it had before Node 00 was
+ * prepended. Pure display arithmetic: no state is inferred.
+ */
+export function journeyNodeNumber(node: JourneyNode, index: number, nodes: JourneyNode[]): string {
+  if (node.id === 'plan') return '00';
+  const prefix = nodes[0]?.id === 'plan' ? 1 : 0;
+  return String(index - prefix + 1);
+}
+
+export function planJourneyNode(s: Shipment): JourneyNode | null {
+  const plan = s.plan;
+  if (!plan) return null;
+  return {
+    id: 'plan',
+    label: plan.label || 'KẾ HOẠCH',
+    family: 'PLAN',
+    targetTab: 'tai-chinh',
+    completed: plan.state === 'COMPLETED',
+    state: plan.state,
+    factState: 'KNOWN',
+    evidence: plan.evidence,
+    deadline: '',
+    owned: true,
+    current: false,
+    // Blockers stay empty on purpose: the node must not hijack the default
+    // "problem node" of the map. Its work list lives in the plan panel.
+    blockers: [],
+    dependencies: [],
+    documentCategories: [],
+    documentIds: [],
+  };
+}
+
 export function JourneyStatus({ node, solid = false }: { node: JourneyNode; solid?: boolean }) {
   const m = JOURNEY_META[node.state], Icon = m.icon;
   return <span className={cx('inline-flex items-center gap-1.5 text-xs font-bold', m.text, solid && 'rounded-md border bg-white px-2 py-1')}><Icon size={15} aria-hidden="true" />{m.label}</span>;
@@ -66,7 +117,17 @@ export default function JourneyMap({ shipment: s, nodes, selectedId, onPick, col
   const [talkNode, setTalkNode] = useState('');
   const [vpSize, setVpSize] = useState({ w: 0, h: 0 });
   const sea = nodes.some(n => n.id === 'booking');
-  const positions = new Map(nodes.map((n, i) => [n.id, sea && DEMO_POS[n.id] ? DEMO_POS[n.id] : { x: col(i % 5), y: 140 + Math.floor(i / 5) * 212, w: W, h: H }]));
+  // Issue #244 — Node 00 is prepended to the node list, so the grid index of the
+  // pre-existing nodes must stay exactly what it was before (no layout drift on
+  // non-SEA journeys).
+  const gridIndex = new Map<string, number>();
+  nodes.filter(n => n.id !== 'plan').forEach((n, i) => gridIndex.set(n.id, i));
+  const positions = new Map(nodes.map(n => {
+    if (sea && DEMO_POS[n.id]) return [n.id, DEMO_POS[n.id]] as const;
+    if (n.id === 'plan') return [n.id, DEMO_POS.plan] as const;
+    const i = gridIndex.get(n.id) ?? 0;
+    return [n.id, { x: col(i % 5), y: 140 + Math.floor(i / 5) * 212, w: W, h: H }] as const;
+  }));
   const canvasHeight = sea ? CH : Math.max(CH, 140 + Math.ceil(nodes.length / 5) * 212);
   const fit = useCallback(() => {
     const el = vp.current; if (!el?.clientWidth || !el.clientHeight) return;
@@ -115,7 +176,13 @@ export default function JourneyMap({ shipment: s, nodes, selectedId, onPick, col
     {nodes.map(n => <button key={n.id} type="button" onClick={() => onPick(n.id)} className={cx('touch-target flex w-full items-center gap-2 border-l-4 px-3 py-2 text-left text-xs font-semibold', selectedId === n.id ? 'border-slate-900 bg-slate-100' : 'border-transparent', n.state === 'PROBLEM' && 'bg-red-50 text-red-700')}><JourneyStatus node={n} /><span>{n.label}</span></button>)}
   </nav>;
   const first = nodes[0], last = nodes[nodes.length - 1];
-  const edges = (s.journey?.edges ?? []).filter(e => positions.has(e.from) && positions.has(e.to));
+  const journeyEdges = (s.journey?.edges ?? []).filter(e => positions.has(e.from) && positions.has(e.to));
+  // Issue #244 — Node 00 connects to the first operational node. Geometry only:
+  // the backend journey edges are untouched, and no stage state is implied.
+  const firstOperational = nodes.find(n => n.id !== 'plan');
+  const edges = firstOperational && positions.has('plan')
+    ? [{ from: 'plan', to: firstOperational.id }, ...journeyEdges]
+    : journeyEdges;
   // End-of-map marker only. Journey occurrence + Work Module completion is NOT
   // whole-shipment closure: documents/finance may still be open or UNKNOWN.
   const pick = (id: string, e: React.MouseEvent) => { if (e.detail === 0 || !moved.current) onPick(id); };
@@ -147,7 +214,7 @@ export default function JourneyMap({ shipment: s, nodes, selectedId, onPick, col
         {sea && first && <path d={journeyEdgePath(DEMO_POS.start, positions.get(first.id)!)} fill="none" stroke="#94a3b8" strokeWidth="2.5" markerEnd="url(#journey-arr-s)" />}
         {sea && last && <path d={journeyEdgePath(positions.get(last.id)!, DEMO_POS.completed)} fill="none" stroke="#94a3b8" strokeWidth="2.5" markerEnd="url(#journey-arr-s)" />}
       </svg>
-      {sea && <><span className="absolute z-10 flex items-center justify-center gap-2 rounded-full border-2 border-slate-400 bg-white text-xs font-bold tracking-wide text-slate-600" style={{ left: DEMO_POS.start.x, top: DEMO_POS.start.y, width: W, height: 44 }}>START</span><span className="absolute z-10 flex items-center justify-center gap-2 rounded-full border-2 border-dashed border-slate-400 bg-white text-xs font-bold tracking-wide text-slate-500" style={{ left: DEMO_POS.completed.x, top: DEMO_POS.completed.y, width: W, height: 44 }}>RÀ SOÁT HOÀN TẤT</span></>}
+      {sea && <><span className="absolute z-10 flex items-center justify-center gap-2 rounded-full border-2 border-slate-400 bg-white text-xs font-bold tracking-wide text-slate-600" style={{ left: DEMO_POS.start.x, top: DEMO_POS.start.y, width: W, height: DEMO_POS.start.h }}>START</span><span className="absolute z-10 flex items-center justify-center gap-2 rounded-full border-2 border-dashed border-slate-400 bg-white text-xs font-bold tracking-wide text-slate-500" style={{ left: DEMO_POS.completed.x, top: DEMO_POS.completed.y, width: W, height: 44 }}>RÀ SOÁT HOÀN TẤT</span></>}
       {/* Map-first discussion: ONE node-level action that opens the EXISTING
           stage-discussion pane for this lot + stage. It is a sibling of the
           node button (never a nested button) and a read-only intent only. */}
@@ -172,7 +239,7 @@ export default function JourneyMap({ shipment: s, nodes, selectedId, onPick, col
       {nodes.map((n, i) => { const p = positions.get(n.id)!, m = JOURNEY_META[n.state]; return <button key={n.id} type="button" data-testid={`journey-node-${n.id}`} data-state={n.state} aria-pressed={selectedId === n.id} onClick={e => pick(n.id, e)} style={{ left: p.x, top: p.y, width: p.w, height: p.h }} className={cx('absolute z-10 flex flex-col rounded-xl p-2.5 text-left transition-shadow hover:shadow-lg', m.cls, selectedId === n.id && 'outline outline-[3px] outline-offset-4 outline-slate-900')}>
         {n.current && <span className="absolute -top-3 left-3 rounded-full bg-blue-600 px-2 py-0.5 text-[10px] font-bold tracking-wide text-white shadow">📍 LÔ ĐANG Ở ĐÂY</span>}
         {n.state === 'PROBLEM' && <span className={cx('absolute left-3 rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-bold tracking-wide text-white shadow', n.current ? '-top-7' : '-top-3')}>⚠ VẤN ĐỀ</span>}
-        <div className="flex items-center justify-between gap-1"><JourneyStatus node={n} /><span className="rounded bg-slate-900/10 px-1 text-[10px] font-bold text-slate-600">{i + 1}</span></div>
+        <div className="flex items-center justify-between gap-1"><JourneyStatus node={n} /><span data-testid={`journey-node-number-${n.id}`} className="rounded bg-slate-900/10 px-1 text-[10px] font-bold text-slate-600">{journeyNodeNumber(n, i, nodes)}</span></div>
         <div className="mt-1 text-[14px] font-extrabold leading-tight tracking-tight text-slate-900">{n.label}</div>
         <div className={cx('mt-0.5 line-clamp-2 text-[12px] leading-snug', n.state === 'PROBLEM' ? 'font-bold text-red-700' : 'font-medium text-slate-700')}>{n.blockers[0] || n.evidence || 'Chưa có bằng chứng thực tế'}</div>
         <div className="text-[11.5px] font-semibold text-slate-500">{n.deadline ? `⏱ ${n.deadline}` : ''}</div>

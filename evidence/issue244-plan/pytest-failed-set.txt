@@ -1,0 +1,61 @@
+# Issue #244 / PR #245 — real FAILED-set comparison (base vs final HEAD)
+# Both runs: clean git worktree of the same repo, same venv, same command:
+#   /tmp/venv/bin/python -m pytest -q --tb=no -p no:cacheprovider
+
+BASE  2fcb74ea7fc37890589601c43d5c74a3271ab10e (staging arena/ae5f9f47-…)
+      : 40 failed, 2263 passed, 45 skipped
+FINAL f669289 (this branch, F3/F4/F5 repaired on top of the 3 earlier blockers)
+      : 40 failed, 2308 passed, 45 skipped
+
+FAILED node ids: IDENTICAL between base and final (comm: 0 introduced, 0 base-only).
++45 newly passing tests are the #244 suite and its blocker regressions.
+
+Known baseline flake (NOT introduced, NOT claimed fixed):
+  tests/test_inbox_snippets.py::test_search_finds_note_beyond_page
+  - passes when run alone in BOTH revisions;
+  - flips between full-suite runs on BOTH revisions:
+      base run A: FAILED / base run B: passed
+      final run A: passed / final run B: FAILED / final run C: passed
+  - lives in the inbox-search module, untouched by this PR.
+
+## FAILED set (identical in base and final, 40 items)
+tests/test_agreements_api.py::LoadAgreementsTests::test_load_agreements_returns_dict_from_load_dict
+tests/test_all_tabs_smoke.py::AllTabsSmokeTest::test_all_routes_render
+tests/test_customer_portal_tenant_reset_g15.py::test_customer_component_clears_previous_model_on_rerun
+tests/test_dashboard_financial_write_oracle.py::DashboardFinancialWriteOracleTests::test_bounded_dashboard_flow_has_zero_financial_writes_and_no_financial_mutation
+tests/test_entity_context_ui.py::EntityContextMountedTests::test_entity_workspace_opens_shipment_360
+tests/test_entity_context_ui.py::EntityContextMountedTests::test_shipment_360_workspace_has_entity_context_buttons
+tests/test_g1_pr228_regressions.py::test_react_header_customer_save_requires_matching_request_id_ok_and_readback
+tests/test_handbook.py::test_no_authoring_or_search_surface_was_added
+tests/test_inbox_snippets.py::test_dom_acceptance_inbox_desktop_and_mobile
+tests/test_intl_payment_comparator.py::ProvenanceImmutabilityTest::test_snapshot_immutability_via_mongomock_if_available
+tests/test_journey_map_focus.py::test_front_end_node_action_is_exercised_on_the_real_assets[dom_acceptance_journey_focus_customer.mjs-PASS Journey Map node \u2192 inline discussion (customer)]
+tests/test_journey_map_focus.py::test_front_end_node_action_is_exercised_on_the_real_assets[dom_acceptance_journey_focus_shell.mjs-PASS Journey Map node action (shell)]
+tests/test_journey_map_focus.py::test_front_end_node_action_is_exercised_on_the_real_assets[dom_acceptance_journey_inline_shell.mjs-PASS Journey Map inline discussion (shell)]
+tests/test_lg08_1_safety.py::test_identity_gate_enforcement - Assertio...
+tests/test_lg08_1_safety.py::test_production_identity_pass - RuntimeEr...
+tests/test_log_hotfix_04_dashboard_regression.py::test_dashboard_lazy_workdesk_rows_call_summary_alias_and_render
+tests/test_logc12_host_native_runtime.py::LogC12HostNativeRuntimeTests::test_sales_workspace_mounts_and_exposes_intake_form
+tests/test_logc15_auth_rbac.py::TestRoleMatrix::test_unknown_role_falls_back_to_viewer
+tests/test_logi_cn_truck_type_persist_01.py::test_whitelist_gained_exactly_the_one_approved_key
+tests/test_logi_finance_actual_entry_parity_01.py::test_service_catalog_is_not_hardcoded_in_react
+tests/test_logi_finance_actual_entry_parity_01.py::test_service_catalog_is_projected_from_core_config
+tests/test_logi_interaction_latency_finalize_02.py::test_payment_record_truthful_readback
+tests/test_logi_interaction_latency_finalize_02.py::test_shipment_commercial_flow_save_truthful_readback
+tests/test_logi_interaction_latency_finalize_02.py::test_shipment_document_selection_save_truthful_readback
+tests/test_logi_interaction_latency_finalize_02.py::test_shipment_field_save_truthful_readback
+tests/test_logi_interaction_latency_finalize_02.py::test_translate_text_post_provider_overhead
+tests/test_logi_interaction_latency_repair_01.py::InteractionLatencyRepairTests::test_adversarial_reverting_to_baseline_produces_double_build_and_rerun
+tests/test_logi_interaction_latency_repair_01.py::InteractionLatencyRepairTests::test_duplicate_trigger_in_same_prefix_batch_does_not_double_dispatch
+tests/test_logi_render_performance_01.py::test_fast_path_output_equals_legacy_per_call_readers
+tests/test_logi_shipment_operational_data_v1.py::test_lightweight_create_starts_one_canonical_leg_and_navigable_detail_data
+tests/test_logi_shipment_primary_action_unify_01.py::test_cif_no_insurance_red_mismatch_wins_over_a_dashboard_warning
+tests/test_logi_shipment_primary_action_unify_01.py::test_every_profile_code_routes_to_an_existing_surface[CONFIG_CHECK-lay-hang-#shipment-execution-profile]
+tests/test_logi_shipment_primary_action_unify_01.py::test_every_profile_code_routes_to_an_existing_surface[INSURANCE_EVIDENCE-lay-hang-#shipment-execution-profile]
+tests/test_logi_shipment_primary_action_unify_01.py::test_every_profile_code_routes_to_an_existing_surface[PROFILE_INCOMPLETE-lay-hang-#shipment-execution-profile]
+tests/test_logi_shipment_primary_action_unify_01.py::test_profile_incomplete_routes_to_the_existing_profile_section
+tests/test_login_visual_compact.py::test_bootstrap_path_still_reachable_with_hero
+tests/test_phase_a_component.py::test_view_model_shape_via_app - Asser...
+tests/test_phase_b_real_data.py::test_pxk_operator_identity_generates_persisted_office_file
+tests/test_session_truth_repair.py::test_bootstrap_first_admin_flow_still_runs_with_no_session_and_no_users
+tests/test_shipment_slash_route_repair_01.py::TestBackendRouteProducers::test_primary_action_composes_encoded_segment_then_query_then_anchor
