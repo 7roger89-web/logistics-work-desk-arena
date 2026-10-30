@@ -1540,3 +1540,46 @@ def test_denied_download_clears_previously_queued_bytes_even_with_known_ids(db):
         assert len(refused_focus) == 1
         assert refused_focus[0]["gate"] == "INVALID_SCOPE"
         assert session_key not in fake.session_state
+
+
+@pytest.mark.parametrize("change", ["revoked", "reassigned"])
+def test_queued_file_is_rechecked_before_component_payload(db, store, change):
+    """File bytes queued before a permission change must never reach the UI."""
+    original = _write(db, body="Đính kèm", stage="pickup", files=[_png()], store=store)
+    note_id = original["note"]["id"]
+    attachment_id = original["note"]["attachments"][0]["id"]
+    fake = FakeStreamlit()
+    key = journey_inline.STAFF_DOWNLOAD_KEY
+    kwargs = dict(
+        shipment_id=LOT_A, stage_id="pickup", customer_id=CUSTOMER_A,
+        note_id=note_id, attachment_id=attachment_id,
+        outcome={"data": PNG_1PX, "name": "bang-ke.png", "mime": "image/png"},
+    )
+    focus = {"customer_id": CUSTOMER_A, "shipment_id": LOT_A, "stage_id": "pickup"}
+    rows = [{"id": LOT_A, "customerId": CUSTOMER_A}]
+    def payload():
+        return journey_inline._discussion_payload(
+            actor=SALE, focus=focus, rows=rows, session_key=key,
+            can_see_internal=True, db=db,
+        )
+    with patch.object(journey_inline, "st", fake):
+        # Prove the positive path still delivers exactly the queued file.
+        journey_inline._store_download(key, **kwargs)
+        allowed = payload()
+        assert base64.b64decode(allowed["download"]["base64"]) == PNG_1PX
+        assert key not in fake.session_state
+
+        # Then queue the same attachment and revoke it BEFORE model emission.
+        journey_inline._store_download(key, **kwargs)
+        if change == "revoked":
+            db.quick_notes.update_one(
+                {"id": note_id}, {"$set": {"attachments.0.status": "REVOKED"}},
+            )
+        else:
+            db.shipments.update_one(
+                {"id": LOT_A}, {"$set": {"customer_id": CUSTOMER_B}},
+            )
+        denied = payload()
+        assert denied["download"] is None
+        assert key not in fake.session_state
+        assert "base64" not in json.dumps(denied, ensure_ascii=False)

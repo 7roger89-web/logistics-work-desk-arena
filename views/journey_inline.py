@@ -201,6 +201,30 @@ def _take_outcome(key: str, shipment_id: str, stage_id: str) -> dict[str, Any] |
     }
 
 
+def _queued_file_still_visible(thread: Sequence[Any], queued: Mapping[str, Any]) -> bool:
+    """Allow a queued file only when its note AND attachment are still visible.
+
+    list_stage_notes re-proves current tenant/shipment and projects out
+    revoked files; build_thread removes invisible/orphan replies. This last
+    check closes the time gap between reading and sending queued bytes.
+    """
+    wanted_note = _text(queued.get("noteId"), 80)
+    wanted_attachment = _text(queued.get("attachmentId"), 120)
+    if not wanted_note or not wanted_attachment:
+        return False
+    for root in thread:
+        if not isinstance(root, Mapping):
+            continue
+        for item in (root, *(root.get("replies") or ())):
+            if not isinstance(item, Mapping) or _text(item.get("id"), 80) != wanted_note:
+                continue
+            for attachment in item.get("attachments") or ():
+                if (isinstance(attachment, Mapping)
+                        and _text(attachment.get("id"), 120) == wanted_attachment):
+                    return True
+    return False
+
+
 def _discussion_payload(
     *,
     actor: Mapping[str, str],
@@ -230,9 +254,9 @@ def _discussion_payload(
         "maxBytes": _max_upload_bytes(),
         "notes": [],
         "count": 0,
-        "download": _take_download(
-            session_key, shipment_id, stage_id, _text(focus.get("customer_id"), 120),
-        ),
+        # Hold bytes until the CURRENT read has re-verified visibility and
+        # the attachment is still present. Never release stale queued bytes.
+        "download": None,
         "outcome": _take_outcome(outcome_key, shipment_id, stage_id),
         "downloadOutcome": _take_outcome(
             CUSTOMER_DOWNLOAD_OUTCOME_KEY if outcome_key == CUSTOMER_OUTCOME_KEY else "",
@@ -249,11 +273,26 @@ def _discussion_payload(
             db=db,
         )
     except notes.JourneyNoteDenied as denied:
+        if st is not None:
+            st.session_state.pop(session_key, None)
         payload["error"] = _text(denied, 300) or "Không đọc được trao đổi."
         return payload
     # ``core.journey_notes`` already projects each attachment through the ONE
     # public card (no storage id, no hash, no URL); the view adds no second shape.
     thread = notes.build_thread(records)
+    queued = _take_download(
+        session_key, shipment_id, stage_id, _text(focus.get("customer_id"), 120),
+    )
+    if queued and _queued_file_still_visible(thread, queued):
+        payload["download"] = queued
+    elif queued and isinstance(payload.get("downloadOutcome"), Mapping):
+        # Avoid acknowledging a file as delivered when its read was revoked
+        # between the download event and the next component payload.
+        payload["downloadOutcome"] = {
+            **payload["downloadOutcome"],
+            "ok": False,
+            "error": "Không tìm thấy chứng từ.",
+        }
     payload["notes"] = thread
     payload["count"] = sum(1 + len(row.get("replies") or ()) for row in thread)
     for key in ("customer_id", "username"):
