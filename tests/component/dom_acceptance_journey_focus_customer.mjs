@@ -161,6 +161,11 @@ await tick(80);
 const bubble = byTestId("journey-bubble");
 assert.ok(bubble, "the node bubble must survive the data refresh (same node, same lot)");
 assert.ok(byTestId("journey-discussion"), "the conversation lives in the node bubble");
+// Regression: the old 290px tooltip clipped the thread and composer.
+assert.ok(Number.parseFloat(bubble.style.width) >= 500, "desktop conversation must be readable, not 290px wide");
+assert.ok(Number.parseFloat(bubble.style.height) >= 450, "conversation needs a full-height dock, not a cramped node tooltip");
+assert.equal(bubble.querySelector(".journey-bubble-list")?.firstElementChild?.dataset.testid,
+  "journey-discussion", "conversation must precede secondary stage/document summaries");
 assert.ok(text(byTestId("journey-discussion")).includes("Trường Thành: hãng tàu đổi ETD."));
 assert.ok(text(byTestId("journey-discussion")).includes("Lục Giác đã đồng ý ETD mới."));
 assert.ok(byTestId("journey-discussion-note-jn-root"), "root comment card");

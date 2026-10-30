@@ -140,3 +140,43 @@ body {
   .focus-shell .focus-content { max-width: none; }
   .focus-shell .focus-main { max-width: none; padding-left: 17px; padding-right: 17px; }
 }
+
+/* Journey discussion readability fix (30/10/2026): docked, contained shell panel.
+   Override legacy inline 360px/edge-following geometry without changing the
+   React event or the committed JS bundle; mirror this rule in dist CSS. */
+.journey-canvas [data-testid="journey-discussion-panel"] {
+  width: min(540px, calc(100% - 24px)) !important;
+  height: min(540px, calc(100% - 24px)) !important;
+  max-height: calc(100% - 24px) !important;
+  left: auto !important;
+  right: 12px !important;
+  top: 12px !important;
+  bottom: auto !important;
+}
+.journey-canvas [data-testid="journey-discussion-thread"] {
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+}
+.journey-canvas [data-testid="journey-discussion-body"] {
+  min-height: 76px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.journey-canvas [data-testid="journey-discussion-panel"] [data-testid^="journey-discussion-note-"] {
+  font-size: 13px;
+  line-height: 1.5;
+}
+@media (max-width: 640px) {
+  .journey-canvas [data-testid="journey-discussion-panel"] {
+    left: 8px !important;
+    right: 8px !important;
+    top: 8px !important;
+    bottom: 8px !important;
+    width: auto !important;
+    height: auto !important;
+    max-height: none !important;
+  }
+  .journey-canvas [data-testid="journey-discussion-body"] {
+    min-height: 62px;
+  }
+}

@@ -239,65 +239,28 @@ function fitJourney() {
 
 /* --------------------------------------------------------- bubble placement */
 
+// Journey discussion is a readable dock inside the SAME map, not a tiny
+// tooltip squeezed into whichever gap happens to exist above a node.
+// Dock opposite the selected node on desktop; mobile uses a contained sheet.
 function positionBubbleElement(wrap, pos) {
   if (!wrap || !pos) return;
   const vp = q('journey-map-viewport');
   const vpW = (vp && vp.clientWidth) ? vp.clientWidth : (state.mobile ? 356 : 960);
   const vpH = (vp && vp.clientHeight) ? vp.clientHeight : (state.mobile ? 560 : 540);
   const pad = state.mobile ? 8 : 12;
-  const targetW = state.mobile ? 250 : 290;
-  const bubbleW = Math.min(targetW, Math.max(180, vpW - pad * 2));
+  const bubbleW = Math.min(540, Math.max(0, vpW - pad * 2));
+  const bubbleH = Math.min(state.mobile ? 520 : 540, Math.max(0, vpH - pad * 2));
+  const nodeCenterX = state.currentPan.x + (pos.x + state.nodeW / 2) * state.currentScale;
+  const dockLeft = !state.mobile && nodeCenterX >= vpW / 2;
   wrap.style.width = `${bubbleW}px`;
-  wrap.style.maxHeight = '';
-  const nodeLeft = state.currentPan.x + pos.x * state.currentScale;
-  const nodeTop = state.currentPan.y + pos.y * state.currentScale;
-  const nodeW = state.nodeW * state.currentScale;
-  const nodeH = state.nodeH * state.currentScale;
-  const nodeBottom = nodeTop + nodeH;
-  const nodeCenterX = nodeLeft + nodeW / 2;
-  const left = Math.round(Math.max(pad, Math.min(vpW - pad - bubbleW, nodeCenterX - bubbleW / 2)));
-  const right = left + bubbleW;
-  const vpRect = (vp && typeof vp.getBoundingClientRect === 'function') ? vp.getBoundingClientRect() : null;
-  const vpOriginX = vpRect ? vpRect.left + 1 : 0;
-  const vpOriginY = vpRect ? vpRect.top + 1 : 0;
-  function overlayBox(id, fallback) {
-    const el = q(id);
-    if (!el || (el.classList && el.classList.contains('hidden'))) return null;
-    const r = getRealRect(el, vpW, vpH);
-    if (!r || !vpRect) return fallback;
-    return { left: r.left - vpOriginX, top: r.top - vpOriginY, right: r.right - vpOriginX, bottom: r.bottom - vpOriginY };
-  }
-  const utilBox = overlayBox('journey-utility-trigger', { left: vpW - 12 - (state.mobile ? 168 : 182), top: 12, right: vpW - 12, bottom: 43 });
-  const zoomBox = overlayBox('journey-zoom-bar', state.mobile
-    ? { left: 8, top: vpH - 52, right: vpW - 8, bottom: vpH - 8 }
-    : { left: vpW - 316, top: vpH - 54, right: vpW - 12, bottom: vpH - 12 });
-  const hintBox = state.mobile ? null : overlayBox('journey-map-hint', { left: 12, top: vpH - 46, right: 402, bottom: vpH - 12 });
-  let safeTop = pad;
-  let safeBottom = vpH - pad;
-  if (utilBox && right > utilBox.left - 4 && left < utilBox.right + 4) safeTop = Math.max(safeTop, Math.ceil(utilBox.bottom + 6));
-  if (zoomBox && right > zoomBox.left - 4 && left < zoomBox.right + 4) safeBottom = Math.min(safeBottom, Math.floor(zoomBox.top - 6));
-  if (hintBox && right > hintBox.left - 4 && left < hintBox.right + 4) safeBottom = Math.min(safeBottom, Math.floor(hintBox.top - 6));
-  if (safeBottom - safeTop < 150) { safeTop = pad; safeBottom = vpH - pad; }
-  const measured = getRealRect(wrap, vpW, vpH);
-  const naturalH = measured ? Math.ceil(measured.height) : 212;
-  const gap = 10;
-  const spaceAbove = (nodeTop - gap) - safeTop;
-  const spaceBelow = safeBottom - (nodeBottom + gap);
-  let placeAbove;
-  if (!state.mobile && spaceAbove >= naturalH) placeAbove = true;
-  else if (spaceBelow >= naturalH && spaceAbove < naturalH) placeAbove = false;
-  else if (spaceAbove >= naturalH && spaceBelow < naturalH) placeAbove = true;
-  else placeAbove = spaceAbove >= spaceBelow;
-  const chosenSpace = placeAbove ? spaceAbove : spaceBelow;
-  const maxH = Math.max(152, Math.min(safeBottom - safeTop, Math.max(chosenSpace, 152)));
-  if (naturalH > maxH) wrap.style.maxHeight = `${Math.floor(maxH)}px`;
-  const finalH = Math.min(naturalH, Math.floor(maxH));
-  const desiredTop = placeAbove ? (nodeTop - gap - finalH) : (nodeBottom + gap);
-  const top = Math.round(Math.max(safeTop, Math.min(safeBottom - finalH, desiredTop)));
-  wrap.classList.toggle('journey-bubble-above', placeAbove);
-  wrap.classList.toggle('journey-bubble-below', !placeAbove);
-  wrap.style.left = `${left}px`;
-  wrap.style.top = `${top}px`;
+  wrap.style.height = `${bubbleH}px`;
+  wrap.style.maxHeight = `${bubbleH}px`;
+  wrap.style.left = `${dockLeft ? pad : Math.max(pad, vpW - pad - bubbleW)}px`;
+  wrap.style.top = `${pad}px`;
+  wrap.style.right = '';
+  wrap.style.bottom = '';
+  wrap.classList.remove('journey-bubble-above');
+  wrap.classList.add('journey-bubble-below');
 }
 function repositionOpenBubble() {
   const slot = q('journey-bubble-slot');
@@ -1288,9 +1251,11 @@ function renderNodeBubble(node, pos, docs) {
   taskDocs.appendChild(body2);
   taskDocs.addEventListener('click', () => openStageModal(String(node.id), 'docs'));
 
+  // The action the user opened this node for is the conversation; keep stage
+  // and published-document summaries underneath, still accessible by scrolling.
+  listDiv.appendChild(buildDiscussionThread(node));
   listDiv.appendChild(taskStage);
   listDiv.appendChild(taskDocs);
-  listDiv.appendChild(buildDiscussionThread(node));
 
   const foot = document.createElement('div');
   foot.className = 'journey-bubble-foot';
