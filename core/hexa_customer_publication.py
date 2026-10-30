@@ -9,6 +9,8 @@ query/body parameters.  Nothing here writes records.
 """
 from __future__ import annotations
 
+import hashlib
+import json
 from collections.abc import Mapping, Sequence
 from typing import Any
 
@@ -113,6 +115,45 @@ def build_customer_publication(*, shipment: Mapping[str, Any],
             "documents": _public_docs(documents, publication, cust, shipment_id),
             # Owner 5C: versioned quote FILE metadata comes from documents.
             "quote": None}
+
+
+
+def approved_content_fingerprint(public: Mapping[str, Any]) -> str:
+    """Hash exact customer-visible content, not mutable source IDs alone.
+
+    Canonicalize event/document order so storage read order cannot revoke a
+    valid release. This hashes only the allowlisted output, never private
+    attachment bytes, internal prices or internal metadata.
+    """
+    if (not isinstance(public, Mapping)
+            or public.get("schema") != PUBLICATION_SCHEMA
+            or not isinstance(public.get("timeline"), list)
+            or not isinstance(public.get("documents"), list)):
+        raise PublicationDenied()
+    timeline = public["timeline"]
+    documents = public["documents"]
+    if (not all(isinstance(row, Mapping) for row in timeline)
+            or not all(isinstance(row, Mapping) for row in documents)):
+        raise PublicationDenied()
+    canonical = {
+        "schema": PUBLICATION_SCHEMA,
+        "reference": public.get("reference"),
+        "transport_mode": public.get("transport_mode"),
+        "timeline": sorted(
+            (dict(row) for row in timeline),
+            key=lambda row: (str(row.get("id")), str(row.get("version"))),
+        ),
+        "documents": sorted(
+            (dict(row) for row in documents),
+            key=lambda row: (str(row.get("id")), str(row.get("version"))),
+        ),
+        "quote": public.get("quote"),
+    }
+    encoded = json.dumps(
+        canonical, ensure_ascii=False, sort_keys=True,
+        separators=(",", ":"), allow_nan=False,
+    ).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
 
 
 def authorize_document_download(*, shipment: Mapping[str, Any],

@@ -16,6 +16,7 @@ from core.customer_portal import PUBLICATION_COLLECTION, _resolve_db, clean_id
 from core.customer_portal_sources import MAX_APPROVED_PINS, read_approved_sources
 from core.hexa_customer_publication import (
     ALLOWED_DOCUMENT_KINDS, PUBLICATION_SCHEMA, build_customer_publication,
+    approved_content_fingerprint,
 )
 
 LOGGER = logging.getLogger("logistics.customer_portal_publish")
@@ -191,6 +192,8 @@ def publish_verified_sources(
         "state": "PUBLISHED", "approved_by": username,
         "approved_at": datetime.now(timezone.utc).isoformat(),
         "event_versions": events, "document_versions": documents,
+        # Any same-version source edit after approval will fail closed at read.
+        "approved_content_sha256": approved_content_fingerprint(safe),
         "is_deleted": False,
     }
     cas: dict[str, Any] = {

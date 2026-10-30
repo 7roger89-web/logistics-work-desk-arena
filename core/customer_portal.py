@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import logging
 import re
+import secrets
 from dataclasses import dataclass
 from typing import Any, Mapping
 
@@ -24,6 +25,7 @@ from core.hexa_customer_publication import (
     PUBLICATION_SCHEMA,
     PublicationDenied,
     build_customer_publication,
+    approved_content_fingerprint,
 )
 
 LOGGER = logging.getLogger("logistics.customer_portal")
@@ -56,6 +58,7 @@ _MANIFEST_PROJECTION = {
     "approved_at": 1,
     "event_versions": 1,
     "document_versions": 1,
+    "approved_content_sha256": 1,
     "quote": 1,
 }
 
@@ -314,6 +317,16 @@ def load_customer_dashboard(principal: CustomerPrincipal, *, db: Any = None) -> 
                 documents=documents,
                 quote=quote,
             )
+            # A pinned ID/version is not content-immutable. Reject missing or
+            # changed approvals rather than displaying edited source content.
+            if manifest.get("event_versions") or manifest.get("document_versions"):
+                expected_hash = manifest.get("approved_content_sha256")
+                if (not isinstance(expected_hash, str)
+                        or len(expected_hash) != 64
+                        or not secrets.compare_digest(
+                            expected_hash, approved_content_fingerprint(public),
+                        )):
+                    raise PublicationDenied()
         except PublicationDenied:
             denied_lots += 1
             LOGGER.warning(

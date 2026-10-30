@@ -184,3 +184,36 @@ def test_viewer_has_no_admin_publication_ui(monkeypatch):
 
     monkeypatch.setattr(st, "expander", should_not_open)
     render_owner_portal_access_control({"username": "readonly", "role": "viewer"})
+
+@pytest.mark.parametrize("collection, record_id, field", [
+    ("public_events", "EV-1", "public_title"),
+    ("public_events", "EV-1", "occurred_at"),
+    ("public_events", "EV-1", "stage_id"),
+    ("public_documents", "DOC-1", "public_title"),
+    ("public_documents", "DOC-1", "kind"),
+])
+def test_same_version_source_edit_after_publish_denies_entire_card(
+    db, collection, record_id, field,
+):
+    assert _release(db)[0]
+    manifest = db.customer_publications.find_one({"shipment_id": LOT})
+    assert isinstance(manifest["approved_content_sha256"], str)
+    assert len(manifest["approved_content_sha256"]) == 64
+    db[collection].update_one(
+        {"id": record_id}, {"$set": {field: "CHANGED_WITHOUT_APPROVAL"}},
+    )
+    principal = customer_portal.build_customer_principal(verified_email=EMAIL, db=db)
+    view = customer_portal.load_customer_dashboard(principal, db=db)
+    assert view.cards == () and view.denied_lots == 1
+    assert "CHANGED_WITHOUT_APPROVAL" not in str(asdict(view))
+
+
+def test_missing_content_hash_with_pins_is_denied(db):
+    assert _release(db)[0]
+    db.customer_publications.update_one(
+        {"shipment_id": LOT}, {"$unset": {"approved_content_sha256": ""}},
+    )
+    principal = customer_portal.build_customer_principal(verified_email=EMAIL, db=db)
+    view = customer_portal.load_customer_dashboard(principal, db=db)
+    assert view.cards == () and view.denied_lots == 1
+
