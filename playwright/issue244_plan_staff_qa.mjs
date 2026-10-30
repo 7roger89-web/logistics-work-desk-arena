@@ -52,6 +52,10 @@ const OUT = resolve(arg("out", "evidence/issue244-plan"));
 const HOST = 'div[data-testid="stBidiComponentIsolated"]';
 const LOT = arg("lot", "LO-0306");
 const FRESH_LOT = arg("fresh-lot", "LO-0309");
+//: A lot whose customer contract number contains "/" (F4).
+const SLASH_LOT = arg("slash-lot", "LO-0310");
+const SLASH_CONTRACT = "HDMB/2026/01";
+const SLASH_ROUTE = "/hop-dong/HDMB%2F2026%2F01";
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 /* The journey bundle is mounted inside Streamlit's shadow root, so every query
@@ -436,6 +440,62 @@ async function main() {
       if (!(await existsTestId(page, "plan-quick-panel"))) fail(`${viewport.id}: reopening did not restore the same panel`);
       pass(`${viewport.id}: fresh lot closed and re-opened Node 00 on the same lot`);
       await clickTestId(page, "plan-panel-close");
+
+      // 12 — F4: the contract CTA must encode a slash id ONCE and reach the
+      //      REAL contract workdesk, and the operator must be able to come back
+      //      to the same lot and reopen Node 00.
+      await clickText(page, "Lô Hàng", "a");
+      await clickText(page, "Tất cả thời gian", "button");
+      if (!(await clickText(page, SLASH_LOT, "a"))) fail(`${viewport.id}: lot ${SLASH_LOT} not clickable`);
+      await sleep(1400);
+      if (!(await clickTestId(page, "journey-empty-plan-open"))) fail(`${viewport.id}: Node 00 missing on ${SLASH_LOT}`);
+      const slashHref = await attrOf(page, "plan-item-cta-customer_contract", "href");
+      if (slashHref !== SLASH_ROUTE) fail(`${viewport.id}: slash contract CTA is not encoded once`, { slashHref });
+      if (String(slashHref).includes("%252F")) fail(`${viewport.id}: contract id double-encoded`, { slashHref });
+
+      // Real navigation into the existing contract workdesk.
+      const opened = await shadowEval(page, `
+        const el = root.querySelector('[data-testid="plan-item-cta-customer_contract"]');
+        if (!el) return false;
+        el.scrollIntoView({ block: 'center', inline: 'center' });
+        el.click();
+        return true;
+      `);
+      if (!opened) fail(`${viewport.id}: contract CTA not clickable`);
+      await sleep(1600);
+      const contractScreen = await shadowEval(page, `
+        const h1 = root.querySelector('h1');
+        const txt = (root.textContent || '').replace(/\\s+/g, ' ');
+        return {
+          heading: h1 ? (h1.textContent || '').trim() : '',
+          notFound: txt.includes('Không tìm thấy hợp đồng'),
+          stillJourney: Boolean(root.querySelector('[data-testid="shipment-journey"]')),
+        };
+      `);
+      if (contractScreen.notFound) fail(`${viewport.id}: slash contract resolved to "not found"`, contractScreen);
+      if (!contractScreen.heading.includes(SLASH_CONTRACT)) {
+        fail(`${viewport.id}: contract workdesk did not open the exact contract`, contractScreen);
+      }
+      pass(`${viewport.id}: Node 00 CTA ${SLASH_ROUTE} opens the real contract workdesk`);
+      await page.screenshot({ path: `${OUT}/${viewport.id}-10-contract-workdesk.png`, fullPage: false });
+
+      // Back to the SAME lot, then Node 00 opens again on it.
+      await clickText(page, "Lô Hàng", "a");
+      await clickText(page, "Tất cả thời gian", "button");
+      if (!(await clickText(page, SLASH_LOT, "a"))) fail(`${viewport.id}: returning to ${SLASH_LOT} failed`);
+      await sleep(1400);
+      const backLot = await shadowEval(page, `
+        const h1 = root.querySelector('h1');
+        const open = root.querySelector('[data-testid="journey-empty-plan-open"]');
+        return { heading: h1 ? (h1.textContent || '').trim() : '', planOpen: Boolean(open) };
+      `);
+      if (!backLot.heading.includes(SLASH_LOT)) fail(`${viewport.id}: back navigation lost the lot`, backLot);
+      if (!backLot.planOpen) fail(`${viewport.id}: Node 00 is not reachable after returning`, backLot);
+      if (!(await clickTestId(page, "journey-empty-plan-open"))) fail(`${viewport.id}: Node 00 did not reopen`);
+      if (!(await existsTestId(page, "plan-quick-panel"))) fail(`${viewport.id}: plan panel did not come back`);
+      pass(`${viewport.id}: returned to ${SLASH_LOT} and reopened the same Node 00`);
+      await clickTestId(page, "plan-panel-close");
+      await page.screenshot({ path: `${OUT}/${viewport.id}-11-back-to-lot.png`, fullPage: false });
 
       // 11 — a lot with no quote / customer-self form, in the SAME session.
       if (viewport.id === "desktop") {

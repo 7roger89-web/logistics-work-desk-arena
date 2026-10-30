@@ -117,6 +117,53 @@ def test_linked_quote_does_not_mean_accepted():
     assert "Chưa có trạng thái khách chấp nhận" in item["detail"]
 
 
+def test_accepted_quote_of_another_customer_is_never_this_lot_quote():
+    """F3 — a precise pointer is not proof of ownership.
+
+    A stale/mislinked ``quote_id`` can point at another customer's ACCEPTED
+    quote. It must fail closed, never render "Khách đã chấp nhận", and never
+    complete the node even when the other two items are satisfied.
+    """
+    quotes = {"BG-FOREIGN": quote("BG-FOREIGN", OTHER_CUSTOMER_ID, "ACCEPTED")}
+    contracts = {
+        "HDMB-244": contract("HDMB-244", customer_id=CUSTOMER_ID, signed_at="2026-10-01"),
+    }
+    node = build_plan_node(
+        shipment(quote_id="BG-FOREIGN"),
+        quotes=quotes,
+        contracts=contracts,
+        linked_contracts={SHIPMENT_ID: contracts},
+        flow=flow("CUSTOMER_SELF"),
+    )
+    item = node["items"][0]
+    assert item["state"] == QUOTE_STATE_UNRESOLVED
+    assert item["stateLabel"] == "Chưa xác minh báo giá của lô"
+    assert item.get("accepted") is not True
+    assert "thuộc khách" in item["detail"] and "không phải khách của lô" in item["detail"]
+    assert "Khách đã chấp nhận" not in item["stateLabel"]
+    assert node["state"] != "COMPLETED"
+    assert node["state"] == "PROBLEM"
+    assert any("kiểm tra lại liên kết báo giá" in action for action in node["nextActions"])
+
+
+def test_quote_without_a_recorded_owner_is_not_trusted():
+    """An owner-less quote cannot be attributed to this lot either."""
+    orphan = {"id": "BG-NOOWNER", "quote_no": "BG-NOOWNER", "status": "ACCEPTED"}
+    item = build_plan_node(shipment(quote_id="BG-NOOWNER"), quotes={"BG-NOOWNER": orphan})["items"][0]
+    assert item["state"] == QUOTE_STATE_UNRESOLVED
+    assert item["stateLabel"] == "Chưa xác minh báo giá của lô"
+    assert "không ghi khách hàng" in item["detail"]
+
+
+def test_same_customer_accepted_quote_is_the_positive_case():
+    quotes = {"BG-244": quote("BG-244", CUSTOMER_ID, "ACCEPTED")}
+    item = build_plan_node(shipment(quote_id="BG-244"), quotes=quotes)["items"][0]
+    assert item["state"] == QUOTE_STATE_LINKED
+    assert item["accepted"] is True
+    assert item["quoteNo"] == "BG-244"
+    assert item["stateLabel"] == "Khách đã chấp nhận"
+
+
 def test_quote_id_pointing_nowhere_is_reported_as_unresolved():
     item = build_plan_node(shipment(quote_id="BG-GONE"), quotes={})["items"][0]
     assert item["state"] == QUOTE_STATE_UNRESOLVED
@@ -392,6 +439,78 @@ def test_node_complete_only_with_evidence_everywhere():
     )
     assert node["state"] == "COMPLETED"
     assert node["nextActions"] == []
+
+
+def test_contract_route_encodes_a_slash_identifier_exactly_once():
+    """F4 — same rule as ``component/src/lib/contractRoute.ts::contractPath``."""
+    from urllib.parse import unquote
+
+    contracts = {"HDMB/2026/01": contract("HDMB/2026/01", customer_id=CUSTOMER_ID)}
+    item = build_plan_node(
+        shipment(), contracts=contracts, linked_contracts={SHIPMENT_ID: contracts}
+    )["items"][1]
+    assert item["contractId"] == "HDMB/2026/01"
+    assert item["targetRoute"] == "/hop-dong/HDMB%2F2026%2F01"
+    assert "%252F" not in item["targetRoute"], "the id must be encoded exactly once"
+    assert unquote(item["targetRoute"].rsplit("/", 1)[-1]) == "HDMB/2026/01"
+
+    plain = {"HDMB-0306": contract("HDMB-0306", customer_id=CUSTOMER_ID)}
+    plain_item = build_plan_node(
+        shipment(), contracts=plain, linked_contracts={SHIPMENT_ID: plain}
+    )["items"][1]
+    assert plain_item["targetRoute"] == "/hop-dong/HDMB-0306"
+
+
+def test_accepted_then_ready_to_create_shipment_keeps_the_acceptance():
+    """F5 — the canonical ACCEPTED → READY_TO_CREATE_SHIPMENT move keeps truth."""
+    ready = {
+        "id": "BG-244", "quote_no": "BG-244", "customer_id": CUSTOMER_ID,
+        "status": "READY_TO_CREATE_SHIPMENT",
+        # Written by core.quotations.transition_quote itself.
+        "status_history": [
+            {"from": None, "to": "DRAFT", "at": "2026-10-01", "actor": "sale1"},
+            {"from": "SENT", "to": "ACCEPTED", "at": "2026-10-02", "actor": "sale1"},
+            {"from": "ACCEPTED", "to": "READY_TO_CREATE_SHIPMENT", "at": "2026-10-03", "actor": "sale1"},
+        ],
+    }
+    contracts = {
+        "HDMB-244": contract("HDMB-244", customer_id=CUSTOMER_ID, signed_at="2026-10-01"),
+    }
+    node = build_plan_node(
+        shipment(quote_id="BG-244"),
+        quotes={"BG-244": ready},
+        contracts=contracts,
+        linked_contracts={SHIPMENT_ID: contracts},
+        flow=flow("CUSTOMER_SELF"),
+    )
+    quote_item = node["items"][0]
+    assert quote_item["accepted"] is True
+    assert "giữ bằng chứng khách chấp nhận" in quote_item["detail"]
+    assert node["state"] == "COMPLETED"
+    assert node["nextActions"] == []
+
+
+def test_ready_to_create_shipment_without_transition_evidence_stays_unknown():
+    """A bare status string is not proof: no history → unverified, never accepted."""
+    fabricated = {
+        "id": "BG-244", "quote_no": "BG-244", "customer_id": CUSTOMER_ID,
+        "status": "READY_TO_CREATE_SHIPMENT",
+    }
+    contracts = {
+        "HDMB-244": contract("HDMB-244", customer_id=CUSTOMER_ID, signed_at="2026-10-01"),
+    }
+    node = build_plan_node(
+        shipment(quote_id="BG-244"),
+        quotes={"BG-244": fabricated},
+        contracts=contracts,
+        linked_contracts={SHIPMENT_ID: contracts},
+        flow=flow("CUSTOMER_SELF"),
+    )
+    quote_item = node["items"][0]
+    assert quote_item["accepted"] is False
+    assert "Chưa có bằng chứng" in quote_item["detail"]
+    assert node["state"] == "WAITING"
+    assert any("chưa có bằng chứng" in action for action in node["nextActions"])
 
 
 @pytest.mark.parametrize("status", ["DRAFT", "SENT", "REJECTED", "EXPIRED"])

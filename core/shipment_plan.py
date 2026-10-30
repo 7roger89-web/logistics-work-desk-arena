@@ -37,6 +37,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from typing import Any
+from urllib.parse import quote as _uri_quote
 
 PLAN_STAGE_ID = "plan"
 PLAN_NODE_LABEL = "KẾ HOẠCH"
@@ -47,6 +48,13 @@ QUOTE_ROUTE = "/kinh-doanh-bao-gia"
 CONTRACT_ROUTE = "/hop-dong"
 FINANCE_TAB = "tai-chinh"
 
+#: ``core.quotations._ALLOWED_TRANSITIONS`` permits ACCEPTED →
+#: READY_TO_CREATE_SHIPMENT. Acceptance therefore survives that legal move, but
+#: only with the record's own status history as proof — a bare status string is
+#: not evidence (see :func:`_quote_accepted`).
+QUOTE_ACCEPTED_STATUS = "ACCEPTED"
+QUOTE_ACCEPTED_TRANSITION_STATUS = "READY_TO_CREATE_SHIPMENT"
+
 QUOTE_STATE_LINKED = "LINKED"
 QUOTE_STATE_MISSING = "MISSING"
 QUOTE_STATE_UNRESOLVED = "UNRESOLVED"
@@ -54,6 +62,21 @@ QUOTE_STATE_UNRESOLVED = "UNRESOLVED"
 CONTRACT_STATE_LINKED = "LINKED"
 CONTRACT_STATE_MISSING = "MISSING"
 CONTRACT_STATE_AMBIGUOUS = "AMBIGUOUS"
+
+#: Mirrors ``component/src/lib/contractRoute.ts::contractPath`` so a contract
+#: number is ONE route segment even when it contains "/" (e.g. HDMB/2026/01).
+#: The safe set is exactly encodeURIComponent's: an id is encoded ONCE here and
+#: never re-encoded by the client.
+_URI_COMPONENT_SAFE = "-._~!*'()"
+
+
+def _route_segment(value: str) -> str:
+    return _uri_quote(str(value or ""), safe=_URI_COMPONENT_SAFE)
+
+
+def _contract_route(contract_id: str) -> str:
+    return f"{CONTRACT_ROUTE}/{_route_segment(contract_id)}" if contract_id else CONTRACT_ROUTE
+
 
 SIGNATURE_ATTESTED = "ATTESTED"
 SIGNATURE_UNVERIFIED = "UNVERIFIED"
@@ -122,6 +145,30 @@ def _find_quote(quote_id: str, quotes: Mapping[str, Any] | None) -> Mapping[str,
     return None
 
 
+def _status_history_evidence(quote: Mapping[str, Any], target: str) -> bool:
+    """True only when the quote's OWN recorded history shows a move into ``target``."""
+    for entry in quote.get("status_history") or ():
+        if isinstance(entry, Mapping) and _upper(entry.get("to")) == target:
+            return True
+    return False
+
+
+def _quote_accepted(quote: Mapping[str, Any], status: str) -> bool:
+    """Quote acceptance with its canonical proof.
+
+    * ``ACCEPTED`` — the record itself is the acceptance state.
+    * ``READY_TO_CREATE_SHIPMENT`` — reachable ONLY from ``ACCEPTED``
+      (``core.quotations._ALLOWED_TRANSITIONS``), so acceptance is preserved
+      when the status history proves that transition.  Without that proof the
+      string is just a label: it is reported as unverified, never as accepted.
+    """
+    if status == QUOTE_ACCEPTED_STATUS:
+        return True
+    if status == QUOTE_ACCEPTED_TRANSITION_STATUS:
+        return _status_history_evidence(quote, QUOTE_ACCEPTED_STATUS)
+    return False
+
+
 def build_quote_item(shipment: Mapping[str, Any], quotes: Mapping[str, Any] | None = None) -> dict[str, Any]:
     """Quote status for THIS lot, from the exact ``quote_id`` link only."""
     quote_id = _text(shipment.get("quote_id"), 64)
@@ -154,14 +201,49 @@ def build_quote_item(shipment: Mapping[str, Any], quotes: Mapping[str, Any] | No
             "actionLabel": "Mở báo giá",
         }
 
+    # A precise pointer is NOT proof of ownership: a stale/mislinked quote_id can
+    # point at another customer's quote. The lot's customer must own the quote.
+    shipment_customer = _upper(shipment.get("customer_id") or shipment.get("client_id"))
+    quote_customer = _upper(quote.get("customer_id") or quote.get("client_id"))
+    if not shipment_customer or not quote_customer or quote_customer != shipment_customer:
+        if not quote_customer:
+            reason = "hồ sơ báo giá không ghi khách hàng"
+        elif not shipment_customer:
+            reason = "lô không ghi khách hàng để đối chiếu"
+        else:
+            reason = f"hồ sơ báo giá thuộc khách {quote_customer}, không phải khách của lô"
+        return {
+            "id": "quotation",
+            "label": "Báo giá",
+            "state": QUOTE_STATE_UNRESOLVED,
+            "stateLabel": "Chưa xác minh báo giá của lô",
+            "detail": (
+                f"Lô trỏ tới báo giá {quote_id} nhưng {reason}; "
+                "cần kiểm tra lại liên kết báo giá."
+            ),
+            "quoteId": quote_id,
+            "quoteNo": "",
+            "quoteStatus": "",
+            "targetRoute": QUOTE_ROUTE,
+            "actionLabel": "Mở báo giá",
+        }
+
     status = _upper(quote.get("status")) or "DRAFT"
     quote_no = _text(quote.get("quote_no"), 64) or _text(quote.get("id"), 64) or quote_id
     status_label = QUOTE_STATUS_LABELS.get(status, status)
-    # ACCEPTED is reported only because the quote record itself says so — a
-    # linked quote is not an accepted quote.
+    accepted = _quote_accepted(quote, status)
+    # Acceptance is reported only from the quote record (and, after the legal
+    # ACCEPTED → READY_TO_CREATE_SHIPMENT move, from its own history).
     detail = f"Báo giá {quote_no} · {status_label}."
-    if status != "ACCEPTED":
-        detail += " Chưa có trạng thái khách chấp nhận."
+    if not accepted:
+        if status == QUOTE_ACCEPTED_TRANSITION_STATUS:
+            detail += (
+                " Chưa có bằng chứng trong lịch sử báo giá cho việc khách đã chấp nhận."
+            )
+        else:
+            detail += " Chưa có trạng thái khách chấp nhận."
+    elif status == QUOTE_ACCEPTED_TRANSITION_STATUS:
+        detail += " Đã giữ bằng chứng khách chấp nhận trước khi chuyển sang sẵn sàng tạo lô."
     return {
         "id": "quotation",
         "label": "Báo giá",
@@ -171,7 +253,7 @@ def build_quote_item(shipment: Mapping[str, Any], quotes: Mapping[str, Any] | No
         "quoteId": _text(quote.get("id"), 64) or quote_id,
         "quoteNo": quote_no,
         "quoteStatus": status,
-        "accepted": status == "ACCEPTED",
+        "accepted": accepted,
         "targetRoute": f"{QUOTE_ROUTE}?q={quote_no}",
         "actionLabel": "Mở báo giá",
     }
@@ -343,7 +425,8 @@ def build_contract_item(
         "contractNo": contract_no,
         "signature": signature,
         "signatureLabel": signature_label,
-        "targetRoute": f"{CONTRACT_ROUTE}/{contract_id}" if contract_id else CONTRACT_ROUTE,
+        # F4 — encode EXACTLY ONCE with the app's existing contractPath rule.
+        "targetRoute": _contract_route(contract_id),
         "actionLabel": "Mở hợp đồng",
     }
 
@@ -427,7 +510,13 @@ def _next_actions(items: Sequence[Mapping[str, Any]]) -> list[str]:
     elif quote["state"] == QUOTE_STATE_UNRESOLVED:
         actions.append("Báo giá đã gắn không đọc được; kiểm tra lại liên kết báo giá của lô.")
     elif not quote.get("accepted"):
-        actions.append(f"Báo giá đang ở trạng thái “{quote['stateLabel']}”; chưa có trạng thái khách chấp nhận.")
+        if quote.get("quoteStatus") == QUOTE_ACCEPTED_TRANSITION_STATUS:
+            actions.append(
+                f"Báo giá ở trạng thái “{quote['stateLabel']}” nhưng chưa có bằng chứng "
+                "khách đã chấp nhận trong lịch sử báo giá."
+            )
+        else:
+            actions.append(f"Báo giá đang ở trạng thái “{quote['stateLabel']}”; chưa có trạng thái khách chấp nhận.")
 
     if contract["state"] == CONTRACT_STATE_MISSING:
         actions.append("Chưa có hợp đồng với khách cho lô này.")

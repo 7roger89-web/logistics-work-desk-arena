@@ -15,6 +15,9 @@ The seeded facts are the ones the acceptance asks for:
   (must stay "cần đối soát", never "đã nhận tiền hàng").
 * ``LO-0307`` — no quote, confirmed ``CUSTOMER_SELF`` flow.
 * ``LO-0308`` — nothing confirmed at all (UNKNOWN import form).
+* ``LO-0310`` — a BRAND-NEW lot whose customer contract number CONTAINS
+  slashes (``HDMB/2026/01``), so the Node 00 CTA must encode it as ONE route
+  segment and the real contract workdesk must open for it.
 * ``LO-0309`` — a BRAND-NEW lot: no profile/scope, so the Journey has no
   operational node at all (empty Journey). Its quote ``BG-0309`` is only
   ``SENT`` (linked ≠ accepted) and its contract ``HDMB-0309`` has a commercial
@@ -153,6 +156,41 @@ if not db.agreements.find_one({"agreement_id": "AGR-0309"}):
             "customer_confirmation": True, "entrusted_documentation": False,
             "notes": "Khách xác nhận điều khoản qua email; KHÔNG phải chữ ký hợp đồng.",
         },
+    })
+
+# Issue #244 F4 — a contract number that contains "/": the Node 00 CTA must
+# reach /hop-dong/<one encoded segment>, not a wildcard route.
+SLASH_LOT = "LO-0310"
+SLASH_CONTRACT = "HDMB/2026/01"
+if not db.shipments.find_one({"id": SLASH_LOT}):
+    db.shipments.insert_one({
+        "id": SLASH_LOT, "shipment_id": SLASH_LOT,
+        "customer": "An Phát JSC", "client": "An Phát JSC",
+        "customer_id": "CUST-ANPHAT",
+        "contract_id": SLASH_CONTRACT, "quote_id": "BG-0310",
+        "status": "pending", "currency": "VND", "version": 0,
+        "is_deleted": False, "is_archived": False,
+        "created_at": "2026-10-30", "updated_at": "2026-10-30",
+        "data": {
+            "0.0": {"commercial_flow": {"mode": "CUSTOMER_SELF", "confirmed": True,
+                                         "company_id": "", "sub_agent_id": ""}},
+            "1.2": {}, "2.4": {}, "2.6": {}, "2.7": {},
+            "3.4": {"details": [], "payments": [], "commission": {"list": [], "total": 0, "note": ""}},
+            "entrustment": {"active": False},
+        },
+    })
+if not db.quotes.find_one({"id": "BG-0310"}):
+    db.quotes.insert_one({
+        "id": "BG-0310", "quote_no": "BG-0310", "customer": "An Phát JSC",
+        "customer_id": "CUST-ANPHAT", "status": "ACCEPTED", "currency": "VND",
+        "total": 150000000, "is_deleted": False,
+    })
+if not db.contracts.find_one({"id": SLASH_CONTRACT}):
+    db.contracts.insert_one({
+        "id": SLASH_CONTRACT, "contract_no": SLASH_CONTRACT,
+        "customer_id": "CUST-ANPHAT", "customer": "An Phát JSC",
+        "shipment_ids": [SLASH_LOT], "agent_id": "", "status": "active",
+        "value": 150000000, "currency": "VND", "is_deleted": False,
     })
 
 st.set_page_config(layout="wide")
