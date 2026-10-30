@@ -26,6 +26,8 @@ Xây **Logistics Work Desk có thể sử dụng thật**, tập trung giao di�
 
 ## CURRENT — phạm vi phát triển đang mở
 
+**Trao đổi + chứng từ theo công đoạn (đã có code, test và bằng chứng trên nhánh phụ thuộc PR #232):** `core/journey_notes.py` lưu trên `quick_notes` đang có (`kind=journey_note`), gắn `customer_id + shipment_id + stage_id`; `views/journey_discussion.py` render một luồng cho cả màn lô hàng Trường Thành và cổng khách hàng; tệp đi qua `core/inbox_attachments` (mặc định GridFS, Drive khi được cấu hình — không giả định Drive). Khách chỉ thấy nội dung `CUSTOMER` của lô mình, không thể tự nâng lên nội bộ. Test `tests/test_journey_notes.py` **31 PASS** + 3 đột biến đều FAIL; bằng chứng `evidence/journey-notes/README.md`. Full suite 34F/2178P, không lỗi mới so với baseline. **Chưa merge** (phụ thuộc PR #232 chưa được nghiệm thu trên staging; sandbox hiện tại không có quyền ghi/push lên repo này).
+
 **G1.5 / PR #232 — kiểm chứng bản sửa chống thay đổi nội dung sau công bố, rồi review độc lập trên staging**, tái sử dụng nguồn và giao diện đang có. Phân biệt ba lớp nghiệm thu: (1) code/test với fixture; (2) tính đầy đủ, tính đúng của manifest/provenance nghiệp vụ được duyệt; (3) trải nghiệm khách hàng tại runtime thật. PASS lớp này không đồng nghĩa PASS lớp khác.
 
 ## NEXT — bước có giá trị lớn nhất (một lát chức năng)
@@ -65,5 +67,7 @@ Xây **Logistics Work Desk có thể sử dụng thật**, tập trung giao di�
 - **2026-10-30 (integrity):** Reviewer giả lập phát hiện same-version mutation, kết luận REJECT. Fix hash content tại `db9015e60b2621fb5aae154caa20bf2bb42930c4` trên PR #232; offline 37/37 PASS, pytest repo và review độc lập sau fix chưa có. **Không merge staging/main**.
 
 - **2026-10-30 (independent review PASS):** actor khác tác giả fix nghiệm thu HEAD `968e7cf` bằng focused suite + rerender Streamlit + đột biến; sửa 1 test hồi quy và thêm 29 challenge test. PR #232 đủ điều kiện tích hợp **staging**; `main`/production giữ nguyên, `CLOUD_QA=BLOCKED` (deployed SHA + DB identity chưa xác minh). Bắt đầu lát tiếp theo: **comment + chứng từ theo công đoạn Journey** trên nhánh phụ thuộc #232.
+
+- **2026-10-30 (trao đổi công đoạn):** hoàn thành lát comment + chứng từ theo công đoạn trên nhánh phụ thuộc #232: `core/journey_notes.py`, `views/journey_discussion.py`, `tests/test_journey_notes.py` (31 PASS, đột biến chứng minh), bằng chứng `evidence/journey-notes/README.md`. Full suite 34F/2178P. **Chưa merge**: chờ #232 được nghiệm thu + sandbox không có quyền push repo này (bản vá nằm ở nhánh session `7roger89-web/CHUNLI@arena/5bc30481-chunli`, thư mục `logi/`).
 
 **Hướng dẫn duy trì:** Trước khi chọn task, so mục tiêu Owner + GoalPlan/TaskPlan với GitHub thực tế và checkpoint này. Chỉ cập nhật GOAL/CURRENT/NEXT/BLOCKERS và append **một dòng mốc có PR/SHA/bằng chứng** khi kết quả hoặc ưu tiên thực sự đổi. Không ghi nhật ký mỗi lệnh; không tự nhận đã cập nhật nếu chưa commit thành công.
