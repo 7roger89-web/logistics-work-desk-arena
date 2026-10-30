@@ -285,9 +285,27 @@ def test_customer_modules_have_no_browser_identity_or_url_id_path():
         ROOT / "views" / "customer_dashboard.py",
         ROOT / "views" / "web_app.py",
     ]
+    import ast
+
     for path in sources:
         text = path.read_text(encoding="utf-8")
-        assert "st.query_params" not in text
+        # The router may read only the presentation switch ?portal=customer or
+        # internal. It must not take a customer or shipment identity from URL.
+        tree = ast.parse(text)
+        query_reads = [node for node in ast.walk(tree)
+                       if isinstance(node, ast.Attribute)
+                       and isinstance(node.value, ast.Name)
+                       and node.value.id == "st" and node.attr == "query_params"]
+        if path.name == "web_app.py":
+            assert len(query_reads) == 1
+            calls = [node for node in ast.walk(tree) if isinstance(node, ast.Call)
+                     and isinstance(node.func, ast.Attribute)
+                     and node.func.value is query_reads[0] and node.func.attr == "get"
+                     and len(node.args) == 1 and isinstance(node.args[0], ast.Constant)
+                     and node.args[0].value == "portal" and not node.keywords]
+            assert len(calls) == 1
+        else:
+            assert not query_reads
         assert "get_query_params" not in text
         assert "experimental_get_query_params" not in text
         assert 'session_state.get("customer_id")' not in text

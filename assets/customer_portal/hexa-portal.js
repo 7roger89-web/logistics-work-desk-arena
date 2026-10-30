@@ -313,6 +313,23 @@ function secondaryLine(parts) {
 }
 
 function renderDashboard(model) {
+  // A Streamlit rerun can reuse this shadow root for a different principal or
+  // a revoked publication. Remove the previous lot, not just the table rows:
+  // an open modal, bubble, toolbar and JS state otherwise survive the rerun.
+  state.lot = null;
+  state.selectedNodeId = null;
+  state.lastModalNodeId = null;
+  state.activeBubblePos = null;
+  closeStageModal(true);
+  toggleUtilityBubble(false);
+  ['journey-bubble-slot', 'journey-modal-body', 'modal-kicker', 'modal-title',
+    'modal-sub', 'modal-badge'].forEach((id) => clearChildren(q(id)));
+  ['utility-doc-count', 'utility-docs-sub'].forEach((id) => {
+    const el = q(id); if (el) el.textContent = '0 tệp';
+  });
+  const quoteSub = q('utility-quote-sub');
+  if (quoteSub) quoteSub.textContent = 'Chưa công bố';
+  showUnpublishedState();
   const tbody = q('dash-shipments-tbody');
   const cardsBox = q('dash-shipments-cards');
   const selectorBox = q('customer-shipment-selector');
@@ -1041,7 +1058,7 @@ function bindOnce() {
   // Keyboard parity with the reference (Esc closes the modal, then the bubble).
   // The listener sits on the host document because keydown targets do not
   // retarget into a shadow root from outside it.
-  const doc = root.ownerDocument || document;
+  const doc = state.root.ownerDocument || document;
   doc.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape' && e.key !== 'Esc') return;
     if (!state.root || !state.root.querySelector('#journey-workspace-shell')) return;

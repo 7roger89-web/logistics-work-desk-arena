@@ -89,6 +89,17 @@ def test_backend_rejects_viewer_even_if_ui_were_bypassed(db):
         publication.list_verified_sources(CUSTOMER, LOT, actor_role="viewer", db=db)
 
 
+def test_viewer_direct_write_cannot_change_an_existing_publication(db):
+    assert _release(db)[0]
+    shipment_before = db.shipments.find_one({"id": LOT})
+    manifests_before = list(db.customer_publications.find().sort("id", 1))
+    with pytest.raises(publication.PublicationWriteDenied):
+        _release(db, role="viewer", current=shipment_before["customer_publication_version"],
+                 event_versions={"EV-1": "v1"}, document_versions={})
+    assert db.shipments.find_one({"id": LOT}) == shipment_before
+    assert list(db.customer_publications.find().sort("id", 1)) == manifests_before
+
+
 def test_cross_tenant_or_unknown_lot_cannot_be_published(db):
     db.shipments.insert_one({"id": "FOREIGN-1", "customer_id": "OTHER"})
     with pytest.raises(publication.PublicationWriteDenied):
