@@ -612,3 +612,36 @@ def test_streamlit_customer_composer_keys_are_scoped_per_tenant_and_lot(db):
     assert len(keys) == 2 and keys[0] != keys[1]
     assert CUSTOMER_A in keys[0] and CUSTOMER_B in keys[1]
 
+
+
+def test_revoked_attachment_status_blocks_download_and_listing(db, store):
+    _write(db, actor=CUSTOMER_ACTOR, files=[_png()], store=store)
+    note = _customer(db)[0]
+    item_id = note["attachments"][0]["id"]
+    db.quick_notes.update_one(
+        {"id": note["id"]}, {"$set": {"attachments.0.status": "REVOKED"}},
+    )
+    assert _customer(db)[0]["attachments"] == []
+    assert notes.read_note_attachment(
+        note_id=note["id"], attachment_id=item_id,
+        actor=CUSTOMER_ACTOR, db=db, gridfs=store,
+    )["ok"] is False
+
+
+def test_latest_notes_remain_visible_after_read_limit(db):
+    from datetime import datetime, timedelta, timezone
+
+    first = datetime(2026, 10, 30, tzinfo=timezone.utc)
+    for i in range(notes.MAX_NOTES_READ + 1):
+        db.quick_notes.insert_one({
+            "id": f"jn-{i:03d}", "kind": notes.JOURNEY_NOTE_KIND,
+            "customer_id": CUSTOMER_A, "shipment_id": LOT_A,
+            "stage_id": "pickup", "visibility": notes.VISIBILITY_CUSTOMER,
+            "body": f"Thông tin {i}", "author_kind": "user",
+            "author_name": "sale.thanh", "author_role": "sale",
+            "created_at": (first + timedelta(minutes=i)).isoformat(),
+        })
+    rows = _customer(db)
+    assert len(rows) == notes.MAX_NOTES_READ
+    assert rows[0]["id"] == "jn-001"
+    assert rows[-1]["id"] == f"jn-{notes.MAX_NOTES_READ:03d}"

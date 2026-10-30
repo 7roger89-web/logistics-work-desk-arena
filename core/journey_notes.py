@@ -167,6 +167,7 @@ def _public_note(row: Mapping[str, Any]) -> dict[str, Any]:
             project_inbox_attachment(item)
             for item in (row.get("attachments") or ())
             if isinstance(item, Mapping)
+            and _clean(item.get("status"), 30).upper() == "AVAILABLE"
         )
         if projected
     ]
@@ -226,11 +227,13 @@ def list_stage_notes(
     if resolved_actor.get("kind") == "customer":
         query["visibility"] = VISIBILITY_CUSTOMER
     try:
+        # Show the latest bounded messages, not the oldest 200 forever.
         rows = list(
             database[NOTE_COLLECTION].find(query, _PROJECTION)
-            .sort("created_at", 1)
+            .sort("created_at", -1)
             .limit(max(1, min(int(limit or MAX_NOTES_READ), MAX_NOTES_READ)))
         )
+        rows.reverse()  # retain chronological conversation display
     except Exception:  # noqa: BLE001
         LOGGER.warning("JOURNEY_NOTE_READ_FAILED")
         raise JourneyNoteDenied("Không đọc được trao đổi của lô hàng.") from None
@@ -428,7 +431,8 @@ def read_note_attachment(
         ),
         None,
     )
-    if record is None:
+    if (record is None
+            or _clean(record.get("status"), 30).upper() != "AVAILABLE"):
         return {"ok": False, "error": "Không tìm thấy chứng từ."}
     from core.inbox_attachments import fetch_inbox_bytes
 
