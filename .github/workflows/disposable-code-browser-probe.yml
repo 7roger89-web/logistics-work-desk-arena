@@ -1,0 +1,142 @@
+name: LOGI disposable code and browser tool pilot
+
+on:
+  push:
+    branches:
+      - experiments/code-browser-tool-probe-20261030
+
+permissions:
+  contents: read
+
+jobs:
+  ast-structural-search:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 4dd3cb9aceaedf66a2128b8612a38012f3e13e50
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install isolated ast-grep, never app dependencies
+        run: |
+          npm install --prefix "$RUNNER_TEMP/ast-probe" --no-audit --no-fund --no-save "@ast-grep/cli@0.45.3"
+          "$RUNNER_TEMP/ast-probe/node_modules/.bin/ast-grep" --version
+      - name: Search actual code by syntax, not plain text
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p tool-pilot-out/ast
+          BIN="$RUNNER_TEMP/ast-probe/node_modules/.bin/ast-grep"
+          "$BIN" run --lang python --pattern 'journey_inline.consume_customer_triggers($$$ARGS)' --json=stream views/customer_dashboard.py > tool-pilot-out/ast/customer_event_call.jsonl
+          "$BIN" run --lang typescript --pattern 'dispatchLogiEvent("journey_note_create", $$$ARGS)' --json=stream component/src/components/JourneyDiscussionPanel.tsx > tool-pilot-out/ast/react_write_call.jsonl
+          "$BIN" run --lang javascript --pattern 'state.transport(NOTE_CREATE_EVENT, $$$ARGS)' --json=stream assets/customer_portal/hexa-portal.js > tool-pilot-out/ast/customer_js_write_call.jsonl
+          rg -n 'consume_customer_triggers|journey_note_create|NOTE_CREATE_EVENT' views/customer_dashboard.py component/src/components/JourneyDiscussionPanel.tsx assets/customer_portal/hexa-portal.js > tool-pilot-out/ast/ripgrep_reference.txt
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root = Path("tool-pilot-out/ast")
+          def load(name):
+              rows = [json.loads(line) for line in (root / name).read_text().splitlines() if line.strip()]
+              assert rows, name
+              return rows
+          customer = load("customer_event_call.jsonl")
+          react = load("react_write_call.jsonl")
+          portal = load("customer_js_write_call.jsonl")
+          assert len(customer) == 1, customer
+          actual = customer[0].get("text", "")
+          assert "journey_inline.consume_customer_triggers(" in actual
+          assert "db=" not in actual, "Not the known staging call without db injection"
+          assert any('journey_note_create' in r.get("text","") for r in react)
+          assert any("NOTE_CREATE_EVENT" in r.get("text","") for r in portal)
+          details = {
+              "source_sha": "4dd3cb9aceaedf66a2128b8612a38012f3e13e50",
+              "ast_grep_version": "0.45.3",
+              "python_event_call_count": len(customer),
+              "react_send_call_count": len(react),
+              "customer_js_send_call_count": len(portal),
+              "missing_explicit_db_injection_in_browser_fixture_path": True,
+              "scope_note": "AST locates call expressions only; not cross-file reachability or bug causality",
+          }
+          (root / "summary.json").write_text(json.dumps(details, indent=2))
+          print("AST_GREP_REAL_REPO_PROBE=PASS")
+          print(json.dumps(details, indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: logi-ast-grep-disposable-20261030
+          path: tool-pilot-out/ast/
+          retention-days: 7
+          if-no-files-found: warn
+
+  agent-browser-isolated-runtime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    env:
+      MONGO_URI: ''
+      ENV_IDENTITY: PREVIEW
+      PYTHONUNBUFFERED: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 4dd3cb9aceaedf66a2128b8612a38012f3e13e50
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install browser agent CLI and app dependencies in disposable runner
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --prefix "$RUNNER_TEMP/browser-probe" --no-audit --no-fund --no-save "agent-browser@0.41.0"
+          "$RUNNER_TEMP/browser-probe/node_modules/.bin/agent-browser" --version
+          python -m pip install --disable-pip-version-check -r requirements.txt mongomock
+          command -v google-chrome
+          google-chrome --version
+      - name: Start isolated real Streamlit with synthetic Mongo mock
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p tool-pilot-out/browser
+          python -m streamlit run tests/component/g15_isolated_runtime.py --server.port=9503 --server.address=127.0.0.1 --server.headless=true > tool-pilot-out/browser/streamlit.log 2>&1 &
+          echo $! > tool-pilot-out/browser/server.pid
+          for i in $(seq 1 65); do
+            if curl -fsS http://127.0.0.1:9503/_stcore/health >/dev/null 2>&1; then break; fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:9503/_stcore/health
+      - name: Exercise actual browser snapshot, customer selection, a11y and JS error inspection
+        shell: bash
+        run: |
+          set -euo pipefail
+          B="$RUNNER_TEMP/browser-probe/node_modules/.bin/agent-browser"
+          export AGENT_BROWSER_EXECUTABLE_PATH="$(command -v google-chrome)"
+          export AGENT_BROWSER_SESSION=logi-disposable
+          timeout 90s "$B" open http://127.0.0.1:9503/ | tee tool-pilot-out/browser/open.txt
+          "$B" wait 3500
+          "$B" snapshot -i > tool-pilot-out/browser/admin-snapshot.txt
+          "$B" find role radio click --name "Lục Giác" > tool-pilot-out/browser/customer-click.txt
+          "$B" wait 2200
+          "$B" snapshot -i > tool-pilot-out/browser/customer-snapshot.txt
+          grep -E 'QA-LOT|Lục Giác|Chọn lô' tool-pilot-out/browser/customer-snapshot.txt | head -n 10
+          "$B" a11y --tags wcag2a,wcag2aa --json > tool-pilot-out/browser/a11y.json || echo "A11Y_REPORT_EXIT_NONZERO" >> tool-pilot-out/browser/a11y-exit.txt
+          "$B" errors > tool-pilot-out/browser/page-errors.txt || true
+          "$B" screenshot tool-pilot-out/browser/customer.png
+          "$B" close || true
+          test -s tool-pilot-out/browser/customer-snapshot.txt
+          test -s tool-pilot-out/browser/customer.png
+          echo "AGENT_BROWSER_REAL_STREAMLIT_PROBE=PASS"
+          echo "NOTE: a11y findings are observations, not a declaration of full UI acceptance."
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: logi-agent-browser-disposable-20261030
+          path: tool-pilot-out/browser/
+          retention-days: 7
+          if-no-files-found: warn
