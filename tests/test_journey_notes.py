@@ -1,0 +1,993 @@
+"""Trao đổi theo công đoạn (Trường Thành ↔ một khách hàng) — isolated tests.
+
+Everything runs on mongomock plus a fake byte store. No Cloud, no production,
+no real Google Drive: the storage backend is injected per test.
+"""
+from __future__ import annotations
+
+import base64
+import contextlib
+import json
+import time
+from pathlib import Path
+from unittest.mock import patch
+
+import mongomock
+import pytest
+from streamlit.testing.v1 import AppTest
+
+from core import journey_notes as notes
+from views import journey_discussion as discussion
+
+ROOT = Path(__file__).resolve().parents[1]
+APP_PATH = ROOT / "app.py"
+
+CUSTOMER_A = "CUST-LUCGIAC"
+CUSTOMER_B = "CUST-MINHDUC"
+EMAIL_A = "portal.lucgiac@example.com"
+LOT_A = "G1-LG-001"
+LOT_B = "G1-MD-001"
+
+SALE = {"kind": "user", "username": "sale.thanh", "role": "sale"}
+SUPPORT = {"kind": "user", "username": "support.ha", "role": "support"}
+VIEWER = {"kind": "user", "username": "xem.thu", "role": "viewer"}
+CUSTOMER_ACTOR = {"kind": "customer", "customer_id": CUSTOMER_A, "name": "Lục Giác"}
+FOREIGN_ACTOR = {"kind": "customer", "customer_id": CUSTOMER_B, "name": "Minh Đức"}
+
+PNG_1PX = base64.b64decode(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8Dw"
+    "HwAFAAH/q842iQAAAABJRU5ErkJggg=="
+)
+
+FAKE_AUTH = {
+    "required": True,
+    "redirect_uri": "http://localhost:8501/oauth2callback",
+    "cookie_secret": "S" * 48,
+    "google": {
+        "client_id": "staging-client-id.apps.googleusercontent.com",
+        "client_secret": "STAGING_TEST_ONLY_CLIENT_SECRET",
+        "server_metadata_url": "https://accounts.google.com/.well-known/openid-configuration",
+    },
+}
+
+
+class FakeStore:
+    """Smallest injectable byte store standing in for GridFS/Drive."""
+
+    def __init__(self, *, fail: bool = False):
+        self.files: dict[str, bytes] = {}
+        self.deleted: list[str] = []
+        self.fail = fail
+        self.counter = 0
+
+    def upload_file(self, *, name: str, mime: str, data: bytes, metadata=None):
+        if self.fail:
+            raise RuntimeError("STORE_DOWN")
+        self.counter += 1
+        file_id = f"fs-{self.counter}"
+        self.files[file_id] = bytes(data)
+        return {"storage_file_id": file_id, "stored_name": name, "stored_size": len(data)}
+
+    def download_file(self, file_id: str):
+        if file_id not in self.files:
+            raise KeyError(file_id)
+        return self.files[file_id]
+
+    def delete_file(self, file_id: str):
+        self.deleted.append(file_id)
+        return self.files.pop(file_id, None) is not None
+
+
+@pytest.fixture
+def db():
+    database = mongomock.MongoClient()["journey_notes_test"]
+    database.customers.insert_many([
+        {"id": CUSTOMER_A, "name": "Lục Giác", "portal_access_email": EMAIL_A},
+        {"id": CUSTOMER_B, "name": "Minh Đức"},
+    ])
+    database.shipments.insert_many([
+        {"id": LOT_A, "customer_id": CUSTOMER_A, "transport_mode": "SEA"},
+        {"id": LOT_B, "customer_id": CUSTOMER_B, "transport_mode": "ROAD"},
+    ])
+    return database
+
+
+@pytest.fixture
+def store():
+    return FakeStore()
+
+
+def _write(db, *, body="Kiểm tra chứng từ", stage="customs", visibility=notes.VISIBILITY_CUSTOMER,
+           actor=SALE, files=(), store=None, lot=LOT_A, customer=CUSTOMER_A):
+    return notes.create_stage_note(
+        customer_id=customer, shipment_id=lot, stage_id=stage, body=body,
+        visibility=visibility, actor=actor, files=files, db=db, gridfs=store,
+        storage_backend="gridfs",
+    )
+
+
+def _internal(db, stage=""):
+    return notes.list_stage_notes(
+        customer_id=CUSTOMER_A, shipment_id=LOT_A, stage_id=stage, actor=SALE, db=db)
+
+
+def _customer(db, stage="", actor=CUSTOMER_ACTOR):
+    return notes.list_stage_notes(
+        customer_id=CUSTOMER_A, shipment_id=LOT_A, stage_id=stage, actor=actor, db=db)
+
+
+# --------------------------------------------------------------------------
+# Write permissions and scoping
+# --------------------------------------------------------------------------
+
+def test_internal_note_is_saved_readable_and_hidden_from_customer(db):
+    _write(db, body="Ghi chú nội bộ: chưa chốt giá", visibility=notes.VISIBILITY_INTERNAL)
+    thread = _internal(db)
+    assert len(thread) == 1
+    assert thread[0]["body"] == "Ghi chú nội bộ: chưa chốt giá"
+    assert thread[0]["visibility"] == notes.VISIBILITY_INTERNAL
+    assert thread[0]["author_name"] == "sale.thanh"
+    assert _customer(db) == []
+
+
+def test_customer_visible_note_reaches_both_sides(db):
+    _write(db, body="Cần bổ sung packing list", visibility=notes.VISIBILITY_CUSTOMER)
+    assert [row["body"] for row in _customer(db)] == ["Cần bổ sung packing list"]
+    assert len(_internal(db)) == 1
+
+
+def test_customer_write_is_forced_to_customer_visibility(db):
+    _write(db, body="Khách xác nhận địa chỉ", actor=CUSTOMER_ACTOR,
+           visibility=notes.VISIBILITY_INTERNAL)
+    row = _internal(db)[0]
+    assert row["visibility"] == notes.VISIBILITY_CUSTOMER
+    assert row["author_kind"] == "customer"
+
+
+@pytest.mark.parametrize("actor", [VIEWER, {"kind": "user", "username": "x", "role": "unknown"},
+                                   {"kind": "user", "username": "", "role": "admin"},
+                                   {"kind": "robot"}, None, "admin"])
+def test_write_is_refused_without_permission(db, actor):
+    with pytest.raises(notes.JourneyNoteDenied):
+        _write(db, actor=actor)
+    assert db.quick_notes.count_documents({"kind": notes.JOURNEY_NOTE_KIND}) == 0
+
+
+@pytest.mark.parametrize("actor", [SALE, SUPPORT, {"kind": "user", "username": "a", "role": "admin"}])
+def test_roles_with_shipment_edit_may_write(db, actor):
+    assert _write(db, actor=actor)["ok"] is True
+
+
+def test_customer_cannot_write_to_another_customers_lot(db):
+    with pytest.raises(notes.JourneyNoteDenied):
+        _write(db, actor=FOREIGN_ACTOR, lot=LOT_A)
+    with pytest.raises(notes.JourneyNoteDenied):
+        _write(db, actor=CUSTOMER_ACTOR, lot=LOT_B, customer=CUSTOMER_B)
+    assert db.quick_notes.count_documents({"kind": notes.JOURNEY_NOTE_KIND}) == 0
+
+
+def test_unknown_stage_empty_body_and_foreign_lot_are_refused(db):
+    with pytest.raises(notes.JourneyNoteDenied):
+        _write(db, stage="space")
+    with pytest.raises(notes.JourneyNoteDenied):
+        _write(db, body="   ")
+    with pytest.raises(notes.JourneyNoteDenied):
+        _write(db, lot="NO-SUCH-LOT")
+    assert db.quick_notes.count_documents({"kind": notes.JOURNEY_NOTE_KIND}) == 0
+
+
+# --------------------------------------------------------------------------
+# Read scoping: stage, lot, tenant, reload
+# --------------------------------------------------------------------------
+
+def test_notes_are_scoped_to_one_stage_and_one_lot(db):
+    _write(db, body="Mốc lấy hàng", stage="pickup")
+    _write(db, body="Mốc thông quan", stage="customs")
+    _write(db, body="Lô khác", stage="pickup", lot=LOT_B, customer=CUSTOMER_B)
+    assert [row["body"] for row in _internal(db, stage="pickup")] == ["Mốc lấy hàng"]
+    assert [row["body"] for row in _internal(db, stage="customs")] == ["Mốc thông quan"]
+    assert len(_internal(db)) == 2
+    assert "Lô khác" not in json.dumps(_internal(db), ensure_ascii=False)
+
+
+def test_other_customer_reads_nothing_from_this_lot(db):
+    _write(db, visibility=notes.VISIBILITY_CUSTOMER)
+    assert _customer(db, actor=FOREIGN_ACTOR) == []
+    assert notes.list_stage_notes(
+        customer_id=CUSTOMER_B, shipment_id=LOT_B, actor=FOREIGN_ACTOR, db=db) == []
+
+
+def test_notes_survive_a_reload(db):
+    _write(db, body="Nội dung sau reload", visibility=notes.VISIBILITY_CUSTOMER)
+    for _ in range(3):
+        assert [row["body"] for row in _customer(db)] == ["Nội dung sau reload"]
+    stored = db.quick_notes.find_one({"kind": notes.JOURNEY_NOTE_KIND})
+    assert stored["customer_id"] == CUSTOMER_A and stored["shipment_id"] == LOT_A
+
+
+def test_legacy_quick_notes_are_never_returned(db):
+    db.quick_notes.insert_many([
+        {"id": "team_note", "content": "Sổ tay đội"},
+        {"id": "note-1", "kind": "inbox_snippet", "raw_text": "Mẩu tin hộp thư đến",
+         "shipment_ids": [LOT_A]},
+    ])
+    assert _internal(db) == []
+    assert _customer(db) == []
+
+
+# --------------------------------------------------------------------------
+# Attachments: real byte store injected, no storage ids leak
+# --------------------------------------------------------------------------
+
+def _png(name="bang-ke.png"):
+    return {"name": name, "mime": "image/png", "data": PNG_1PX, "size": len(PNG_1PX)}
+
+
+def test_attachment_is_stored_listed_and_downloadable_by_staff(db, store):
+    outcome = _write(db, body="Đã gửi ảnh tờ khai", files=[_png()], store=store)
+    assert outcome["ok"] is True
+    row = _internal(db)[0]
+    assert len(row["attachments"]) == 1
+    attachment = row["attachments"][0]
+    assert attachment["name"] == "bang-ke.png"
+    serialized = json.dumps(row)
+    assert "storage_file_id" not in serialized and "sha256" not in serialized
+    read = notes.read_note_attachment(
+        note_id=row["id"], attachment_id=attachment["id"], actor=SALE, db=db, gridfs=store)
+    assert read["ok"] is True and read["data"] == PNG_1PX
+
+
+def test_customer_may_read_only_visible_attachments(db, store):
+    _write(db, body="Ảnh nội bộ", visibility=notes.VISIBILITY_INTERNAL, files=[_png("noi-bo.png")],
+           store=store)
+    _write(db, body="Ảnh cho khách", visibility=notes.VISIBILITY_CUSTOMER,
+           files=[_png("cho-khach.png")], store=store)
+    visible = [row for row in _customer(db) if row["attachments"]]
+    assert len(visible) == 1
+    attachment = visible[0]["attachments"][0]
+    assert attachment["name"] == "cho-khach.png"
+    read = notes.read_note_attachment(
+        note_id=visible[0]["id"], attachment_id=attachment["id"],
+        actor=CUSTOMER_ACTOR, db=db, gridfs=store)
+    assert read["ok"] is True
+    internal_row = next(row for row in _internal(db) if row["visibility"] == notes.VISIBILITY_INTERNAL)
+    denied = notes.read_note_attachment(
+        note_id=internal_row["id"], attachment_id=internal_row["attachments"][0]["id"],
+        actor=CUSTOMER_ACTOR, db=db, gridfs=store)
+    assert denied["ok"] is False and denied.get("data", b"") == b""
+    foreign = notes.read_note_attachment(
+        note_id=visible[0]["id"], attachment_id=attachment["id"],
+        actor=FOREIGN_ACTOR, db=db, gridfs=store)
+    assert foreign["ok"] is False
+
+
+def test_storage_failure_leaves_no_note_and_compensates_bytes(db):
+    broken = FakeStore(fail=True)
+    with pytest.raises(notes.JourneyNoteDenied):
+        _write(db, body="Kèm tệp", files=[_png()], store=broken)
+    assert db.quick_notes.count_documents({"kind": notes.JOURNEY_NOTE_KIND}) == 0
+
+
+def test_unsupported_or_empty_file_is_refused(db, store):
+    with pytest.raises(notes.JourneyNoteDenied):
+        _write(db, files=[{"name": "malware.exe", "mime": "application/octet-stream",
+                           "data": b"MZ", "size": 2}], store=store)
+    with pytest.raises(notes.JourneyNoteDenied):
+        _write(db, files=[{"name": "empty.png", "mime": "image/png", "data": b"", "size": 0}],
+               store=store)
+    assert store.files == {}
+    assert db.quick_notes.count_documents({"kind": notes.JOURNEY_NOTE_KIND}) == 0
+
+
+# --------------------------------------------------------------------------
+# Internal UI (mocked Streamlit) and customer portal (real Streamlit AppTest)
+# --------------------------------------------------------------------------
+
+class FakeStreamlit:
+    """Minimal recorder standing in for the Streamlit surface used here."""
+
+    def __init__(self, *, body="", visibility_index=0, uploads=(), send=False, download=False,
+                 stage_index=0):
+        self.session_state = {}
+        self.markdowns: list[str] = []
+        self.captions: list[str] = []
+        self.errors: list[str] = []
+        self.successes: list[str] = []
+        self.downloads: list[dict] = []
+        self.body = body
+        self.visibility_index = visibility_index
+        self.uploads = uploads
+        self.send = send
+        self.download = download
+        self.stage_index = stage_index
+
+    def expander(self, *args, **kwargs):
+        return contextlib.nullcontext()
+
+    def selectbox(self, label, options, index=0, key=None, **kwargs):
+        return options[self.stage_index]
+
+    def radio(self, label, options, index=0, **kwargs):
+        return options[self.visibility_index]
+
+    def text_area(self, label, key=None, **kwargs):
+        return self.body
+
+    def file_uploader(self, *args, **kwargs):
+        return list(self.uploads)
+
+    def button(self, label, key=None, **kwargs):
+        if label == "Gửi":
+            return self.send
+        return self.download
+
+    def download_button(self, label, data=b"", file_name="", mime="", key=None, **kwargs):
+        self.downloads.append({"file_name": file_name, "size": len(data or b"")})
+
+    def markdown(self, text, **kwargs):
+        self.markdowns.append(str(text))
+
+    def caption(self, text, **kwargs):
+        self.captions.append(str(text))
+
+    def divider(self):
+        return None
+
+    def error(self, text, **kwargs):
+        self.errors.append(str(text))
+
+    def warning(self, text, **kwargs):
+        self.errors.append(str(text))
+
+    def success(self, text, **kwargs):
+        self.successes.append(str(text))
+
+    def rerun(self):
+        """Real Streamlit restarts the script; the recorder only notes it."""
+        self.reruns = getattr(self, "reruns", 0) + 1
+        return None
+
+
+def _run_internal(db, store=None, **kwargs):
+    fake = FakeStreamlit(**kwargs)
+    with (
+        patch.object(discussion, "st", fake),
+        patch("core.inbox_attachments._resolve_gridfs", return_value=store or FakeStore()),
+    ):
+        discussion.render_internal_discussion(LOT_A, CUSTOMER_A, SALE, db=db)
+    return fake
+
+
+def test_internal_ui_shows_both_visibilities_and_can_post(db):
+    _write(db, body="Nội bộ: giữ xe", visibility=notes.VISIBILITY_INTERNAL, stage="pickup")
+    _write(db, body="Khách: chờ xác nhận", visibility=notes.VISIBILITY_CUSTOMER, stage="pickup")
+    fake = _run_internal(db, stage_index=1)
+    text = "\n".join(fake.markdowns)
+    assert "Nội bộ: giữ xe" in text and "Khách: chờ xác nhận" in text
+    assert "Nội bộ Trường Thành" in text and "Khách hàng nhìn thấy" in text
+
+
+def test_note_text_is_escaped_before_rendering(db):
+    _write(db, body="<script>alert(1)</script> & <b>chào</b>", stage="customs",
+           visibility=notes.VISIBILITY_CUSTOMER)
+    fake = _run_internal(db, stage_index=4)
+    text = "\n".join(fake.markdowns)
+    assert "<script>" not in text and "&lt;script&gt;" in text
+    assert "<b>chào</b>" not in text
+
+
+def test_internal_ui_posts_a_note(db):
+    fake = _run_internal(db, stage_index=4, body="Chờ khách bổ sung C/O", send=True)
+    assert fake.successes and not fake.errors
+    rows = _internal(db, stage="customs")
+    assert [row["body"] for row in rows] == ["Chờ khách bổ sung C/O"]
+    assert rows[0]["visibility"] == notes.VISIBILITY_INTERNAL
+
+
+def test_internal_ui_can_publish_a_customer_visible_note(db):
+    fake = _run_internal(db, stage_index=4, body="Vui lòng xác nhận", send=True,
+                         visibility_index=1)
+    assert fake.successes
+    rows = _internal(db, stage="customs")
+    assert rows[0]["visibility"] == notes.VISIBILITY_CUSTOMER
+    assert [row["body"] for row in _customer(db, stage="customs")] == ["Vui lòng xác nhận"]
+
+
+def test_internal_ui_reports_errors_without_writing(db):
+    fake = _run_internal(db, stage_index=0, body="   ", send=True)
+    assert fake.errors and not fake.successes
+    assert db.quick_notes.count_documents({"kind": notes.JOURNEY_NOTE_KIND}) == 0
+
+
+def test_internal_ui_download_requires_the_exact_attachment(db, store):
+    _write(db, body="Ảnh tờ khai", stage="customs", files=[_png()], store=store)
+    row = _internal(db)[0]
+    fake = _run_internal(db, store=store, stage_index=4, download=True)
+    assert fake.downloads and fake.downloads[0]["size"] == len(PNG_1PX)
+    # A stale id from another note is refused.
+    assert notes.read_note_attachment(
+        note_id=row["id"], attachment_id="att-does-not-exist", actor=SALE, db=db,
+        gridfs=store)["ok"] is False
+
+
+def _claims(email: str):
+    return {
+        "is_logged_in": True, "provider": "google", "aud": FAKE_AUTH["google"]["client_id"],
+        "iss": "https://accounts.google.com", "email": email, "email_verified": True,
+        "exp": int(time.time()) + 600, "sub": "staging-google-subject",
+    }
+
+
+def _portal(db, email=EMAIL_A):
+    from core import customer_portal as portal
+    from core.customer_portal_publish import publish_verified_sources
+
+    app = AppTest.from_file(str(APP_PATH), default_timeout=120)
+    app.secrets = {"auth": FAKE_AUTH}
+    with (
+        patch("streamlit.user_info._get_user_info", return_value=_claims(email)),
+        patch.object(portal, "get_db", return_value=db),
+        patch("core.database.get_db", return_value=db),
+        patch("core.journey_notes._resolve_db", return_value=db),
+    ):
+        app.run()
+    return app
+
+
+def _visible(app):
+    values = []
+    for name in ("markdown", "caption", "text", "success", "error", "warning", "info"):
+        for element in getattr(app, name, []):
+            values.append(str(getattr(element, "value", "")))
+            label = getattr(element, "label", None)
+            if label:
+                values.append(str(label))
+    return "\n".join(values)
+
+
+def test_internal_pane_runs_in_a_real_streamlit_script(db):
+    """The same pane through the real Streamlit runtime, not only the fake."""
+    script = (
+        "import streamlit as st\n"
+        "from views.journey_discussion import render_internal_discussion\n"
+        f"render_internal_discussion('{LOT_A}', '{CUSTOMER_A}', "
+        "{'username': 'sale.thanh', 'role': 'sale'})\n"
+    )
+    app = AppTest.from_string(script, default_timeout=120)
+    with (
+        patch("core.database.get_db", return_value=db),
+        patch("core.inbox_attachments._resolve_gridfs", return_value=FakeStore()),
+    ):
+        app.run()
+        assert not app.exception, [str(e.value) for e in app.exception]
+        areas = list(app.text_area)
+        assert areas and areas[0].label == "Nội dung trao đổi"
+        areas[0].set_value("Chốt xe tải 8 tấn")
+        senders = [element for element in app.button if element.label == "Gửi"]
+        assert senders
+        senders[0].click()
+        app.run()
+        assert not app.exception, [str(e.value) for e in app.exception]
+        assert "Đã lưu trao đổi" in _visible(app)
+    rows = notes.list_stage_notes(
+        customer_id=CUSTOMER_A, shipment_id=LOT_A, actor=SALE, db=db)
+    assert [row["body"] for row in rows] == ["Chốt xe tải 8 tấn"]
+
+
+def test_customer_portal_posts_and_reloads_a_stage_comment(db):
+    from core import customer_portal as portal
+    from core.customer_portal_publish import publish_verified_sources
+
+    db.public_events.insert_one({
+        "id": "EV-1", "version": "v1", "customer_id": CUSTOMER_A, "shipment_id": LOT_A,
+        "stage_id": "pickup", "public_title": "Đã lấy hàng",
+        "occurred_at": "2026-10-28T01:00:00Z", "verified": True,
+        "verified_at": "2026-10-28T02:00:00Z", "visibility": "CUSTOMER",
+    })
+    ok, message = publish_verified_sources(
+        CUSTOMER_A, LOT_A, event_versions={"EV-1": "v1"}, document_versions={},
+        expected_current_version="", actor_role="admin", actor_username="staging-admin", db=db)
+    assert ok, message
+
+    app = AppTest.from_file(str(APP_PATH), default_timeout=120)
+    app.secrets = {"auth": FAKE_AUTH}
+    with (
+        patch("streamlit.user_info._get_user_info", return_value=_claims(EMAIL_A)),
+        patch.object(portal, "get_db", return_value=db),
+        patch("core.database.get_db", return_value=db),
+    ):
+        app.run()
+        assert not app.exception, [str(e.value) for e in app.exception]
+        areas = [element for element in app.text_area]
+        assert areas, "không thấy ô nhập trao đổi trên cổng khách hàng"
+        areas[0].set_value("Xác nhận địa chỉ giao hàng")
+        senders = [element for element in app.button if element.label == "Gửi"]
+        assert senders, "không thấy nút gửi trao đổi"
+        senders[0].click()
+        app.run()          # writes the note
+        assert not app.exception, [str(e.value) for e in app.exception]
+        assert "Đã lưu trao đổi" in _visible(app)
+        app.run()          # reloads and renders the saved note
+        assert not app.exception, [str(e.value) for e in app.exception]
+        visible = _visible(app)
+
+    rows = notes.list_stage_notes(
+        customer_id=CUSTOMER_A, shipment_id=LOT_A, actor=CUSTOMER_ACTOR, db=db)
+    assert [row["body"] for row in rows] == ["Xác nhận địa chỉ giao hàng"]
+    assert rows[0]["visibility"] == notes.VISIBILITY_CUSTOMER
+    assert "Xác nhận địa chỉ giao hàng" in visible
+
+
+def test_customer_portal_never_shows_internal_notes(db):
+    from core import customer_portal as portal
+    from core.customer_portal_publish import publish_verified_sources
+
+    db.public_events.insert_one({
+        "id": "EV-1", "version": "v1", "customer_id": CUSTOMER_A, "shipment_id": LOT_A,
+        "stage_id": "pickup", "public_title": "Đã lấy hàng",
+        "occurred_at": "2026-10-28T01:00:00Z", "verified": True,
+        "verified_at": "2026-10-28T02:00:00Z", "visibility": "CUSTOMER",
+    })
+    ok, _ = publish_verified_sources(
+        CUSTOMER_A, LOT_A, event_versions={"EV-1": "v1"}, document_versions={},
+        expected_current_version="", actor_role="admin", actor_username="staging-admin", db=db)
+    assert ok
+    _write(db, body="NỘI TỐI MẬT GIÁ VỐN", visibility=notes.VISIBILITY_INTERNAL, stage="pickup")
+
+    app = AppTest.from_file(str(APP_PATH), default_timeout=120)
+    app.secrets = {"auth": FAKE_AUTH}
+    with (
+        patch("streamlit.user_info._get_user_info", return_value=_claims(EMAIL_A)),
+        patch.object(portal, "get_db", return_value=db),
+        patch("core.database.get_db", return_value=db),
+    ):
+        app.run()
+        assert not app.exception, [str(e.value) for e in app.exception]
+        visible = _visible(app)
+    assert "NỘI TỐI MẬT GIÁ VỐN" not in visible
+    assert "Nội bộ Trường Thành" not in visible
+
+
+# --------------------------------------------------------------------------
+# Security regressions: tenant assignment/revocation and local widget state
+# --------------------------------------------------------------------------
+
+def test_shipment_reassignment_revokes_old_tenant_notes_and_bytes(db, store):
+    _write(
+        db, actor=CUSTOMER_ACTOR, visibility=notes.VISIBILITY_CUSTOMER,
+        body="Chứng từ thuộc lô cũ", files=[_png()], store=store,
+    )
+    original_note = _customer(db)[0]
+    attachment_id = original_note["attachments"][0]["id"]
+    assert notes.read_note_attachment(
+        note_id=original_note["id"], attachment_id=attachment_id,
+        actor=CUSTOMER_ACTOR, db=db, gridfs=store,
+    )["ok"] is True
+    db.shipments.update_one(
+        {"id": LOT_A}, {"$set": {"customer_id": CUSTOMER_B}},
+    )
+    assert _customer(db) == []
+    assert notes.read_note_attachment(
+        note_id=original_note["id"], attachment_id=attachment_id,
+        actor=CUSTOMER_ACTOR, db=db, gridfs=store,
+    )["ok"] is False
+    # The new tenant must not inherit the old customer's note automatically.
+    assert notes.list_stage_notes(
+        customer_id=CUSTOMER_B, shipment_id=LOT_A, actor=FOREIGN_ACTOR, db=db,
+    ) == []
+    with pytest.raises(notes.JourneyNoteDenied):
+        _write(db, actor=CUSTOMER_ACTOR)
+    assert db.quick_notes.count_documents({"kind": notes.JOURNEY_NOTE_KIND}) == 1
+
+
+def test_removed_shipment_denies_old_stage_notes_and_download(db, store):
+    _write(db, files=[_png()], store=store)
+    original = _internal(db)[0]
+    db.shipments.update_one({"id": LOT_A}, {"$set": {"is_deleted": True}})
+    assert _internal(db) == []
+    assert notes.read_note_attachment(
+        note_id=original["id"], attachment_id=original["attachments"][0]["id"],
+        actor=SALE, db=db, gridfs=store,
+    )["ok"] is False
+
+
+def test_streamlit_customer_composer_keys_are_scoped_per_tenant_and_lot(db):
+    from types import SimpleNamespace
+
+    fake = FakeStreamlit()
+    keys = []
+    original_area = fake.text_area
+
+    def capture_area(label, key=None, **kwargs):
+        keys.append(key)
+        return original_area(label, key=key, **kwargs)
+
+    fake.text_area = capture_area
+    with patch.object(discussion, "st", fake):
+        discussion.render_customer_discussion(
+            [SimpleNamespace(reference=LOT_A)],
+            SimpleNamespace(customer_id=CUSTOMER_A, display_name="Lục Giác"),
+            db=db, key_prefix="jd_customer",
+        )
+        discussion.render_customer_discussion(
+            [SimpleNamespace(reference=LOT_B)],
+            SimpleNamespace(customer_id=CUSTOMER_B, display_name="Minh Đức"),
+            db=db, key_prefix="jd_customer",
+        )
+    assert len(keys) == 2 and keys[0] != keys[1]
+    assert CUSTOMER_A in keys[0] and CUSTOMER_B in keys[1]
+
+
+
+def test_revoked_attachment_status_blocks_download_and_listing(db, store):
+    _write(db, actor=CUSTOMER_ACTOR, files=[_png()], store=store)
+    note = _customer(db)[0]
+    item_id = note["attachments"][0]["id"]
+    db.quick_notes.update_one(
+        {"id": note["id"]}, {"$set": {"attachments.0.status": "REVOKED"}},
+    )
+    assert _customer(db)[0]["attachments"] == []
+    assert notes.read_note_attachment(
+        note_id=note["id"], attachment_id=item_id,
+        actor=CUSTOMER_ACTOR, db=db, gridfs=store,
+    )["ok"] is False
+
+
+def test_latest_notes_remain_visible_after_read_limit(db):
+    from datetime import datetime, timedelta, timezone
+
+    first = datetime(2026, 10, 30, tzinfo=timezone.utc)
+    for i in range(notes.MAX_NOTES_READ + 1):
+        db.quick_notes.insert_one({
+            "id": f"jn-{i:03d}", "kind": notes.JOURNEY_NOTE_KIND,
+            "customer_id": CUSTOMER_A, "shipment_id": LOT_A,
+            "stage_id": "pickup", "visibility": notes.VISIBILITY_CUSTOMER,
+            "body": f"Thông tin {i}", "author_kind": "user",
+            "author_name": "sale.thanh", "author_role": "sale",
+            "created_at": (first + timedelta(minutes=i)).isoformat(),
+        })
+    rows = _customer(db)
+    assert len(rows) == notes.MAX_NOTES_READ
+    assert rows[0]["id"] == "jn-001"
+    assert rows[-1]["id"] == f"jn-{notes.MAX_NOTES_READ:03d}"
+
+
+# --------------------------------------------------------------------------
+# PR #234 session QA — real Streamlit UI: chọn công đoạn, gửi, reload, xem lại
+# --------------------------------------------------------------------------
+
+STAGE_OPTIONS = [
+    "00 · Kế hoạch", "01 · Lấy hàng", "02 · Gom hàng", "03 · Vận chuyển",
+    "04 · Thông quan", "05 · Giao hàng", "06 · Thanh toán",
+]
+
+_INTERNAL_SCRIPT = (
+    "import streamlit as st\n"
+    "from views.journey_discussion import render_internal_discussion\n"
+    "cust = st.session_state.get('qa_cust', {cust!r})\n"
+    "lot = st.session_state.get('qa_lot', {lot!r})\n"
+    "if st.button('switch_customer'):\n"
+    "    st.session_state['qa_cust'] = {other!r}\n"
+    "    st.session_state['qa_lot'] = {other_lot!r}\n"
+    "render_internal_discussion(lot, cust, {{'username': 'sale.thanh', 'role': 'sale'}})\n"
+).format(cust=CUSTOMER_A, lot=LOT_A, other=CUSTOMER_B, other_lot=LOT_B)
+
+
+def _internal_stack(db, store):
+    """Keep the DB/byte-store patches alive across several AppTest runs."""
+    stack = contextlib.ExitStack()
+    stack.enter_context(patch("core.database.get_db", return_value=db))
+    stack.enter_context(patch("core.inbox_attachments._resolve_gridfs", return_value=store))
+    return stack
+
+
+def _internal_app(db, store, script=_INTERNAL_SCRIPT):
+    return AppTest.from_string(script, default_timeout=120), _internal_stack(db, store)
+
+
+def _portal_stack(db, store, email=EMAIL_A):
+    from core import customer_portal as portal
+
+    stack = contextlib.ExitStack()
+    stack.enter_context(patch("streamlit.user_info._get_user_info", return_value=_claims(email)))
+    stack.enter_context(patch.object(portal, "get_db", return_value=db))
+    stack.enter_context(patch("core.database.get_db", return_value=db))
+    stack.enter_context(patch.object(notes, "_resolve_db", return_value=db))
+    stack.enter_context(patch("core.inbox_attachments._resolve_gridfs", return_value=store))
+    return stack
+
+
+def _portal_app(db, store, email=EMAIL_A):
+    app = AppTest.from_file(str(APP_PATH), default_timeout=180)
+    app.secrets = {"auth": FAKE_AUTH}
+    return app, _portal_stack(db, store, email)
+
+
+def _seed_public_event(db, *, shipment=LOT_A, customer=CUSTOMER_A, stage="pickup", event="EV-1"):
+    from core.customer_portal_publish import publish_verified_sources
+
+    db.public_events.insert_one({
+        "id": event, "version": "v1", "customer_id": customer, "shipment_id": shipment,
+        "stage_id": stage, "public_title": "Đã lấy hàng",
+        "occurred_at": "2026-10-28T01:00:00Z", "verified": True,
+        "verified_at": "2026-10-28T02:00:00Z", "visibility": "CUSTOMER",
+    })
+    ok, message = publish_verified_sources(
+        customer, shipment, event_versions={event: "v1"}, document_versions={},
+        expected_current_version="", actor_role="admin", actor_username="staging-admin", db=db,
+    )
+    assert ok, message
+
+
+def _send_button(app):
+    senders = [element for element in app.button if element.label == "Gửi"]
+    assert senders, "không thấy nút Gửi"
+    return senders[0]
+
+
+def _attachment_buttons(app):
+    return [element for element in app.button if element.label.startswith("📎")]
+
+
+def test_ui_stage_selection_sends_and_shows_the_note_immediately(db, store):
+    """Trường Thành chọn đúng công đoạn → gửi → thấy ngay, không cần reload tay."""
+    app, stack = _internal_app(db, store)
+    with stack:
+        app.run()
+        assert not app.exception, [str(e.value) for e in app.exception]
+        app.selectbox[0].set_value(STAGE_OPTIONS[2]).run()      # Gom hàng
+        app.text_area[0].set_value("Chốt cont 40HC").run()
+        _send_button(app).click().run()
+        assert not app.exception, [str(e.value) for e in app.exception]
+        assert "Đã lưu trao đổi" in _visible(app)
+        assert "Chốt cont 40HC" in _visible(app)
+        assert app.selectbox[0].value == STAGE_OPTIONS[2]
+    rows = _internal(db, stage="consolidate")
+    assert [row["body"] for row in rows] == ["Chốt cont 40HC"]
+    assert _internal(db, stage="customs") == []
+
+
+def test_ui_draft_is_scoped_to_its_stage_and_empty_uploads_are_not_reused(db, store):
+    app, stack = _internal_app(db, store)
+    with stack:
+        app.run()
+        app.selectbox[0].set_value(STAGE_OPTIONS[1]).run()      # Lấy hàng
+        app.text_area[0].set_value("Nháp cho lấy hàng").run()
+        app.file_uploader[0].upload("anh-lay-hang.png", PNG_1PX, "image/png").run()
+        app.selectbox[0].set_value(STAGE_OPTIONS[4]).run()      # Thông quan
+        assert app.text_area[0].value == ""
+        assert not (app.file_uploader[0].value or [])
+        _send_button(app).click().run()
+        # Switching stage without typing must not resend the previous stage's text.
+        assert "Nhập nội dung hoặc đính kèm chứng từ" in _visible(app)
+    assert db.quick_notes.count_documents({"kind": notes.JOURNEY_NOTE_KIND}) == 0
+
+
+def test_ui_upload_then_reload_keeps_the_document_and_downloads_it(db, store):
+    app, stack = _internal_app(db, store)
+    with stack:
+        app.run()
+        app.selectbox[0].set_value(STAGE_OPTIONS[4]).run()      # Thông quan
+        app.file_uploader[0].upload("to-khai.png", PNG_1PX, "image/png").run()
+        app.text_area[0].set_value("Đã nộp tờ khai").run()
+        _send_button(app).click().run()
+        assert not app.exception, [str(e.value) for e in app.exception]
+        assert len(_attachment_buttons(app)) == 1
+
+        # A brand-new script run is the reload: the file must still be there.
+        reloaded = AppTest.from_string(_INTERNAL_SCRIPT, default_timeout=120)
+        reloaded.run()
+        reloaded.selectbox[0].set_value(STAGE_OPTIONS[4]).run()
+        assert "Đã nộp tờ khai" in _visible(reloaded)
+        buttons = _attachment_buttons(reloaded)
+        assert len(buttons) == 1 and "to-khai.png" in buttons[0].label
+        buttons[0].click().run()
+        assert not reloaded.exception, [str(e.value) for e in reloaded.exception]
+        downloads = [element for element in reloaded.download_button if element.label == "⬇️ Tải xuống"]
+        assert downloads, "không hiện nút tải chứng từ sau khi mở đính kèm"
+
+        # The same stage only: another công đoạn must stay empty.
+        reloaded.selectbox[0].set_value(STAGE_OPTIONS[1]).run()
+        assert _attachment_buttons(reloaded) == []
+    assert len(store.files) == 1
+    row = _internal(db)[0]
+    assert len(row["attachments"]) == 1
+    assert notes.read_note_attachment(
+        note_id=row["id"], attachment_id=row["attachments"][0]["id"],
+        actor=SALE, db=db, gridfs=store,
+    )["data"] == PNG_1PX
+
+
+def test_ui_revoked_document_is_not_listed_or_downloadable(db, store):
+    outcome = _write(db, body="Ảnh thu hồi", stage="pickup", files=[_png()], store=store)
+    db.quick_notes.update_one(
+        {"id": outcome["note"]["id"]}, {"$set": {"attachments.0.status": "REVOKED"}},
+    )
+    app, stack = _internal_app(db, store)
+    with stack:
+        app.run()
+        app.selectbox[0].set_value(STAGE_OPTIONS[1]).run()
+        assert "Ảnh thu hồi" in _visible(app)
+        assert _attachment_buttons(app) == []
+        assert not [element for element in app.download_button]
+    assert notes.read_note_attachment(
+        note_id=outcome["note"]["id"],
+        attachment_id=outcome["note"]["attachments"][0]["id"],
+        actor=SALE, db=db, gridfs=store,
+    )["ok"] is False
+
+
+def test_ui_reassigned_lot_hides_previous_notes_and_files(db, store):
+    _write(db, body="CỦA CHỦ CŨ", stage="pickup", files=[_png()], store=store)
+    app, stack = _internal_app(db, store)
+    with stack:
+        app.run()
+        app.selectbox[0].set_value(STAGE_OPTIONS[1]).run()
+        assert "CỦA CHỦ CŨ" in _visible(app) and len(_attachment_buttons(app)) == 1
+
+        db.shipments.update_one({"id": LOT_A}, {"$set": {"customer_id": CUSTOMER_B}})
+        app.run()
+        app.selectbox[0].set_value(STAGE_OPTIONS[1]).run()
+        assert "CỦA CHỦ CŨ" not in _visible(app)
+        assert _attachment_buttons(app) == []
+    assert notes.list_stage_notes(
+        customer_id=CUSTOMER_B, shipment_id=LOT_A, actor=FOREIGN_ACTOR, db=db,
+    ) == []
+
+
+def test_ui_deleted_lot_hides_previous_notes_and_files(db, store):
+    _write(db, body="LÔ SẮP XOÁ", stage="pickup", files=[_png()], store=store)
+    db.shipments.update_one({"id": LOT_A}, {"$set": {"is_deleted": True}})
+    app, stack = _internal_app(db, store)
+    with stack:
+        app.run()
+        app.selectbox[0].set_value(STAGE_OPTIONS[1]).run()
+        assert "LÔ SẮP XOÁ" not in _visible(app)
+        assert _attachment_buttons(app) == []
+
+
+def test_ui_switching_customer_clears_thread_draft_and_staged_file(db, store):
+    _write(db, body="KHÁCH A NỘI DUNG", stage="pickup", files=[_png()], store=store)
+    app, stack = _internal_app(db, store)
+    with stack:
+        app.run()
+        app.selectbox[0].set_value(STAGE_OPTIONS[1]).run()
+        assert "KHÁCH A NỘI DUNG" in _visible(app)
+        app.text_area[0].set_value("NHÁP CỦA KHÁCH A").run()
+        app.file_uploader[0].upload("a.png", PNG_1PX, "image/png").run()
+        switchers = [element for element in app.button if element.label == "switch_customer"]
+        assert switchers
+        switchers[0].click().run()
+        app.run()          # the click only publishes the new customer for the next run
+        assert app.text_area[0].value == ""
+        assert not (app.file_uploader[0].value or [])
+        visible = _visible(app)
+        assert "KHÁCH A NỘI DUNG" not in visible and "NHÁP CỦA KHÁCH A" not in visible
+        assert _attachment_buttons(app) == []
+
+
+def test_ui_more_than_four_files_is_refused_without_writing(db, store):
+    app, stack = _internal_app(db, store)
+    with stack:
+        app.run()
+        app.selectbox[0].set_value(STAGE_OPTIONS[1]).run()
+        app.file_uploader[0].set_value(
+            [(f"tep-{i}.png", PNG_1PX, "image/png") for i in range(notes.MAX_FILES_PER_SUBMIT + 1)]
+        ).run()
+        app.text_area[0].set_value("Gửi 5 tệp").run()
+        _send_button(app).click().run()
+        assert f"Tối đa {notes.MAX_FILES_PER_SUBMIT} tệp" in _visible(app)
+    assert db.quick_notes.count_documents({"kind": notes.JOURNEY_NOTE_KIND}) == 0
+    assert store.files == {}
+
+
+def test_ui_staff_public_note_file_and_customer_reply_meet_at_the_same_stage(db, store):
+    """Hai phía, một công đoạn: Trường Thành công khai → khách xem/tải → khách trả lời."""
+    _seed_public_event(db)
+    _write(db, body="NỘI BỘ: giá vốn", stage="customs",
+           visibility=notes.VISIBILITY_INTERNAL, store=store)
+
+    staff_app, staff_stack = _internal_app(db, store)
+    with staff_stack:
+        staff_app.run()
+        staff_app.selectbox[0].set_value(STAGE_OPTIONS[4]).run()
+        staff_app.file_uploader[0].upload("to-khai.png", PNG_1PX, "image/png").run()
+        staff_app.text_area[0].set_value("Cần khách xác nhận tờ khai").run()
+        staff_app.radio[0].set_value("👁 Cho khách hàng xem").run()
+        _send_button(staff_app).click().run()
+        assert not staff_app.exception, [str(e.value) for e in staff_app.exception]
+
+    portal_app, portal_stack = _portal_app(db, store)
+    with portal_stack:
+        portal_app.run()
+        assert not portal_app.exception, [str(e.value) for e in portal_app.exception]
+        portal_app.selectbox[0].set_value(STAGE_OPTIONS[4]).run()
+        visible = _visible(portal_app)
+        assert "Cần khách xác nhận tờ khai" in visible
+        assert "NỘI BỘ: giá vốn" not in visible
+        attachments = _attachment_buttons(portal_app)
+        assert len(attachments) == 1 and "to-khai.png" in attachments[0].label
+        attachments[0].click().run()
+        assert portal_app.download_button, "khách không tải được chứng từ đã công khai"
+
+        portal_app.text_area[0].set_value("Khách đã xác nhận tờ khai").run()
+        _send_button(portal_app).click().run()
+        assert not portal_app.exception, [str(e.value) for e in portal_app.exception]
+        assert "Khách đã xác nhận tờ khai" in _visible(portal_app)
+        portal_app.run()        # reload
+        assert "Khách đã xác nhận tờ khai" in _visible(portal_app)
+        assert portal_app.selectbox[0].value == STAGE_OPTIONS[4]
+        portal_app.selectbox[0].set_value(STAGE_OPTIONS[1]).run()
+        assert "Cần khách xác nhận tờ khai" not in _visible(portal_app)
+        assert _attachment_buttons(portal_app) == []
+
+    thread = _internal(db, stage="customs")
+    assert [row["body"] for row in thread] == [
+        "NỘI BỘ: giá vốn", "Cần khách xác nhận tờ khai", "Khách đã xác nhận tờ khai",
+    ]
+    assert thread[-1]["author_kind"] == "customer"
+    assert thread[-1]["visibility"] == notes.VISIBILITY_CUSTOMER
+    assert _internal(db, stage="pickup") == []
+
+
+def test_ui_customer_cannot_see_or_write_another_lots_thread(db, store):
+    """Lục Giác chỉ thấy lô của mình; lô của khách khác không xuất hiện để gửi."""
+    _seed_public_event(db)
+    _write(db, body="LÔ CỦA KHÁCH KHÁC", stage="pickup", customer=CUSTOMER_B, lot=LOT_B,
+           actor=SUPPORT, store=store)
+    portal_app, portal_stack = _portal_app(db, store)
+    with portal_stack:
+        portal_app.run()
+        assert not portal_app.exception, [str(e.value) for e in portal_app.exception]
+        portal_app.selectbox[0].set_value(STAGE_OPTIONS[1]).run()
+        visible = _visible(portal_app)
+        assert "LÔ CỦA KHÁCH KHÁC" not in visible
+        assert f"lô {LOT_B}" not in visible
+        assert len(portal_app.selectbox) == 1
+    with pytest.raises(notes.JourneyNoteDenied):
+        _write(db, body="x", lot=LOT_B, customer=CUSTOMER_B, actor=CUSTOMER_ACTOR, store=store)
+
+
+def test_real_pages_are_wired_to_the_discussion_panes():
+    """The two panes are mounted by the shipped pages, not only by tests."""
+    import inspect
+
+    from views import customer_dashboard, shipment
+
+    detail = inspect.getsource(shipment.ui_shipment_detail_tabs)
+    assert "render_internal_discussion(" in detail
+    assert "if can_edit:" in detail
+    assert "ship.get(\"customer_id\")" in detail
+
+    portal_view = inspect.getsource(customer_dashboard.render_customer_dashboard)
+    assert "render_customer_discussion(view.cards, principal, db=db)" in portal_view
+
+
+def test_ui_customer_with_two_lots_posts_into_the_lot_it_selected(db, store):
+    lot_two = "G1-LG-002"
+    db.shipments.insert_one({"id": lot_two, "customer_id": CUSTOMER_A})
+    _seed_public_event(db, shipment=LOT_A, event="EV-A", stage="pickup")
+    _seed_public_event(db, shipment=lot_two, event="EV-B", stage="pickup")
+    _write(db, body="TRAO ĐỔI LÔ MỘT", stage="pickup", store=store)
+
+    portal_app, portal_stack = _portal_app(db, store)
+    with portal_stack:
+        portal_app.run()
+        assert not portal_app.exception, [str(e.value) for e in portal_app.exception]
+        expanders = [element.label for element in portal_app.expander]
+        assert len(expanders) == 2 and any(LOT_A in label for label in expanders)
+        assert len(portal_app.text_area) == 2 and len(portal_app.selectbox) == 2
+        # Post from the SECOND lot's composer, on its own stage.
+        portal_app.selectbox[1].set_value(STAGE_OPTIONS[1]).run()
+        portal_app.text_area[1].set_value("KHÁCH GỬI Ở LÔ HAI").run()
+        senders = [element for element in portal_app.button if element.label == "Gửi"]
+        senders[1].click().run()
+        assert not portal_app.exception, [str(e.value) for e in portal_app.exception]
+    rows_one = notes.list_stage_notes(
+        customer_id=CUSTOMER_A, shipment_id=LOT_A, stage_id="pickup",
+        actor=CUSTOMER_ACTOR, db=db)
+    rows_two = notes.list_stage_notes(
+        customer_id=CUSTOMER_A, shipment_id=lot_two, stage_id="pickup",
+        actor=CUSTOMER_ACTOR, db=db)
+    assert [row["body"] for row in rows_one] == ["TRAO ĐỔI LÔ MỘT"]
+    assert [row["body"] for row in rows_two] == ["KHÁCH GỬI Ở LÔ HAI"]

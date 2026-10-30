@@ -671,6 +671,18 @@ def ui_shipment_detail_tabs(sid, ship):
         from views.docgen import ui_document_pack  # noqa: PLC0415
         ui_document_pack(sid, ship)
 
+    # Trao đổi theo công đoạn: cùng một luồng với cổng khách hàng, lưu trên
+    # quick_notes đang có và kho chứng từ đang cấu hình.
+    if can_edit:
+        try:
+            from views.journey_discussion import render_internal_discussion
+
+            render_internal_discussion(
+                sid, ship.get("customer_id") or "", st.session_state.get("current_user") or {},
+            )
+        except Exception as exc:  # noqa: BLE001 - a discussion pane never blocks the lot
+            st.caption(f"Không tải được trao đổi công đoạn ({type(exc).__name__}).")
+
     with st.expander("🕒 Lịch sử thay đổi", expanded=False):
         if audit_rows:
             st.dataframe(

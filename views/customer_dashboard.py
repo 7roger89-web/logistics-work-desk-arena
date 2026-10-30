@@ -189,6 +189,15 @@ def render_customer_dashboard(
             "Không có dữ liệu nào được hiển thị."
         )
 
+    # Trao đổi theo công đoạn: chỉ lô của chính khách này, chỉ nội dung đã cho
+    # phép, cùng luồng với màn hình lô hàng của Trường Thành.
+    try:
+        from views.journey_discussion import render_customer_discussion
+
+        render_customer_discussion(view.cards, principal, db=db)
+    except Exception as exc:  # noqa: BLE001 - never take the portal down
+        st.caption(f"Không tải được trao đổi công đoạn ({type(exc).__name__}).")
+
 
 def render_owner_portal_access_control(
     user: Mapping[str, Any],
