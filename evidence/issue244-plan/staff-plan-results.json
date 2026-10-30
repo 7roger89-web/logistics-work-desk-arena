@@ -138,6 +138,18 @@
    "ok": true
   },
   {
+   "name": "desktop: fresh lot with 0 operational nodes still exposes a hittable Node 00",
+   "ok": true
+  },
+  {
+   "name": "desktop: fresh Node 00 — linked≠accepted (WAITING), confirmation≠signature",
+   "ok": true
+  },
+  {
+   "name": "desktop: fresh lot closed and re-opened Node 00 on the same lot",
+   "ok": true
+  },
+  {
    "name": "LO-0307 (CUSTOMER_SELF, no quote): 'Chưa gắn báo giá' + 'Không áp dụng'",
    "ok": true
   },
@@ -179,6 +191,18 @@
   },
   {
    "name": "mobile: map keeps Node 00 above journey-node-MAIN_CARRIAGE, badge 00, conversations intact",
+   "ok": true
+  },
+  {
+   "name": "mobile: fresh lot with 0 operational nodes still exposes a hittable Node 00",
+   "ok": true
+  },
+  {
+   "name": "mobile: fresh Node 00 — linked≠accepted (WAITING), confirmation≠signature",
+   "ok": true
+  },
+  {
+   "name": "mobile: fresh lot closed and re-opened Node 00 on the same lot",
    "ok": true
   }
  ],

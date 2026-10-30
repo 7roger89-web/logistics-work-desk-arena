@@ -162,6 +162,9 @@ def test_recorded_agreement_evidence_is_the_only_attestation():
             "customer_id": CUSTOMER_ID,
             "shipment_ids": [SHIPMENT_ID],
             "status": "AGREED",
+            # The agreement must NAME this instrument: core.commercial_agreements
+            # evidence is otherwise not attributable to a specific contract.
+            "contract_id": "HDMB-244",
             "evidence": {"signed_contract": True},
         }
     }
@@ -192,6 +195,93 @@ def test_agreement_evidence_only_counts_for_the_right_lot_and_status():
             agreements={f"AGR-{index}": agreement},
         )["items"][1]
         assert item["signature"] == SIGNATURE_UNVERIFIED, agreement
+
+
+def test_customer_confirmation_of_terms_is_never_a_signature():
+    """BLOCKER 2 regression: separate canonical flags, separate claims.
+
+    ``core.commercial_agreements`` records ``signed_contract`` and
+    ``customer_confirmation`` independently; the second one never proves a
+    signature, even when it names this exact contract.
+    """
+    contracts = {"HDMB-244": contract("HDMB-244", customer_id=CUSTOMER_ID)}
+    item = build_plan_node(
+        shipment(),
+        contracts=contracts,
+        linked_contracts={SHIPMENT_ID: contracts},
+        agreements={"AGR-1": {
+            "agreement_id": "AGR-1",
+            "customer_id": CUSTOMER_ID,
+            "shipment_ids": [SHIPMENT_ID],
+            "status": "AGREED",
+            "contract_id": "HDMB-244",
+            "evidence": {"signed_contract": False, "customer_confirmation": True},
+        }},
+    )["items"][1]
+    assert item["signature"] == SIGNATURE_UNVERIFIED
+    assert item["signatureLabel"] == "Chưa xác minh chữ ký"
+    assert "Đã ký" not in item["detail"]
+    assert "Đã có xác nhận ký" not in item["stateLabel"]
+    # The confirmation may be stated truthfully, but explicitly NOT as a signature.
+    assert "Khách đã xác nhận điều khoản thương mại" in item["detail"]
+    assert "chưa phải chữ ký hợp đồng" in item["detail"]
+
+
+def test_agreement_without_a_contract_identity_cannot_attest():
+    """An agreement row that names no instrument cannot sign THIS contract."""
+    contracts = {"HDMB-244": contract("HDMB-244", customer_id=CUSTOMER_ID)}
+    for agreement in (
+        # No contract identity at all.
+        {"customer_id": CUSTOMER_ID, "shipment_ids": [SHIPMENT_ID],
+         "status": "AGREED", "evidence": {"signed_contract": True}},
+        # Identity of a DIFFERENT instrument.
+        {"customer_id": CUSTOMER_ID, "shipment_ids": [SHIPMENT_ID],
+         "status": "AGREED", "contract_id": "HDMB-OTHER",
+         "evidence": {"signed_contract": True}},
+        # Contract identity that matches nothing that is linked to this lot.
+        {"customer_id": CUSTOMER_ID, "shipment_ids": [SHIPMENT_ID],
+         "status": "AGREED", "contract_no": "",
+         "evidence": {"signed_contract": True, "customer_confirmation": True}},
+    ):
+        item = build_plan_node(
+            shipment(),
+            contracts=contracts,
+            linked_contracts={SHIPMENT_ID: contracts},
+            agreements={"AGR-1": agreement},
+        )["items"][1]
+        assert item["signature"] == SIGNATURE_UNVERIFIED, agreement
+        assert item["signatureLabel"] == "Chưa xác minh chữ ký"
+        assert "Đã ký" not in item["detail"]
+
+
+def test_contract_record_signature_is_tied_to_that_contract_only():
+    """Positive: the instrument itself records the signature."""
+    contracts = {
+        "HDMB-244": contract("HDMB-244", customer_id=CUSTOMER_ID, signed_at="2026-10-01"),
+    }
+    item = build_plan_node(
+        shipment(), contracts=contracts, linked_contracts={SHIPMENT_ID: contracts}
+    )["items"][1]
+    assert item["signature"] == SIGNATURE_ATTESTED
+    assert item["signatureLabel"] == "Đã có xác nhận ký"
+    assert "hồ sơ hợp đồng có ghi nhận chữ ký" in item["detail"]
+    # A sibling contract's signature never leaks onto the selected instrument:
+    # HDMB-OTHER is signed but belongs to a different lot, so it is not even a
+    # candidate here.
+    sibling = contract("HDMB-OTHER", customer_id=CUSTOMER_ID, signed=True)
+    sibling["shipment_ids"] = ["LO-OTHER"]
+    other = build_plan_node(
+        shipment(),
+        contracts={
+            "HDMB-244": contract("HDMB-244", customer_id=CUSTOMER_ID),
+            "HDMB-OTHER": sibling,
+        },
+        linked_contracts={SHIPMENT_ID: {
+            "HDMB-244": contract("HDMB-244", customer_id=CUSTOMER_ID),
+        }},
+    )["items"][1]
+    assert other["signature"] == SIGNATURE_UNVERIFIED
+    assert other["contractId"] == "HDMB-244"
 
 
 def test_two_matching_customer_contracts_stay_ambiguous():
@@ -289,6 +379,7 @@ def test_node_complete_only_with_evidence_everywhere():
         "customer_id": CUSTOMER_ID,
         "shipment_ids": [SHIPMENT_ID],
         "status": "AGREED",
+        "contract_id": "HDMB-244",
         "evidence": {"signed_contract": True},
     }}
     node = build_plan_node(
@@ -301,6 +392,55 @@ def test_node_complete_only_with_evidence_everywhere():
     )
     assert node["state"] == "COMPLETED"
     assert node["nextActions"] == []
+
+
+@pytest.mark.parametrize("status", ["DRAFT", "SENT", "REJECTED", "EXPIRED"])
+def test_linked_but_unaccepted_quote_never_completes_the_node(status):
+    """BLOCKER 1 regression: LINKED != ACCEPTED, even with everything else proven."""
+    quotes = {"BG-244": quote("BG-244", CUSTOMER_ID, status)}
+    contracts = {
+        "HDMB-244": contract("HDMB-244", customer_id=CUSTOMER_ID, signed_at="2026-10-01"),
+    }
+    node = build_plan_node(
+        shipment(quote_id="BG-244"),
+        quotes=quotes,
+        contracts=contracts,
+        linked_contracts={SHIPMENT_ID: contracts},
+        flow=flow("CUSTOMER_SELF"),
+    )
+    assert node["state"] != "COMPLETED", node
+    assert node["state"] == "WAITING"
+    assert node["evidence"] == "Báo giá chưa có trạng thái khách chấp nhận."
+    assert any("chưa có trạng thái khách chấp nhận" in action for action in node["nextActions"])
+    # The other two items stay truthful and are NOT downgraded by this.
+    assert node["items"][1]["signature"] == SIGNATURE_ATTESTED
+    assert node["items"][2]["state"] == ADVANCE_NOT_APPLICABLE
+
+
+def test_accepted_quote_is_what_allows_a_completed_node():
+    quotes = {"BG-244": quote("BG-244", CUSTOMER_ID, "ACCEPTED")}
+    contracts = {
+        "HDMB-244": contract("HDMB-244", customer_id=CUSTOMER_ID, signed_at="2026-10-01"),
+    }
+    node = build_plan_node(
+        shipment(quote_id="BG-244"),
+        quotes=quotes,
+        contracts=contracts,
+        linked_contracts={SHIPMENT_ID: contracts},
+        flow=flow("CUSTOMER_SELF"),
+    )
+    assert node["state"] == "COMPLETED"
+    assert node["nextActions"] == []
+
+
+def test_missing_and_unresolved_quote_stay_distinct_from_unaccepted():
+    missing = build_plan_node(shipment(), flow=flow("CUSTOMER_SELF"))
+    unresolved = build_plan_node(
+        shipment(quote_id="BG-GONE"), quotes={}, flow=flow("CUSTOMER_SELF")
+    )
+    assert missing["state"] == "PROBLEM"
+    assert unresolved["state"] == "PROBLEM"
+    assert missing["evidence"] != unresolved["evidence"]
 
 
 # --------------------------------------------------------------------------- #

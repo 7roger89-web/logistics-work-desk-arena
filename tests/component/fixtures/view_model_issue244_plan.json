@@ -3,11 +3,12 @@
  "cases": {
   "entrusted": "LO-0306",
   "customerSelf": "LO-0307",
-  "unknownFlow": "LO-0308"
+  "unknownFlow": "LO-0308",
+  "fresh": "LO-0399"
  },
  "siblingQuoteThatMustNeverRender": "BG-244A",
  "journey": {
-  "version": "a9f803970b343b67",
+  "version": "8e67f573f1b63e3e",
   "environment": {
    "transport": "SANDBOX_STAGING",
    "label": "Preview / Staging",
@@ -80,12 +81,12 @@
       "route": "/lo-hang/LO-0299?tab=nhap"
      },
      "seaFacts": {
-      "si_status": "UNKNOWN",
-      "export_declaration_no": "",
       "si_cutoff": "",
       "vgm_cutoff": "",
-      "vgm_status": "UNKNOWN",
-      "gate_in_at": ""
+      "gate_in_at": "",
+      "export_declaration_no": "",
+      "si_status": "UNKNOWN",
+      "vgm_status": "UNKNOWN"
      },
      "positionNote": "Chưa đủ mốc thực tế để xác định vị trí vận hành."
     },
@@ -105,7 +106,7 @@
     "nextActionDetail": "Hạn khách 08/09/2026 đã quá 52 ngày.",
     "nextLabel": "XỬ LÝ NGAY",
     "nextRoute": "/lo-hang/LO-0299?tab=nhap",
-    "updated": "30/10/2026 14:35",
+    "updated": "30/10/2026 16:00",
     "missingDocs": [
      "Xác nhận đã giao hàng"
     ],
@@ -262,7 +263,7 @@
      "id": "plan",
      "label": "KẾ HOẠCH",
      "state": "PROBLEM",
-     "evidence": "Chưa gắn được báo giá cho lô.",
+     "evidence": "Chưa gắn báo giá cho lô.",
      "items": [
       {
        "id": "quotation",
@@ -620,7 +621,7 @@
      "quote": [],
      "actual": [
       {
-       "id": "0c262f34-816e-4370-b991-d32059f9b44b",
+       "id": "7ff29d87-793b-465a-b46a-c009f590fa4c",
        "label": "Cước xe TQ + VN",
        "name": "Cước xe TQ + VN",
        "code": "DV-VC-TQ",
@@ -636,7 +637,7 @@
        "kind": "actual"
       },
       {
-       "id": "b8c98fa8-8e0d-41af-bd5b-2e2fab88efae",
+       "id": "41a7ec7e-d896-400f-83b1-5814b4d2085c",
        "label": "Thủ tục thông quan",
        "name": "Thủ tục thông quan",
        "code": "DV-TTQ",
@@ -666,7 +667,7 @@
      "profitMargin": 10.32,
      "payments": [
       {
-       "id": "PAY-FB51080D91044E489499D20B84D1C391",
+       "id": "PAY-B52B626AC97D47B485F799359A1FE974",
        "requestId": "SEED-REQ-0299-1",
        "date": "02/09/2026",
        "kind": "Thu tạm ứng đợt 1",
@@ -737,7 +738,7 @@
     },
     "timeline": [
      {
-      "time": "30/10 14:35",
+      "time": "30/10 16:00",
       "title": "create",
       "desc": "staging.support",
       "tone": "green"
@@ -875,12 +876,12 @@
       "route": "/lo-hang/LO-0306?tab=van-tai#shipment-execution-profile"
      },
      "seaFacts": {
-      "si_status": "UNKNOWN",
-      "export_declaration_no": "",
       "si_cutoff": "",
       "vgm_cutoff": "",
-      "vgm_status": "UNKNOWN",
-      "gate_in_at": ""
+      "gate_in_at": "",
+      "export_declaration_no": "",
+      "si_status": "UNKNOWN",
+      "vgm_status": "UNKNOWN"
      },
      "positionNote": "Chưa đủ mốc thực tế để xác định vị trí vận hành."
     },
@@ -900,7 +901,7 @@
     "nextActionDetail": "Chưa xác nhận phiên bản Incoterms của lô (2010 / 2020 / legacy 2000).",
     "nextLabel": "XỬ LÝ NGAY",
     "nextRoute": "/lo-hang/LO-0306?tab=van-tai#shipment-execution-profile",
-    "updated": "30/10/2026 14:35",
+    "updated": "30/10/2026 16:00",
     "missingDocs": [
      "Số tờ khai nhập khẩu",
      "Đã thông quan",
@@ -1058,7 +1059,7 @@
      "id": "plan",
      "label": "KẾ HOẠCH",
      "state": "WAITING",
-     "evidence": "Hợp đồng chưa có bằng chứng chữ ký/xác nhận.",
+     "evidence": "Báo giá chưa có trạng thái khách chấp nhận.",
      "items": [
       {
        "id": "quotation",
@@ -1381,7 +1382,7 @@
      "quote": [],
      "actual": [
       {
-       "id": "3efc4485-e49c-41e1-801e-c8329fff3b23",
+       "id": "c00c91ef-b482-4dae-8f3f-683ced61673d",
        "label": "Cước xe TQ Bằng Tường → Hữu Nghị",
        "name": "Cước xe TQ Bằng Tường → Hữu Nghị",
        "code": "DV-VC-TQ",
@@ -1397,7 +1398,7 @@
        "kind": "actual"
       },
       {
-       "id": "f018254e-3ec0-4ea2-b7d4-794a4dd68a8d",
+       "id": "9e026ac3-1bc4-40ef-a49a-8e48f0293227",
        "label": "Thủ tục thông quan 2 đầu",
        "name": "Thủ tục thông quan 2 đầu",
        "code": "DV-TTQ",
@@ -1498,7 +1499,7 @@
     },
     "timeline": [
      {
-      "time": "30/10 14:35",
+      "time": "30/10 16:00",
       "title": "create",
       "desc": "staging.support",
       "tone": "green"
@@ -1596,12 +1597,12 @@
       "route": "/lo-hang/LO-0307?tab=van-tai#shipment-execution-profile"
      },
      "seaFacts": {
-      "si_status": "UNKNOWN",
-      "export_declaration_no": "",
       "si_cutoff": "",
       "vgm_cutoff": "",
-      "vgm_status": "UNKNOWN",
-      "gate_in_at": ""
+      "gate_in_at": "",
+      "export_declaration_no": "",
+      "si_status": "UNKNOWN",
+      "vgm_status": "UNKNOWN"
      },
      "positionNote": "Chưa đủ mốc thực tế để xác định vị trí vận hành."
     },
@@ -1621,7 +1622,7 @@
     "nextActionDetail": "Chưa xác nhận phiên bản Incoterms của lô (2010 / 2020 / legacy 2000).",
     "nextLabel": "XỬ LÝ NGAY",
     "nextRoute": "/lo-hang/LO-0307?tab=van-tai#shipment-execution-profile",
-    "updated": "30/10/2026 14:35",
+    "updated": "30/10/2026 16:00",
     "missingDocs": [
      "Đã thông quan",
      "Xe giao VN + tài xế",
@@ -1778,7 +1779,7 @@
      "id": "plan",
      "label": "KẾ HOẠCH",
      "state": "PROBLEM",
-     "evidence": "Chưa gắn được báo giá cho lô.",
+     "evidence": "Chưa gắn báo giá cho lô.",
      "items": [
       {
        "id": "quotation",
@@ -2096,7 +2097,7 @@
      "quote": [],
      "actual": [
       {
-       "id": "466acde5-ae07-4d92-9569-5c99ddf6f7ff",
+       "id": "be0867a8-6b79-4d14-a47c-9e5e7cc45006",
        "label": "Cước đường bộ TQ + container",
        "name": "Cước đường bộ TQ + container",
        "code": "DV-VC-TQ",
@@ -2112,7 +2113,7 @@
        "kind": "actual"
       },
       {
-       "id": "8f084a33-f0d3-4d7c-b897-46cf3f67a5c0",
+       "id": "4970a764-e502-4f6f-8c11-5c0fa108ba75",
        "label": "Thủ tục thông quan",
        "name": "Thủ tục thông quan",
        "code": "DV-TTQ",
@@ -2201,7 +2202,7 @@
     },
     "timeline": [
      {
-      "time": "30/10 14:35",
+      "time": "30/10 16:00",
       "title": "create",
       "desc": "staging.support",
       "tone": "green"
@@ -2282,12 +2283,12 @@
       "route": "/lo-hang/LO-0308?tab=van-tai#shipment-execution-profile"
      },
      "seaFacts": {
-      "si_status": "UNKNOWN",
-      "export_declaration_no": "",
       "si_cutoff": "",
       "vgm_cutoff": "",
-      "vgm_status": "UNKNOWN",
-      "gate_in_at": ""
+      "gate_in_at": "",
+      "export_declaration_no": "",
+      "si_status": "UNKNOWN",
+      "vgm_status": "UNKNOWN"
      },
      "positionNote": "Chưa đủ mốc thực tế để xác định vị trí vận hành."
     },
@@ -2307,7 +2308,7 @@
     "nextActionDetail": "Chưa xác nhận phiên bản Incoterms của lô (2010 / 2020 / legacy 2000).",
     "nextLabel": "XỬ LÝ NGAY",
     "nextRoute": "/lo-hang/LO-0308?tab=van-tai#shipment-execution-profile",
-    "updated": "30/10/2026 14:35",
+    "updated": "30/10/2026 16:00",
     "missingDocs": [
      "Số tờ khai nhập khẩu",
      "Đã thông quan",
@@ -2467,7 +2468,7 @@
      "id": "plan",
      "label": "KẾ HOẠCH",
      "state": "PROBLEM",
-     "evidence": "Chưa gắn được báo giá cho lô.",
+     "evidence": "Chưa gắn báo giá cho lô.",
      "items": [
       {
        "id": "quotation",
@@ -2765,7 +2766,7 @@
      "quote": [],
      "actual": [
       {
-       "id": "82985ea1-fdb1-4273-881e-8baa07a594a3",
+       "id": "c4b87120-4ca2-4360-960f-a8600146d479",
        "label": "Cước xe TQ Đông Bằng → Hữu Nghị",
        "name": "Cước xe TQ Đông Bằng → Hữu Nghị",
        "code": "DV-VC-TQ",
@@ -2854,7 +2855,7 @@
     },
     "timeline": [
      {
-      "time": "30/10 14:35",
+      "time": "30/10 16:00",
       "title": "create",
       "desc": "staging.support",
       "tone": "green"
@@ -2952,12 +2953,12 @@
       "route": "/lo-hang/LO-0295?tab=van-tai#shipment-execution-profile"
      },
      "seaFacts": {
-      "si_status": "UNKNOWN",
-      "export_declaration_no": "",
       "si_cutoff": "",
       "vgm_cutoff": "",
-      "vgm_status": "UNKNOWN",
-      "gate_in_at": ""
+      "gate_in_at": "",
+      "export_declaration_no": "",
+      "si_status": "UNKNOWN",
+      "vgm_status": "UNKNOWN"
      },
      "positionNote": "Chưa đủ mốc thực tế để xác định vị trí vận hành."
     },
@@ -2977,7 +2978,7 @@
     "nextActionDetail": "Chưa xác nhận phiên bản Incoterms của lô (2010 / 2020 / legacy 2000).",
     "nextLabel": "XỬ LÝ NGAY",
     "nextRoute": "/lo-hang/LO-0295?tab=van-tai#shipment-execution-profile",
-    "updated": "30/10/2026 14:35",
+    "updated": "30/10/2026 16:00",
     "missingDocs": [],
     "docs": [
      {
@@ -3132,7 +3133,7 @@
      "id": "plan",
      "label": "KẾ HOẠCH",
      "state": "PROBLEM",
-     "evidence": "Chưa gắn được báo giá cho lô.",
+     "evidence": "Chưa gắn báo giá cho lô.",
      "items": [
       {
        "id": "quotation",
@@ -3503,7 +3504,7 @@
      ],
      "actual": [
       {
-       "id": "092d2f6e-8095-4e7a-aa4c-2a5982a824b8",
+       "id": "a0fbb35e-d09c-4b13-acad-c385be5a0b7b",
        "label": "Cước đường bộ TQ + VN",
        "name": "Cước đường bộ TQ + VN",
        "code": "DV-VC-TQ",
@@ -3519,7 +3520,7 @@
        "kind": "actual"
       },
       {
-       "id": "6956e9b4-ddf2-4ca6-91b2-5509c395c9b6",
+       "id": "51f264da-f295-441d-aff8-9f8cd07badb1",
        "label": "Thủ tục thông quan",
        "name": "Thủ tục thông quan",
        "code": "DV-TTQ",
@@ -3549,7 +3550,7 @@
      "profitMargin": 7.61,
      "payments": [
       {
-       "id": "PAY-CD5691A3F42F4B308127410C4C1FEB34",
+       "id": "PAY-15A12DF064C24C208E8250CE49853540",
        "requestId": "SEED-REQ-0295-1",
        "date": "02/09/2026",
        "kind": "Thu tạm ứng đợt 1",
@@ -3560,7 +3561,7 @@
        "reversed": false
       },
       {
-       "id": "PAY-47CF66DC81E9479B9E480C51461BD868",
+       "id": "PAY-05A42CB0D5674F0985FA826FEBFF4ABD",
        "requestId": "SEED-REQ-0295-2",
        "date": "08/09/2026",
        "kind": "Thu tạm ứng đợt 2",
@@ -3635,7 +3636,7 @@
     },
     "timeline": [
      {
-      "time": "30/10 14:35",
+      "time": "30/10 16:00",
       "title": "create",
       "desc": "staging.support",
       "tone": "green"
@@ -3708,6 +3709,577 @@
        "tone": "green"
       }
      ]
+    }
+   },
+   {
+    "id": "LO-0399",
+    "journey": {
+     "nodes": [],
+     "edges": [],
+     "currentStageId": "",
+     "owner": "",
+     "primaryAction": {
+      "text": "Bổ sung hồ sơ thực hiện lô",
+      "detail": "Chưa có điều kiện giao hàng (Incoterm).",
+      "priority": "CanXuLy",
+      "route": "/lo-hang/LO-0399?tab=van-tai#shipment-execution-profile"
+     },
+     "seaFacts": {
+      "si_cutoff": "",
+      "vgm_cutoff": "",
+      "gate_in_at": "",
+      "export_declaration_no": "",
+      "si_status": "UNKNOWN",
+      "vgm_status": "UNKNOWN"
+     },
+     "positionNote": "Chưa đủ mốc thực tế để xác định vị trí vận hành."
+    },
+    "customer": "An Phát JSC",
+    "customerMST": "0101234567",
+    "customerId": "CUST-ANPHAT",
+    "contract": "HDMB-244C",
+    "selectedDocumentTemplateIds": [],
+    "route": "—",
+    "borderVN": "—",
+    "sale": "—",
+    "support": "",
+    "status": "Chờ lấy hàng",
+    "statusTone": "gray",
+    "priority": "CanXuLy",
+    "nextAction": "Bổ sung hồ sơ thực hiện lô",
+    "nextActionDetail": "Chưa có điều kiện giao hàng (Incoterm).",
+    "nextLabel": "XỬ LÝ NGAY",
+    "nextRoute": "/lo-hang/LO-0399?tab=van-tai#shipment-execution-profile",
+    "updated": "30/10/2026",
+    "missingDocs": [
+     "Số tờ khai nhập khẩu",
+     "Đã thông quan",
+     "Xe giao VN + tài xế",
+     "Xác nhận đã giao hàng"
+    ],
+    "docs": [
+     {
+      "name": "Số tờ khai nhập khẩu",
+      "ok": false,
+      "note": "Chưa đăng ký tờ khai"
+     },
+     {
+      "name": "Đã thông quan",
+      "ok": false,
+      "note": "Chờ số tờ khai"
+     },
+     {
+      "name": "Xe giao VN + tài xế",
+      "ok": false,
+      "note": "Chưa đặt xe giao"
+     },
+     {
+      "name": "Xác nhận đã giao hàng",
+      "ok": false,
+      "note": "Chưa xác nhận"
+     }
+    ],
+    "commercialFlow": {
+     "mode": "",
+     "modeLabel": "Chưa xác nhận hình thức nhập khẩu",
+     "confirmed": false,
+     "companyId": "",
+     "subAgentId": "",
+     "subAgentName": "",
+     "legalImporterKind": "",
+     "legalImporterId": "",
+     "legalImporterName": "",
+     "legalImporterTaxCode": "",
+     "missing": [
+      "Chưa xác nhận hình thức nhập khẩu."
+     ],
+     "ready": false
+    },
+    "documentWorkflow": {
+     "steps": [
+      {
+       "id": "quotation",
+       "label": "Báo giá",
+       "state": "COMPLETE",
+       "stateLabel": "Đã hoàn tất",
+       "reason": "Lô đã gắn báo giá.",
+       "targetTab": "",
+       "targetRoute": "/kinh-doanh-bao-gia",
+       "actionLabel": "Mở báo giá"
+      },
+      {
+       "id": "customer_contract",
+       "label": "Hợp đồng với khách hàng",
+       "state": "BLOCKED",
+       "stateLabel": "Đang bị chặn",
+       "reason": "Xác nhận hình thức nhập khẩu trước để hệ thống chọn đúng bộ chứng từ.",
+       "targetTab": "",
+       "targetRoute": "",
+       "actionLabel": ""
+      },
+      {
+       "id": "sub_entrust_contract",
+       "label": "Hợp đồng Trường Thành ↔ đơn vị nhập khẩu hộ",
+       "state": "BLOCKED",
+       "stateLabel": "Đang bị chặn",
+       "reason": "Xác nhận hình thức nhập khẩu trước để hệ thống chọn đúng bộ chứng từ.",
+       "targetTab": "",
+       "targetRoute": "",
+       "actionLabel": ""
+      },
+      {
+       "id": "customer_advance_request",
+       "label": "Đề nghị khách hàng tạm ứng",
+       "state": "BLOCKED",
+       "stateLabel": "Đang bị chặn",
+       "reason": "Xác nhận hình thức nhập khẩu trước để hệ thống chọn đúng bộ chứng từ.",
+       "targetTab": "",
+       "targetRoute": "",
+       "actionLabel": ""
+      },
+      {
+       "id": "tax_payment",
+       "label": "Giấy nộp thuế",
+       "state": "BLOCKED",
+       "stateLabel": "Đang bị chặn",
+       "reason": "Xác nhận hình thức nhập khẩu trước để hệ thống chọn đúng bộ chứng từ.",
+       "targetTab": "nhap",
+       "targetRoute": "",
+       "actionLabel": ""
+      },
+      {
+       "id": "vn_agent_payment_request",
+       "label": "Đề nghị thanh toán đại lý Việt Nam",
+       "state": "BLOCKED",
+       "stateLabel": "Đang bị chặn",
+       "reason": "Xác nhận hình thức nhập khẩu trước để hệ thống chọn đúng bộ chứng từ.",
+       "targetTab": "tai-chinh",
+       "targetRoute": "",
+       "actionLabel": ""
+      },
+      {
+       "id": "foreign_agent_payment_request",
+       "label": "Đề nghị thanh toán đại lý nước ngoài",
+       "state": "BLOCKED",
+       "stateLabel": "Đang bị chặn",
+       "reason": "Xác nhận hình thức nhập khẩu trước để hệ thống chọn đúng bộ chứng từ.",
+       "targetTab": "tai-chinh",
+       "targetRoute": "",
+       "actionLabel": ""
+      },
+      {
+       "id": "delivery_note",
+       "label": "Phiếu giao hàng",
+       "state": "BLOCKED",
+       "stateLabel": "Đang bị chặn",
+       "reason": "Xác nhận hình thức nhập khẩu trước để hệ thống chọn đúng bộ chứng từ.",
+       "targetTab": "nhap",
+       "targetRoute": "",
+       "actionLabel": ""
+      },
+      {
+       "id": "warehouse_issue",
+       "label": "Phiếu xuất kho",
+       "state": "BLOCKED",
+       "stateLabel": "Đang bị chặn",
+       "reason": "Xác nhận hình thức nhập khẩu trước để hệ thống chọn đúng bộ chứng từ.",
+       "targetTab": "chung-tu",
+       "targetRoute": "",
+       "actionLabel": ""
+      },
+      {
+       "id": "customer_final_request",
+       "label": "Đề nghị khách hàng thanh toán còn lại",
+       "state": "BLOCKED",
+       "stateLabel": "Đang bị chặn",
+       "reason": "Xác nhận hình thức nhập khẩu trước để hệ thống chọn đúng bộ chứng từ.",
+       "targetTab": "tai-chinh",
+       "targetRoute": "",
+       "actionLabel": ""
+      }
+     ],
+     "summary": {
+      "complete": 1,
+      "total": 10,
+      "ready": 0,
+      "attention": 9,
+      "notApplicable": 0
+     }
+    },
+    "plan": {
+     "id": "plan",
+     "label": "KẾ HOẠCH",
+     "state": "WAITING",
+     "evidence": "Báo giá chưa có trạng thái khách chấp nhận.",
+     "items": [
+      {
+       "id": "quotation",
+       "label": "Báo giá",
+       "state": "LINKED",
+       "stateLabel": "Đã gửi khách",
+       "detail": "Báo giá BG-244C · Đã gửi khách. Chưa có trạng thái khách chấp nhận.",
+       "quoteId": "BG-244C",
+       "quoteNo": "BG-244C",
+       "quoteStatus": "SENT",
+       "accepted": false,
+       "targetRoute": "/kinh-doanh-bao-gia?q=BG-244C",
+       "actionLabel": "Mở báo giá"
+      },
+      {
+       "id": "customer_contract",
+       "label": "Hợp đồng với khách",
+       "state": "LINKED",
+       "stateLabel": "Đã gắn hợp đồng",
+       "detail": "Hợp đồng HDMB-244C đã gắn lô nhưng chưa có bằng chứng chữ ký/xác nhận của khách; hợp đồng đã link không đồng nghĩa đã ký. Khách đã xác nhận điều khoản thương mại (chưa phải chữ ký hợp đồng).",
+       "contractId": "HDMB-244C",
+       "contractNo": "HDMB-244C",
+       "signature": "UNVERIFIED",
+       "signatureLabel": "Chưa xác minh chữ ký",
+       "targetRoute": "/hop-dong/HDMB-244C",
+       "actionLabel": "Mở hợp đồng"
+      },
+      {
+       "id": "customer_advance",
+       "label": "Tạm ứng tiền hàng cho TT",
+       "state": "MODE_UNKNOWN",
+       "stateLabel": "Chưa xác nhận hình thức nhập khẩu",
+       "applicable": null,
+       "received": false,
+       "detail": "Chưa xác nhận hình thức nhập khẩu nên chưa xác định khoản tạm ứng tiền hàng có áp dụng hay không.",
+       "reconcileCount": 0,
+       "targetTab": "tai-chinh",
+       "actionLabel": "Mở tài chính"
+      }
+     ],
+     "nextActions": [
+      "Báo giá đang ở trạng thái “Đã gửi khách”; chưa có trạng thái khách chấp nhận.",
+      "Hợp đồng đã gắn nhưng chưa có bằng chứng chữ ký/xác nhận của khách.",
+      "Xác nhận hình thức nhập khẩu để biết khoản tạm ứng tiền hàng có áp dụng."
+     ],
+     "summary": {
+      "problem": 0,
+      "waiting": 3
+     }
+    },
+    "attachments": [],
+    "version": 0,
+    "rawStatus": "pending",
+    "mode": "Truck",
+    "incoterm": "",
+    "executionProfile": {
+     "mode": "",
+     "storedMode": "",
+     "modeLabel": "",
+     "incoterm": "",
+     "incotermVersion": "",
+     "incotermVersionLabel": "",
+     "incotermNamedPlace": "",
+     "incotermPlaceSource": "",
+     "incotermRawLabel": "",
+     "incotermAliasNote": "",
+     "incotermRuleScope": "",
+     "loadModel": "",
+     "loadModelLabel": "",
+     "serviceScope": [],
+     "serviceScopeLabels": [],
+     "serviceScopeSummary": "",
+     "serviceScopeConfirmed": false,
+     "insurance": {
+      "obligation": "",
+      "clause": "",
+      "clauseLabel": "",
+      "note": "Chưa xác định điều kiện giao hàng nên chưa suy ra nghĩa vụ bảo hiểm.",
+      "versionSpecific": false,
+      "actualStatus": "UNKNOWN",
+      "actualStatusLabel": "Chưa xác nhận",
+      "actualStatusStated": false,
+      "evidence": {
+       "arrangedBy": "",
+       "insurerName": "",
+       "policyNo": "",
+       "coverageNote": ""
+      }
+     },
+     "truck": {
+      "pickupTruckType": "",
+      "unitTypes": [],
+      "known": false,
+      "preset": "",
+      "presetLabel": ""
+     },
+     "equipment": {
+      "units": [],
+      "count": 0,
+      "presets": [],
+      "otherCount": 0,
+      "known": false
+     },
+     "issues": [
+      {
+       "code": "UNKNOWN_INCOTERM",
+       "message": "Chưa có điều kiện giao hàng (Incoterm)."
+      }
+     ],
+     "state": "PROFILE_INCOMPLETE",
+     "stateLabel": "Hồ sơ lô còn thiếu",
+     "stages": [],
+     "persisted": {
+      "structuredTransport": true,
+      "bookingNo": "",
+      "carrier": "",
+      "mbl": "",
+      "hbl": "",
+      "vessel": "",
+      "etd": "",
+      "pol": "",
+      "pod": "",
+      "qtyPkg": "",
+      "containerNo": "",
+      "containers": [],
+      "containerCount": 0,
+      "containerTypes": [],
+      "trucks": [],
+      "pickupTruckType": "",
+      "customsDeclarationNo": "",
+      "customsDeclarationDate": "",
+      "customsStatus": null,
+      "delivered": false,
+      "deliveredAt": "",
+      "deliveryLocation": ""
+     },
+     "nextAction": {
+      "code": "PROFILE_INCOMPLETE",
+      "label": "Bổ sung hồ sơ thực hiện lô",
+      "detail": "Chưa có điều kiện giao hàng (Incoterm).",
+      "reason": "PERSISTED_FACT_DEPENDENCY",
+      "reasonLabel": "Theo dữ liệu đã ghi của lô",
+      "tone": "amber"
+     },
+     "summaryLines": [
+      "Phạm vi TT: chưa xác nhận",
+      "Bảo hiểm hàng hóa: Chưa xác nhận"
+     ]
+    },
+    "createdAt": "30/10/2026",
+    "transportLegs": [
+     {
+      "id": "legacy-primary-leg",
+      "sequence": 1,
+      "mode": "Truck",
+      "origin": "",
+      "destination": "",
+      "carrier": "",
+      "etd": "",
+      "eta": "",
+      "atd": "",
+      "ata": "",
+      "bookingNo": "",
+      "mbl": "",
+      "hbl": "",
+      "vessel": "",
+      "voyage": "",
+      "mawb": "",
+      "hawb": "",
+      "flightNo": "",
+      "units": []
+     }
+    ],
+    "transportLegsStructured": false,
+    "cargoStructured": false,
+    "pickup": {
+     "factory": "",
+     "address": "",
+     "contact": "",
+     "phone": "",
+     "pickupTime": "",
+     "truckType": "",
+     "plate": "",
+     "driver": "",
+     "driverPhone": "",
+     "eta": "",
+     "ata": ""
+    },
+    "transport": {
+     "bookingNo": "",
+     "carrier": "",
+     "mbl": "",
+     "hbl": "",
+     "vessel": "",
+     "etd": "",
+     "pol": "",
+     "pod": "",
+     "containerNo": "",
+     "qtyPkg": ""
+    },
+    "cargo": {
+     "goodsDescription": "",
+     "packs": null,
+     "weight": null,
+     "cbm": null,
+     "dims": "",
+     "type": "",
+     "note": "",
+     "qtyPkg": ""
+    },
+    "exportInfo": {
+     "border": "",
+     "declarant": "",
+     "eta": "",
+     "ata": "",
+     "state": "",
+     "chinaDeclNo": ""
+    },
+    "importInfo": {
+     "borderVN": "",
+     "declarationNo": "",
+     "regDate": "",
+     "clearDate": "",
+     "tax": null,
+     "vat": null,
+     "inspection": "",
+     "customsStatus": false,
+     "license": "",
+     "gnt": {
+      "payer": "",
+      "taxCode": "",
+      "address": "",
+      "customsOffice": "",
+      "customerHint": "An Phát JSC",
+      "customerTaxHint": "0101234567",
+      "ready": false,
+      "noPayable": false,
+      "missing": [
+       "Số tờ khai (TK)",
+       "Ngày tờ khai",
+       "Thuế nhập khẩu",
+       "VAT hàng nhập khẩu",
+       "Người nộp thuế",
+       "Mã số thuế"
+      ],
+      "done": false,
+      "document": null,
+      "documentHistory": [],
+      "readiness": {
+       "state": "MISSING_INFO",
+       "gate": "COMMERCIAL_FLOW_REQUIRED",
+       "reason": "Xác nhận hình thức nhập khẩu trước khi tạo Giấy nộp thuế.",
+       "missing": [
+        "Số tờ khai (TK)",
+        "Ngày tờ khai",
+        "Thuế nhập khẩu (số tiền)",
+        "Thuế GTGT hàng NK (số tiền)",
+        "Tên người nộp thuế",
+        "Mã số thuế (MST)",
+        "Xác nhận hình thức nhập khẩu trước khi tạo Giấy nộp thuế."
+       ]
+      }
+     },
+     "arrivalDate": "",
+     "freeTime": null,
+     "truckVN": "",
+     "plateVN": "",
+     "driverVN": "",
+     "schedule": "",
+     "deliveryAddr": "",
+     "receiver": "",
+     "receiverPhone": "",
+     "receiverTitle": "",
+     "deliveryLocation": "",
+     "delivered": false,
+     "actualDelivery": ""
+    },
+    "finance": {
+     "quote": [],
+     "actual": [],
+     "currency": "VND",
+     "hasActualLines": false,
+     "receivable": null,
+     "received": 0.0,
+     "receivableNet": null,
+     "outputVat": null,
+     "outstanding": null,
+     "payable": null,
+     "paid": null,
+     "commission": 0.0,
+     "profit": null,
+     "profitMargin": null,
+     "payments": [],
+     "partner": {
+      "partnerId": "AGT-PHUANH",
+      "partnerName": "CÔNG TY TNHH PHÚ ANH LOGISTICS",
+      "suggested": true,
+      "status": "UNKNOWN",
+      "payable": null,
+      "paid": null,
+      "remaining": null,
+      "currency": null,
+      "payments": []
+     },
+     "source": "core.logic.calculate_from_shipment over data.3.4"
+    },
+    "pxk": {
+     "source": "HDMB-244C",
+     "sourceName": "HDMB-244C",
+     "delivered": false,
+     "gateOpen": false,
+     "missingDeliveryFacts": [],
+     "number": "",
+     "date": "",
+     "place": "",
+     "receiver": "",
+     "role": "",
+     "done": false,
+     "document": null,
+     "documentHistory": [],
+     "readiness": {
+      "state": "MISSING_INFO",
+      "gate": "COMMERCIAL_FLOW_REQUIRED",
+      "reason": "Xác nhận hình thức nhập khẩu trước khi tạo Phiếu xuất kho.",
+      "missing": [
+       "Xác nhận hình thức nhập khẩu trước khi tạo Phiếu xuất kho."
+      ]
+     }
+    },
+    "form07": {
+     "source": "HDMB-244C",
+     "sourceName": "HDMB-244C",
+     "delivered": false,
+     "missingDeliveryFacts": [],
+     "number": "",
+     "orderDate": "",
+     "place": "",
+     "receiver": "",
+     "role": "",
+     "done": false,
+     "document": null,
+     "documentHistory": [],
+     "readiness": {
+      "state": "BLOCKED",
+      "gate": "BLOCKED_NOT_DELIVERED",
+      "reason": "Biên bản giao nhận chỉ được tạo sau khi lô hàng được xác nhận giao.",
+      "missing": [
+       "Xác nhận đã giao hàng"
+      ]
+     }
+    },
+    "timeline": [],
+    "ops": {
+     "financialFlag": "",
+     "financialLabel": "",
+     "alerts": [],
+     "arrivalDateLabel": "",
+     "freeTimeExpiryLabel": "",
+     "daysRemaining": null
+    },
+    "tracking": {
+     "status": "Chờ lấy hàng",
+     "statusTone": "gray",
+     "carrier": "",
+     "reference": "",
+     "trackingUrl": "",
+     "hasLivePosition": false,
+     "positionNote": "Không có dữ liệu vị trí thời gian thực — chỉ hiển hiện trạng thái và mốc vận chuyển có thật.",
+     "milestones": []
     }
    }
   ],
@@ -4984,8 +5556,8 @@
     "source": "core.database.load_quotes"
    },
    {
-    "id": "Q-20261030-4D79C18A",
-    "quoteNo": "QT-20261030-4D79C18A",
+    "id": "Q-20261030-2A933F9A",
+    "quoteNo": "QT-20261030-2A933F9A",
     "customerId": "CUST-ANPHAT",
     "customer": "An Phát JSC",
     "salesOwner": "Minh Tú",
@@ -5054,19 +5626,19 @@
      {
       "from": null,
       "to": "DRAFT",
-      "at": "2026-10-30T14:35:32+00:00",
+      "at": "2026-10-30T16:00:54+00:00",
       "actor": "Minh Tú"
      },
      {
       "from": "DRAFT",
       "to": "READY_FOR_REVIEW",
-      "at": "2026-10-30T14:35:32+00:00",
+      "at": "2026-10-30T16:00:54+00:00",
       "actor": "staging.seed"
      },
      {
       "from": "READY_FOR_REVIEW",
       "to": "ACCEPTED",
-      "at": "2026-10-30T14:35:32+00:00",
+      "at": "2026-10-30T16:00:54+00:00",
       "actor": "staging.seed"
      }
     ],
@@ -5078,8 +5650,8 @@
     "source": "core.database.load_quotes"
    },
    {
-    "id": "Q-20261030-54DBDD31",
-    "quoteNo": "QT-20261030-54DBDD31",
+    "id": "Q-20261030-3DB7959F",
+    "quoteNo": "QT-20261030-3DB7959F",
     "customerId": "CUST-DUCLONG",
     "customer": "Đức Long Co.",
     "salesOwner": "Thu Hằng",
@@ -5148,13 +5720,13 @@
      {
       "from": null,
       "to": "DRAFT",
-      "at": "2026-10-30T14:35:32+00:00",
+      "at": "2026-10-30T16:00:54+00:00",
       "actor": "Thu Hằng"
      },
      {
       "from": "DRAFT",
       "to": "READY_FOR_REVIEW",
-      "at": "2026-10-30T14:35:32+00:00",
+      "at": "2026-10-30T16:00:54+00:00",
       "actor": "staging.seed"
      }
     ],
@@ -5171,12 +5743,12 @@
   ],
   "agreements": [
    {
-    "id": "AGR-20261030-835ACCF8",
-    "agreementNo": "AG-20261030-835ACCF8",
+    "id": "AGR-20261030-E0F13E29",
+    "agreementNo": "AG-20261030-E0F13E29",
     "customerId": "CUST-ANPHAT",
     "customer": "An Phát JSC",
-    "quoteId": "Q-20261030-4D79C18A",
-    "quoteReference": "QT-20261030-4D79C18A",
+    "quoteId": "Q-20261030-2A933F9A",
+    "quoteReference": "QT-20261030-2A933F9A",
     "status": "AGREED",
     "statusLabel": "Đã đồng ý",
     "version": 3,
@@ -5290,19 +5862,19 @@
      {
       "from": null,
       "to": "DRAFT",
-      "at": "2026-10-30T14:35:32+00:00",
+      "at": "2026-10-30T16:00:54+00:00",
       "actor": "staging.seed"
      },
      {
       "from": "DRAFT",
       "to": "REVIEWING",
-      "at": "2026-10-30T14:35:32+00:00",
+      "at": "2026-10-30T16:00:54+00:00",
       "actor": "staging.seed"
      },
      {
       "from": "REVIEWING",
       "to": "AGREED",
-      "at": "2026-10-30T14:35:32+00:00",
+      "at": "2026-10-30T16:00:54+00:00",
       "actor": "staging.seed"
      }
     ],
@@ -5358,7 +5930,7 @@
     "id": "LO-0299-CUSTOMER_DEADLINE_OVERDUE",
     "title": "LO-0299 · Quá hạn khách",
     "desc": "Hạn khách 08/09/2026 đã quá 52 ngày.",
-    "time": "30/10/2026 14:35",
+    "time": "30/10/2026 16:00",
     "tone": "red",
     "route": "/lo-hang/LO-0299?tab=nhap"
    },
@@ -5366,7 +5938,7 @@
     "id": "LO-0306-FREE_TIME_OVERDUE",
     "title": "LO-0306 · Quá free time",
     "desc": "Hạn free time 22/09/2026 đã quá 38 ngày.",
-    "time": "30/10/2026 14:35",
+    "time": "30/10/2026 16:00",
     "tone": "red",
     "route": "/lo-hang/LO-0306?tab=nhap"
    },
@@ -5374,7 +5946,7 @@
     "id": "LO-0307-FREE_TIME_OVERDUE",
     "title": "LO-0307 · Quá free time",
     "desc": "Hạn free time 19/09/2026 đã quá 41 ngày.",
-    "time": "30/10/2026 14:35",
+    "time": "30/10/2026 16:00",
     "tone": "red",
     "route": "/lo-hang/LO-0307?tab=nhap"
    },
@@ -5382,7 +5954,7 @@
     "id": "LO-0308-CUSTOMER_DEADLINE_OVERDUE",
     "title": "LO-0308 · Quá hạn khách",
     "desc": "Hạn khách 12/09/2026 đã quá 48 ngày.",
-    "time": "30/10/2026 14:35",
+    "time": "30/10/2026 16:00",
     "tone": "red",
     "route": "/lo-hang/LO-0308?tab=nhap"
    },
@@ -5390,7 +5962,7 @@
     "id": "LO-0295-FINANCE_ATTENTION",
     "title": "LO-0295 · Tài chính cần theo dõi",
     "desc": "CHỜ THU",
-    "time": "30/10/2026 14:35",
+    "time": "30/10/2026 16:00",
     "tone": "amber",
     "route": "/lo-hang/LO-0295?tab=van-tai#shipment-execution-profile"
    }
@@ -7560,21 +8132,21 @@
     "status": "RATE_UNAVAILABLE",
     "reason": "fetch_error: URLError: <urlopen error TLS/SSL connection has been closed (EOF) (_ssl.c:992)>",
     "source_url": "https://www.boc.cn/sourcedb/whpj/enindex_1619.html",
-    "captured_at": "2026-10-30T14:35:33.581576+00:00",
+    "captured_at": "2026-10-30T16:00:54.996862+00:00",
     "currency": "USD"
    },
    "agribank": {
     "status": "RATE_UNAVAILABLE",
     "reason": "fetch_error: URLError: <urlopen error TLS/SSL connection has been closed (EOF) (_ssl.c:992)>",
     "source_url": "https://www.agribank.com.vn/vn/ty-gia",
-    "captured_at": "2026-10-30T14:35:32.640580+00:00",
+    "captured_at": "2026-10-30T16:00:55.218756+00:00",
     "currency": "USD"
    },
    "bidv": {
     "status": "RATE_UNAVAILABLE",
     "reason": "fetch_error: URLError: <urlopen error TLS/SSL connection has been closed (EOF) (_ssl.c:992)>",
     "source_url": "https://bidv.com.vn/vn/ty-gia-ngoai-te/",
-    "captured_at": "2026-10-30T14:35:32.430267+00:00",
+    "captured_at": "2026-10-30T16:00:54.995280+00:00",
     "currency": "USD",
     "bidv_rate_status": "UNAVAILABLE"
    }

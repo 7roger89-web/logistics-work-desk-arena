@@ -42,6 +42,8 @@ const JOURNEY = FIXTURE.journey;
 const LOT_ENTRUSTED = FIXTURE.cases.entrusted;
 const LOT_CUSTOMER_SELF = FIXTURE.cases.customerSelf;
 const LOT_UNKNOWN_FLOW = FIXTURE.cases.unknownFlow;
+// BLOCKER 3 — a brand-new lot with NO operational node at all.
+const LOT_FRESH = FIXTURE.cases.fresh;
 const SIBLING_QUOTE = FIXTURE.siblingQuoteThatMustNeverRender;
 
 const dom = new JSDOM("<!DOCTYPE html><html><body></body></html>", {
@@ -305,6 +307,70 @@ console.log("STEP 8 — unknown import form: advance stays undetermined");
   assert.ok(advance.includes("Chưa xác nhận hình thức nhập khẩu"), `unknown flow wording wrong: ${advance}`);
   assert.ok(!advance.includes("Không áp dụng"), "an unknown flow must not be resolved to N/A");
   ok("unknown import form is never resolved into applicable/not-applicable");
+}
+
+// ---------------------------------------------------------------------------
+console.log("STEP 9 — a brand-new lot with an EMPTY operational Journey still opens Node 00");
+{
+  await openLot(LOT_FRESH);
+  const fresh = $('[data-testid="shipment-journey"]')[0];
+  assert.equal(fresh.getAttribute("data-empty-journey"), "true",
+    "the fresh lot must render the fresh cockpit, not a fabricated journey");
+  // No operational node may be invented before the scope is confirmed.
+  assert.equal($('[data-testid^="journey-step-"]').length, 0,
+    "a fresh lot must not render BOOKING/SI/VGM/transport step nodes");
+  assert.equal($('[data-testid^="journey-node-"]').length, 0,
+    "a fresh lot must not render detailed journey nodes");
+
+  const open = $('[data-testid="journey-empty-plan-open"]')[0];
+  assert.ok(open, "Node 00 KẾ HOẠCH must be reachable inside the fresh Journey surface");
+  assert.ok(text(open).toUpperCase().includes("KẾ HOẠCH"), `Node 00 action label wrong: ${text(open)}`);
+
+  open.dispatchEvent(new window.MouseEvent("click", { bubbles: true, cancelable: true }));
+  await tick();
+  const panel = $('[data-testid="plan-quick-panel"]')[0];
+  assert.ok(panel, "Node 00 must open the SAME plan panel inside the fresh Journey");
+  assert.equal(panel.closest('[data-testid="journey-side-panel"]') !== null, true,
+    "the fresh plan panel must live in the journey side rail");
+  assert.equal($('[data-testid="shipment-journey"]')[0].getAttribute("data-empty-journey"), "true",
+    "opening Node 00 must not pretend the journey is populated");
+
+  const quote = panel.querySelector('[data-testid="plan-item-quotation"]');
+  const contract = panel.querySelector('[data-testid="plan-item-customer_contract"]');
+  const advance = panel.querySelector('[data-testid="plan-item-customer_advance"]');
+  assert.ok(quote && contract && advance, "the same three plan items must render");
+
+  // BLOCKER 1 — a LINKED but SENT quote never completes the node, even here.
+  assert.equal(panel.getAttribute("data-plan-state"), "WAITING",
+    "a linked-but-unaccepted quote must keep Node 00 non-complete");
+  assert.notEqual(panel.getAttribute("data-plan-state"), "COMPLETED");
+  assert.ok(text(quote).includes("BG-244C"), `fresh lot quote missing: ${text(quote)}`);
+  assert.ok(text(quote).includes("Đã gửi khách"), "the real quote status must render");
+  assert.ok(!text(quote).includes("Khách đã chấp nhận"),
+    "a sent quote must never be presented as accepted");
+
+  // BLOCKER 2 — customer-confirmed terms are NOT a signature.
+  assert.equal(contract.getAttribute("data-signature"), "UNVERIFIED",
+    "customer confirmation must never become a signature");
+  assert.ok(text(contract).includes("Chưa xác minh chữ ký"), `signature claim wrong: ${text(contract)}`);
+  assert.ok(!text(contract).includes("Đã ký"), "no signed claim without contract evidence");
+  assert.ok(!text(contract).includes("Đã có xác nhận ký"), "no attested label without contract evidence");
+  assert.ok(text(contract).includes("Khách đã xác nhận điều khoản thương mại"),
+    "the recorded confirmation may be stated truthfully");
+  assert.ok(text(contract).includes("chưa phải chữ ký hợp đồng"),
+    "the confirmation must be explicitly distinguished from a signature");
+  assert.ok(text(advance).includes("Chưa xác nhận hình thức nhập khẩu"),
+    "an unconfirmed import form stays undetermined");
+
+  // Closing returns to the SAME lot's fresh Journey, and Node 00 reopens.
+  await closePlanPanel();
+  assert.equal(text($("h1")[0]), "Lô hàng " + LOT_FRESH, "closing the plan must keep the same lot");
+  const openAgain = $('[data-testid="journey-empty-plan-open"]')[0];
+  assert.ok(openAgain, "Node 00 must be reachable again on the same fresh lot");
+  openAgain.dispatchEvent(new window.MouseEvent("click", { bubbles: true, cancelable: true }));
+  await tick();
+  assert.ok($('[data-testid="plan-quick-panel"]')[0], "returning must restore the same plan panel");
+  ok("fresh lot (no operational nodes): Node 00 opens the same 3-item panel, linked≠accepted, confirmation≠signature");
 }
 
 console.log(`\nISSUE244_PLAN_DOM_ACCEPTANCE=PASS (${passed} checks)`);

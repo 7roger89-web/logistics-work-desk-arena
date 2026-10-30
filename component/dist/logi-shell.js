@@ -21791,7 +21791,7 @@ var zu = [
 	}
 ];
 function Bu({ shipment: e, onGlobal: t, runPrimary: n, children: r, globalActive: i = !1, globalTab: a = "van-tai" }) {
-	let o = e.executionProfile, s = o?.issues ?? [], c = o?.nextAction;
+	let o = e.executionProfile, s = o?.issues ?? [], c = o?.nextAction, [l, u] = (0, _.useState)(!1);
 	return /* @__PURE__ */ (0, W.jsxs)("section", {
 		className: "journey-demo rounded-xl border border-slate-300 bg-white overflow-hidden",
 		"data-testid": "shipment-journey",
@@ -21914,6 +21914,33 @@ function Bu({ shipment: e, onGlobal: t, runPrimary: n, children: r, globalActive
 									children: s.slice(0, 4).map((e) => /* @__PURE__ */ (0, W.jsxs)("li", { children: ["• ", e.message] }, e.code))
 								})]
 							}),
+							e.plan && /* @__PURE__ */ (0, W.jsxs)("div", {
+								className: "mt-5 w-full max-w-[420px] rounded-2xl border-2 border-slate-800 bg-white p-3 text-left",
+								"data-testid": "journey-empty-plan-card",
+								children: [
+									/* @__PURE__ */ (0, W.jsxs)("div", {
+										className: "flex items-center gap-2",
+										children: [/* @__PURE__ */ (0, W.jsx)("span", {
+											className: "rounded bg-slate-900 px-1.5 py-0.5 text-[10px] font-black tracking-widest text-white",
+											children: "00"
+										}), /* @__PURE__ */ (0, W.jsx)("p", {
+											className: "text-sm font-extrabold text-slate-900",
+											children: "KẾ HOẠCH — báo giá → hợp đồng → tạm ứng"
+										})]
+									}),
+									/* @__PURE__ */ (0, W.jsx)("p", {
+										className: "mt-1 text-xs text-slate-600",
+										children: "Lô mới vẫn phải chốt kế hoạch trước khi có công đoạn vận chuyển. Mở Node 00 để xem đang thiếu gì."
+									}),
+									/* @__PURE__ */ (0, W.jsx)("button", {
+										type: "button",
+										onClick: () => u(!0),
+										"data-testid": "journey-empty-plan-open",
+										className: "touch-target mt-2 w-full rounded-lg border-2 border-slate-800 px-3 py-2 text-sm font-extrabold text-[#0f2a4a]",
+										children: "MỞ NODE 00 KẾ HOẠCH →"
+									})
+								]
+							}),
 							/* @__PURE__ */ (0, W.jsx)("div", {
 								className: "mt-5 grid w-full grid-cols-2 gap-2 sm:grid-cols-5",
 								"aria-label": "Các giai đoạn chưa xác định",
@@ -21930,7 +21957,16 @@ function Bu({ shipment: e, onGlobal: t, runPrimary: n, children: r, globalActive
 				}), /* @__PURE__ */ (0, W.jsx)("aside", {
 					className: "journey-side",
 					"data-testid": "journey-side-panel",
-					children: i ? /* @__PURE__ */ (0, W.jsxs)("div", {
+					children: l && e.plan ? /* @__PURE__ */ (0, W.jsx)("div", {
+						className: "h-full min-h-0",
+						"data-testid": "journey-empty-plan-panel",
+						children: /* @__PURE__ */ (0, W.jsx)(ju, {
+							shipment: e,
+							plan: e.plan,
+							onOpenFinance: () => t("tai-chinh"),
+							onClose: () => u(!1)
+						}, `plan-empty-${e.id}`)
+					}) : i ? /* @__PURE__ */ (0, W.jsxs)("div", {
 						className: "flex h-full min-h-0 flex-col",
 						"data-testid": "journey-global-workspace",
 						children: [

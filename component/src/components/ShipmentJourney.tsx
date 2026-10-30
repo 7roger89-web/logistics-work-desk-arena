@@ -308,6 +308,11 @@ function FreshShipmentCockpit({ shipment: s, onGlobal, runPrimary, children, glo
   const profile = s.executionProfile;
   const issues = profile?.issues ?? [];
   const next = profile?.nextAction;
+  // Issue #244 BLOCKER 3 — a brand-new lot has no operational node yet, but it is
+  // exactly the lot that must settle báo giá → hợp đồng → tạm ứng first. Node 00
+  // therefore lives INSIDE this fresh surface: same `s.plan` payload, same panel
+  // as the populated Journey. No BOOKING/SI/VGM/transport node is invented here.
+  const [planOpen, setPlanOpen] = useState(false);
   const tabs = [
     { id: 'van-tai', label: 'Thông tin' },
     { id: 'lay-hang', label: 'Xuất khẩu' },
@@ -368,6 +373,15 @@ function FreshShipmentCockpit({ shipment: s, onGlobal, runPrimary, children, glo
               {issues.slice(0, 4).map(issue => <li key={issue.code}>• {issue.message}</li>)}
             </ul>}
           </div>
+          {s.plan && <div className="mt-5 w-full max-w-[420px] rounded-2xl border-2 border-slate-800 bg-white p-3 text-left" data-testid="journey-empty-plan-card">
+            <div className="flex items-center gap-2">
+              <span className="rounded bg-slate-900 px-1.5 py-0.5 text-[10px] font-black tracking-widest text-white">00</span>
+              <p className="text-sm font-extrabold text-slate-900">KẾ HOẠCH — báo giá → hợp đồng → tạm ứng</p>
+            </div>
+            <p className="mt-1 text-xs text-slate-600">Lô mới vẫn phải chốt kế hoạch trước khi có công đoạn vận chuyển. Mở Node 00 để xem đang thiếu gì.</p>
+            <button type="button" onClick={() => setPlanOpen(true)} data-testid="journey-empty-plan-open"
+              className="touch-target mt-2 w-full rounded-lg border-2 border-slate-800 px-3 py-2 text-sm font-extrabold text-[#0f2a4a]">MỞ NODE 00 KẾ HOẠCH →</button>
+          </div>}
           <div className="mt-5 grid w-full grid-cols-2 gap-2 sm:grid-cols-5" aria-label="Các giai đoạn chưa xác định">
             {EMPTY_PHASES.slice(1).map(phase => <div key={phase.id} className="rounded-lg border-2 border-dashed border-slate-300 bg-white/80 px-2 py-3 text-center text-xs font-bold text-slate-500">{phase.label}<span className="mt-1 block text-[10px] font-medium">Chưa xác định</span></div>)}
           </div>
@@ -375,7 +389,9 @@ function FreshShipmentCockpit({ shipment: s, onGlobal, runPrimary, children, glo
       </div>
 
       <aside className="journey-side" data-testid="journey-side-panel">
-        {globalActive ? <div className="flex h-full min-h-0 flex-col" data-testid="journey-global-workspace">
+        {planOpen && s.plan ? <div className="h-full min-h-0" data-testid="journey-empty-plan-panel">
+          <PlanQuickPanel key={`plan-empty-${s.id}`} shipment={s} plan={s.plan} onOpenFinance={() => onGlobal('tai-chinh')} onClose={() => setPlanOpen(false)} />
+        </div> : globalActive ? <div className="flex h-full min-h-0 flex-col" data-testid="journey-global-workspace">
           <div className="border-b bg-slate-100 px-4 py-3">
             <h3 className="text-xl font-black">Toàn bộ lô hàng · {s.id}</h3>
             <p className="text-xs text-slate-500">Dữ liệu hiện có vẫn dùng writer/authority cũ; Journey không tự sinh fact.</p>

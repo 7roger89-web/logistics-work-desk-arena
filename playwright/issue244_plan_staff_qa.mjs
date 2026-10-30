@@ -51,6 +51,7 @@ const URL_ = arg("url", "http://127.0.0.1:9501/");
 const OUT = resolve(arg("out", "evidence/issue244-plan"));
 const HOST = 'div[data-testid="stBidiComponentIsolated"]';
 const LOT = arg("lot", "LO-0306");
+const FRESH_LOT = arg("fresh-lot", "LO-0309");
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 /* The journey bundle is mounted inside Streamlit's shadow root, so every query
@@ -351,7 +352,92 @@ async function main() {
       pass(`${viewport.id}: map keeps Node 00 above ${mapInfo.opId}, badge 00, conversations intact`);
       await page.screenshot({ path: `${OUT}/${viewport.id}-3-detail-map-node00.png`, fullPage: false });
 
-      // 10 — a lot with no quote / customer-self form, in the SAME session.
+      // 10 — BLOCKER 3: a BRAND-NEW lot whose operational Journey is empty
+      //      (no BOOKING/SI/VGM/transport node) must still expose Node 00.
+      //      Same check on desktop and mobile, because the fresh cockpit is a
+      //      different surface from the populated map.
+      await clickText(page, "Lô Hàng", "a");
+      await clickText(page, "Tất cả thời gian", "button");
+      if (!(await clickText(page, FRESH_LOT, "a"))) fail(`${viewport.id}: fresh lot ${FRESH_LOT} not clickable`);
+      await sleep(1400);
+      const freshInfo = await shadowEval(page, `
+        const section = root.querySelector('[data-testid="shipment-journey"]');
+        const open = root.querySelector('[data-testid="journey-empty-plan-open"]');
+        let hitOk = false;
+        if (open) {
+          const deepHit = (x, y) => {
+            let el = document.elementFromPoint(x, y);
+            let guard = 0;
+            while (el && el.shadowRoot && guard < 8) {
+              const inner = el.shadowRoot.elementFromPoint(x, y);
+              if (!inner || inner === el) break;
+              el = inner; guard += 1;
+            }
+            return el;
+          };
+          open.scrollIntoView({ block: 'center', inline: 'center' });
+          const r = open.getBoundingClientRect();
+          const hit = deepHit(Math.min(window.innerWidth - 1, Math.max(0, r.left + r.width / 2)),
+                               Math.min(window.innerHeight - 1, Math.max(0, r.top + r.height / 2)));
+          hitOk = Boolean(hit === open || (hit && open.contains(hit)) || (hit && hit.contains(open)));
+        }
+        return {
+          empty: section ? section.getAttribute('data-empty-journey') : null,
+          steps: [...root.querySelectorAll('[data-testid^="journey-step-"]')].length,
+          planOpen: Boolean(open),
+          planOpenText: open ? (open.textContent || '').replace(/\\s+/g, ' ').trim() : '',
+          hitOk,
+          heading: (root.querySelector('h1') || {}).textContent || '',
+          horizontalOverflow: document.documentElement.scrollWidth > window.innerWidth + 1,
+        };
+      `);
+      if (freshInfo.empty !== "true") fail(`${viewport.id}: fresh lot must render the fresh Journey surface`, freshInfo);
+      if (freshInfo.steps !== 0) fail(`${viewport.id}: a fresh lot must not invent operational nodes`, freshInfo);
+      if (!freshInfo.planOpen) fail(`${viewport.id}: Node 00 missing on the fresh Journey`, freshInfo);
+      if (!/KẾ HOẠCH/.test(freshInfo.planOpenText.toUpperCase())) fail(`${viewport.id}: fresh Node 00 label wrong`, freshInfo);
+      if (!freshInfo.hitOk) fail(`${viewport.id}: fresh Node 00 is not hit-testable`, freshInfo);
+      if (freshInfo.horizontalOverflow) fail(`${viewport.id}: horizontal overflow on the fresh Journey`, freshInfo);
+      pass(`${viewport.id}: fresh lot with 0 operational nodes still exposes a hittable Node 00`);
+
+      if (!(await clickTestId(page, "journey-empty-plan-open"))) fail(`${viewport.id}: fresh Node 00 did not open`);
+      if (!(await existsTestId(page, "plan-quick-panel"))) fail(`${viewport.id}: fresh Node 00 opened no plan panel`);
+      const freshState = await attrOf(page, "plan-quick-panel", "data-plan-state");
+      // BLOCKER 1 — linked (SENT) quote never completes the node.
+      if (freshState === "COMPLETED") fail(`${viewport.id}: a linked-but-unaccepted quote completed Node 00`, { freshState });
+      if (freshState !== "WAITING") fail(`${viewport.id}: fresh lot plan state should wait on acceptance`, { freshState });
+      const freshQuote = await itemText(page, "plan-item-quotation");
+      if (!freshQuote.includes("Đã gửi khách")) fail(`${viewport.id}: quote status not rendered`, { freshQuote });
+      if (/Khách đã chấp nhận/.test(freshQuote)) fail(`${viewport.id}: a SENT quote presented as accepted`, { freshQuote });
+      // BLOCKER 2 — customer_confirmation is not a signature.
+      const freshSignature = await attrOf(page, "plan-item-customer_contract", "data-signature");
+      const freshContract = await itemText(page, "plan-item-customer_contract");
+      if (freshSignature !== "UNVERIFIED") fail(`${viewport.id}: customer confirmation became a signature`, { freshSignature });
+      if (/Đã ký|Đã có xác nhận ký/.test(freshContract)) fail(`${viewport.id}: signed claim without contract evidence`, { freshContract });
+      if (!freshContract.includes("Khách đã xác nhận điều khoản thương mại")) {
+        fail(`${viewport.id}: the recorded confirmation is not stated truthfully`, { freshContract });
+      }
+      if (!freshContract.includes("chưa phải chữ ký hợp đồng")) {
+        fail(`${viewport.id}: the confirmation/signature distinction is missing`, { freshContract });
+      }
+      pass(`${viewport.id}: fresh Node 00 — linked≠accepted (${freshState}), confirmation≠signature`);
+      await page.screenshot({ path: `${OUT}/${viewport.id}-9-fresh-journey-node00.png`, fullPage: false });
+
+      // Closing returns to the SAME fresh lot and Node 00 reopens.
+      if (!(await clickTestId(page, "plan-panel-close"))) fail(`${viewport.id}: fresh plan panel has no close control`);
+      await sleep(500);
+      const stillFresh = await shadowEval(page, `
+        const h = root.querySelector('h1');
+        const open = root.querySelector('[data-testid="journey-empty-plan-open"]');
+        return { heading: h ? (h.textContent || '').trim() : '', open: Boolean(open) };
+      `);
+      if (!stillFresh.heading.includes(FRESH_LOT)) fail(`${viewport.id}: closing the fresh plan left the lot`, stillFresh);
+      if (!stillFresh.open) fail(`${viewport.id}: Node 00 not reachable again on the same fresh lot`, stillFresh);
+      if (!(await clickTestId(page, "journey-empty-plan-open"))) fail(`${viewport.id}: fresh Node 00 did not reopen`);
+      if (!(await existsTestId(page, "plan-quick-panel"))) fail(`${viewport.id}: reopening did not restore the same panel`);
+      pass(`${viewport.id}: fresh lot closed and re-opened Node 00 on the same lot`);
+      await clickTestId(page, "plan-panel-close");
+
+      // 11 — a lot with no quote / customer-self form, in the SAME session.
       if (viewport.id === "desktop") {
         await clickText(page, "Lô Hàng", "a");
         await clickText(page, "Tất cả thời gian", "button");

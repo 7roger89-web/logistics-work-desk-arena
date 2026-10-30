@@ -15,11 +15,15 @@ Hard rules carried by this module (they are the acceptance contract):
   customer contract when its ``customer_id`` is this lot's customer; a
   TT↔sub-agent purchase contract is a different instrument and can never be
   reported as the customer contract.
+* **No implied acceptance.** ``LINKED != ACCEPTED``: a linked quote keeps the
+  node non-complete until the quote record itself says ``ACCEPTED``.
 * **No implied signature.** A linked contract, a generated PDF or an attachment
-  is NOT a signature.  ``ATTESTED`` requires an explicit recorded signature /
-  customer-confirmation evidence that already exists in the repository
-  (``core.commercial_agreements`` evidence flags); anything else stays
-  ``UNVERIFIED``.
+  is NOT a signature.  ``ATTESTED`` requires an explicit recorded signature on
+  the instrument itself, or ``signed_contract`` evidence in
+  ``core.commercial_agreements`` that names THIS contract.  Customer
+  confirmation of the commercial terms is a separate flag and can never be
+  reported as a signature; evidence that cannot be attributed to the selected
+  contract keeps ``UNVERIFIED``.
 * **No implied payment.** Nothing in this repository classifies an incoming
   receipt as "customer paid the goods advance for this lot".  A quote amount, an
   estimated service line, a partner payable or a payment *request* therefore
@@ -215,13 +219,22 @@ def _signature_evidence(
     *,
     shipment_id: str,
     customer_id: str,
-) -> tuple[str, str]:
-    """Signature / customer-confirmation evidence, only where it is recorded.
+) -> tuple[str, str, bool]:
+    """Signature evidence for the SELECTED contract — never for a sibling.
 
-    Accepted sources are the EXISTING commercial-agreement evidence flags
-    (``core.commercial_agreements``) for an AGREED agreement on this lot, or an
-    explicit signature field already on the contract record.  A linked contract,
-    a generated file or an attachment proves nothing here.
+    Two sources only:
+
+    1. a signature recorded on the contract record itself (that row IS the
+       instrument, so the evidence is inherently tied to it);
+    2. ``signed_contract`` on an AGREED commercial agreement for this customer
+       and this lot **that names this exact contract** (``contract_id`` /
+       ``contract_no``).  ``core.commercial_agreements`` keeps
+       ``signed_contract`` and ``customer_confirmation`` as SEPARATE flags and
+       does not always record a contract id, so an agreement without a matching
+       identity can never be attributed to this instrument.
+
+    Customer confirmation of the commercial terms is returned separately: it may
+    be stated truthfully, but it is not a signature and never becomes ``ATTESTED``.
     """
     contract_ids = {
         _upper(row.get("id") or row.get("contract_no")) for row in contract_rows
@@ -229,8 +242,9 @@ def _signature_evidence(
     }
     for row in contract_rows:
         if _text(row.get("signed_at"), 40) or row.get("signed") is True:
-            return SIGNATURE_ATTESTED, "hồ sơ hợp đồng có ghi nhận chữ ký"
+            return SIGNATURE_ATTESTED, "hồ sơ hợp đồng có ghi nhận chữ ký", False
 
+    terms_confirmed = False
     rows = agreements.values() if isinstance(agreements, Mapping) else (agreements or ())
     for agreement in rows:
         if not isinstance(agreement, Mapping):
@@ -240,16 +254,22 @@ def _signature_evidence(
         scope = {_upper(item) for item in (agreement.get("shipment_ids") or [])}
         if _upper(shipment_id) not in scope:
             continue
-        agreement_contract = _upper(agreement.get("contract_id") or agreement.get("contract_no"))
-        if contract_ids and agreement_contract and agreement_contract not in contract_ids:
-            continue
-        evidence = _mapping(agreement.get("evidence"))
         if _upper(agreement.get("status")) != "AGREED":
             continue
-        if evidence.get("signed_contract") or evidence.get("customer_confirmation"):
-            flag = "signed_contract" if evidence.get("signed_contract") else "customer_confirmation"
-            return SIGNATURE_ATTESTED, f"hồ sơ thỏa thuận thương mại ghi nhận {flag}"
-    return SIGNATURE_UNVERIFIED, ""
+        agreement_contract = _upper(agreement.get("contract_id") or agreement.get("contract_no"))
+        evidence = _mapping(agreement.get("evidence"))
+        if not agreement_contract or agreement_contract not in contract_ids:
+            # No attributable instrument: never borrow this evidence.
+            continue
+        if evidence.get("customer_confirmation"):
+            terms_confirmed = True
+        if evidence.get("signed_contract"):
+            return (
+                SIGNATURE_ATTESTED,
+                "thỏa thuận thương mại ghi nhận signed_contract cho đúng hợp đồng này",
+                False,
+            )
+    return SIGNATURE_UNVERIFIED, "", terms_confirmed
 
 
 def build_contract_item(
@@ -299,7 +319,7 @@ def build_contract_item(
     row = customer_rows[0]
     contract_id = _text(row.get("id") or row.get("contract_no"), 64)
     contract_no = _text(row.get("contract_no") or row.get("id"), 64)
-    signature, source = _signature_evidence(
+    signature, source, terms_confirmed = _signature_evidence(
         customer_rows, agreements, shipment_id=shipment_id, customer_id=customer_id
     )
     if signature == SIGNATURE_ATTESTED:
@@ -311,6 +331,8 @@ def build_contract_item(
             f"Hợp đồng {contract_no} đã gắn lô nhưng chưa có bằng chứng chữ ký/xác nhận của khách; "
             "hợp đồng đã link không đồng nghĩa đã ký."
         )
+        if terms_confirmed:
+            detail += " Khách đã xác nhận điều khoản thương mại (chưa phải chữ ký hợp đồng)."
     return {
         "id": "customer_contract",
         "label": "Hợp đồng với khách",
@@ -424,8 +446,16 @@ def _next_actions(items: Sequence[Mapping[str, Any]]) -> list[str]:
 def _node_state(items: Sequence[Mapping[str, Any]]) -> tuple[str, str]:
     """Honest map state for node 00 — never COMPLETED without evidence."""
     quote, contract, advance = items[0], items[1], items[2]
-    if quote["state"] in {QUOTE_STATE_MISSING, QUOTE_STATE_UNRESOLVED}:
-        return NODE_STATE_PROBLEM, "Chưa gắn được báo giá cho lô."
+    # A lot with no quote and a lot whose quote link is unreadable are two
+    # different problems; the map must not blur them into one sentence.
+    if quote["state"] == QUOTE_STATE_MISSING:
+        return NODE_STATE_PROBLEM, "Chưa gắn báo giá cho lô."
+    if quote["state"] == QUOTE_STATE_UNRESOLVED:
+        return NODE_STATE_PROBLEM, "Báo giá đã gắn nhưng không đọc được hồ sơ báo giá."
+    # LINKED != ACCEPTED: a linked quote alone never completes the plan, even
+    # when the contract and advance items are satisfied.
+    if not quote.get("accepted"):
+        return NODE_STATE_WAITING, "Báo giá chưa có trạng thái khách chấp nhận."
     if contract["state"] != CONTRACT_STATE_LINKED:
         return NODE_STATE_WAITING, "Chưa xác minh được hợp đồng với khách của lô."
     if contract.get("signature") != SIGNATURE_ATTESTED:

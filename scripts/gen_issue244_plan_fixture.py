@@ -18,6 +18,10 @@ script:
        ``CUSTOMER_SELF`` flow (advance "Không áp dụng").
      * ``planUnknownFlow`` — LO-0308: no quote, no contract, import form NOT
        confirmed (advance "Chưa xác nhận hình thức nhập khẩu").
+  4. appends ONE brand-new lot (``planFresh``) whose Journey has NO operational
+     node at all — the shell must still expose Node 00 KẾ HOẠCH there. Its quote
+     is only SENT (linked ≠ accepted) and its contract has a commercial
+     agreement recording customer_confirmation only (never a signature).
 
 No write path is exercised: this fixture is read-only by construction.
 
@@ -40,6 +44,8 @@ OUT = ROOT / "tests" / "component" / "fixtures" / "view_model_issue244_plan.json
 ENTRUSTED = "LO-0306"
 CUSTOMER_SELF = "LO-0307"
 UNKNOWN_FLOW = "LO-0308"
+#: Brand-new lot: no profile/mode, so the Journey has zero operational nodes.
+FRESH = "LO-0399"
 
 #: The two same-customer quotes: the lot points at BG-244B, so BG-244A must
 #: never appear anywhere in the rendered plan.
@@ -132,6 +138,54 @@ def main() -> None:
 
     agents = load_authority_agents(db=db) or {}
     companies = load_authority_companies(db=db) or {}
+
+    # ------------------------------------------------------------------ #
+    # Brand-new lot (BLOCKER 3): no mode/Incoterm and no operational data, so
+    # ``build_journey`` yields ZERO nodes while ``plan`` is still built.
+    # ------------------------------------------------------------------ #
+    fresh_quote = {
+        "id": "BG-244C", "quote_no": "BG-244C", "customer_id": "CUST-ANPHAT",
+        "status": "SENT", "total": 120_000_000, "currency": "VND",
+    }
+    fresh_contract = {
+        "id": "HDMB-244C", "contract_no": "HDMB-244C", "shipment_ids": [FRESH],
+        "customer_id": "CUST-ANPHAT", "customer": "An Phát JSC", "status": "active",
+    }
+    fresh_agreement = {
+        "id": "AGR-244C", "agreement_id": "AGR-244C", "agreement_no": "TT-244C",
+        "customer_id": "CUST-ANPHAT", "shipment_ids": [FRESH],
+        "contract_id": "HDMB-244C", "status": "AGREED", "version": 2,
+        # Canonical semantics: two SEPARATE flags. Confirmation is not a signature.
+        "evidence": {"accepted_quotation": True, "signed_contract": False,
+                     "customer_confirmation": True, "entrusted_documentation": False},
+    }
+    fresh_doc = {
+        "id": FRESH, "shipment_id": FRESH, "customer": "An Phát JSC",
+        "client": "An Phát JSC", "customer_id": "CUST-ANPHAT",
+        "contract_id": "HDMB-244C", "quote_id": "BG-244C", "status": "pending",
+        "currency": "VND", "version": 0, "is_deleted": False, "is_archived": False,
+        "created_at": "2026-10-30", "updated_at": "2026-10-30",
+        "data": {
+            "0.0": {}, "1.2": {}, "2.4": {}, "2.6": {}, "2.7": {},
+            "3.4": {"details": [], "payments": [],
+                    "commission": {"list": [], "total": 0, "note": ""}},
+            "entrustment": {"active": False},
+        },
+    }
+    fresh_row = rd.shipment_projection(
+        fresh_doc,
+        customers=customers,
+        contracts={"HDMB-244C": fresh_contract},
+        quotes={"BG-244C": fresh_quote},
+        linked_contracts={FRESH: {"HDMB-244C": fresh_contract}},
+        agreements={"AGR-244C": fresh_agreement},
+        ledger=ledger,
+        agents=agents,
+        companies=companies,
+        history=[],
+    )
+    assert fresh_row["journey"]["nodes"] == [], "the fresh lot must have NO operational node"
+
     rows = {
         ENTRUSTED: project(ENTRUSTED, quote_id="BG-244B", mode="TT_ENTRUSTED_DIRECT",
                            contracts=CONTRACTS),
@@ -142,12 +196,15 @@ def main() -> None:
         if row["id"] in rows:
             model["shipments"][index] = rows[row["id"]]
 
+    model["shipments"].append(fresh_row)
+
     payload = {
         "generatedFrom": "scripts/gen_issue244_plan_fixture.py — isolated mongomock staging",
         "cases": {
             "entrusted": ENTRUSTED,
             "customerSelf": CUSTOMER_SELF,
             "unknownFlow": UNKNOWN_FLOW,
+            "fresh": FRESH,
         },
         "siblingQuoteThatMustNeverRender": "BG-244A",
         "journey": model,
