@@ -1,0 +1,99 @@
+{
+ "url": "http://127.0.0.1:9502/",
+ "lot": "QA-244-LOT",
+ "emptyLot": "QA-244-EMPTY",
+ "chrome": "/tmp/chromium",
+ "viewports": {
+  "desktop": {
+   "found": true,
+   "w": 131,
+   "h": 84,
+   "inViewportX": true,
+   "hitOk": true,
+   "hitBy": "journey-node-title",
+   "scrollWidth": 1440,
+   "innerWidth": 1440,
+   "horizontalOverflow": false,
+   "bubble": null,
+   "bubbleInsidePortal": null,
+   "mapWidth": 1248
+  },
+  "mobile": {
+   "found": true,
+   "w": 100,
+   "h": 67,
+   "inViewportX": true,
+   "hitOk": true,
+   "hitBy": "journey-node-title",
+   "scrollWidth": 390,
+   "innerWidth": 390,
+   "horizontalOverflow": false,
+   "bubble": null,
+   "bubbleInsidePortal": null,
+   "mapWidth": 326
+  }
+ },
+ "checks": [
+  {
+   "name": "desktop: dashboard lists both published lots, no denial notice",
+   "ok": true
+  },
+  {
+   "name": "desktop: node 00 KẾ HOẠCH first, numbered 00, state UNKNOWN (not COMPLETED)",
+   "ok": true
+  },
+  {
+   "name": "desktop: plan rows = Báo giá / Hợp đồng / Đề nghị thanh toán (CUSTOMER_CONTRACT, CUSTOMER_QUOTE, PAYMENT_REQUEST)",
+   "ok": true
+  },
+  {
+   "name": "desktop: no BL / private / stale / foreign / internal-money leak",
+   "ok": true
+  },
+  {
+   "name": "desktop: node 00 stays UNKNOWN; disclaimer present, no signature/payment claim",
+   "ok": true
+  },
+  {
+   "name": "desktop: open node 00 bubble 540px stays inside the portal (no overflow)",
+   "ok": true
+  },
+  {
+   "name": "desktop: bubble closed — no horizontal overflow, node 00 hittable (131x84)",
+   "ok": true
+  },
+  {
+   "name": "published lot without plan docs: 'Chưa có hồ sơ Kế hoạch được công bố', BL excluded",
+   "ok": true
+  },
+  {
+   "name": "mobile: dashboard lists both published lots, no denial notice",
+   "ok": true
+  },
+  {
+   "name": "mobile: node 00 KẾ HOẠCH first, numbered 00, state UNKNOWN (not COMPLETED)",
+   "ok": true
+  },
+  {
+   "name": "mobile: plan rows = Báo giá / Hợp đồng / Đề nghị thanh toán (CUSTOMER_CONTRACT, CUSTOMER_QUOTE, PAYMENT_REQUEST)",
+   "ok": true
+  },
+  {
+   "name": "mobile: no BL / private / stale / foreign / internal-money leak",
+   "ok": true
+  },
+  {
+   "name": "mobile: node 00 stays UNKNOWN; disclaimer present, no signature/payment claim",
+   "ok": true
+  },
+  {
+   "name": "mobile: open node 00 bubble 308px stays inside the portal (no overflow)",
+   "ok": true
+  },
+  {
+   "name": "mobile: bubble closed — no horizontal overflow, node 00 hittable (100x67)",
+   "ok": true
+  }
+ ],
+ "errors": []
+}

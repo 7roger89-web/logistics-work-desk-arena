@@ -1167,6 +1167,63 @@ function buildDiscussionComposer(node) {
   return wrap;
 }
 
+// ---------------------------------------------------------------------------
+// Issue #244 — "Hồ sơ Kế hoạch đã công bố" inside node 00.
+//
+// The rows come ONLY from `lot.plan_documents`, which Python already filtered to
+// CUSTOMER_QUOTE / CUSTOMER_CONTRACT / PAYMENT_REQUEST among documents that
+// passed the publication allowlist (id + version + PUBLISHED). Nothing here
+// decides visibility, and nothing here is downloadable: a published contract is
+// metadata, not a signature, and a payment REQUEST is not a payment.
+// ---------------------------------------------------------------------------
+
+const PLAN_NODE_ID = 'plan';
+
+function buildPlanPublishedBlock(node) {
+  if (!node || String(node.id) !== PLAN_NODE_ID) return null;
+  const rows = (state.lot && Array.isArray(state.lot.plan_documents))
+    ? state.lot.plan_documents
+    : [];
+  const section = document.createElement('section');
+  section.className = 'journey-bubble-task journey-plan-published';
+  section.dataset.testid = 'journey-plan-published';
+  section.style.cursor = 'default';
+  const body = document.createElement('span');
+  body.className = 'journey-bubble-task-body';
+  const title = document.createElement('span');
+  title.className = 'journey-bubble-title';
+  title.textContent = 'Hồ sơ Kế hoạch đã công bố';
+  body.appendChild(title);
+  if (rows.length === 0) {
+    const empty = document.createElement('span');
+    empty.className = 'journey-bubble-meta';
+    empty.dataset.testid = 'journey-plan-published-empty';
+    empty.textContent = String(
+      (state.lot && state.lot.plan_documents_empty_label)
+      || 'Chưa có hồ sơ Kế hoạch được công bố'
+    );
+    body.appendChild(empty);
+  } else {
+    rows.forEach((row) => {
+      const line = document.createElement('span');
+      line.className = 'journey-bubble-meta';
+      line.dataset.testid = `journey-plan-document-${String(row.kind || '')}`;
+      const label = String(row.label || '');
+      const docTitle = String(row.title || '');
+      line.textContent = label && docTitle && docTitle !== label
+        ? `${label}: ${docTitle}`
+        : (label || docTitle || 'Hồ sơ Kế hoạch');
+      body.appendChild(line);
+    });
+  }
+  const note = document.createElement('span');
+  note.className = 'journey-bubble-meta';
+  note.textContent = 'Hồ sơ đã công bố không chứng minh đã ký hoặc đã thanh toán.';
+  body.appendChild(note);
+  section.appendChild(body);
+  return section;
+}
+
 function renderNodeBubble(node, pos, docs) {
   const bubbleSlot = q('journey-bubble-slot');
   if (!bubbleSlot) return;
@@ -1256,6 +1313,10 @@ function renderNodeBubble(node, pos, docs) {
   listDiv.appendChild(buildDiscussionThread(node));
   listDiv.appendChild(taskStage);
   listDiv.appendChild(taskDocs);
+  // Issue #244 — Node 00 KẾ HOẠCH: the plan files Trường Thành already chose to
+  // publish (Báo giá / Hợp đồng / Đề nghị thanh toán), metadata only.
+  const planBlock = buildPlanPublishedBlock(node);
+  if (planBlock) listDiv.appendChild(planBlock);
 
   const foot = document.createElement('div');
   foot.className = 'journey-bubble-foot';

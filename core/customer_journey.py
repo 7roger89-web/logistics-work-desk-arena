@@ -23,6 +23,8 @@ from __future__ import annotations
 import re
 from typing import Any, Mapping, Sequence
 
+from core.shipment_plan import customer_plan_documents
+
 UNKNOWN_STAGE_LABEL = "Chưa xác minh"
 UNKNOWN_STAGE_DETAIL = "Chưa có chứng cứ được duyệt"
 UNKNOWN_ETA_LABEL = "Chưa xác minh"
@@ -281,6 +283,12 @@ def build_lot_model(card: Any) -> dict[str, Any]:
         for d in documents
         if _text(d.get("id"), 40)
     ]
+    # Issue #244 — Node 00 "Hồ sơ Kế hoạch đã công bố": an EXPLICIT kind-filter
+    # (CUSTOMER_QUOTE / CUSTOMER_CONTRACT / PAYMENT_REQUEST) over the documents
+    # that already passed the publication allowlist. Metadata only: no amount,
+    # no bytes, no storage id. A published document proves neither a signature
+    # nor a payment, and ``stage_documents`` stays intentionally empty.
+    plan_documents = customer_plan_documents(public_documents)
     # Owner 5C: legacy quote prices cannot reach portal model.
     public_timeline = [
         {
@@ -314,6 +322,12 @@ def build_lot_model(card: Any) -> dict[str, Any]:
         "finance_detail": None,
         "quote": None,
         "documents": public_documents,
+        # Issue #244 — the three allowed plan document kinds, still bound to
+        # this lot's PUBLISHED allowlist. Empty is an explicit statement.
+        "plan_documents": plan_documents,
+        "plan_documents_empty_label": (
+            "" if plan_documents else "Chưa có hồ sơ Kế hoạch được công bố"
+        ),
         "timeline": public_timeline,
         "journey": {
             "nodes": nodes,

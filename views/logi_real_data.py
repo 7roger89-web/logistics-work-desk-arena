@@ -1368,6 +1368,11 @@ def shipment_projection(
     # rebuilding it per row (each rebuild re-reads the app_settings registry).
     # None keeps the old per-call behavior for single-row callers.
     document_catalog: Sequence[Any] | None = None,
+    # Issue #244 — the render-local commercial-agreement snapshot (already read
+    # once by the build path). It is the ONLY recorded signature/confirmation
+    # evidence Node 00 is allowed to read; omitting it keeps every standalone
+    # caller truthful at "chưa xác minh".
+    agreements: Mapping[str, Any] | Sequence[Any] | None = None,
 ) -> dict[str, Any]:
     """Project one canonical shipment document into the frozen UI shape.
 
@@ -1530,6 +1535,22 @@ def shipment_projection(
         sub_purchase_contract=sub_purchase_contract,
     )
 
+    # Issue #244 — Node 00 Kế hoạch: ONE read-only projection of the three
+    # facts that must be settled before the lot moves. It reuses the exact
+    # quote/contract/finance objects already resolved above (no extra read, no
+    # second money truth) and never replaces the document workflow.
+    from core.shipment_plan import build_plan_node  # noqa: PLC0415
+
+    plan_node = build_plan_node(
+        shipment,
+        quotes=quotes,
+        contracts=contracts,
+        linked_contracts=candidate_contracts,
+        agreements=agreements,
+        flow=commercial_flow,
+        payments=finance_view.get("payments") or (),
+    )
+
     attachment_view = attachment_rows(sid, grouped=attachments, download=attachment_download)
     # Issue #162 — attached Work Modules join the SAME journey projection. The
     # templates snapshot is passed in by the caller (one read per render, or one
@@ -1597,6 +1618,8 @@ def shipment_projection(
         "docs": document_checklist(shipment, execution_profile=execution_profile),
         "commercialFlow": commercial_flow,
         "documentWorkflow": document_workflow,
+        # Issue #244 — Node 00 KẾ HOẠCH (báo giá → hợp đồng khách → tạm ứng).
+        "plan": plan_node,
         # LOGI_SHIPMENT_DOCUMENTS_DRIVE_REINTEGRATE_02 — real attachments of the
         # lot: bounded metadata read back from the canonical
         # ``shipment_attachments`` collection. Bytes live in Google Drive; no
