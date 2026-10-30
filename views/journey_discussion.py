@@ -43,6 +43,16 @@ def _attachment_rows(note: Mapping[str, Any]) -> list[dict[str, Any]]:
     return [row for row in (note.get("attachments") or ()) if isinstance(row, Mapping)]
 
 
+def _show_flash(key_prefix: str, stage_id: str) -> None:
+    """One-shot confirmation surviving the rerun that refreshes the thread."""
+    key = f"{key_prefix}_{stage_id}_flash"
+    message = st.session_state.get(key)
+    if not message:
+        return
+    st.success(str(message))
+    st.session_state.pop(key, None)
+
+
 def _render_thread(thread: Sequence[Mapping[str, Any]], *, key_prefix: str, db: Any,
                    actor: Mapping[str, str]) -> None:
     if not thread:
@@ -63,7 +73,9 @@ def _render_thread(thread: Sequence[Mapping[str, Any]], *, key_prefix: str, db: 
             unsafe_allow_html=True,
         )
         for row in _attachment_rows(note):
-            label = f"📎 {_text(row.get('name'), 160)} · {_text(row.get('sizeLabel'), 40)}"
+            label = _escape(
+                f"📎 {_text(row.get('name'), 160)} · {_text(row.get('sizeLabel'), 40)}"
+            )
             if st.button(label, key=f"{key_prefix}_dl_{_text(row.get('id'), 80)}"):
                 outcome = notes.read_note_attachment(
                     note_id=_text(note.get("id"), 80),
@@ -88,14 +100,17 @@ def _composer(*, key_prefix: str, db: Any, actor: Mapping[str, str], customer_id
               shipment_id: str, stage_id: str, visibility_options: Sequence[str],
               default_visibility: str, help_text: str) -> None:
     # The composer is keyed by a send counter so a saved note clears the box on
-    # the next rerun without mutating a live widget's session-state key.
-    seq_key = f"{key_prefix}_seq"
+    # the next rerun without mutating a live widget's session-state key. The
+    # draft is also keyed by the stage: text typed at one công đoạn must never be
+    # sent to another one after the operator switches the selector.
+    scope = f"{key_prefix}_{stage_id}"
+    seq_key = f"{scope}_seq"
     try:
         seq = int(st.session_state.get(seq_key) or 0)
     except (TypeError, ValueError):
         seq = 0
     body = st.text_area(
-        "Nội dung trao đổi", key=f"{key_prefix}_body_{seq}", height=90,
+        "Nội dung trao đổi", key=f"{scope}_body_{seq}", height=90,
         placeholder=help_text,
     )
     visibility = default_visibility
@@ -103,7 +118,7 @@ def _composer(*, key_prefix: str, db: Any, actor: Mapping[str, str], customer_id
         visibility = st.radio(
             "Ai nhìn thấy nội dung này?", list(visibility_options),
             index=list(visibility_options).index(default_visibility),
-            horizontal=True, key=f"{key_prefix}_vis",
+            horizontal=True, key=f"{scope}_vis",
         )
     visibility_value = (
         notes.VISIBILITY_CUSTOMER if visibility.startswith("👁") else notes.VISIBILITY_INTERNAL
@@ -112,9 +127,9 @@ def _composer(*, key_prefix: str, db: Any, actor: Mapping[str, str], customer_id
         "Đính chứng từ (tùy chọn)",
         type=None,
         accept_multiple_files=True,
-        key=f"{key_prefix}_files",
+        key=f"{scope}_files_{seq}",
     )
-    if not st.button("Gửi", key=f"{key_prefix}_send"):
+    if not st.button("Gửi", key=f"{scope}_send"):
         return
     if len(uploads or ()) > notes.MAX_FILES_PER_SUBMIT:
         st.error(f"Tối đa {notes.MAX_FILES_PER_SUBMIT} tệp mỗi lần gửi.")
@@ -142,7 +157,12 @@ def _composer(*, key_prefix: str, db: Any, actor: Mapping[str, str], customer_id
         st.error(_text(denied, 300) or "Không gửi được trao đổi.")
         return
     st.session_state[seq_key] = seq + 1
-    st.success("Đã lưu trao đổi tại công đoạn này.")
+    message = "Đã lưu trao đổi tại công đoạn này."
+    # Keep the confirmation across the refresh rerun so the saved note appears
+    # in the thread immediately instead of on the next unrelated interaction.
+    st.session_state[f"{scope}_flash"] = message
+    st.success(message)
+    st.rerun()
 
 
 def render_internal_discussion(
@@ -175,6 +195,7 @@ def render_internal_discussion(
         except notes.JourneyNoteDenied as denied:
             st.error(_text(denied, 300) or "Không đọc được trao đổi.")
             return
+        _show_flash(scoped_prefix, stage)
         _render_thread(thread, key_prefix=scoped_prefix, db=db, actor=actor)
         _composer(
             key_prefix=scoped_prefix, db=db, actor=actor, customer_id=customer,
@@ -217,6 +238,7 @@ def render_customer_discussion(
             except notes.JourneyNoteDenied as denied:
                 st.error(_text(denied, 300) or "Không đọc được trao đổi.")
                 continue
+            _show_flash(prefix, stage)
             _render_thread(thread, key_prefix=prefix, db=db, actor=actor)
             _composer(
                 key_prefix=prefix, db=db, actor=actor,
