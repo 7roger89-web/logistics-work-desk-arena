@@ -116,8 +116,11 @@ def _composer(*, key_prefix: str, db: Any, actor: Mapping[str, str], customer_id
     )
     if not st.button("Gửi", key=f"{key_prefix}_send"):
         return
+    if len(uploads or ()) > notes.MAX_FILES_PER_SUBMIT:
+        st.error(f"Tối đa {notes.MAX_FILES_PER_SUBMIT} tệp mỗi lần gửi.")
+        return
     files: list[dict[str, Any]] = []
-    for upload in (uploads or [])[: notes.MAX_FILES_PER_SUBMIT]:
+    for upload in (uploads or []):
         files.append({
             "name": getattr(upload, "name", ""),
             "mime": getattr(upload, "type", "") or "",
@@ -161,9 +164,10 @@ def render_internal_discussion(
         "username": _text(user.get("username"), 100),
         "role": _text(user.get("role"), 40).lower(),
     }
+    scoped_prefix = f"{key_prefix}_{customer}_{shipment}"
     with st.expander("💬 Trao đổi theo công đoạn (Trường Thành ↔ khách hàng)", expanded=False):
         try:
-            stage = _stage_choice("Công đoạn", f"{key_prefix}_stage")
+            stage = _stage_choice("Công đoạn", f"{scoped_prefix}_stage")
             thread = notes.list_stage_notes(
                 customer_id=customer, shipment_id=shipment, stage_id=stage,
                 actor=actor, db=db,
@@ -171,9 +175,9 @@ def render_internal_discussion(
         except notes.JourneyNoteDenied as denied:
             st.error(_text(denied, 300) or "Không đọc được trao đổi.")
             return
-        _render_thread(thread, key_prefix=key_prefix, db=db, actor=actor)
+        _render_thread(thread, key_prefix=scoped_prefix, db=db, actor=actor)
         _composer(
-            key_prefix=key_prefix, db=db, actor=actor, customer_id=customer,
+            key_prefix=scoped_prefix, db=db, actor=actor, customer_id=customer,
             shipment_id=shipment, stage_id=stage,
             visibility_options=("🔒 Chỉ nội bộ Trường Thành", "👁 Cho khách hàng xem"),
             default_visibility="🔒 Chỉ nội bộ Trường Thành",
@@ -200,7 +204,9 @@ def render_customer_discussion(
         shipment = _text(getattr(card, "reference", ""), 120)
         if not shipment:
             continue
-        prefix = f"{key_prefix}_{position}"
+        # Isolation is based on the server-proven principal and lot, not the
+        # positional card index, which can be reused by another tenant.
+        prefix = f"{key_prefix}_{actor['customer_id']}_{shipment}_{position}"
         with st.expander(f"💬 Trao đổi công đoạn · lô {shipment}", expanded=False):
             try:
                 stage = _stage_choice("Công đoạn", f"{prefix}_stage")

@@ -208,6 +208,13 @@ def list_stage_notes(
     if not _customer_read_allowed(resolved_actor, customer_id):
         LOGGER.warning("JOURNEY_NOTE_READ_DENIED reason=foreign_customer")
         return []
+    # A note's original customer_id is not permanent read permission: always
+    # verify the shipment still belongs to this customer before any content read.
+    try:
+        _scope(database, customer_id, shipment_id)
+    except JourneyNoteDenied:
+        LOGGER.warning("JOURNEY_NOTE_READ_DENIED reason=shipment_scope_changed")
+        return []
     query: dict[str, Any] = {
         "kind": JOURNEY_NOTE_KIND,
         "customer_id": customer_id,
@@ -401,6 +408,17 @@ def read_note_attachment(
     if (resolved_actor.get("kind") == "customer"
             and _clean(row.get("visibility"), 20).upper() != VISIBILITY_CUSTOMER):
         LOGGER.warning("JOURNEY_NOTE_ATTACHMENT_DENIED reason=internal_content")
+        return {"ok": False, "error": "Không tìm thấy chứng từ."}
+    # Never serve previously shared bytes after reassignment/deletion of the
+    # shipment.  The note's old tenant field alone is not sufficient.
+    try:
+        _scope(
+            database,
+            _clean(row.get("customer_id"), 120),
+            _clean(row.get("shipment_id"), 120),
+        )
+    except JourneyNoteDenied:
+        LOGGER.warning("JOURNEY_NOTE_ATTACHMENT_DENIED reason=shipment_scope_changed")
         return {"ok": False, "error": "Không tìm thấy chứng từ."}
     record = next(
         (

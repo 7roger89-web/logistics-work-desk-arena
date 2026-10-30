@@ -541,3 +541,74 @@ def test_customer_portal_never_shows_internal_notes(db):
         visible = _visible(app)
     assert "NỘI TỐI MẬT GIÁ VỐN" not in visible
     assert "Nội bộ Trường Thành" not in visible
+
+
+# --------------------------------------------------------------------------
+# Security regressions: tenant assignment/revocation and local widget state
+# --------------------------------------------------------------------------
+
+def test_shipment_reassignment_revokes_old_tenant_notes_and_bytes(db, store):
+    _write(
+        db, actor=CUSTOMER_ACTOR, visibility=notes.VISIBILITY_CUSTOMER,
+        body="Chứng từ thuộc lô cũ", files=[_png()], store=store,
+    )
+    original_note = _customer(db)[0]
+    attachment_id = original_note["attachments"][0]["id"]
+    assert notes.read_note_attachment(
+        note_id=original_note["id"], attachment_id=attachment_id,
+        actor=CUSTOMER_ACTOR, db=db, gridfs=store,
+    )["ok"] is True
+    db.shipments.update_one(
+        {"id": LOT_A}, {"$set": {"customer_id": CUSTOMER_B}},
+    )
+    assert _customer(db) == []
+    assert notes.read_note_attachment(
+        note_id=original_note["id"], attachment_id=attachment_id,
+        actor=CUSTOMER_ACTOR, db=db, gridfs=store,
+    )["ok"] is False
+    # The new tenant must not inherit the old customer's note automatically.
+    assert notes.list_stage_notes(
+        customer_id=CUSTOMER_B, shipment_id=LOT_A, actor=FOREIGN_ACTOR, db=db,
+    ) == []
+    with pytest.raises(notes.JourneyNoteDenied):
+        _write(db, actor=CUSTOMER_ACTOR)
+    assert db.quick_notes.count_documents({"kind": notes.JOURNEY_NOTE_KIND}) == 1
+
+
+def test_removed_shipment_denies_old_stage_notes_and_download(db, store):
+    _write(db, files=[_png()], store=store)
+    original = _internal(db)[0]
+    db.shipments.update_one({"id": LOT_A}, {"$set": {"is_deleted": True}})
+    assert _internal(db) == []
+    assert notes.read_note_attachment(
+        note_id=original["id"], attachment_id=original["attachments"][0]["id"],
+        actor=SALE, db=db, gridfs=store,
+    )["ok"] is False
+
+
+def test_streamlit_customer_composer_keys_are_scoped_per_tenant_and_lot(db):
+    from types import SimpleNamespace
+
+    fake = FakeStreamlit()
+    keys = []
+    original_area = fake.text_area
+
+    def capture_area(label, key=None, **kwargs):
+        keys.append(key)
+        return original_area(label, key=key, **kwargs)
+
+    fake.text_area = capture_area
+    with patch.object(discussion, "st", fake):
+        discussion.render_customer_discussion(
+            [SimpleNamespace(reference=LOT_A)],
+            SimpleNamespace(customer_id=CUSTOMER_A, display_name="Lục Giác"),
+            db=db, key_prefix="jd_customer",
+        )
+        discussion.render_customer_discussion(
+            [SimpleNamespace(reference=LOT_B)],
+            SimpleNamespace(customer_id=CUSTOMER_B, display_name="Minh Đức"),
+            db=db, key_prefix="jd_customer",
+        )
+    assert len(keys) == 2 and keys[0] != keys[1]
+    assert CUSTOMER_A in keys[0] and CUSTOMER_B in keys[1]
+
