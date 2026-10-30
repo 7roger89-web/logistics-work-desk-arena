@@ -1,0 +1,44 @@
+
+Running 1 test using 1 worker
+
+[1/1] specs/customer-send-reload.spec.js:3:1 › customer sends a Journey Map node comment, reload keeps it
+  1) specs/customer-send-reload.spec.js:3:1 › customer sends a Journey Map node comment, reload keeps it 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByText('QA-RUNNER-1793376583927')
+    Expected: visible
+    Timeout: 25000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" getByText('QA-RUNNER-1793376583927') with timeout 25000ms
+      - waiting for getByText('QA-RUNNER-1793376583927')
+
+
+      27 |   await page.waitForTimeout(7000);
+      28 |   await expect(page.getByTestId('journey-discussion-error')).toHaveCount(0);
+    > 29 |   await expect(page.getByText(marker)).toBeVisible({ timeout: 25000 });
+         |                                        ^
+      30 |
+      31 |   await page.reload();
+      32 |   await openThread();
+        at /tmp/pwtest/specs/customer-send-reload.spec.js:29:40
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/customer-send-reload-custo-89fd7-ode-comment-reload-keeps-it/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/customer-send-reload-custo-89fd7-ode-comment-reload-keeps-it/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/customer-send-reload-custo-89fd7-ode-comment-reload-keeps-it/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/customer-send-reload-custo-89fd7-ode-comment-reload-keeps-it/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+  1 failed
+    specs/customer-send-reload.spec.js:3:1 › customer sends a Journey Map node comment, reload keeps it 

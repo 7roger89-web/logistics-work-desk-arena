@@ -1,0 +1,3 @@
+{
+  "result": "{\"steps\":{\"header_before\":\"💬 Trao đổi (0)\",\"customer_send_error\":null,\"customer_send_error_alert\":0,\"customer_marker_visible_after_send\":true,\"header_after_send\":\"💬 Trao đổi (1)\",\"customer_marker_visible_after_reload\":true,\"header_after_reload\":\"💬 Trao đổi (1)\",\"staff_logged_in\":1,\"staff_sees_customer_note\":true,\"staff_send_error\":null,\"staff_reply_in_thread\":true,\"customer_reads_staff_reply\":true,\"customer_still_reads_own_note\":true,\"header_after_staff_reply\":\"💬 Trao đổi (2)\",\"other_tenant_lot_visible\":0,\"other_tenant_nodes\":0,\"other_tenant_discussion_frames\":0},\"ok\":true,\"customer_marker\":\"QA-CUST-1793375922033\",\"staff_marker\":\"QA-STAFF-1793375977415\"}"
+}

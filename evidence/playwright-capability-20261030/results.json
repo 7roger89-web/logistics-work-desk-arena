@@ -1,0 +1,308 @@
+{
+  "schema": "logi-browser-capability-repro/2",
+  "executed_at_utc": "2026-10-30T16:08:12Z",
+  "repository": "7roger89-web/logistics-work-desk-arena",
+  "shas": {
+    "session_branch_head_at_measure": "9e4190b278dd2ced8771c5249582753d34e561db",
+    "pre_worktree": "4dd3cb9aceaedf66a2128b8612a38012f3e13e50",
+    "fix_pr_head": "6b95af35e94ef331bdf29403d1285bd77fc8c461",
+    "staging_branch_head": "2fcb74ea7fc37890589601c43d5c74a3271ab10e",
+    "main": "9e4190b278dd2ced8771c5249582753d34e561db",
+    "pr_243_state": "MERGED",
+    "staging_contains_fix_customer_dashboard": true
+  },
+  "artifacts_sha256": {
+    "repo_flow_a_customer_send_reload_js": "114969629d54d83df8c65d527443ecc39d1232ab74c08f694c211c2f3b22a8bc",
+    "harness_h_split_customer_py": "148b9b54b81710fa55742ee0e2245bce73ba39c871a7e2ee626b875532be948c",
+    "flow_s2_shared_journey_js": "3eabcacc5f5dfb3e6f5b056306125023c4e2b1b31bbb3c6423bede1edd8567a0",
+    "repo_harness_g15_lg_tt_discussion_runtime_py_at_6b95af3": "a05a2ce55312ec0787587ac93b7ebdcd91eba5c3cd607809e77c0715a06ddd0d",
+    "runner_spec_js": "816365da87f2ca84a1a6a56575ef648fa9e27598a9d23c1c64713cb2b21378fc"
+  },
+  "environment": {
+    "sandbox": "E2B Debian 12, outbound allowlist github/pypi/npm only",
+    "python": "3.11.2",
+    "node": "22.22.3",
+    "npm": "10.9.8",
+    "streamlit": "1.66.1",
+    "mongomock": "4.3.0",
+    "pymongo": "4.19.0",
+    "browser": "Chromium 153.0.8010.0 (@sparticuz/chromium 153.0.0)",
+    "driver": "@playwright/cli 0.1.22",
+    "playwright_cdn_reachable": false
+  },
+  "prep_cost_seconds": {
+    "pip_install_requirements_plus_pytest": 33.3,
+    "npm_install_playwright_cli_plus_chromium": 5.1,
+    "git_worktrees_pre_and_fix": 0.66,
+    "to_first_running_browser": 39,
+    "sandbox_to_complete_matrix": 907
+  },
+  "cases": {
+    "pre_ha_s1": {
+      "app_sha": "4dd3cb9aceaedf66a2128b8612a38012f3e13e50",
+      "port": 9502,
+      "harness": "harness/h_split_customer.py",
+      "flow": "flows/repo-a-customer-send-reload.js",
+      "flow_sha256": "114969629d54d83df8c65d527443ecc39d1232ab74c08f694c211c2f3b22a8bc",
+      "exit": 1,
+      "boot_ms": 2021,
+      "run_ms": 26935,
+      "is_error": true,
+      "error": "TimeoutError: locator.waitFor: Timeout 25000ms exceeded.\nCall log:\n  - waiting for getByText('QA-SEND-1793376314488').visible().first() to be visible\n",
+      "result": null,
+      "pass": false,
+      "server_log_signals": [
+        "JOURNEY_NOTE_DB_UNAVAILABLE reason=None"
+      ],
+      "artifacts": {
+        "screenshot": "screenshots/pre_ha_s1.png",
+        "trace": "traces/pre_ha_s1.trace.gz",
+        "network": "traces/pre_ha_s1.network.gz",
+        "app_log": "logs/pre_ha_s1.app.log"
+      }
+    },
+    "fix_ha_s1": {
+      "app_sha": "6b95af35e94ef331bdf29403d1285bd77fc8c461",
+      "port": 9502,
+      "harness": "harness/h_split_customer.py",
+      "flow": "flows/repo-a-customer-send-reload.js",
+      "flow_sha256": "114969629d54d83df8c65d527443ecc39d1232ab74c08f694c211c2f3b22a8bc",
+      "exit": 0,
+      "boot_ms": 1945,
+      "run_ms": 3766,
+      "is_error": false,
+      "error": null,
+      "result": {
+        "lot_visible_for_luc_giac": true,
+        "thread_before": "💬 Trao đổi (0)",
+        "comment_field_in_node_bubble": true,
+        "send_acknowledged_no_error": true,
+        "thread_after_send": "💬 Trao đổi (1)",
+        "marker": "QA-SEND-1793376349210",
+        "after_reload_marker_visible": true,
+        "thread_after_reload": "💬 Trao đổi (1)"
+      },
+      "pass": true,
+      "server_log_signals": [],
+      "artifacts": {
+        "screenshot": "screenshots/fix_ha_s1.png",
+        "trace": "traces/fix_ha_s1.trace.gz",
+        "network": "traces/fix_ha_s1.network.gz",
+        "app_log": "logs/fix_ha_s1.app.log"
+      }
+    },
+    "pre_ha_s1b": {
+      "app_sha": "4dd3cb9aceaedf66a2128b8612a38012f3e13e50",
+      "port": 9502,
+      "harness": "harness/h_split_customer.py",
+      "flow": "flows/repo-a-customer-send-reload.js",
+      "flow_sha256": "114969629d54d83df8c65d527443ecc39d1232ab74c08f694c211c2f3b22a8bc",
+      "exit": 1,
+      "boot_ms": 2055,
+      "run_ms": 27039,
+      "is_error": true,
+      "error": "TimeoutError: locator.waitFor: Timeout 25000ms exceeded.\nCall log:\n  - waiting for getByText('QA-SEND-1793376447737').visible().first() to be visible\n",
+      "result": null,
+      "pass": false,
+      "server_log_signals": [
+        "JOURNEY_NOTE_DB_UNAVAILABLE reason=None"
+      ],
+      "artifacts": {
+        "screenshot": "screenshots/pre_ha_s1b.png",
+        "app_log": "logs/pre_ha_s1b.app.log",
+        "trace_omitted": "JSON + log + ảnh giữ lại; trace bỏ để giữ kích thước repo (ca lặp lại / ca chứng minh harness không phát hiện)"
+      }
+    },
+    "fix_ha_s1b": {
+      "app_sha": "6b95af35e94ef331bdf29403d1285bd77fc8c461",
+      "port": 9502,
+      "harness": "harness/h_split_customer.py",
+      "flow": "flows/repo-a-customer-send-reload.js",
+      "flow_sha256": "114969629d54d83df8c65d527443ecc39d1232ab74c08f694c211c2f3b22a8bc",
+      "exit": 0,
+      "boot_ms": 2159,
+      "run_ms": 3966,
+      "is_error": false,
+      "error": null,
+      "result": {
+        "lot_visible_for_luc_giac": true,
+        "thread_before": "💬 Trao đổi (0)",
+        "comment_field_in_node_bubble": true,
+        "send_acknowledged_no_error": true,
+        "thread_after_send": "💬 Trao đổi (1)",
+        "marker": "QA-SEND-1793376437921",
+        "after_reload_marker_visible": true,
+        "thread_after_reload": "💬 Trao đổi (1)"
+      },
+      "pass": true,
+      "server_log_signals": [],
+      "artifacts": {
+        "screenshot": "screenshots/fix_ha_s1b.png",
+        "app_log": "logs/fix_ha_s1b.app.log",
+        "trace_omitted": "JSON + log + ảnh giữ lại; trace bỏ để giữ kích thước repo (ca lặp lại / ca chứng minh harness không phát hiện)"
+      }
+    },
+    "fix_hb_s2": {
+      "app_sha": "6b95af35e94ef331bdf29403d1285bd77fc8c461",
+      "port": 9503,
+      "harness": "tests/component/g15_lg_tt_discussion_runtime.py @ 6b95af3",
+      "flow": "flows/s2-shared-journey.js",
+      "flow_sha256": "3eabcacc5f5dfb3e6f5b056306125023c4e2b1b31bbb3c6423bede1edd8567a0",
+      "exit": 0,
+      "boot_ms": 2007,
+      "run_ms": 172458,
+      "is_error": false,
+      "error": null,
+      "result": {
+        "steps": {
+          "header_before": "💬 Trao đổi (0)",
+          "customer_send_error": null,
+          "customer_send_error_alert": 0,
+          "customer_marker_visible_after_send": true,
+          "header_after_send": "💬 Trao đổi (1)",
+          "customer_marker_visible_after_reload": true,
+          "header_after_reload": "💬 Trao đổi (1)",
+          "staff_logged_in": 1,
+          "staff_sees_customer_note": true,
+          "staff_send_error": null,
+          "staff_reply_in_thread": true,
+          "customer_reads_staff_reply": true,
+          "customer_still_reads_own_note": true,
+          "header_after_staff_reply": "💬 Trao đổi (2)",
+          "other_tenant_lot_visible": 0,
+          "other_tenant_nodes": 0,
+          "other_tenant_discussion_frames": 0
+        },
+        "ok": true,
+        "customer_marker": "QA-CUST-1793375922033",
+        "staff_marker": "QA-STAFF-1793375977415"
+      },
+      "pass": true,
+      "server_log_signals": [
+        "CUSTOMER_PORTAL_PUBLICATION_DENIED shipment_id=QA-FOREIGN reason=missing_pinned_version"
+      ],
+      "artifacts": {
+        "screenshot": "screenshots/fix_hb_s2.png",
+        "trace": "traces/fix_hb_s2.trace.gz",
+        "network": "traces/fix_hb_s2.network.gz",
+        "app_log": "logs/fix_hb_s2.app.log"
+      }
+    },
+    "pre_hb_s2": {
+      "app_sha": "4dd3cb9aceaedf66a2128b8612a38012f3e13e50",
+      "port": 9503,
+      "harness": "tests/component/g15_lg_tt_discussion_runtime.py @ 6b95af3 (copied into PRE worktree)",
+      "flow": "flows/s2-shared-journey.js",
+      "flow_sha256": "3eabcacc5f5dfb3e6f5b056306125023c4e2b1b31bbb3c6423bede1edd8567a0",
+      "exit": 0,
+      "boot_ms": 2033,
+      "run_ms": 172717,
+      "is_error": false,
+      "error": null,
+      "result": {
+        "steps": {
+          "header_before": "💬 Trao đổi (0)",
+          "customer_send_error": null,
+          "customer_send_error_alert": 0,
+          "customer_marker_visible_after_send": true,
+          "header_after_send": "💬 Trao đổi (1)",
+          "customer_marker_visible_after_reload": true,
+          "header_after_reload": "💬 Trao đổi (1)",
+          "staff_logged_in": 1,
+          "staff_sees_customer_note": true,
+          "staff_send_error": null,
+          "staff_reply_in_thread": true,
+          "customer_reads_staff_reply": true,
+          "customer_still_reads_own_note": true,
+          "header_after_staff_reply": "💬 Trao đổi (2)",
+          "other_tenant_lot_visible": 0,
+          "other_tenant_nodes": 0,
+          "other_tenant_discussion_frames": 0
+        },
+        "ok": true,
+        "customer_marker": "QA-CUST-1793376151060",
+        "staff_marker": "QA-STAFF-1793376206741"
+      },
+      "pass": true,
+      "server_log_signals": [
+        "CUSTOMER_PORTAL_PUBLICATION_DENIED shipment_id=QA-FOREIGN reason=missing_pinned_version"
+      ],
+      "artifacts": {
+        "screenshot": "screenshots/pre_hb_s2.png",
+        "app_log": "logs/pre_hb_s2.app.log",
+        "trace_omitted": "JSON + log + ảnh giữ lại; trace bỏ để giữ kích thước repo (ca lặp lại / ca chứng minh harness không phát hiện)"
+      }
+    }
+  },
+  "repeatability": {
+    "fix_ha_s1": 3.766,
+    "fix_ha_s1b": 3.966,
+    "pre_ha_s1": 26.935,
+    "pre_ha_s1b": 27.039,
+    "note": "cùng harness, cùng script, cùng cổng, chỉ khác app code; kết quả lặp lại y hệt"
+  },
+  "pytest_pair": {
+    "fix": {
+      "cmd": "python -m pytest tests/test_journey_notes.py -q -p no:randomly",
+      "outcome": "67 passed",
+      "duration_s": 4.64
+    },
+    "pre_app_code_same_test_file": {
+      "cmd": "python -m pytest tests/test_journey_notes.py -q -p no:randomly -k customer_portal",
+      "outcome": "4 failed, 2 passed, 61 deselected",
+      "failed": [
+        "test_customer_portal_comment_is_written_to_the_db_the_portal_rendered",
+        "test_customer_portal_prefix_callback_writes_through_the_same_db",
+        "test_customer_portal_event_seam_refuses_another_tenant_lot",
+        "test_customer_portal_event_seam_passes_its_db_handle"
+      ]
+    }
+  },
+  "verdict": "PROVEN",
+  "runner_trial": {
+    "why": "acceptance #5 — chỉ thử @playwright/test trong môi trường cô lập để đo năng lực bổ sung, không thêm dependency vào repo",
+    "install": {
+      "pkg": "@playwright/test@1.64.1",
+      "location": "/tmp/pwtest (ngoài repo)",
+      "install_ms": 1480
+    },
+    "config": "runner_trial/playwright.config.js (launchOptions.executablePath=/tmp/chromium, trace=on, workers=1)",
+    "spec": "runner_trial/specs/customer-send-reload.spec.js",
+    "spec_sha256": "816365da87f2ca84a1a6a56575ef648fa9e27598a9d23c1c64713cb2b21378fc",
+    "runs": {
+      "fix": {
+        "worktree": "/tmp/fix",
+        "sha": "6b95af35e94ef331bdf29403d1285bd77fc8c461",
+        "exit": 0,
+        "run_ms": 47232,
+        "outcome": "1 passed (46.6s)",
+        "result": "runner_trial/runner_fix/result.json"
+      },
+      "pre": {
+        "worktree": "/tmp/pre",
+        "sha": "4dd3cb9aceaedf66a2128b8612a38012f3e13e50",
+        "exit": 1,
+        "run_ms": 53697,
+        "outcome": "1 failed",
+        "result": "runner_trial/runner_pre/result.json",
+        "failure": "expect(getByText(marker)).toBeVisible(timeout 25000) — element(s) not found",
+        "artifacts": {
+          "screenshot": "runner_trial/runner_pre/failure.png",
+          "app_log": "runner_trial/runner_pre/app.log",
+          "trace_omitted": "trace.zip của runner không đưa vào repo (2.4 MB) — JSON + ảnh lỗi + log đã đủ đối chiếu"
+        }
+      }
+    },
+    "added_over_existing_lane": [
+      "assertion library (expect) + failure message chuẩn hoá",
+      "trace.zip + screenshot tự động theo từng test",
+      "reporter JSON/JUnit/HTML sẵn, retries, workers, --grep/--repeat-each"
+    ],
+    "cost_over_existing_lane": [
+      "thêm toolchain Node dev (package.json + node_modules) vào repo vốn không có",
+      "vẫn phải tự viết spec ~1.5 KB và vẫn phải có harness/hạ tầng y như làn cũ",
+      "thời gian chạy không nhanh hơn: 46.6s (FIX) / 53.7s (PRE) — chênh lệch so với 3.8s của playwright-cli là do spec có ~10s sleep thủ công, không phải do runner"
+    ]
+  },
+  "evidence_size_note": "traces chỉ giữ cho 3 ca quyết định: pre_ha_s1, fix_ha_s1, fix_hb_s2"
+}

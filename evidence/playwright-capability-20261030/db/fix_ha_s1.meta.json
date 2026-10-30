@@ -1,0 +1,3 @@
+{"case":"fix_ha_s1","exit":0,"boot_ms":1945,"run_ms":3766,
+ "flow":"/tmp/fix/evidence/logi-journey-send-20261030/flows/a-customer-send-reload.js","harness":"/tmp/verify/harness/h_split_customer.py","worktree":"/tmp/fix","port":9502,
+ "worktree_head":"6b95af35e94ef331bdf29403d1285bd77fc8c461"}

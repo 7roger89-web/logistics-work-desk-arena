@@ -1,0 +1,3 @@
+{"case":"pre_hb_s2","exit":0,"boot_ms":2033,"run_ms":172717,
+ "flow":"/tmp/verify/flows/s2-shared-journey.js","harness":"/tmp/pre/tests/component/g15_lg_tt_discussion_runtime.py","worktree":"/tmp/pre","port":9503,
+ "worktree_head":"4dd3cb9aceaedf66a2128b8612a38012f3e13e50"}

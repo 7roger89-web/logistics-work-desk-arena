@@ -1,0 +1,196 @@
+{
+  "config": {
+    "argv": [
+      "/usr/local/bin/node",
+      "/tmp/pwtest/node_modules/.bin/playwright",
+      "test"
+    ],
+    "configFile": "/tmp/pwtest/playwright.config.js",
+    "rootDir": "/tmp/pwtest/specs",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "/tmp/pwtest/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "",
+        "name": "",
+        "testDir": "/tmp/pwtest/specs",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 90000
+      }
+    ],
+    "filteredProjects": [
+      {
+        "grep": {},
+        "grepInvert": null,
+        "outputDir": "/tmp/pwtest/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "name": "",
+        "testDir": "/tmp/pwtest/specs",
+        "snapshotDir": "/tmp/pwtest/specs",
+        "testIgnore": [],
+        "testMatch": "**/*.@(spec|test).?(c|m)[jt]s?(x)",
+        "timeout": 90000,
+        "use": {
+          "baseURL": "http://127.0.0.1:9502",
+          "headless": true,
+          "launchOptions": {
+            "executablePath": "/tmp/chromium",
+            "args": [
+              "--no-sandbox"
+            ]
+          },
+          "viewport": {
+            "width": 1440,
+            "height": 900
+          },
+          "trace": "on",
+          "screenshot": "only-on-failure"
+        },
+        "dependencies": [],
+        "ignoreSnapshots": false,
+        "__projectId": ""
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "json",
+        {
+          "outputFile": "result.json"
+        }
+      ],
+      [
+        "line",
+        null
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "default",
+    "updateSourceMethod": "patch",
+    "version": "1.64.1",
+    "workers": 1,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "customer-send-reload.spec.js",
+      "file": "customer-send-reload.spec.js",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "customer sends a Journey Map node comment, reload keeps it",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "failed",
+                  "duration": 52289,
+                  "error": {
+                    "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByText('QA-RUNNER-1793376583927')\nExpected: visible\nTimeout: 25000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" getByText('QA-RUNNER-1793376583927') with timeout 25000ms\u001b[22m\n\u001b[2m  - waiting for getByText('QA-RUNNER-1793376583927')\u001b[22m\n",
+                    "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByText('QA-RUNNER-1793376583927')\nExpected: visible\nTimeout: 25000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" getByText('QA-RUNNER-1793376583927') with timeout 25000ms\u001b[22m\n\u001b[2m  - waiting for getByText('QA-RUNNER-1793376583927')\u001b[22m\n\n    at /tmp/pwtest/specs/customer-send-reload.spec.js:29:40",
+                    "location": {
+                      "file": "/tmp/pwtest/specs/customer-send-reload.spec.js",
+                      "column": 40,
+                      "line": 29
+                    },
+                    "snippet": "  27 |   await page.waitForTimeout(7000);\n  28 |   await expect(page.getByTestId('journey-discussion-error')).toHaveCount(0);\n> 29 |   await expect(page.getByText(marker)).toBeVisible({ timeout: 25000 });\n     |                                        ^\n  30 |\n  31 |   await page.reload();\n  32 |   await openThread();"
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "/tmp/pwtest/specs/customer-send-reload.spec.js",
+                        "column": 40,
+                        "line": 29
+                      },
+                      "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByText('QA-RUNNER-1793376583927')\nExpected: visible\nTimeout: 25000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" getByText('QA-RUNNER-1793376583927') with timeout 25000ms\u001b[22m\n\u001b[2m  - waiting for getByText('QA-RUNNER-1793376583927')\u001b[22m\n\n\n  27 |   await page.waitForTimeout(7000);\n  28 |   await expect(page.getByTestId('journey-discussion-error')).toHaveCount(0);\n> 29 |   await expect(page.getByText(marker)).toBeVisible({ timeout: 25000 });\n     |                                        ^\n  30 |\n  31 |   await page.reload();\n  32 |   await openThread();\n    at /tmp/pwtest/specs/customer-send-reload.spec.js:29:40"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-30T16:09:43.772Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "screenshot",
+                      "contentType": "image/png",
+                      "path": "/tmp/pwtest/test-results/customer-send-reload-custo-89fd7-ode-comment-reload-keeps-it/test-failed-1.png"
+                    },
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "/tmp/pwtest/test-results/customer-send-reload-custo-89fd7-ode-comment-reload-keeps-it/error-context.md"
+                    },
+                    {
+                      "name": "trace",
+                      "contentType": "application/zip",
+                      "path": "/tmp/pwtest/test-results/customer-send-reload-custo-89fd7-ode-comment-reload-keeps-it/trace.zip"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "/tmp/pwtest/specs/customer-send-reload.spec.js",
+                    "column": 40,
+                    "line": 29
+                  }
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "95754657f0338b15f5d1-e4af3fca5a4f6881cfbc",
+          "file": "customer-send-reload.spec.js",
+          "line": 3,
+          "column": 1
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-10-30T16:09:43.309Z",
+    "duration": 53083.892,
+    "expected": 0,
+    "skipped": 0,
+    "unexpected": 1,
+    "flaky": 0
+  }
+}
