@@ -1,0 +1,94 @@
+name: LOGI disposable no-cache impacted tests benchmark
+
+on:
+  push:
+    branches:
+      - experiments/test-impact-nocache-20261030
+
+permissions:
+  contents: read
+
+jobs:
+  pytest-impacted-no-cache:
+    runs-on: ubuntu-latest
+    timeout-minutes: 19
+    env:
+      ENV_IDENTITY: PREVIEW
+      MONGO_URI: ''
+      PYTHONUNBUFFERED: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 2fcb74ea7fc37890589601c43d5c74a3271ab10e
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install independent no-cache test selector in disposable runner
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "2fcb74ea7fc37890589601c43d5c74a3271ab10e"
+          python -m pip install --disable-pip-version-check -r requirements.txt 'pytest==8.4.2' 'pytest-impacted==0.36.0'
+          mkdir -p test-impact-nocache-output
+          python -m pip freeze | grep -Ei 'pytest-impacted|pytest==' > test-impact-nocache-output/versions.txt
+      - name: Confirm unrelated test file baseline with all tests executed
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pytest tests/test_journey_notes.py tests/test_config_loader.py tests/test_deepl_config_shapes.py -q -p no:randomly --tb=short 2>&1 | tee test-impact-nocache-output/baseline.log
+      - name: Simulate old customer portal DB bug in disposable checkout
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('views/customer_dashboard.py')
+          s=p.read_text()
+          marker='session, result, principal=principal, cards=cards, db=db,'
+          assert s.count(marker)==1
+          p.write_text(s.replace(marker,'session, result, principal=principal, cards=cards,',1))
+          print('SIMULATED_BACKEND_REGRESSION=YES')
+          PY
+          git diff -- views/customer_dashboard.py > test-impact-nocache-output/mutation.patch
+          test -s test-impact-nocache-output/mutation.patch
+      - name: Run no-cache dependency analysis against real changed production source
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +e
+          python -m pytest tests/test_journey_notes.py tests/test_config_loader.py tests/test_deepl_config_shapes.py --impacted --impacted-module=views --impacted-tests-dir=tests --impacted-git-mode=unstaged -q -p no:randomly --tb=short > test-impact-nocache-output/impacted.log 2>&1
+          impact_exit=$?
+          set -e
+          echo "impacted_exit=$impact_exit" > test-impact-nocache-output/status.txt
+          cat test-impact-nocache-output/impacted.log | tail -n 65
+          python - <<'PY'
+          import json, re
+          from pathlib import Path
+          root=Path('test-impact-nocache-output')
+          baseline=(root/'baseline.log').read_text()
+          impacted=(root/'impacted.log').read_text()
+          print('BASELINE_END:',' '.join(baseline.splitlines()[-2:]))
+          print('IMPACTED_END:',' '.join(impacted.splitlines()[-2:]))
+          assert re.search(r'\d+ passed',baseline), 'original baseline must run'
+          assert 'test_customer_portal_' in impacted and 'failed' in impacted, 'known broken customer path should fail instead of being silently deselected'
+          assert 'deselected' in impacted, 'no-cache impacted should omit unrelated tests'
+          (root/'summary.json').write_text(json.dumps({
+              'source_sha':'2fcb74ea7fc37890589601c43d5c74a3271ab10e',
+              'plugin':'pytest-impacted==0.36.0',
+              'no_initial_coverage_cache':True,
+              'mutated_only':'views/customer_dashboard.py drop db=db',
+              'detected_regression':True,
+              'deselected_unrelated_tests':True,
+              'warning':'beta tool; AST import graph may miss dynamic dependencies, JavaScript and runtime browser behavior. Never sole release gate.'
+          },indent=2))
+          print('PYTEST_IMPACTED_REAL_REPO_PROBE=PASS')
+          PY
+      - name: Archive disposable tool proof
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: logi-pytest-impacted-nocache-20261030
+          path: test-impact-nocache-output/
+          retention-days: 7
+          if-no-files-found: warn
