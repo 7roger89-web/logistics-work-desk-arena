@@ -64,6 +64,29 @@ Re-run results at `d9b5c91`:
   **40F / 2302P / 45S**, with **0** newly failing tests
   (`evidence/issue244-plan/pytest-failed-set.txt`).
 
+## Second repair cycle — F3 / F4 / F5 (HEAD `f669289`)
+
+| finding | defect | fix | proof |
+| --- | --- | --- | --- |
+| F3 | an exact `quote_id` pointing at **another customer's** ACCEPTED quote showed “Khách đã chấp nhận” and could complete the node | `build_quote_item` now requires `quote.customer_id == shipment.customer_id`; foreign **or** owner-less quotes fail closed to `UNRESOLVED` / “Chưa xác minh báo giá của lô”. No fuzzy fallback, no second search | pytest: foreign-customer ACCEPTED quote → not accepted + `PROBLEM`; owner-less quote → `UNRESOLVED`; same-owner ACCEPTED → positive case |
+| F4 | the contract CTA was `/hop-dong/<raw id>`, so `HDMB/2026/01` hit the wildcard route | `_contract_route()` encodes the id **exactly once** with the same safe set as `component/src/lib/contractRoute.ts::contractPath` → `/hop-dong/HDMB%2F2026%2F01` | pytest (encoded once, no `%252F`, decodes back); Chromium desktop + mobile: real CTA click opens that contract’s workdesk, then back to the same lot with Node 00 reopened (`desktop-10-contract-workdesk.png`, `desktop-11-back-to-lot.png`, mobile equivalents) |
+| F5 | after the legal `ACCEPTED → READY_TO_CREATE_SHIPMENT` transition the node regressed to “chưa có trạng thái khách chấp nhận” | `_quote_accepted()` keeps acceptance when the quote’s **own** `status_history` proves the `ACCEPTED` step; a bare `READY_TO_CREATE_SHIPMENT` string stays unverified and keeps the node `WAITING` | pytest: legitimate transition → accepted + `COMPLETED`; fabricated status without history → not accepted + `WAITING` |
+
+Additive runtime lot for F4: **`LO-0310`** (customer contract `HDMB/2026/01`,
+fresh Journey surface). The earlier `LO-0306/0307/0308/0309` cases and all of
+their assertions are unchanged.
+
+Re-run at `f669289`:
+
+- `tests/test_issue244_plan_node.py` → **45 passed**; plan + quote suites **116 passed**.
+- `ISSUE244_STAFF_BROWSER=PASS` — **30 checks** (desktop 1440×900 + mobile 390×844),
+  including the slash-contract CTA navigation and the return to the same lot.
+- `ISSUE244_CUSTOMER_BROWSER=PASS` (15 checks, unchanged).
+- `tsc --noEmit` clean · `scan_process.py component/dist` → `0`.
+- Full suite, clean worktrees: base `2fcb74e` **40F / 2263P / 45S** → `f669289`
+  **40F / 2308P / 45S**, FAILED ids **identical** (see `pytest-failed-set.txt`;
+  the one inbox-search flake flips on both revisions and is not claimed fixed).
+
 ## How to reproduce
 
 ```bash

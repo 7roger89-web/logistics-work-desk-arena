@@ -1,20 +1,24 @@
-# Issue #244 / PR #245 — real FAILED-set comparison (base vs repair HEAD)
+# Issue #244 / PR #245 — real FAILED-set comparison (base vs final HEAD)
 # Both runs: clean git worktree of the same repo, same venv, same command:
 #   /tmp/venv/bin/python -m pytest -q --tb=no -p no:cacheprovider
 
 BASE  2fcb74ea7fc37890589601c43d5c74a3271ab10e (staging arena/ae5f9f47-…)
-      : 41 failed, 2262 passed, 45 skipped
-FINAL d9b5c91 (this branch, 3 acceptance blockers repaired)
-      : 40 failed, 2302 passed, 45 skipped
+      : 40 failed, 2263 passed, 45 skipped
+FINAL f669289 (this branch, F3/F4/F5 repaired on top of the 3 earlier blockers)
+      : 40 failed, 2308 passed, 45 skipped
 
-Newly failing in FINAL (regressions introduced): 0
-Failing in BASE but not in FINAL:
+FAILED node ids: IDENTICAL between base and final (comm: 0 introduced, 0 base-only).
++45 newly passing tests are the #244 suite and its blocker regressions.
+
+Known baseline flake (NOT introduced, NOT claimed fixed):
   tests/test_inbox_snippets.py::test_search_finds_note_beyond_page
-    -> unrelated to Node 00 and NOT claimed as a fix: the historical baseline
-       itself alternates 40F/41F on this one inbox-search case.
-=> no regression; +40 newly passing tests (the #244 suite plus its blockers).
+  - passes when run alone in BOTH revisions;
+  - flips between full-suite runs on BOTH revisions:
+      base run A: FAILED / base run B: passed
+      final run A: passed / final run B: FAILED / final run C: passed
+  - lives in the inbox-search module, untouched by this PR.
 
-## FAILED set in FINAL (40)
+## FAILED set (identical in base and final, 40 items)
 tests/test_agreements_api.py::LoadAgreementsTests::test_load_agreements_returns_dict_from_load_dict
 tests/test_all_tabs_smoke.py::AllTabsSmokeTest::test_all_routes_render
 tests/test_customer_portal_tenant_reset_g15.py::test_customer_component_clears_previous_model_on_rerun
