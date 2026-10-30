@@ -16,26 +16,26 @@ Xây **Logistics Work Desk có thể sử dụng thật**, tập trung giao di�
 - **PR [#232](https://github.com/7roger89-web/logistics-work-desk-arena/pull/232):** đã chuyển từ `main` sang staging, tích hợp lịch sử staging không force. HEAD `1a16b4d7d40922af8b4ab7fef63766090523f11b`, Draft; đã thêm backend Admin công bố phiên bản và UI chọn nguồn, test mới **chưa chạy**. 12 file thay đổi so với staging. PR #226 vẫn Draft, giữ nguyên và đang chồng lấn logic reader.
 - **`main` tham chiếu:** `9e4190b278dd2ced8771c5249582753d34e561db`. **Không được tự merge/deploy production**; đây chỉ là ref tại thời điểm quan sát.
 
-## QA follow-up — nhánh Arena phiên hiện tại, KHÔNG phải PR #232
+## QA follow-up — bản sửa đã fast-forward vào PR #232
 
-- 2026-10-30: HEAD PR #232 đo lại `b67f306d44650c4f039e2b1275941e0e7e597c48`, vẫn Draft. Khi đổi mô hình khách trên cùng trang, Chromium tái hiện modal khách cũ còn hiện dữ liệu lô/chứng từ/sự kiện; ảnh và phạm vi tại `evidence/g15-followup-qa/README.md`.
-- Bản sửa + test ở commit `c2ba70b74c6a4506137084c23b7fb4f75cbe928f` trên `arena/a1cadc10-logistics-work-desk-arena`, **chưa nằm trong PR #232**. Phiên Arena không được phép push nhánh PR. Đừng đánh dấu PR sẵn sàng hoặc tích hợp staging trước khi đưa bản sửa vào PR, chạy lại trên HEAD PR mới, và có review độc lập.
-- QA cục bộ: pytest G1/G1.5 143 pass tại cây sửa trước định dạng test; Chromium với dữ liệu/danh tính giả đã qua công bố, reload, Journey và đổi khách; kiểm thử Viewer trực tiếp vào hàm backend bị từ chối và dữ liệu không đổi. Full suite còn lỗi nền và có một thay đổi tập lỗi cần xem `evidence/g15-followup-qa/README.md`. Đăng nhập Google thật, Mongo server thật và nghiệp vụ Lục Giác thật chưa được chứng minh.
+- 2026-10-30: bản PR #232 trước sửa `b67f306d44650c4f039e2b1275941e0e7e597c48` có lỗi hiển thị modal khách trước khi đổi model trong cùng trang. Chromium và kiểm thử hồi quy tái hiện; bằng chứng tại `evidence/g15-followup-qa/README.md`.
+- **Đã tháo chặn quyền nhánh:** nhánh QA là hậu duệ trực tiếp của PR #232 (`ahead 3, behind 0`); Control Tower fast-forward **không force** PR #232 lên `dd1c63d94024caeff76fef0699179c3cc38d7f6e`. Bản sửa `c2ba70b` và test/ảnh đã **nằm trong PR #232**. PR vẫn Draft; chưa merge staging.
+- QA cục bộ trên nhánh QA: pytest G1/G1.5 **143 PASS** ở cây ứng dụng trước commit định dạng test; Chromium với dữ liệu/danh tính giả kiểm chứng công bố/reload/Journey/đổi khách; Viewer gọi backend bị từ chối và không đổi dữ liệu. Full suite còn các lỗi nền và một test thay đổi tập FAIL, cần đối chiếu log từng lần chạy (`README.md` ghi 2110 PASS/35 FAIL, báo cáo phiên nêu 2111 PASS/34 FAIL). Đây không phải PASS toàn bộ. Chưa có test thực thi trong môi trường Cloud/Google OIDC/Mongo thật.
 - `CLOUD_QA=BLOCKED`: chưa chứng minh deployed SHA và DB identity an toàn; không ghi Cloud, production hay dữ liệu thật.
 
 ## CURRENT — phạm vi phát triển đang mở
 
-**G1.5 / PR #232 — hoàn thiện và kiểm chứng luồng Admin Trường Thành → Lục Giác trên staging**, tái sử dụng nguồn và giao diện đang có. Phân biệt ba lớp nghiệm thu: (1) code/test với fixture; (2) tính đầy đủ, tính đúng của manifest/provenance nghiệp vụ được duyệt; (3) trải nghiệm khách hàng tại runtime thật. PASS lớp này không đồng nghĩa PASS lớp khác.
+**G1.5 / PR #232 — tiếp tục kiểm chứng độc lập luồng Admin Trường Thành → Lục Giác trên staging**, tái sử dụng nguồn và giao diện đang có. Phân biệt ba lớp nghiệm thu: (1) code/test với fixture; (2) tính đầy đủ, tính đúng của manifest/provenance nghiệp vụ được duyệt; (3) trải nghiệm khách hàng tại runtime thật. PASS lớp này không đồng nghĩa PASS lớp khác.
 
 ## NEXT — bước có giá trị lớn nhất (một lát chức năng)
 
-1. **PR #232 là nhánh chức năng đang hoạt động.** Chạy bộ pytest gốc trên đúng HEAD mới (đặc biệt `tests/test_customer_portal_publish_g15.py` và G1.5 source/tenant), kiểm tra luồng Admin chọn lô → duyệt bản nguồn đã xác minh → phiên bản PUBLISHED → Lục Giác đọc đúng Journey. Fix lỗi phát hiện ngay trong PR #232, không tạo PR song song.
+1. **PR #232 đã có bản sửa chống lộ dữ liệu khi đổi principal.** Đo lại HEAD hiện tại, kiểm chứng độc lập chính **diff 3 commit QA** và chạy/đối chiếu focused pytest + DOM regression trên HEAD PR sau fast-forward (đặc biệt `tests/component/dom_acceptance_g15_tenant_reset.mjs`). Fix lỗi trong cùng PR, không mở PR khác.
 2. Kiểm tra dữ liệu giả cô lập: đúng khách, khác khách, chưa công bố, sai version, người xem gửi lệnh ghi bị backend từ chối. Kiểm chứng nguồn nghiệp vụ được xác minh, không biến fixture PASS thành chứng nhận dữ liệu thật. Chỉ tích hợp staging sau review độc lập/QA đầy đủ. Nếu Cloud thiếu SHA hoặc DB identity thì Cloud QA BLOCKED, không chặn test cô lập.
 3. Khi luồng công bố G1.5 có bằng chứng và đã tích hợp staging, chuyển sang **trao đổi/comment + đính chứng từ theo công đoạn**. Nguồn sự kiện/chứng từ thật cần nhập/xác minh và duyệt bởi nghiệp vụ trước khi công bố; không giả định có sẵn. Kế hoạch/thanh toán/công nợ là các lát sau, không trộn vào PR #232.
 
 ## BLOCKERS / GATES — đừng biến thành vòng lặp
 
-- **Backend publisher** (ba module byte-exact: `customer_portal_publish.py`, `customer_portal_sources.py`, `hexa_customer_publication.py`) đã qua **27/27 test logic cô lập dùng fake Mongo tối giản**. **Chưa chạy pytest gốc với `mongomock` thật, Streamlit AppTest hoặc Chromium tại HEAD mới**; chưa được đánh QA PASS tích hợp.
+- **Đã có QA thực thi trên nhánh QA ancestor của PR #232:** focused pytest 143 PASS và Chromium/Streamlit với **mongomock, OIDC giả lập**; đã fast-forward nguyên ancestry QA vào PR. Chưa có QA độc lập trên exact HEAD PR sau cập nhật tài liệu; full-suite baseline còn lỗi, business provenance/Google OIDC/Cloud QA chưa nghiệm thu. Kết quả 27/27 trên fake DB tối giản là mốc lịch sử, **không thay thế** kiểm thử repo.
 - Chưa có chứng cứ `CLOUD_DEPLOYED_HEAD` và DB identity của ứng dụng `thu-log-g1-test.streamlit.app`: **cấm ghi Cloud để thử QA** khi chưa xác thực runtime an toàn. Nếu bị chặn, ghi `BLOCKED` cho riêng Cloud QA và tiếp tục công việc phát triển/test cô lập.
 - Dữ liệu công bố thật cho Lục Giác chưa được xác minh; **không tự tạo manifest PUBLISHED thật hoặc coi fixture là nghiệm thu nghiệp vụ**.
 - Chính sách Owner 5C: không lộ báo giá tiền, chi phí, margin, ghi chú nội bộ, GridFS bytes/download; báo giá khách chỉ là metadata tệp được duyệt; công nợ thiếu đối soát = UNKNOWN.
