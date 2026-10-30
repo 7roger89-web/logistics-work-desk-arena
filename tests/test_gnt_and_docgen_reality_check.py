@@ -203,21 +203,23 @@ def test_gnt_taxpayer_authority_semantics():
 def test_gnt_taxpayer_operator_save_and_readback(staging, event_seq):
     """Operator saves explicit GNT taxpayer via shipment_field_save; fresh readback enables GNT."""
     sid = "LO-TAX-OP-01"
-    _dispatch(event_seq, "shipment_create", {
+    created = _dispatch(event_seq, "shipment_create", {
         "shipmentId": sid,
-        "customerId": "CUS-SAMPLE",
-        "customer": "CÔNG TY KHÁCH HÀNG MẪU",
+        "customerId": "CUST-ANPHAT",
+        "customer": "TÊN GIẢ TỪ BROWSER",
         "contractId": "CT-NONE",
     })
+    assert created["ok"], created["error"]
 
-    # Initially new shipment has customer hint but no explicit GNT taxpayer
+    # Initially new shipment has customer hint but no explicit GNT taxpayer.
+    # The hint is the active directory name, never the browser's display text.
     ship_init = vm.read_shipment(sid)
     customs_init = (ship_init.get("data") or {}).get("2.4") or {}
     proj_init = rd._gnt_projection(ship_init, customs_init, {}, sid)
     assert proj_init["ready"] is False
     assert "Người nộp thuế" in proj_init["missing"]
     assert "Mã số thuế" in proj_init["missing"]
-    assert proj_init["customerHint"] == "CÔNG TY KHÁCH HÀNG MẪU"
+    assert proj_init["customerHint"] == "An Phát JSC"
 
     # Operator enters and saves explicit taxpayer info along with customs facts
     out = _dispatch(event_seq, "shipment_field_save", {

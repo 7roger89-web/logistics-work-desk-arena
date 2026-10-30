@@ -49,6 +49,59 @@ def _current_app_url() -> str:
         return ""
 
 
+def _staging_identity_checks() -> dict[str, bool]:
+    """Read effective process config and the live DB handle; expose booleans only."""
+    from core import config, database
+    from views import logi_sandbox
+
+    checks = {
+        "ENV_IDENTITY is STAGING/PREVIEW": config.ENV_IDENTITY in {"STAGING", "PREVIEW"},
+        "MONGO_DB_NAME is logistics_staging": config.MONGO_DB_NAME == "logistics_staging",
+        "MONGO_RELEASE_MODE is false": config.MONGO_RELEASE_MODE is False,
+        "REAL_MONGO connected to logistics_staging": False,
+    }
+    try:
+        from pymongo.database import Database
+
+        db = database.get_db()  # Includes the existing validate_mongo_identity guard.
+        if (
+            logi_sandbox.transport_name() == logi_sandbox.REAL_TRANSPORT
+            and isinstance(db, Database)
+            and db.name == "logistics_staging"
+        ):
+            db.command("ping")  # No business reads or writes.
+            checks["REAL_MONGO connected to logistics_staging"] = True
+    except Exception:
+        # Never expose exception text: drivers may include connection details.
+        pass
+    return checks
+
+
+def _render_staging_identity_check(user: dict) -> None:
+    """Temporary bounded QA diagnostic: authenticated Admin, staging host only."""
+    if (
+        user.get("role") != "admin"
+        or urlparse(_current_app_url()).hostname != _STAGING_CUSTOMER_HOST
+    ):
+        return
+    with st.expander("Staging QA — runtime identity", expanded=False):
+        if not st.button("Kiểm tra runtime staging", key="staging-qa-identity"):
+            return
+        from core.auth import fresh_session_identity_for_action
+
+        fresh = fresh_session_identity_for_action()
+        if fresh is None or fresh.get("role") != "admin":
+            st.error("Runtime identity: FAIL (Admin session required)")
+            return
+        checks = _staging_identity_checks()
+        for label, passed in checks.items():
+            st.write(f"{'PASS' if passed else 'FAIL'} — {label}")
+        if all(checks.values()):
+            st.success("STAGING_RUNTIME_IDENTITY=PASS")
+        else:
+            st.error("STAGING_RUNTIME_IDENTITY=FAIL — chưa được lưu dữ liệu QA")
+
+
 def main() -> None:
     st.set_page_config(
         # Display brand only (core.config.DISPLAY_COMPANY_NAME) — the legal
@@ -122,6 +175,7 @@ def main() -> None:
     # Real Logistics view-model. With no MONGO_URI configured the app runs on
     # an isolated staging transport; a real URI always takes precedence.
     vm = logi_view_model.build_view_model()
+    _render_staging_identity_check(user)
     # Owner/Admin-only portal email control lives on the customers profile.
     # Support sees no control and the financial RBAC matrix is unchanged.
     customer_dashboard.render_owner_portal_access_control(user)

@@ -1057,27 +1057,74 @@ def rename_shipment_id(old_id: str, new_id: str) -> bool:
 
 
 def update_shipment_customer(sid: str, new_customer_name: str, customer_id: str = "") -> bool:
+    """Update a shipment's customer without breaking its directory identity.
+
+    A supplied customer ID is authoritative: it must name an active directory
+    record and the stored display name always comes from that record.  A
+    shipment that already has an ID cannot keep that ID while accepting a
+    free-text name.  Legacy rows without an ID remain editable as legacy data;
+    this writer never guesses an ID from their name.
+    """
     if not _require_business_permission("shipment_edit", "Bạn không có quyền cập nhật khách hàng của lô hàng."):
         return False
     db = get_db()
     if db is None:
+        _set_last_error("MongoDB chưa sẵn sàng.")
         return False
+
+    sid = str(sid or "").strip()
+    requested_customer_id = str(customer_id or "").strip()
     old = db.shipments.find_one({"id": sid}, {"_id": 0})
+    if not old:
+        _set_last_error(f"Không tìm thấy lô {sid}.")
+        return False
+
+    old_customer_id = str(old.get("customer_id") or "").strip()
+    if requested_customer_id:
+        customer = db.customers.find_one(
+            {"id": requested_customer_id, "is_deleted": {"$ne": True}},
+            {"_id": 0},
+        )
+        if not isinstance(customer, Mapping):
+            _set_last_error(
+                f"Không có khách hàng {requested_customer_id} đang hoạt động trong danh bạ."
+            )
+            return False
+        canonical_name = str(customer.get("name") or "").strip()
+        if not canonical_name:
+            _set_last_error(
+                f"Khách hàng {requested_customer_id} chưa có tên trong danh bạ."
+            )
+            return False
+        canonical_customer_id = str(customer.get("id") or requested_customer_id).strip()
+    else:
+        if old_customer_id:
+            _set_last_error(
+                "Lô đã gắn mã khách; phải chọn khách hàng đang hoạt động trong danh bạ."
+            )
+            return False
+        canonical_name = str(new_customer_name or "").strip()
+        canonical_customer_id = ""
+        if not canonical_name:
+            _set_last_error("Tên khách hàng lịch sử không được để trống.")
+            return False
+
     actor_context = _actor_context()
     fields = {
-        "client": new_customer_name,
-        "customer": new_customer_name,
+        "client": canonical_name,
+        "customer": canonical_name,
         "updated_at": utc_now(),
         "updated_by": actor_context["username"],
         "updated_by_user_id": actor_context["user_id"],
         "updated_by_role": actor_context["role"],
     }
-    if customer_id:
-        fields["customer_id"] = customer_id
+    if canonical_customer_id:
+        fields["customer_id"] = canonical_customer_id
     try:
         result = db.shipments.update_one({"id": sid}, {"$set": fields, "$inc": {"version": 1}})
         if result.modified_count > 0:
             _audit(db, "shipment", sid, "customer_updated", before=old, after=fields)
+            _set_last_error("")
         return result.modified_count > 0
     except PyMongoError as exc:
         _set_last_error(str(exc))

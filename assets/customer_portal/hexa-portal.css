@@ -259,7 +259,7 @@
       .journey-split.journey-map-first .journey-zoom-bar .journey-zoom-text { height: 36px; padding: 0 8px; font-size: 11px; }
       .journey-split.journey-map-first .journey-map-hint { display: none; }
     }
-
+  
 
 .demo-badge-fixed {
   position: static;
@@ -347,7 +347,7 @@
 .journey-zero-title { display:block; margin:6px 0; font-size:16px; font-weight:800; color:#0f172a; }
 .journey-zero-summary { display:block; font-size:12.5px; color:#475569; }
 
-
+  
 </head>
 
 /* Component-only glue: these three classes replace the inline styles the

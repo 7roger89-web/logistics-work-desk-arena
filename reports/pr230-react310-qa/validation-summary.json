@@ -1,0 +1,42 @@
+{
+  "base_sha": "5fd29f0bc2a893a319cf23e0f8f59c3842db704a",
+  "initial_head": "b098ddbbc2ba607b488bff9ec90643e88387d47d",
+  "tested_code_commit": "11bfeb189e83f55110fe564c5f4f86acc38321a0",
+  "counts": {
+    "baseline": {
+      "failed": 63,
+      "passed": 2063,
+      "skipped": 23,
+      "errors": 2
+    },
+    "candidate": {
+      "failed": 63,
+      "passed": 2063,
+      "skipped": 23,
+      "errors": 2
+    }
+  },
+  "failed_error_node_sets_equal": true,
+  "new_failed_node_ids": [],
+  "react310_baseline_reproduced": true,
+  "react310_initial_head_reproduced": true,
+  "react310_candidate": "PASS",
+  "typecheck": "PASS",
+  "build": "PASS",
+  "scan": "PASS",
+  "dist_js_repeated_build_and_commit_byte_match": true,
+  "dist_js_sha256": "93a0fd02996afd9157f8b939fa135e588c09bb5fda8201e7b15219d7ccd1c0b7",
+  "chromium_desktop": "PASS",
+  "chromium_mobile": "PASS",
+  "journey_map_pixels_identical_to_baseline": true,
+  "g1_security_focused": {
+    "passed": 147,
+    "failed": 4,
+    "same_failures_on_baseline": true,
+    "unknown_role_isolated": "1 passed"
+  },
+  "qa_verdict": "PASS",
+  "staging_deploy": "NO",
+  "production_write": "NONE",
+  "pr_merged": "NO"
+}

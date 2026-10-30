@@ -2822,14 +2822,20 @@ def _handle_field_save(payload: Mapping[str, Any]) -> dict[str, Any]:
 
     sid = rd.text(payload.get("shipmentId"))
     fields = payload.get("fields") if isinstance(payload.get("fields"), Mapping) else {}
+    request_id = rd.text(payload.get("requestId"))
+
+    def out(ok: bool, error: str = "", **extra: Any) -> dict:
+        return _result("shipment_field_save", sid, ok, error,
+                       **({"requestId": request_id} if request_id else {}), **extra)
+
     if not sid or not fields:
-        return _result("shipment_field_save", sid, False, "Thiếu shipmentId hoặc fields.")
+        return out(False, "Thiếu shipmentId hoặc fields.")
     if not can_operate_business("shipment_edit"):
-        return _result("shipment_field_save", sid, False, "RBAC: không có quyền shipment_edit.")
+        return out(False, "RBAC: không có quyền shipment_edit.")
 
     shipment = read_shipment(sid)
     if shipment is None:
-        return _result("shipment_field_save", sid, False, f"Không tìm thấy lô {sid}.")
+        return out(False, f"Không tìm thấy lô {sid}.")
 
     applied: dict[str, Any] = {}
     rejected: list[str] = []
@@ -2842,15 +2848,14 @@ def _handle_field_save(payload: Mapping[str, Any]) -> dict[str, Any]:
         _set_path(shipment, path, applied[str(key)])
 
     if not applied:
-        return _result("shipment_field_save", sid, False,
-                       "Không có trường nào được phép ghi.", rejected=rejected)
+        return out(False, "Không có trường nào được phép ghi.", rejected=rejected)
 
     apply_financial_snapshot(shipment)
     if not save_shipment_atomic(shipment, expected_version=shipment.get("version"), actor=_actor()):
-        return _result("shipment_field_save", sid, False, get_last_db_error() or "Không lưu được.")
+        return out(False, get_last_db_error() or "Không lưu được.")
 
     fresh = read_shipment(sid)
-    return _result("shipment_field_save", sid, True, readback=_projection_for(fresh or {}),
+    return out(True, readback=_projection_for(fresh or {}),
                    applied=applied, rejected=rejected,
                    version=int((fresh or {}).get("version") or 0),
                    persisted={k: _get_path(fresh or {}, FIELD_PATHS[k]) for k in applied},
@@ -2870,12 +2875,12 @@ def _handle_shipment_customer_save(payload: Mapping[str, Any]) -> dict[str, Any]
     it adds no field, no collection and no fallback name.
 
     Resolution mirrors ``_handle_shipment_create``: a known ``customerId`` wins
-    and its master name is what gets stored; a raw ``customer`` string is
-    accepted only when the operator typed it. Nothing is invented and a
-    mismatched picker never blanks the master data.
+    and its master name is what gets stored.  The canonical writer refuses a
+    free-text rename when the lot already has an ID; only legacy ID-less rows
+    may keep a typed historical name, and no ID is inferred from that name.
     """
     from core.auth import can_operate_business
-    from core.database import get_last_db_error, load_customers, update_shipment_customer
+    from core.database import get_db, get_last_db_error, update_shipment_customer
 
     sid = rd.text(payload.get("shipmentId"))
     # Issue #195 follow-up: echo the caller's requestId on every success and
@@ -2893,18 +2898,23 @@ def _handle_shipment_customer_save(payload: Mapping[str, Any]) -> dict[str, Any]
     if shipment is None:
         return out(False, f"Không tìm thấy lô {sid}.")
 
-    customer_id = rd.text(payload.get("customerId")).upper()
+    customer_id = rd.text(payload.get("customerId"))
     typed_name = rd.text(payload.get("customer"))
-    customers = load_customers() or {}
     if customer_id:
-        document = customers.get(customer_id)
-        if not isinstance(document, Mapping):
+        db = get_db()
+        document = (
+            db.customers.find_one({"id": customer_id}, {"_id": 0})
+            if db is not None
+            else None
+        )
+        if not isinstance(document, Mapping) or bool(document.get("is_deleted")):
             return out(False,
-                       f"Không có khách hàng {customer_id} trong danh bạ.")
+                       f"Không có khách hàng {customer_id} đang hoạt động trong danh bạ.")
         name = rd.text(document.get("name"))
         if not name:
             return out(False,
                        f"Khách hàng {customer_id} chưa có tên trong danh bạ.")
+        customer_id = rd.text(document.get("id")) or customer_id
     else:
         # No invented identity: an empty picker with no typed name is a
         # mistake, not a business fact, and is refused rather than written.
@@ -2915,12 +2925,13 @@ def _handle_shipment_customer_save(payload: Mapping[str, Any]) -> dict[str, Any]
         customer_id = ""
 
     previous = rd.text(shipment.get("customer") or shipment.get("client"))
-    if name == previous and (not customer_id or customer_id == rd.text(shipment.get("customer_id"))):
+    existing_customer_id = rd.text(shipment.get("customer_id"))
+    if name == previous and customer_id == existing_customer_id:
         # Nothing to write: report the unchanged truth instead of a no-op
         # version bump that would look like a change in the audit trail.
         return out(True, "Không có thay đổi để lưu.",
                    readback=_projection_for(shipment), noop=True,
-                   persisted={"customer": previous})
+                   persisted={"customer": previous, "customerId": existing_customer_id})
 
     if not update_shipment_customer(sid, name, customer_id):
         return out(False,
@@ -4182,7 +4193,7 @@ def _handle_partner_payment_record(payload: Mapping[str, Any]) -> dict[str, Any]
 def _handle_shipment_create(payload: Mapping[str, Any]) -> dict[str, Any]:
     """Create Shipment via the existing creation logic; duplicate codes rejected."""
     from core.auth import can_operate_business
-    from core.database import get_last_db_error, load_customers, save_shipment_atomic
+    from core.database import get_last_db_error, save_shipment_atomic
     from core.database import get_db
     from core.logic import apply_financial_snapshot
     from core.validators import validate_shipment
@@ -4206,11 +4217,21 @@ def _handle_shipment_create(payload: Mapping[str, Any]) -> dict[str, Any]:
     if db is not None and db.shipments.find_one({"id": sid, "is_deleted": {"$ne": True}}):
         return _res(False, f"Mã lô {sid} đã tồn tại.")
 
-    customers = load_customers() or {}
-    customer_doc = customers.get(customer_id) if isinstance(customers.get(customer_id), Mapping) else {}
-    customer_name = rd.text(payload.get("customer")) or rd.text(customer_doc.get("name"))
+    if not customer_id:
+        return _res(False, "Vui lòng chọn khách hàng đang hoạt động trong danh bạ.")
+    # Validate against a fresh database read, not the 30-second render cache: a
+    # just-archived or deleted customer must never authorize this write.
+    customer_doc = db.customers.find_one(
+        {"id": customer_id, "is_deleted": {"$ne": True}}, {"_id": 0}
+    ) if db is not None else None
+    if not isinstance(customer_doc, Mapping):
+        return _res(False, f"Không có khách hàng {customer_id} đang hoạt động trong danh bạ.")
+    customer_name = rd.text(customer_doc.get("name"))
     if not customer_name:
-        return _res(False, "Vui lòng chọn khách hàng.")
+        return _res(False, f"Khách hàng {customer_id} chưa có tên trong danh bạ.")
+    # Directory identity is authoritative. Never persist a browser-supplied
+    # name beside this ID because that would create a contradictory link.
+    customer_id = rd.text(customer_doc.get("id")) or customer_id
 
     created_on = _normalize_date(payload.get("createdAt")) or __import__("datetime").date.today().strftime("%Y-%m-%d")
     transport = payload.get("transport") if isinstance(payload.get("transport"), Mapping) else {}
@@ -5407,7 +5428,7 @@ def _resolve_uploaded_template_customer(
     on a customer document.  Zero or several matches resolve to NO customer,
     which readiness then reports as missing information.
     """
-    customer_id = rd.text(shipment.get("customer_id")).upper()
+    customer_id = rd.text(shipment.get("customer_id"))
     linked = customers.get(customer_id)
     if isinstance(linked, Mapping):
         return dict(linked)

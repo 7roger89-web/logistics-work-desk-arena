@@ -67,7 +67,7 @@ Baseline renders were produced from that exact file (local `file://`, Chromium
 
 | File | SHA-256 | Origin |
 |---|---|---|
-| `hexa-portal.html` | `4f2c5604…fac4b` | reference `<body>` markup |
+| `hexa-portal.html` | `4f2c5604…fac4b` | reference `<body>` markup | 
 | `hexa-portal.css` | `3a94a755…04a464` | reference `<style>` (347 lines) |
 | `hexa-portal.js` | `b62a12ff…49d4` | reference interaction engine (626 lines) |
 | `sea-chart.webp` | `f83d4216…abdef9` | the reference's embedded sea chart, decoded byte-for-byte (107,956 bytes, RIFF/WEBP) |

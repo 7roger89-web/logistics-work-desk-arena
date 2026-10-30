@@ -287,13 +287,7 @@ def test_customer_modules_have_no_browser_identity_or_url_id_path():
     ]
     for path in sources:
         text = path.read_text(encoding="utf-8")
-        # The public portal selector is a routing hint only; identity and
-        # shipment scope must never be sourced from any browser-controlled id.
-        if path.name == "web_app.py":
-            assert 'st.query_params.get("portal")' in text
-            assert "customer_id" not in text.split("st.query_params", 1)[1].split("\n", 1)[0]
-        else:
-            assert "st.query_params" not in text
+        assert "st.query_params" not in text
         assert "get_query_params" not in text
         assert "experimental_get_query_params" not in text
         assert 'session_state.get("customer_id")' not in text

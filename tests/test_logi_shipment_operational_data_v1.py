@@ -438,6 +438,66 @@ def test_strict_collection_validation_rejects_competing_or_ambiguous_shapes():
         normalize_cargo_summary({"package_count": "1.5"})
 
 
+@pytest.mark.parametrize("customer_payload,error_text", [
+    ({"customer": "An Phát JSC"}, "chọn khách hàng"),
+    ({"customerId": "CUST-KHONGCO", "customer": "Tên giả"}, "đang hoạt động"),
+])
+def test_create_requires_an_active_directory_customer_id_without_writing(
+    staging, event_seq, customer_payload, error_text
+):
+    from core.database import get_db
+
+    db = get_db()
+    assert db is not None
+    sid = "LO-G1-NO-CUSTOMER-ID"
+    audits_before = db.audit_logs.count_documents({"entity_type": "shipment", "entity_id": sid})
+
+    out = dispatch(event_seq, "shipment_create", {"shipmentId": sid, **customer_payload})
+
+    assert not out["ok"]
+    assert error_text in out["error"].lower()
+    assert db.shipments.find_one({"id": sid}) is None
+    assert db.audit_logs.count_documents({"entity_type": "shipment", "entity_id": sid}) == audits_before
+
+
+def test_create_refuses_an_archived_customer_before_writing(staging, event_seq):
+    from core.database import get_db
+
+    db = get_db()
+    assert db is not None
+    db.customers.update_one({"id": "CUST-ANPHAT"}, {"$set": {"is_deleted": True}})
+    sid = "LO-G1-ARCHIVED-CUSTOMER"
+
+    out = dispatch(event_seq, "shipment_create", {
+        "shipmentId": sid,
+        "customerId": "CUST-ANPHAT",
+        "customer": "Tên giả từ browser",
+    })
+
+    assert not out["ok"]
+    assert "đang hoạt động" in out["error"].lower()
+    assert db.shipments.find_one({"id": sid}) is None
+    assert db.audit_logs.count_documents({"entity_type": "shipment", "entity_id": sid}) == 0
+
+
+@pytest.mark.parametrize("mode", ["Sea", "Truck", "Air"])
+def test_create_uses_directory_name_and_keeps_sea_road_air_working(staging, event_seq, mode):
+    sid = f"LO-G1-{mode.upper()}"
+    out = dispatch(event_seq, "shipment_create", {
+        "shipmentId": sid,
+        "customerId": "CUST-ANPHAT",
+        "customer": "Tên giả từ browser",
+        "transport": {"mode": mode, "pol": "ORIGIN", "pod": "DESTINATION"},
+    })
+
+    assert out["ok"], out["error"]
+    fresh = vm.read_shipment(sid)
+    assert fresh["customer_id"] == "CUST-ANPHAT"
+    assert fresh["customer"] == fresh["client"] == "An Phát JSC"
+    assert fresh["customer"] != "Tên giả từ browser"
+    assert fresh["data"]["1.2"]["transport_legs"][0]["mode"] == mode
+
+
 def test_lightweight_create_starts_one_canonical_leg_and_navigable_detail_data(staging, event_seq):
     out = dispatch(event_seq, "shipment_create", {
         "shipmentId": "LO-OPS-V1",

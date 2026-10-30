@@ -126,7 +126,7 @@ def validate_flow_write(
         return None, ["Chọn hình thức nhập khẩu trước khi lưu."]
 
     if mode == FLOW_CUSTOMER_SELF:
-        customer_id = _text(shipment.get("customer_id")).upper()
+        customer_id = _text(shipment.get("customer_id"))
         if not customer_id:
             errors.append("Lô chưa gắn mã khách hàng; chưa xác định được pháp nhân đứng nhập khẩu.")
         if sub_agent_id:
@@ -202,7 +202,7 @@ def project_commercial_flow(
 
     flow = stored_flow(shipment)
     mode = flow["mode"]
-    customer_id = _text(shipment.get("customer_id")).upper()
+    customer_id = _text(shipment.get("customer_id"))
     importer: Mapping[str, Any] | None = None
     importer_kind = ""
     importer_id = ""

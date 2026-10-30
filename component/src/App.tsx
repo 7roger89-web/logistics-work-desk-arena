@@ -9,8 +9,9 @@
 // ============================================================================
 
 import { useSyncExternalStore } from "react";
-import { MemoryRouter, Navigate, Route, Routes } from "react-router-dom";
-import { StoreProvider } from "./lib/store";
+import { Link, MemoryRouter, Navigate, Route, Routes, useLocation, useParams } from "react-router-dom";
+import { StoreProvider, useStore } from "./lib/store";
+import { shipmentIdFromPath } from "./lib/shipmentRoute";
 import { getViewModel, subscribeViewModel } from "./lib/viewmodel";
 import Layout from "./components/Layout";
 import Home from "./pages/Home";
@@ -50,6 +51,24 @@ function Loading() {
   );
 }
 
+/** Route-boundary guard: a missing/late shipment must never call the detail's hooks. */
+function ShipmentDetailReady() {
+  const { id: paramId } = useParams();
+  const { pathname } = useLocation();
+  const id = shipmentIdFromPath(pathname, paramId);
+  const { shipments } = useStore();
+  if (!shipments.some((shipment) => shipment.id === id)) {
+    return (
+      <div className="rounded-2xl bg-white border p-10 text-center max-w-[600px] mx-auto">
+        <p className="font-extrabold text-[19px]">Không tìm thấy lô {id}</p>
+        <p className="text-slate-500 mt-1 text-[15px]">Mã lô có thể sai. Về danh sách để tìm lại.</p>
+        <Link to="/lo-hang" className="btn-press touch-target mt-4 inline-flex rounded-xl bg-[#0f2a4a] text-white font-bold px-6 min-h-[48px] items-center">Về danh sách lô</Link>
+      </div>
+    );
+  }
+  return <ShipmentDetail key={id} />;
+}
+
 export default function App() {
   const vm = useSyncExternalStore(subscribeViewModel, getViewModel, getViewModel);
   return (
@@ -65,7 +84,7 @@ export default function App() {
                 their backend data untouched. */}
             <Route path="/viec-can-xu-ly" element={<Navigate to="/lo-hang" replace />} />
             <Route path="/lo-hang" element={<Shipments />} />
-            <Route path="/lo-hang/:id" element={<ShipmentDetail />} />
+            <Route path="/lo-hang/:id" element={<ShipmentDetailReady />} />
             <Route path="/tao-lo-moi" element={<CreateShipment />} />
             <Route path="/theo-doi" element={<Navigate to="/lo-hang" replace />} />
             <Route path="/khach-hang" element={<Customers />} />

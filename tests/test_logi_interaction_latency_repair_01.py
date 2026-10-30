@@ -174,14 +174,13 @@ class InteractionLatencyRepairTests(unittest.TestCase):
                 "event": "shipment_create",
                 "payload": {
                     "shipmentId": "LO-ONCE-CREATE-01",
-                    "customerId": "CUS-1",
-                    "customer": "Khách Test 1",
+                    "customerId": "CUST-ANPHAT",
+                    "customer": "Tên giả từ browser",
                     "requestId": "REQ-CREATE-1",
                 },
             }
         }
-        with patch("core.database.save_shipment_atomic", return_value=True) as mock_save, \
-             patch("core.database.load_customers", return_value={"CUS-1": {"id": "CUS-1", "name": "Khách Test 1"}}):
+        with patch("core.database.save_shipment_atomic", return_value=True) as mock_save:
             trace = self._simulate_streamlit_event_lifecycle(trigger)
             self.assertEqual(mock_save.call_count, 1, "Creation writer must be called exactly once")
 

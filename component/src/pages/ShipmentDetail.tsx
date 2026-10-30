@@ -127,12 +127,16 @@ export default function ShipmentDetail() {
   // fresh view-model (`lastWrites`), never from the transport.
   const vm = useSyncExternalStore(subscribeViewModel, getViewModel, getViewModel);
   const nav = useNavigate();
-  const s = shipments.find((x) => x.id === id);
+  // The route boundary mounts this component only while this shipment exists.
+  const s = shipments.find((x) => x.id === id)!;
   const [showPay, setShowPay] = useState(false);
   const [showDeliver, setShowDeliver] = useState(false);
   // P1.4 — metadata maintenance lives behind an explicit disclosure so the
   // operational tab content sits closer to the next action.
   const [headerEditOpen, setHeaderEditOpen] = useState(false);
+  const [headerDatePending, setHeaderDatePending] = useState<{ requestId: string; date: string } | null>(null);
+  const headerDatePendingRef = useRef(false);
+  const [headerDateError, setHeaderDateError] = useState("");
   // ---------------------------------------------------------------------------
   // LOGI_SHIPMENT_GLANCEABLE_SUPPORT_UX_01 · OWNER_RUNTIME_UAT_REPAIR (#86)
   //
@@ -179,8 +183,16 @@ export default function ShipmentDetail() {
   // second writer, no fuzzy name guessing; the flow confirm stays locked
   // until the authoritative readback brings the customer_id back.
   const [flowCustomerDraft, setFlowCustomerDraft] = useState("");
-  const [flowCustomerPending, setFlowCustomerPending] = useState("");
+  const [flowCustomerPending, setFlowCustomerPending] = useState<{
+    requestId: string;
+    customerId: string;
+  } | null>(null);
   const [flowCustomerError, setFlowCustomerError] = useState("");
+  const [headerCustomerPending, setHeaderCustomerPending] = useState<{
+    requestId: string;
+    customerId: string;
+  } | null>(null);
+  const [headerCustomerError, setHeaderCustomerError] = useState("");
   const [documentSelectionOpen, setDocumentSelectionOpen] = useState(false);
   const [documentSelectionDraftIds, setDocumentSelectionDraftIds] = useState<string[]>([]);
   const [documentSelectionPending, setDocumentSelectionPending] = useState("");
@@ -224,24 +236,85 @@ export default function ShipmentDetail() {
   useEffect(() => {
     if (!flowCustomerPending) return;
     const outcome = vm?.lastWrites?.find(
-      (row) => row.event === "shipment_customer_save" && row.requestId === flowCustomerPending
+      (row) => row.event === "shipment_customer_save" && row.requestId === flowCustomerPending.requestId
     );
     if (!outcome) return;
-    setFlowCustomerPending("");
-    if (outcome.ok) {
-      setFlowCustomerDraft("");
-      setFlowCustomerError("");
-      toast(
-        "Đã gắn khách hàng cho lô",
-        "Backend đã xác nhận qua đọc lại; bây giờ có thể xác nhận hình thức nhập khẩu.",
-        "green"
-      );
-    } else {
+    const expectedId = flowCustomerPending.customerId;
+    setFlowCustomerPending(null);
+    if (!outcome.ok) {
       const message = String(outcome.error || "Backend từ chối gán khách hàng.");
       setFlowCustomerError(message);
       toast("Chưa gán được khách hàng", message, "red");
+      return;
     }
-  }, [vm?.lastWrites, flowCustomerPending, toast]);
+    const readbackObj = (outcome.readback && typeof outcome.readback === "object")
+      ? (outcome.readback as Record<string, unknown>)
+      : null;
+    const readbackId = typeof readbackObj?.customerId === "string"
+      ? readbackObj.customerId.trim()
+      : "";
+    const shipmentIdMatches = (s?.customerId ?? "").trim() === expectedId;
+    const readbackMatches = !readbackId || readbackId === expectedId;
+    if (!shipmentIdMatches || !readbackMatches) {
+      const message = "Backend báo đã xử lý nhưng dữ liệu đọc lại chưa khớp mã khách hàng đã chọn.";
+      setFlowCustomerError(message);
+      toast("Chưa gán được khách hàng", message, "red");
+      return;
+    }
+    setFlowCustomerDraft("");
+    setFlowCustomerError("");
+    toast(
+      "Đã gắn khách hàng cho lô",
+      "Backend đã xác nhận qua đọc lại; bây giờ có thể xác nhận hình thức nhập khẩu.",
+      "green"
+    );
+  }, [vm?.lastWrites, flowCustomerPending, s?.customerId, toast]);
+
+  useEffect(() => {
+    setHeaderCustomerPending(null);
+    setHeaderCustomerError("");
+    setFlowCustomerPending(null);
+    setFlowCustomerError("");
+  }, [id]);
+
+  useEffect(() => {
+    if (!headerCustomerPending) return;
+    const outcome = vm?.lastWrites?.find(
+      (row) =>
+        row.event === "shipment_customer_save" &&
+        row.requestId === headerCustomerPending.requestId
+    );
+    if (!outcome) return;
+    const expectedId = headerCustomerPending.customerId;
+    setHeaderCustomerPending(null);
+    if (!outcome.ok) {
+      const message = String(outcome.error || "Không cập nhật được khách hàng của lô.");
+      setHeaderCustomerError(message);
+      toast("Không lưu được khách hàng của lô", message, "red");
+      return;
+    }
+    const readbackObj = (outcome.readback && typeof outcome.readback === "object")
+      ? (outcome.readback as Record<string, unknown>)
+      : null;
+    const readbackId = typeof readbackObj?.customerId === "string"
+      ? readbackObj.customerId.trim()
+      : "";
+    const shipmentIdMatches = (s?.customerId ?? "").trim() === expectedId;
+    const readbackMatches = !readbackId || readbackId === expectedId;
+    if (!shipmentIdMatches || !readbackMatches) {
+      const message = "Backend báo đã xử lý nhưng dữ liệu đọc lại chưa khớp mã khách hàng đã chọn.";
+      setHeaderCustomerError(message);
+      toast("Không xác nhận được khách hàng của lô", message, "red");
+      return;
+    }
+    setHeaderCustomerError("");
+    setForm((f) => ({ ...f, lotCustomer: "" }));
+    toast(
+      "Đã lưu khách hàng của lô",
+      `${s?.id ?? ""} · ${s?.customer || expectedId}`,
+      "green"
+    );
+  }, [vm?.lastWrites, headerCustomerPending, s?.id, s?.customerId, s?.customer, toast]);
 
   const persistedDocumentIds = s?.selectedDocumentTemplateIds ?? [];
   const persistedDocumentKey = persistedDocumentIds.join("\u0000");
@@ -372,7 +445,6 @@ export default function ShipmentDetail() {
   const selectedFlowCompany = authorityCompanies.find((a) => a.id === flowCompanyDraft);
   const shipmentAttention = useMemo(() => attention.filter((item) => item.shipmentId === id).slice(0, 5), [attention, id]);
 
-  if (!s) return <div className="rounded-2xl bg-white border p-10 text-center max-w-[600px] mx-auto"><p className="font-extrabold text-[19px]">Không tìm thấy lô {id}</p><p className="text-slate-500 mt-1 text-[15px]">Mã lô có thể sai. Về danh sách để tìm lại.</p><Link to="/lo-hang" className="btn-press touch-target mt-4 inline-flex rounded-xl bg-[#0f2a4a] text-white font-bold px-6 min-h-[48px] items-center">Về danh sách lô</Link></div>;
 
   // The ONE authoritative currency of this shipment (shipments.currency →
   // data["3.4"].currency). The backend has no FX engine, so every amount is
@@ -403,14 +475,14 @@ export default function ShipmentDetail() {
     }
     const requestId = mintRequestId("FLOWC");
     setFlowCustomerError("");
-    setFlowCustomerPending(requestId);
+    setFlowCustomerPending({ requestId, customerId: picked });
     const sent = dispatch("shipment_customer_save", {
       shipmentId: s.id,
       customerId: picked,
       requestId,
     });
     if (!sent) {
-      setFlowCustomerPending("");
+      setFlowCustomerPending(null);
       setFlowCustomerError("Component chưa kết nối backend.");
     }
   };
@@ -577,14 +649,53 @@ export default function ShipmentDetail() {
    * fabricated date and an UNKNOWN one never becomes 0/today.
    */
   const saveHeaderDate = () => {
+    if (headerDatePendingRef.current) return;
     const edited = form.createdAt != null ? form.createdAt.trim() : null;
     if (edited === null) {
       toast("Chưa sửa ngày", "Chọn/ghi Ngày tạo rồi bấm Lưu — app không tự điền hôm nay.", "amber");
       return;
     }
-    dispatch("shipment_field_save", { shipmentId: s.id, fields: { created_at: edited } });
-    afterSave(edited ? "Đã lưu ngày tạo " + edited : "Đã xoá ngày tạo (để trống = chưa biết)");
+    const requestId = mintRequestId("HDRD");
+    headerDatePendingRef.current = true;
+    setHeaderDateError("");
+    setHeaderDatePending({ requestId, date: edited });
+    if (!dispatch("shipment_field_save", { shipmentId: s.id, fields: { created_at: edited }, requestId })) {
+      headerDatePendingRef.current = false;
+      setHeaderDatePending(null);
+      setHeaderDateError("Component chưa kết nối backend.");
+    }
   };
+
+  useEffect(() => {
+    if (!headerDatePending) return;
+    const outcome = vm?.lastWrites?.find(row => row.event === "shipment_field_save"
+      && row.shipmentId === id && row.requestId === headerDatePending.requestId);
+    if (!outcome) return;
+    headerDatePendingRef.current = false;
+    setHeaderDatePending(null);
+    if (!outcome.ok) {
+      setHeaderDateError(String(outcome.error || "Không lưu được ngày tạo lô."));
+      return;
+    }
+    const normalizeDate = (value: string) => value.trim().replace(/^(\d{2})\/(\d{2})\/(\d{4})$/, "$3-$2-$1");
+    const persisted = outcome.persisted as Record<string, unknown> | undefined;
+    if (typeof persisted?.created_at !== "string"
+      || normalizeDate(persisted.created_at) !== normalizeDate(headerDatePending.date)
+      || normalizeDate(s.createdAt ?? "") !== normalizeDate(headerDatePending.date)) {
+      setHeaderDateError("Backend đã xử lý nhưng ngày tạo đọc lại chưa khớp. Kiểm tra dữ liệu trước khi lưu lại.");
+      return;
+    }
+    setForm(f => { const next = { ...f }; delete next.createdAt; return next; });
+    setSavedTick(Date.now());
+    toast(headerDatePending.date ? "Đã lưu ngày tạo " + headerDatePending.date : "Đã xoá ngày tạo (để trống = chưa biết)",
+      "Backend đã xác nhận và dữ liệu đọc lại khớp.", "green");
+  }, [vm?.lastWrites, headerDatePending, id, s.createdAt, toast]);
+
+  useEffect(() => {
+    headerDatePendingRef.current = false;
+    setHeaderDatePending(null);
+    setHeaderDateError("");
+  }, [id]);
 
   const saveHeaderCustomer = () => {
     const picked = (form.lotCustomer ?? "").trim();
@@ -592,9 +703,20 @@ export default function ShipmentDetail() {
       toast("Chưa đổi khách hàng", "Bấm “Tìm / đổi”, chọn khách trong danh bạ rồi bấm Lưu.", "amber");
       return;
     }
-    dispatch("shipment_customer_save", { shipmentId: s.id, customerId: picked });
-    setForm((f) => ({ ...f, lotCustomer: "" }));
-    afterSave("Đã gửi đổi khách hàng của lô");
+    const requestId = mintRequestId("HDRC");
+    setHeaderCustomerError("");
+    setHeaderCustomerPending({ requestId, customerId: picked });
+    const sent = dispatch("shipment_customer_save", {
+      shipmentId: s.id,
+      customerId: picked,
+      requestId,
+    });
+    if (!sent) {
+      setHeaderCustomerPending(null);
+      const message = "Component chưa kết nối backend.";
+      setHeaderCustomerError(message);
+      toast("Không lưu được khách hàng của lô", message, "red");
+    }
   };
 
   const confirmDelivery = () => {
@@ -1429,20 +1551,51 @@ export default function ShipmentDetail() {
               }))}
               selectedId={form.lotCustomer || s.customerId || ""}
               selectedLabel={
-                customers.find((x) => x.id === (form.lotCustomer || s.customerId))?.name || s.customer
+                customers.find((x) => x.id === (form.lotCustomer || s.customerId))?.name
+                || (form.lotCustomer ? form.lotCustomer : s.customer)
               }
               placeholder="Gõ tên khách hoặc mã khách để tìm…"
               emptyHint="Danh bạ khách hàng đang trống — thêm khách ở mục Khách Hàng trước."
-              onSelect={(idValue) => set("lotCustomer", idValue)}
+              onSelect={(idValue) => {
+                set("lotCustomer", idValue);
+                setHeaderCustomerError("");
+              }}
             />
+            {headerCustomerError && (
+              <p
+                role="alert"
+                data-testid="shipment-header-customer-error"
+                className="rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-[13px] font-semibold text-red-700"
+              >
+                {headerCustomerError}
+              </p>
+            )}
             <div className="flex flex-wrap items-center gap-2">
-              <PrimaryBtn onClick={saveHeaderCustomer} className="min-h-[44px] px-4 text-[13.5px]">
+              <PrimaryBtn
+                onClick={saveHeaderCustomer}
+                disabled={!!headerCustomerPending}
+                className="min-h-[44px] px-4 text-[13.5px]"
+              >
                 💾 LƯU KHÁCH HÀNG CỦA LÔ
               </PrimaryBtn>
               {(form.lotCustomer ?? "") !== "" && (form.lotCustomer ?? "") !== (s.customerId ?? "") && (
-                <GhostBtn onClick={() => set("lotCustomer", "")} className="min-h-[44px]">Hủy chọn</GhostBtn>
+                <GhostBtn
+                  onClick={() => {
+                    set("lotCustomer", "");
+                    setHeaderCustomerError("");
+                  }}
+                  disabled={!!headerCustomerPending}
+                  className="min-h-[44px]"
+                >
+                  Hủy chọn
+                </GhostBtn>
               )}
             </div>
+            {headerCustomerPending && (
+              <p className="text-[12.5px] text-amber-800" data-testid="shipment-header-customer-pending">
+                Đang chờ backend xác nhận qua đọc lại…
+              </p>
+            )}
           </div>
           <div className="space-y-2">
             <Field label="Ngày tạo lô" hint="DD/MM/YYYY hoặc YYYY-MM-DD · để trống = chưa biết">
@@ -1455,9 +1608,11 @@ export default function ShipmentDetail() {
               />
             </Field>
             <div className="flex flex-wrap items-center gap-2">
-              <PrimaryBtn onClick={saveHeaderDate} className="min-h-[44px] px-4 text-[13.5px]">
+              <PrimaryBtn onClick={saveHeaderDate} disabled={!!headerDatePending} className="min-h-[44px] px-4 text-[13.5px]">
                 💾 LƯU NGÀY TẠO
               </PrimaryBtn>
+              {headerDatePending && <p role="status" data-testid="shipment-header-date-pending">Đang chờ backend xác nhận qua đọc lại…</p>}
+              {headerDateError && <p role="alert" data-testid="shipment-header-date-error" className="text-red-700">{headerDateError}</p>}
               {form.createdAt != null && form.createdAt.trim() === "" && (
                 <span className="text-[12.5px] font-semibold text-amber-700">
                   Đang lưu = để trống (chưa biết)
