@@ -23,8 +23,8 @@ Ngày QA: 30/10/2026. Nhánh: `arena/385e4a4d-logistics-work-desk-arena`, nền 
 
 | Kiểm chứng | Kết quả | Đường dẫn |
 | --- | --- | --- |
-| Toàn bộ suite Python | `34 failed / 2262 passed / 44 skipped` — **trùng đúng tập FAILED nền 34** của `a570383` (baseline `2247 passed`) | `/tmp/after3_suite.txt` (so với `/tmp/baseline_suite.txt`) |
-| `tests/test_journey_notes.py` | **59 PASS** (thêm reply/orphan/replay/revoked/no-progress-change/inline UI + 5 test bind phạm vi tải) | `tests/test_journey_notes.py` |
+| Toàn bộ suite Python | `34 failed / 2266 passed / 44 skipped` — **trùng đúng tập FAILED nền 34** của `a570383` (baseline `2247 passed`) | `/tmp/final_7ffd232_suite.txt` (so với `/tmp/baseline_suite.txt`) |
+| `tests/test_journey_notes.py` | **63 PASS** (thêm reply/orphan/replay/revoked/no-progress-change/inline UI + 5 test bind phạm vi tải + 2 test stale/repeat download + 2 ca kiểm lại file đã queue trước khi giao) | `tests/test_journey_notes.py` |
 | `tests/test_journey_map_focus.py` | 54 PASS (payload đúng node, không form Streamlit, từ chối focus lạ) | `tests/test_journey_map_focus.py` |
 | Nhóm phụ thuộc (portal/journey/inbox) | 181 PASS | lệnh trong log phiên |
 | jsdom — khách | `PASS … focus + reply + file + download inside the node bubble, scope separated` | `tests/component/dom_acceptance_journey_focus_customer.mjs` |
@@ -100,3 +100,25 @@ không còn `_render_journey_focus_pane`, `views/customer_dashboard.py` không c
 ## Bổ sung kiểm tra session download trong cùng PR #237
 
 Kiểm tra nguồn sau commit `9354a9da` phát hiện byte đã queue có thể còn trong session nếu lần tải sau bị từ chối; đồng thời `seq` của tệp lặp bị trả về 1 sau mỗi lần consume, khiến React bỏ qua lần tải thứ hai cùng tệp. Adapter nay clear slot ở mọi download intent mới (kể cả invalid scope), consume-and-drop dù scope không khớp, buộc slot với customer hiện tại, và dùng counter tuần tự riêng. Thêm 2 regression test trong `tests/test_journey_notes.py` để bắt stale bytes, đổi chủ, tải lặp. Cần chạy test trên môi trường có Streamlit/mongomock; chưa có browser roundtrip thật thì `VISUAL_PASS=NOT_VERIFIED`.
+
+## Chạy lại toàn bộ trên HEAD cuối (sau `7ffd232` + `2096dff`)
+
+Review `6519969047` yêu cầu chạy lại đúng tại HEAD sau commit `7ffd232` (sửa stale queued bytes + cho
+phép tải lặp). Trong lúc kiểm, nhánh có thêm `2096dff` (kiểm lại file đã queue trước khi giao, huỷ byte
+nếu note/tệp không còn hiển thị). Toàn bộ được chạy lại trên HEAD cuối gồm cả hai commit; không sửa gì
+thêm ở lớp code:
+
+| Lệnh | Kết quả |
+| --- | --- |
+| `pytest tests/test_journey_notes.py -k "one_shot_tenant_bound_and_repeatable or clears_previously_queued_bytes"` | **2 passed** (đúng hai regression test được yêu cầu) |
+| `pytest tests/test_journey_notes.py -k "queued_file_is_rechecked"` | **2 passed** (ca dương + ca thu hồi/đổi chủ của `2096dff`) |
+| `pytest tests/test_journey_notes.py` | **61 passed** |
+| `pytest tests/test_journey_map_focus.py` | **54 passed** |
+| `node tests/component/dom_acceptance_journey_focus_customer.mjs` | PASS (focus + reply + file + download trong bubble) |
+| `node tests/component/dom_acceptance_journey_inline_shell.mjs` | PASS (thread trong map, reply→root, bounded download) |
+| `node tests/component/dom_acceptance_journey_focus_shell.mjs` | PASS (mỗi node gửi đúng một intent) |
+| `pytest -q` (full suite) | **34 failed / 2266 passed / 44 skipped** — tập FAILED **trùng đúng** 34 lỗi nền của `a570383` |
+
+`VISUAL_PASS=NOT_VERIFIED` giữ nguyên: không có trình duyệt trong sandbox (CDN tải browser bị chặn),
+nên chưa có roundtrip tệp thật trên trình duyệt, chưa có ảnh desktop/mobile và transport byte
+component v2 chưa chạy end-to-end. Không tự nhận UX PASS.
