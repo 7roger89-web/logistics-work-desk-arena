@@ -1,0 +1,106 @@
+name: LOGI PR243 independent browser and regression acceptance
+
+on:
+  push:
+    branches:
+      - experiments/pr243-independent-acceptance-20261030
+
+permissions:
+  contents: read
+
+jobs:
+  independent-acceptance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    env:
+      MONGO_URI: ''
+      ENV_IDENTITY: PREVIEW
+      QA_TEST_PASSWORD: CI_only_fake_password_for_nonproduction_20261030
+      PYTHONUNBUFFERED: '1'
+    steps:
+      - name: Checkout exact PR243 HEAD, not experiment branch
+        uses: actions/checkout@v4
+        with:
+          ref: 6b95af35e94ef331bdf29403d1285bd77fc8c461
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Confirm HEAD and install isolated test tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "6b95af35e94ef331bdf29403d1285bd77fc8c461"
+          python -m pip install --disable-pip-version-check -r requirements.txt pytest mongomock playwright
+          command -v google-chrome
+          mkdir -p qa-pr243-independent
+      - name: Run targeted server-side regressions on submitted PR
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pytest -q tests/test_journey_notes.py -k "customer_portal_comment_is_written_to_the_db_the_portal_rendered or customer_portal_prefix_callback_writes_through_the_same_db or customer_portal_event_seam_refuses_another_tenant_lot or customer_portal_event_seam_passes_its_db_handle" | tee qa-pr243-independent/focused-pytest.txt
+          python -m pytest -q tests/test_journey_notes.py | tee qa-pr243-independent/journey-notes-full.txt
+      - name: Start production-shaped Streamlit with QA-only isolated data
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m streamlit run tests/component/g15_lg_tt_discussion_runtime.py --server.port=9504 --server.address=127.0.0.1 --server.headless=true > qa-pr243-independent/streamlit.log 2>&1 &
+          echo $! > qa-pr243-independent/server.pid
+          for i in $(seq 1 75); do
+            if curl -fsS http://127.0.0.1:9504/_stcore/health >/dev/null 2>&1; then break; fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:9504/_stcore/health
+      - name: Independent Chromium real click-send-hard-reload-and-isolation check
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json, re, time
+          from pathlib import Path
+          from playwright.sync_api import sync_playwright
+          evidence=Path("qa-pr243-independent")
+          url="http://127.0.0.1:9504/"
+          marker="INDEPENDENT-QA-"+str(int(time.time()))
+          def choose_customer(page,name="Lục Giác"):
+              page.get_by_role("radio",name=name).check(timeout=25000)
+              page.get_by_text("QA-LOT",exact=True).first.wait_for(timeout=30000)
+          def open_thread(page):
+              page.get_by_text("QA-LOT",exact=True).first.click(timeout=30000)
+              page.get_by_role("button",name=re.compile(r"01 LẤY HÀNG")).first.click(timeout=30000)
+              page.get_by_text(re.compile(r"Trao đổi \\(")).first.click(timeout=30000)
+              page.get_by_test_id("journey-discussion-body").wait_for(timeout=30000)
+          with sync_playwright() as pw:
+              browser=pw.chromium.launch(channel="chrome",headless=True,args=["--no-sandbox"])
+              page=browser.new_page(viewport={"width":1440,"height":900})
+              page.set_default_timeout(30000)
+              page.goto(url,wait_until="domcontentloaded")
+              choose_customer(page)
+              open_thread(page)
+              page.get_by_test_id("journey-discussion-body").fill(marker)
+              page.get_by_test_id("journey-discussion-send").click()
+              page.get_by_text(marker,exact=False).first.wait_for(timeout=30000)
+              assert page.get_by_text("Không gửi được trao đổi.",exact=True).count()==0
+              page.screenshot(path=str(evidence/"sent.png"))
+              page.reload(wait_until="domcontentloaded")
+              choose_customer(page)
+              open_thread(page)
+              page.get_by_text(marker,exact=False).first.wait_for(timeout=30000)
+              page.screenshot(path=str(evidence/"after-reload.png"))
+              page.get_by_role("radio",name="Khách khác").check(timeout=30000)
+              page.wait_for_timeout(1800)
+              assert page.get_by_text("QA-LOT",exact=True).count()==0, "foreign customer sees QA-LOT"
+              assert page.get_by_text(marker,exact=False).count()==0, "foreign customer sees customer note"
+              page.screenshot(path=str(evidence/"other-customer.png"))
+              (evidence/"browser.json").write_text(json.dumps({"pr_head":"6b95af35e94ef331bdf29403d1285bd77fc8c461","sent_in_real_chromium":True,"hard_reload_readback":True,"other_customer_cannot_see_lot_or_note":True,"marker":marker},indent=2))
+              print("INDEPENDENT_BROWSER_CUSTOMER_SEND_RELOAD_TENANT=PASS")
+              browser.close()
+          PY
+      - name: Upload independently produced QA evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr243-independent-qa-20261030
+          path: qa-pr243-independent/
+          retention-days: 7
+          if-no-files-found: warn
