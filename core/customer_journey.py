@@ -332,8 +332,15 @@ def build_portal_model(
     demo_flag: str | None = None,
     notice: Mapping[str, Any] | None = None,
     account_label: str = "",
+    discussion: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Assemble the whole component payload for one verified principal."""
+    """Assemble the whole component payload for one verified principal.
+
+    ``discussion`` is the ONE Journey Map node conversation the customer just
+    opened (already tenant-checked and CUSTOMER-visible only). It is attached
+    as its own slice and never merged into a node's published evidence, so a
+    comment can never look like an approved milestone.
+    """
     principal = getattr(view, "principal", None)
     cards = tuple(getattr(view, "cards", ()) or ())
     lots = [build_lot_model(card) for card in cards]
@@ -359,4 +366,7 @@ def build_portal_model(
             "denied": int(getattr(view, "denied_lots", 0) or 0),
             "data_issues": int(getattr(view, "data_issues", 0) or 0),
         },
+        # Issue #236 — exactly one lot + one stage, or None. Deliberately NOT
+        # folded into stage evidence/state: talking does not complete a stage.
+        "discussion": dict(discussion) if isinstance(discussion, Mapping) else None,
     }

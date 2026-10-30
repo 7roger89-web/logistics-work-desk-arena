@@ -18,6 +18,7 @@ from streamlit.testing.v1 import AppTest
 
 from core import journey_notes as notes
 from views import journey_discussion as discussion
+from views import journey_inline
 
 ROOT = Path(__file__).resolve().parents[1]
 APP_PATH = ROOT / "app.py"
@@ -474,48 +475,80 @@ def test_internal_pane_runs_in_a_real_streamlit_script(db):
     assert [row["body"] for row in rows] == ["Chốt xe tải 8 tấn"]
 
 
-def test_customer_portal_posts_and_reloads_a_stage_comment(db):
-    from core import customer_portal as portal
-    from core.customer_portal_publish import publish_verified_sources
+def _portal_inline(db, store, email=EMAIL_A):
+    """The REAL portal entrypoint with only the component boundary stubbed.
 
-    db.public_events.insert_one({
-        "id": "EV-1", "version": "v1", "customer_id": CUSTOMER_A, "shipment_id": LOT_A,
-        "stage_id": "pickup", "public_title": "Đã lấy hàng",
-        "occurred_at": "2026-10-28T01:00:00Z", "verified": True,
-        "verified_at": "2026-10-28T02:00:00Z", "visibility": "CUSTOMER",
-    })
-    ok, message = publish_verified_sources(
-        CUSTOMER_A, LOT_A, event_versions={"EV-1": "v1"}, document_versions={},
-        expected_current_version="", actor_role="admin", actor_username="staging-admin", db=db)
-    assert ok, message
+    The browser half (bubble, composer, reply, download) is exercised by the
+    jsdom acceptance tests; here we prove the server half: the payload the node
+    gets, the one-shot write, the refusal paths and the reload.
+    """
+    from views import customer_dashboard as dash
 
-    app = AppTest.from_file(str(APP_PATH), default_timeout=120)
+    state: dict = {"model": None, "result": None}
+
+    def fake_render(model, **kwargs):
+        state["model"] = model
+        return state["result"]
+
+    stack = _portal_stack(db, store, email)
+    stack.enter_context(patch.object(dash.component, "render", fake_render))
+    app = AppTest.from_file(str(APP_PATH), default_timeout=180)
     app.secrets = {"auth": FAKE_AUTH}
-    with (
-        patch("streamlit.user_info._get_user_info", return_value=_claims(EMAIL_A)),
-        patch.object(portal, "get_db", return_value=db),
-        patch("core.database.get_db", return_value=db),
-    ):
+    return app, state, stack
+
+
+def _trigger(state, event, payload, seq=1):
+    state["result"] = {
+        event: {"seq": seq, "event": event, "payload": payload},
+    }
+
+
+def _focus(app, shipment=LOT_A, stage="pickup"):
+    app.session_state["logi_journey_focus"] = {
+        "shipment_id": shipment, "stage_id": stage,
+    }
+
+
+def test_customer_portal_posts_and_reloads_a_stage_comment(db, store):
+    """Issue #236: the node payload carries the thread; posting happens in-map."""
+    _seed_public_event(db)
+    app, state, stack = _portal_inline(db, store)
+    with stack:
+        _focus(app, LOT_A, "pickup")
         app.run()
         assert not app.exception, [str(e.value) for e in app.exception]
-        areas = [element for element in app.text_area]
-        assert areas, "không thấy ô nhập trao đổi trên cổng khách hàng"
-        areas[0].set_value("Xác nhận địa chỉ giao hàng")
-        senders = [element for element in app.button if element.label == "Gửi"]
-        assert senders, "không thấy nút gửi trao đổi"
-        senders[0].click()
-        app.run()          # writes the note
+        # Fail condition: no Streamlit conversation form anywhere in the portal.
+        assert not list(app.text_area)
+        assert not list(app.file_uploader)
+        assert not [e for e in app.expander if "Trao đổi" in e.label]
+        discussion = state["model"]["discussion"]
+        assert discussion["shipmentId"] == LOT_A
+        assert discussion["stageId"] == "pickup"
+        assert discussion["notes"] == []
+
+        _trigger(state, "journey_note_create", {
+            "shipmentId": LOT_A, "stageId": "pickup",
+            "body": "Xác nhận địa chỉ giao hàng", "visibility": "CUSTOMER",
+            "replyToId": "", "files": [], "requestId": "REQ-PORTAL-1",
+        })
+        app.run()
         assert not app.exception, [str(e.value) for e in app.exception]
-        assert "Đã lưu trao đổi" in _visible(app)
-        app.run()          # reloads and renders the saved note
+        outcome = state["model"]["discussion"]["outcome"]
+        assert outcome["ok"] is True and outcome["requestId"] == "REQ-PORTAL-1"
+        state["result"] = None
+        app.run()          # reloads and delivers the saved note
         assert not app.exception, [str(e.value) for e in app.exception]
-        visible = _visible(app)
+        discussion = state["model"]["discussion"]
+        assert [note["body"] for note in discussion["notes"]] == [
+            "Xác nhận địa chỉ giao hàng",
+        ]
+        assert discussion["notes"][0]["visibility"] == notes.VISIBILITY_CUSTOMER
 
     rows = notes.list_stage_notes(
-        customer_id=CUSTOMER_A, shipment_id=LOT_A, actor=CUSTOMER_ACTOR, db=db)
+        customer_id=CUSTOMER_A, shipment_id=LOT_A, stage_id="pickup",
+        actor=CUSTOMER_ACTOR, db=db)
     assert [row["body"] for row in rows] == ["Xác nhận địa chỉ giao hàng"]
     assert rows[0]["visibility"] == notes.VISIBILITY_CUSTOMER
-    assert "Xác nhận địa chỉ giao hàng" in visible
 
 
 def test_customer_portal_never_shows_internal_notes(db):
@@ -881,86 +914,192 @@ def test_ui_more_than_four_files_is_refused_without_writing(db, store):
     assert store.files == {}
 
 
+_STAFF_INLINE_SCRIPT = (
+    "import streamlit as st\n"
+    "from views import journey_inline\n"
+    "user = {'username': 'sale.thanh', 'role': 'sale'}\n"
+    "st.session_state['out'] = journey_inline.consume_staff_triggers(\n"
+    "    {'seq': 0}, st.session_state['event'], user=user,\n"
+    "    shipments=st.session_state['rows'],\n"
+    ")\n"
+)
+
+
+def _staff_inline_write(db, store, payload) -> dict:
+    """The shell's OWN trigger path: one typed create event, no Streamlit form."""
+    with _internal_stack(db, store):
+        app = AppTest.from_string(_STAFF_INLINE_SCRIPT, default_timeout=120)
+        app.session_state["rows"] = [{
+            "id": LOT_A, "customerId": CUSTOMER_A,
+            "journey": {"nodes": [{"id": "pickup-1", "label": "Lấy hàng"}]},
+        }]
+        app.session_state["event"] = {
+            "journey_note_create": {
+                "seq": 1, "event": "journey_note_create", "payload": payload,
+            },
+        }
+        app.run()
+        assert not app.exception, [str(e.value) for e in app.exception]
+        outcomes = app.session_state["out"]
+    assert len(outcomes) == 1
+    return outcomes[0]
+
+
 def test_ui_staff_public_note_file_and_customer_reply_meet_at_the_same_stage(db, store):
     """Hai phía, một công đoạn: Trường Thành công khai → khách xem/tải → khách trả lời."""
     _seed_public_event(db)
-    _write(db, body="NỘI BỘ: giá vốn", stage="customs",
+    _write(db, body="NỘI BỘ: giá vốn", stage="pickup",
            visibility=notes.VISIBILITY_INTERNAL, store=store)
 
-    staff_app, staff_stack = _internal_app(db, store)
-    with staff_stack:
-        staff_app.run()
-        staff_app.selectbox[0].set_value(STAGE_OPTIONS[4]).run()
-        staff_app.file_uploader[0].upload("to-khai.png", PNG_1PX, "image/png").run()
-        staff_app.text_area[0].set_value("Cần khách xác nhận tờ khai").run()
-        staff_app.radio[0].set_value("👁 Cho khách hàng xem").run()
-        _send_button(staff_app).click().run()
-        assert not staff_app.exception, [str(e.value) for e in staff_app.exception]
+    # --- staff half: the in-map composer publishes a note + a real file ------
+    outcome = _staff_inline_write(db, store, {
+        "shipmentId": LOT_A, "stageId": "pickup", "nodeId": "pickup-1",
+        "body": "Cần khách xác nhận tờ khai", "visibility": "CUSTOMER",
+        "replyToId": "", "requestId": "REQ-STAFF-1",
+        "files": [{"name": "to-khai.png", "mime": "image/png",
+                   "base64": base64.b64encode(PNG_1PX).decode()}],
+    })
+    assert outcome["ok"] is True and outcome["gate"] == "SAVED"
+    assert outcome["persisted"]["attachments"] == 1
+    root = notes.list_stage_notes(
+        customer_id=CUSTOMER_A, shipment_id=LOT_A, stage_id="pickup",
+        actor=SALE, db=db)
+    root_id = next(row["id"] for row in root if row["body"] == "Cần khách xác nhận tờ khai")
+    attachment_id = next(row["attachments"][0]["id"] for row in root
+                         if row["body"] == "Cần khách xác nhận tờ khai")
 
-    portal_app, portal_stack = _portal_app(db, store)
-    with portal_stack:
-        portal_app.run()
-        assert not portal_app.exception, [str(e.value) for e in portal_app.exception]
-        portal_app.selectbox[0].set_value(STAGE_OPTIONS[4]).run()
-        visible = _visible(portal_app)
-        assert "Cần khách xác nhận tờ khai" in visible
-        assert "NỘI BỘ: giá vốn" not in visible
-        attachments = _attachment_buttons(portal_app)
-        assert len(attachments) == 1 and "to-khai.png" in attachments[0].label
-        attachments[0].click().run()
-        assert portal_app.download_button, "khách không tải được chứng từ đã công khai"
+    # --- customer half: same stage, same lot, INTERNAL invisible in payload --
+    app, state, stack = _portal_inline(db, store)
+    with stack:
+        _focus(app, LOT_A, "pickup")
+        app.run()
+        assert not app.exception, [str(e.value) for e in app.exception]
+        discussion = state["model"]["discussion"]
+        bodies = {note["body"] for note in discussion["notes"]}
+        assert "Cần khách xác nhận tờ khai" in bodies
+        assert "NỘI BỘ: giá vốn" not in json.dumps(state["model"], ensure_ascii=False)
+        shown = next(note for note in discussion["notes"]
+                     if note["body"] == "Cần khách xác nhận tờ khai")
+        assert [att["name"] for att in shown["attachments"]] == ["to-khai.png"]
 
-        portal_app.text_area[0].set_value("Khách đã xác nhận tờ khai").run()
-        _send_button(portal_app).click().run()
-        assert not portal_app.exception, [str(e.value) for e in portal_app.exception]
-        assert "Khách đã xác nhận tờ khai" in _visible(portal_app)
-        portal_app.run()        # reload
-        assert "Khách đã xác nhận tờ khai" in _visible(portal_app)
-        assert portal_app.selectbox[0].value == STAGE_OPTIONS[4]
-        portal_app.selectbox[0].set_value(STAGE_OPTIONS[1]).run()
-        assert "Cần khách xác nhận tờ khai" not in _visible(portal_app)
-        assert _attachment_buttons(portal_app) == []
+        # download: identifiers out, server bytes in
+        _trigger(state, "journey_note_download", {
+            "shipmentId": LOT_A, "stageId": "pickup", "noteId": root_id,
+            "attachmentId": attachment_id, "requestId": "REQ-DL-1",
+        })
+        app.run()
+        assert not app.exception, [str(e.value) for e in app.exception]
+        download = state["model"]["discussion"]["download"]
+        assert download["name"] == "to-khai.png"
+        assert base64.b64decode(download["base64"]) == PNG_1PX
 
-    thread = _internal(db, stage="customs")
-    assert [row["body"] for row in thread] == [
+        # reply under the visible root
+        state["result"] = None
+        _trigger(state, "journey_note_create", {
+            "shipmentId": LOT_A, "stageId": "pickup",
+            "body": "Khách đã xác nhận tờ khai", "visibility": "CUSTOMER",
+            "replyToId": root_id, "files": [], "requestId": "REQ-CUST-1",
+        }, seq=2)
+        app.run()
+        assert not app.exception, [str(e.value) for e in app.exception]
+        state["result"] = None
+        app.run()          # reload
+        assert not app.exception, [str(e.value) for e in app.exception]
+        discussion = state["model"]["discussion"]
+        tree = {note["body"]: note for note in discussion["notes"]}
+        assert [reply["body"] for reply in tree["Cần khách xác nhận tờ khai"]["replies"]] == [
+            "Khách đã xác nhận tờ khai",
+        ]
+
+    thread = notes.list_stage_notes(
+        customer_id=CUSTOMER_A, shipment_id=LOT_A, stage_id="pickup", actor=SALE, db=db)
+    assert {row["body"] for row in thread} == {
         "NỘI BỘ: giá vốn", "Cần khách xác nhận tờ khai", "Khách đã xác nhận tờ khai",
-    ]
-    assert thread[-1]["author_kind"] == "customer"
-    assert thread[-1]["visibility"] == notes.VISIBILITY_CUSTOMER
-    assert _internal(db, stage="pickup") == []
+    }
+    reply_row = next(row for row in thread if row["body"] == "Khách đã xác nhận tờ khai")
+    assert reply_row["reply_to_id"] == root_id
+    assert reply_row["author_kind"] == "customer"
+    assert reply_row["visibility"] == notes.VISIBILITY_CUSTOMER
 
 
 def test_ui_customer_cannot_see_or_write_another_lots_thread(db, store):
-    """Lục Giác chỉ thấy lô của mình; lô của khách khác không xuất hiện để gửi."""
+    """Lục Giác chỉ thấy lô của mình; lô của khách khác bị từ chối ở server."""
     _seed_public_event(db)
     _write(db, body="LÔ CỦA KHÁCH KHÁC", stage="pickup", customer=CUSTOMER_B, lot=LOT_B,
            actor=SUPPORT, store=store)
-    portal_app, portal_stack = _portal_app(db, store)
-    with portal_stack:
-        portal_app.run()
-        assert not portal_app.exception, [str(e.value) for e in portal_app.exception]
-        portal_app.selectbox[0].set_value(STAGE_OPTIONS[1]).run()
-        visible = _visible(portal_app)
-        assert "LÔ CỦA KHÁCH KHÁC" not in visible
-        assert f"lô {LOT_B}" not in visible
-        assert len(portal_app.selectbox) == 1
+    app, state, stack = _portal_inline(db, store)
+    with stack:
+        _focus(app, LOT_A, "pickup")
+        app.run()
+        assert not app.exception, [str(e.value) for e in app.exception]
+        assert "LÔ CỦA KHÁCH KHÁC" not in json.dumps(state["model"], ensure_ascii=False)
+        assert LOT_B not in json.dumps(
+            [note["body"] for note in state["model"]["discussion"]["notes"]],
+            ensure_ascii=False,
+        )
+
+        # A hand-crafted payload for another tenant is refused, not written.
+        _trigger(state, "journey_note_create", {
+            "shipmentId": LOT_B, "stageId": "pickup",
+            "body": "GỬI SANG LÔ KHÁC", "visibility": "CUSTOMER",
+            "replyToId": "", "files": [], "requestId": "REQ-FOREIGN-1",
+        })
+        app.run()
+        assert not app.exception, [str(e.value) for e in app.exception]
+        assert state["model"]["discussion"]["outcome"]["ok"] is False
+        assert db.quick_notes.count_documents(
+            {"kind": notes.JOURNEY_NOTE_KIND, "shipment_id": LOT_B,
+             "body": "GỬI SANG LÔ KHÁC"},
+        ) == 0
+
+        # Replaying the very same trigger (rerun/double click) writes once.
+        state["result"] = None
+        _trigger(state, "journey_note_create", {
+            "shipmentId": LOT_A, "stageId": "pickup",
+            "body": "CHỈ MỘT LẦN", "visibility": "CUSTOMER",
+            "replyToId": "", "files": [], "requestId": "REQ-ONCE-1",
+        }, seq=3)
+        app.run()
+        state["result"] = None
+        app.run()
+        assert db.quick_notes.count_documents(
+            {"kind": notes.JOURNEY_NOTE_KIND, "body": "CHỈ MỘT LẦN"},
+        ) == 1
     with pytest.raises(notes.JourneyNoteDenied):
         _write(db, body="x", lot=LOT_B, customer=CUSTOMER_B, actor=CUSTOMER_ACTOR, store=store)
 
 
-def test_real_pages_are_wired_to_the_discussion_panes():
-    """The two panes are mounted by the shipped pages, not only by tests."""
+def test_real_pages_are_wired_to_the_inline_map_discussion():
+    """The shipped map surfaces own the thread; no Streamlit form sits above it."""
     import inspect
 
-    from views import customer_dashboard, shipment
-
-    detail = inspect.getsource(shipment.ui_shipment_detail_tabs)
-    assert "render_internal_discussion(" in detail
-    assert "if can_edit:" in detail
-    assert "ship.get(\"customer_id\")" in detail
+    from views import customer_dashboard, logi_view_model, shipment, web_app
 
     portal_view = inspect.getsource(customer_dashboard.render_customer_dashboard)
-    assert "render_customer_discussion(view.cards, principal, db=db)" in portal_view
+    assert "journey_inline.build_customer_discussion(" in portal_view
+    assert "discussion=discussion" in portal_view
+    assert "render_customer_discussion(" not in portal_view
+
+    shell = inspect.getsource(logi_view_model)
+    assert "journey_inline.build_staff_discussion(" in shell
+    assert '"journeyDiscussion"' in shell or "journeyDiscussion" in shell
+
+    web = inspect.getsource(web_app)
+    assert "_render_journey_focus_pane" not in web
+
+    # The lot-detail page keeps its own stage pane: a different surface, never
+    # part of the Journey Map path.
+    detail = inspect.getsource(shipment.ui_shipment_detail_tabs)
+    assert "render_internal_discussion(" in detail
+
+    component = (ROOT / "component/src/components/JourneyMap.tsx").read_text()
+    assert "JourneyDiscussionPanel" in component
+    panel = (ROOT / "component/src/components/JourneyDiscussionPanel.tsx").read_text()
+    assert "journey-discussion-body" in panel and "journey-discussion-send" in panel
+
+    portal_js = (ROOT / "assets/customer_portal/hexa-portal.js").read_text()
+    assert "journey-discussion" in portal_js
+    assert "journey_note_create" in portal_js and "journey_note_download" in portal_js
 
 
 def test_ui_customer_with_two_lots_posts_into_the_lot_it_selected(db, store):
@@ -970,19 +1109,36 @@ def test_ui_customer_with_two_lots_posts_into_the_lot_it_selected(db, store):
     _seed_public_event(db, shipment=lot_two, event="EV-B", stage="pickup")
     _write(db, body="TRAO ĐỔI LÔ MỘT", stage="pickup", store=store)
 
-    portal_app, portal_stack = _portal_app(db, store)
-    with portal_stack:
-        portal_app.run()
-        assert not portal_app.exception, [str(e.value) for e in portal_app.exception]
-        expanders = [element.label for element in portal_app.expander]
-        assert len(expanders) == 2 and any(LOT_A in label for label in expanders)
-        assert len(portal_app.text_area) == 2 and len(portal_app.selectbox) == 2
-        # Post from the SECOND lot's composer, on its own stage.
-        portal_app.selectbox[1].set_value(STAGE_OPTIONS[1]).run()
-        portal_app.text_area[1].set_value("KHÁCH GỬI Ở LÔ HAI").run()
-        senders = [element for element in portal_app.button if element.label == "Gửi"]
-        senders[1].click().run()
-        assert not portal_app.exception, [str(e.value) for e in portal_app.exception]
+    app, state, stack = _portal_inline(db, store)
+    with stack:
+        _focus(app, lot_two, "pickup")
+        app.run()
+        assert not app.exception, [str(e.value) for e in app.exception]
+        discussion = state["model"]["discussion"]
+        assert discussion["shipmentId"] == lot_two
+        assert "TRAO ĐỔI LÔ MỘT" not in json.dumps(discussion, ensure_ascii=False)
+        # The other lot stays in the dashboard payload, but its thread is absent.
+        assert discussion["notes"] == []
+
+        _trigger(state, "journey_note_create", {
+            "shipmentId": lot_two, "stageId": "pickup",
+            "body": "KHÁCH GỬI Ở LÔ HAI", "visibility": "CUSTOMER",
+            "replyToId": "", "files": [], "requestId": "REQ-LOT2-1",
+        })
+        app.run()
+        assert not app.exception, [str(e.value) for e in app.exception]
+        state["result"] = None
+        app.run()
+        assert [note["body"] for note in state["model"]["discussion"]["notes"]] == [
+            "KHÁCH GỬI Ở LÔ HAI",
+        ]
+
+        # Returning to the first lot shows only the first lot's thread.
+        _focus(app, LOT_A, "pickup")
+        app.run()
+        assert not app.exception, [str(e.value) for e in app.exception]
+        bodies = [note["body"] for note in state["model"]["discussion"]["notes"]]
+        assert bodies == ["TRAO ĐỔI LÔ MỘT"]
     rows_one = notes.list_stage_notes(
         customer_id=CUSTOMER_A, shipment_id=LOT_A, stage_id="pickup",
         actor=CUSTOMER_ACTOR, db=db)
@@ -991,3 +1147,132 @@ def test_ui_customer_with_two_lots_posts_into_the_lot_it_selected(db, store):
         actor=CUSTOMER_ACTOR, db=db)
     assert [row["body"] for row in rows_one] == ["TRAO ĐỔI LÔ MỘT"]
     assert [row["body"] for row in rows_two] == ["KHÁCH GỬI Ở LÔ HAI"]
+
+
+
+
+# --------------------------------------------------------------------------
+# Trả lời (reply): một cấp, đúng phạm vi, không lộ cha INTERNAL
+# --------------------------------------------------------------------------
+
+def _reply(db, parent_id, *, body="Phản hồi", actor=SALE, stage="pickup",
+           visibility=notes.VISIBILITY_CUSTOMER, lot=LOT_A, customer=CUSTOMER_A):
+    return notes.create_stage_note(
+        customer_id=customer, shipment_id=lot, stage_id=stage, body=body,
+        visibility=visibility, actor=actor, reply_to_id=parent_id, db=db,
+    )
+
+
+def test_reply_attaches_to_its_root_and_a_reply_to_a_reply_stays_at_one_level(db):
+    root = _write(db, body="Bình luận gốc", stage="pickup")["note"]
+    first = _reply(db, root["id"], body="Trả lời lần một")["note"]
+    assert first["reply_to_id"] == root["id"]
+    # Replying to a reply is folded back to the same root — no chain can grow.
+    second = _reply(db, first["id"], body="Trả lời lần hai")["note"]
+    assert second["reply_to_id"] == root["id"]
+
+    thread = notes.build_thread(_customer(db, stage="pickup"))
+    assert [note["body"] for note in thread] == ["Bình luận gốc"]
+    assert [reply["body"] for reply in thread[0]["replies"]] == [
+        "Trả lời lần một", "Trả lời lần hai",
+    ]
+    assert all(reply["replies"] == [] for reply in thread[0]["replies"])
+
+
+def test_reply_parent_must_belong_to_the_same_lot_and_stage(db):
+    root = _write(db, body="Gốc ở lấy hàng", stage="pickup")["note"]
+    with pytest.raises(notes.JourneyNoteDenied):
+        _reply(db, root["id"], stage="customs")
+    db.shipments.insert_one({"id": "G1-LG-999", "customer_id": CUSTOMER_A})
+    with pytest.raises(notes.JourneyNoteDenied):
+        _reply(db, root["id"], lot="G1-LG-999")
+    with pytest.raises(notes.JourneyNoteDenied):
+        _reply(db, "jn-does-not-exist")
+
+
+def test_customer_can_never_reply_to_an_internal_parent(db):
+    root = _write(db, body="NỘI BỘ", stage="pickup",
+                  visibility=notes.VISIBILITY_INTERNAL)["note"]
+    with pytest.raises(notes.JourneyNoteDenied):
+        _reply(db, root["id"], actor=CUSTOMER_ACTOR)
+    # Staff may reply internally under it…
+    staff_reply = _reply(db, root["id"], visibility=notes.VISIBILITY_INTERNAL)
+    assert staff_reply["note"]["reply_to_id"] == root["id"]
+    # …but must not publish a CUSTOMER-visible reply under an INTERNAL parent.
+    with pytest.raises(notes.JourneyNoteDenied):
+        _reply(db, root["id"], visibility=notes.VISIBILITY_CUSTOMER)
+    thread = notes.build_thread(_customer(db, stage="pickup"))
+    assert thread == []
+
+
+def test_legacy_reply_with_an_invisible_parent_is_never_delivered(db):
+    internal_parent = _write(db, body="NỘI BỘ CŨ", stage="pickup",
+                             visibility=notes.VISIBILITY_INTERNAL)["note"]
+    # A row written before the reply rules existed (or by a bad migration).
+    db.quick_notes.insert_one({
+        "id": "jn-orphan-reply", "kind": notes.JOURNEY_NOTE_KIND,
+        "customer_id": CUSTOMER_A, "shipment_id": LOT_A, "stage_id": "pickup",
+        "visibility": notes.VISIBILITY_CUSTOMER, "reply_to_id": internal_parent["id"],
+        "body": "PHẢN HỒI MỒ CÔI", "author_kind": "customer",
+        "author_name": "Lục Giác", "author_role": "customer",
+        "created_at": "2026-10-30T09:00:00+00:00",
+    })
+    thread = notes.build_thread(_customer(db, stage="pickup"))
+    assert "PHẢN HỒI MỒ CÔI" not in json.dumps(thread, ensure_ascii=False)
+
+
+def test_inline_download_of_a_revoked_file_is_refused(db, store):
+    """A file revoked after the thread loaded can never be re-downloaded."""
+    _seed_public_event(db)
+    outcome = _write(db, body="Ảnh đã thu hồi", stage="pickup", files=[_png()], store=store)
+    note_id = outcome["note"]["id"]
+    attachment_id = outcome["note"]["attachments"][0]["id"]
+    db.quick_notes.update_one(
+        {"id": note_id}, {"$set": {"attachments.0.status": "REVOKED"}},
+    )
+    app, state, stack = _portal_inline(db, store)
+    with stack:
+        _focus(app, LOT_A, "pickup")
+        app.run()
+        assert not app.exception, [str(e.value) for e in app.exception]
+        discussion = state["model"]["discussion"]
+        assert discussion["notes"][0]["attachments"] == []
+        _trigger(state, "journey_note_download", {
+            "shipmentId": LOT_A, "stageId": "pickup", "noteId": note_id,
+            "attachmentId": attachment_id, "requestId": "REQ-REVOKED-1",
+        })
+        app.run()
+        assert not app.exception, [str(e.value) for e in app.exception]
+        discussion = state["model"]["discussion"]
+        assert discussion["download"] is None
+        assert discussion["downloadOutcome"]["ok"] is False
+    assert notes.read_note_attachment(
+        note_id=note_id, attachment_id=attachment_id,
+        actor=CUSTOMER_ACTOR, db=db, gridfs=store,
+    )["ok"] is False
+
+
+def test_a_comment_never_changes_the_published_progress(db, store):
+    """Commenting is not an evidence write: the published stage state is untouched."""
+    _seed_public_event(db)
+    published = db.public_events.find_one({"id": "EV-1"})
+    app, state, stack = _portal_inline(db, store)
+    with stack:
+        _focus(app, LOT_A, "pickup")
+        app.run()
+        assert not app.exception, [str(e.value) for e in app.exception]
+        stages_before = [node["state"] for node in state["model"]["lots"][0]["journey"]["nodes"]]
+        _trigger(state, "journey_note_create", {
+            "shipmentId": LOT_A, "stageId": "pickup", "body": "Ý kiến, không phải bằng chứng",
+            "visibility": "CUSTOMER", "replyToId": "", "files": [],
+            "requestId": "REQ-NO-EVIDENCE-1",
+        })
+        app.run()
+        assert not app.exception, [str(e.value) for e in app.exception]
+        state["result"] = None
+        app.run()
+        assert not app.exception, [str(e.value) for e in app.exception]
+        stages_after = [node["state"] for node in state["model"]["lots"][0]["journey"]["nodes"]]
+    assert stages_after == stages_before
+    assert db.public_events.find_one({"id": "EV-1"}) == published
+    assert db.quick_notes.count_documents({"kind": notes.JOURNEY_NOTE_KIND}) == 1

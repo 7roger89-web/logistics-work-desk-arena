@@ -41,11 +41,15 @@ SEA_CHART_SHA256 = "f83d42167dffcb1ac629f261923408a2c6d5d6d7564cf63083aa869babab
 
 COMPONENT_KEY = "hexa-customer-portal"
 
-#: The ONE typed event this component may send back to Python: "open the
-#: existing stage discussion pane for the node I just clicked". The payload is
-#: an intent only ({shipment_id, stage_id}); views.journey_focus re-validates it
-#: against the server-built projection before anything is read or written.
+#: Typed events this component may send back to Python. All are intents only
+#: (lot + stage, text, one bounded file, identifiers); every read/write is
+#: re-validated server-side by views.journey_focus / views.journey_inline.
+#:   journey_focus        — open THIS node's conversation
+#:   journey_note_create  — comment/reply inside that node
+#:   journey_note_download— read ONE attachment after permission is re-proved
 FOCUS_EVENT = "journey_focus"
+NOTE_EVENTS = ("journey_note_create", "journey_note_download")
+EVENTS = (FOCUS_EVENT, *NOTE_EVENTS)
 
 
 class PortalAssetError(RuntimeError):
@@ -110,21 +114,22 @@ def on_focus_change() -> None:
     journey_focus.capture_from_result(st.session_state, raw, event=FOCUS_EVENT)
 
 
-def render(model: dict, *, height: str | int = "content") -> Any:
+def render(model: dict, *, height: str | int = "content", on_change: Any = None) -> Any:
     """Mount the reference UI for one server-built model.
 
     The component is presentational: lot selection, node bubbles, modals and
-    zoom are local UI state and nothing is written to the server. The ONE
-    exception is the typed ``journey_focus`` trigger, which only asks Python to
-    open the existing stage-discussion pane; a forged value cannot change
-    tenancy because the pane re-resolves the lot server-side.
+    zoom are local UI state. Conversation events are intents that the server
+    re-validates: a forged lot/stage/parent simply writes nothing, and a
+    customer can never obtain INTERNAL content because the payload builder
+    filters it before delivery.
     """
     _html, _css, _js, sea_chart = load_assets()
     payload = {"model": model, "assets": {"sea_chart": sea_chart}}
+    handler = on_change or on_focus_change
     return _renderer()(
         key=COMPONENT_KEY,
         data=payload,
         width="stretch",
         height=height,
-        **{f"on_{FOCUS_EVENT}_change": on_focus_change},
+        **{f"on_{event}_change": handler for event in EVENTS},
     )

@@ -79,14 +79,28 @@ const state = {
   nodeW: JOURNEY_NODE_W,
   nodeH: JOURNEY_NODE_H,
   bound: false,
-  // Components v2 transport (setTriggerValue). The ONLY thing this UI may send
-  // back to Python is an intent: "open the existing discussion pane for this
-  // lot + stage". It never sends a customer id, a note body or a permission.
+  // Components v2 transport (setTriggerValue). Everything this UI sends back
+  // to Python is an INTENT: open this node's thread, append ONE comment/reply
+  // to it, or read ONE attachment. It never sends a customer id, a role or a
+  // permission — the server re-derives all of them.
   transport: null,
   triggerSeq: 0,
+  // Issue #236 — the ONE node conversation the server delivered, plus the
+  // local draft per lot|node. Drafts are keyed so text typed at one stage can
+  // never be submitted to another one after switching nodes.
+  discussion: null,
+  journeyOpen: false,
+  discussionPendingKey: '',
+  drafts: {},
+  sendingRequestId: '',
+  sendTimer: null,
+  downloadPendingId: '',
+  handledDownloadKey: '',
 };
 
 const FOCUS_EVENT = 'journey_focus';
+const NOTE_CREATE_EVENT = 'journey_note_create';
+const NOTE_DOWNLOAD_EVENT = 'journey_note_download';
 
 function q(id) {
   return state.root ? state.root.querySelector('#' + id) : null;
@@ -320,6 +334,12 @@ function secondaryLine(parts) {
 }
 
 function renderDashboard(model) {
+  // Issue #236 — remember the open lot + node so a data refresh (for example
+  // after sending a comment) does NOT throw the customer back to the dashboard
+  // or lose the node they were reading. Restore happens at the end of this
+  // function and only when that lot is still in the freshly delivered payload.
+  const keepLotId = state.lot ? String(state.lot.shipment_id || '') : '';
+  const keepNodeId = state.selectedNodeId ? String(state.selectedNodeId) : '';
   // A Streamlit rerun can reuse this shadow root for a different principal or
   // a revoked publication. Remove the previous lot, not just the table rows:
   // an open modal, bubble, toolbar and JS state otherwise survive the rerun.
@@ -327,6 +347,7 @@ function renderDashboard(model) {
   state.selectedNodeId = null;
   state.lastModalNodeId = null;
   state.activeBubblePos = null;
+  applyDiscussionModel(model);
   closeStageModal(true);
   toggleUtilityBubble(false);
   ['journey-bubble-slot', 'journey-modal-body', 'modal-kicker', 'modal-title',
@@ -504,6 +525,21 @@ function renderDashboard(model) {
     showUnpublishedState();
     return;
   }
+  // Issue #236 — a refresh (comment sent, attachment read, unrelated rerun)
+  // keeps the SAME lot and node open, without re-emitting the intent when the
+  // thread is already delivered/pending (so no rerun loop) and without
+  // resetting the customer's pan/zoom.
+  const canRestore = Boolean(keepLotId) && state.journeyOpen
+    && lots.some((row) => String(row.shipment_id || '') === keepLotId);
+  if (canRestore) {
+    selectShipmentForJourney(keepLotId, { fit: false });
+    if (keepNodeId) {
+      const row = lots.find((r) => String(r.shipment_id || '') === keepLotId);
+      const nodes = (row && row.journey && Array.isArray(row.journey.nodes)) ? row.journey.nodes : [];
+      if (nodes.some((n) => String(n.id) === keepNodeId)) selectJourneyNode(keepNodeId);
+    }
+    return;
+  }
   if (lots.length === 1) {
     if (selectorBox) selectorBox.classList.add('hidden');
     if (backBtn) backBtn.classList.add('hidden');
@@ -529,6 +565,7 @@ function showUnpublishedState() {
 
 function backToDashboard() {
   closeStageModal(true);
+  state.journeyOpen = false;
   const selectorBox = q('customer-shipment-selector');
   const journeyView = q('shipment-journey-view');
   if (journeyView) journeyView.classList.add('hidden');
@@ -536,12 +573,14 @@ function backToDashboard() {
   state.selectedNodeId = null;
   state.activeBubblePos = null;
 }
-function selectShipmentForJourney(shipmentId) {
+function selectShipmentForJourney(shipmentId, options) {
+  const opts = options || {};
   const sid = String(shipmentId || '').trim();
   if (!sid) return;
   const lots = (state.model && state.model.lots) || [];
   const matched = lots.find((r) => String(r.shipment_id) === sid) || null;
   if (!matched) return;
+  state.journeyOpen = true;
   const selectorBox = q('customer-shipment-selector');
   const journeyView = q('shipment-journey-view');
   const backBtn = q('btn-back-to-dashboard');
@@ -555,7 +594,9 @@ function selectShipmentForJourney(shipmentId) {
   state.selectedNodeId = null;
   state.activeBubblePos = null;
   renderJourneyMapForShipment(matched);
-  fitJourney();
+  // A data refresh keeps the customer's own pan/zoom; only a real lot switch
+  // re-fits the map.
+  if (opts.fit === false) applyTransform(); else fitJourney();
 }
 
 /* ---------------------------------------------------------------- journey */
@@ -679,22 +720,42 @@ function renderJourneyMapForShipment(row) {
   }
 }
 
-function selectJourneyNode(nodeId) {
+function selectJourneyNode(nodeId, options) {
   if (!state.lot || !state.lot.journey) return;
+  const opts = options || {};
   const utilDrop = q('journey-utility-bubble');
   if (utilDrop) utilDrop.classList.add('hidden');
   state.selectedNodeId = String(nodeId);
+  if (opts.load !== false) requestDiscussion(String(nodeId));
   renderJourneyMapForShipment(state.lot);
 }
 
-// Journey Map node → the ONE existing stage-discussion pane (Streamlit).
-// Sends an intent only; the server re-resolves the lot against this customer's
-// own published cards and the stage against the canonical 00..06 ids.
-function emitJourneyFocus(nodeId, node) {
+// ---------------------------------------------------------------------------
+// Issue #236 — inline node conversation
+//
+// Clicking a node asks Python for THAT lot + stage thread (`journey_focus`,
+// unchanged contract). The thread arrives in `model.discussion` and is rendered
+// INSIDE the node bubble: comments, one level of replies, the composer and its
+// attachments. Nothing here decides tenancy, visibility or permission.
+// ---------------------------------------------------------------------------
+
+function discussionKey(lotId, nodeId) {
+  return `${String(lotId || '')}|${String(nodeId || '')}`;
+}
+
+function requestDiscussion(nodeId) {
   if (!state.transport || !state.lot) return false;
-  const stage = String(nodeId || (node && node.id) || '');
   const lot = String(state.lot.shipment_id || '');
-  if (!stage || !lot) return false;
+  const stage = String(nodeId || '');
+  if (!lot || !stage) return false;
+  const key = discussionKey(lot, stage);
+  if (state.discussionPendingKey === key) return true;
+  const disc = state.discussion;
+  if (disc && String(disc.shipmentId) === lot
+    && (String(disc.stageId) === stage || String(disc.nodeId) === stage)) {
+    return true;
+  }
+  state.discussionPendingKey = key;
   state.triggerSeq += 1;
   state.transport(FOCUS_EVENT, {
     seq: state.triggerSeq,
@@ -702,6 +763,445 @@ function emitJourneyFocus(nodeId, node) {
     payload: { shipment_id: lot, stage_id: stage },
   });
   return true;
+}
+
+function discussionFor(node) {
+  const disc = state.discussion;
+  if (!disc || !state.lot || !node) return null;
+  if (String(disc.shipmentId) !== String(state.lot.shipment_id)) return null;
+  if (String(disc.stageId) !== String(node.id) && String(disc.nodeId) !== String(node.id)) return null;
+  return disc;
+}
+
+function ensureDraft(key) {
+  if (!state.drafts[key]) {
+    state.drafts[key] = { text: '', replyTo: '', replyName: '', file: null, notice: '', fileNotice: '' };
+  }
+  return state.drafts[key];
+}
+
+function formatStamp(value) {
+  const text = String(value || '').replace('T', ' ');
+  return text ? text.slice(0, 19) : '—';
+}
+
+function downloadBase64(name, base64, mime) {
+  try {
+    const binary = atob(String(base64 || ''));
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+    const blob = new Blob([bytes], { type: mime || 'application/octet-stream' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = String(name || 'chung-tu');
+    anchor.rel = 'noopener';
+    document.body.appendChild(anchor);
+    anchor.click();
+    document.body.removeChild(anchor);
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
+// Fold the delivered slice into local state. The server is authoritative: the
+// draft is cleared only for the requestId the backend actually answered, and a
+// file is saved only from the server's one-shot download channel.
+function applyDiscussionModel(model) {
+  const disc = model && model.discussion;
+  if (!disc || !disc.shipmentId || !disc.stageId) {
+    state.discussion = null;
+    return;
+  }
+  state.discussion = disc;
+  const key = discussionKey(disc.shipmentId, disc.stageId);
+  if (state.discussionPendingKey === key) state.discussionPendingKey = '';
+  const draft = state.drafts[key];
+  const outcome = disc.outcome;
+  if (outcome && outcome.requestId && outcome.requestId === state.sendingRequestId) {
+    state.sendingRequestId = '';
+    if (state.sendTimer) { clearTimeout(state.sendTimer); state.sendTimer = null; }
+    if (draft) {
+      draft.notice = outcome.ok
+        ? (outcome.duplicate ? 'Bình luận này đã được ghi trước đó.' : '')
+        : String(outcome.error || 'Không gửi được bình luận.');
+      if (outcome.ok) {
+        draft.text = '';
+        draft.file = null;
+        draft.replyTo = '';
+        draft.replyName = '';
+        draft.fileNotice = '';
+      }
+    }
+  }
+  const downloadOutcome = disc.downloadOutcome;
+  if (downloadOutcome && downloadOutcome.requestId === state.downloadPendingId) {
+    state.downloadPendingId = '';
+    if (!downloadOutcome.ok && draft) draft.notice = String(downloadOutcome.error || 'Không tải được chứng từ.');
+  }
+  const dl = disc.download;
+  if (dl && dl.base64) {
+    const dkey = `${dl.noteId}:${dl.attachmentId}:${dl.seq}`;
+    if (dkey !== state.handledDownloadKey) {
+      state.handledDownloadKey = dkey;
+      const saved = downloadBase64(dl.name, dl.base64, dl.mime);
+      if (draft) draft.notice = saved ? '' : 'Trình duyệt không mở được tệp vừa tải.';
+      state.downloadPendingId = '';
+    }
+  }
+}
+
+
+/* ------------------------------------------------- inline node discussion */
+
+function buildAttachmentList(note, draft) {
+  const rows = Array.isArray(note.attachments) ? note.attachments : [];
+  if (!rows.length) return null;
+  const list = document.createElement('ul');
+  list.className = 'journey-discussion-files';
+  rows.forEach((item) => {
+    const li = document.createElement('li');
+    const icon = document.createElement('span');
+    icon.className = 'journey-discussion-file-icon';
+    icon.textContent = '📎';
+    const nameSpan = document.createElement('span');
+    nameSpan.className = 'journey-discussion-file-name';
+    nameSpan.textContent = String(item.name || 'Chứng từ');
+    const sizeSpan = document.createElement('span');
+    sizeSpan.className = 'journey-discussion-file-size';
+    sizeSpan.textContent = String(item.sizeLabel || '');
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'journey-discussion-file-download';
+    btn.dataset.testid = `journey-discussion-download-${item.id}`;
+    btn.textContent = 'Tải';
+    btn.disabled = !state.transport || Boolean(state.downloadPendingId);
+    btn.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      requestDownload(note.id, item.id);
+    });
+    li.appendChild(icon);
+    li.appendChild(nameSpan);
+    li.appendChild(sizeSpan);
+    li.appendChild(btn);
+    list.appendChild(li);
+  });
+  return list;
+}
+
+function buildNoteCard(note, draft, isReply) {
+  const card = document.createElement('div');
+  card.className = isReply ? 'journey-discussion-note is-reply' : 'journey-discussion-note';
+  card.dataset.testid = `journey-discussion-note-${note.id}`;
+  card.dataset.visibility = String(note.visibility || '');
+  const head = document.createElement('div');
+  head.className = 'journey-discussion-note-head';
+  const author = document.createElement('span');
+  author.className = 'journey-discussion-author';
+  author.textContent = String(note.author_name || '—');
+  const kind = document.createElement('span');
+  kind.className = 'journey-discussion-kind';
+  kind.textContent = String(note.author_kind === 'customer' ? 'Khách hàng' : 'Trường Thành');
+  const when = document.createElement('span');
+  when.className = 'journey-discussion-time';
+  when.textContent = `· ${formatStamp(note.created_at)}`;
+  head.appendChild(author);
+  head.appendChild(kind);
+  head.appendChild(when);
+  card.appendChild(head);
+  if (note.body) {
+    const body = document.createElement('p');
+    body.className = 'journey-discussion-body-text';
+    body.textContent = String(note.body);
+    card.appendChild(body);
+  }
+  const files = buildAttachmentList(note, draft);
+  if (files) card.appendChild(files);
+  if (!isReply) {
+    const reply = document.createElement('button');
+    reply.type = 'button';
+    reply.className = 'journey-discussion-reply';
+    reply.dataset.testid = `journey-discussion-reply-${note.id}`;
+    reply.textContent = '↩ Trả lời';
+    reply.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      draft.replyTo = String(note.id);
+      draft.replyName = String(note.author_name || 'bình luận');
+      draft.notice = '';
+      renderJourneyMapForShipment(state.lot);
+    });
+    card.appendChild(reply);
+  }
+  return card;
+}
+
+function buildDiscussionThread(node) {
+  const wrap = document.createElement('div');
+  wrap.className = 'journey-discussion';
+  wrap.dataset.testid = 'journey-discussion';
+  wrap.dataset.node = String(node.id);
+  const head = document.createElement('div');
+  head.className = 'journey-discussion-head';
+  head.textContent = '💬 Trao đổi';
+  wrap.appendChild(head);
+  const disc = discussionFor(node);
+  const key = discussionKey(state.lot && state.lot.shipment_id, node.id);
+  const draft = ensureDraft(key);
+  if (!disc) {
+    const stateBox = document.createElement('div');
+    stateBox.className = 'journey-discussion-empty';
+    if (state.discussionPendingKey === key) {
+      stateBox.dataset.testid = 'journey-discussion-loading';
+      stateBox.textContent = 'Đang tải trao đổi…';
+      wrap.appendChild(stateBox);
+    } else {
+      const retry = document.createElement('button');
+      retry.type = 'button';
+      retry.className = 'journey-discussion-retry';
+      retry.dataset.testid = 'journey-discussion-retry';
+      retry.textContent = state.transport ? 'Tải trao đổi của công đoạn này' : 'Trao đổi chưa kết nối';
+      retry.disabled = !state.transport;
+      retry.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        if (requestDiscussion(String(node.id))) renderJourneyMapForShipment(state.lot);
+      });
+      wrap.appendChild(retry);
+    }
+    return wrap;
+  }
+  head.textContent = `💬 Trao đổi (${Number(disc.count) || 0})`;
+  if (disc.error) {
+    const err = document.createElement('div');
+    err.className = 'journey-discussion-error';
+    err.setAttribute('role', 'alert');
+    err.textContent = String(disc.error);
+    wrap.appendChild(err);
+  }
+  const notes = Array.isArray(disc.notes) ? disc.notes : [];
+  if (!notes.length && !disc.error) {
+    const empty = document.createElement('div');
+    empty.className = 'journey-discussion-empty';
+    empty.dataset.testid = 'journey-discussion-empty';
+    empty.textContent = 'Chưa có trao đổi nào ở công đoạn này.';
+    wrap.appendChild(empty);
+  }
+  const list = document.createElement('div');
+  list.className = 'journey-discussion-list';
+  list.dataset.testid = 'journey-discussion-list';
+  notes.forEach((note) => {
+    const item = document.createElement('div');
+    item.className = 'journey-discussion-thread';
+    item.appendChild(buildNoteCard(note, draft, false));
+    const replies = Array.isArray(note.replies) ? note.replies : [];
+    if (replies.length) {
+      const replyList = document.createElement('div');
+      replyList.className = 'journey-discussion-replies';
+      replies.forEach((reply) => replyList.appendChild(buildNoteCard(reply, draft, true)));
+      item.appendChild(replyList);
+    }
+    list.appendChild(item);
+  });
+  wrap.appendChild(list);
+  return wrap;
+}
+
+function readPickedFile(file, key) {
+  const draft = ensureDraft(key);
+  const limit = Number((state.discussion && state.discussion.maxBytes) || 20 * 1024 * 1024);
+  draft.fileNotice = '';
+  if (!file) { draft.file = null; return; }
+  if (file.size > limit) {
+    draft.file = null;
+    draft.fileNotice = `Tệp vượt giới hạn ${Math.floor(limit / (1024 * 1024))} MB.`;
+    renderJourneyMapForShipment(state.lot);
+    return;
+  }
+  const apply = (encoded) => {
+    if (!encoded) {
+      draft.fileNotice = 'Không đọc được tệp đã chọn.';
+    } else {
+      draft.file = { name: file.name, mime: file.type || '', size: file.size, base64: encoded };
+      draft.fileNotice = `Đã chọn: ${file.name}`;
+    }
+    if (state.lot) renderJourneyMapForShipment(state.lot);
+  };
+  if (typeof FileReader === 'undefined') {
+    draft.fileNotice = 'Trình duyệt không đọc được tệp.';
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = () => {
+    const raw = String(reader.result || '');
+    apply(raw.includes(',') ? raw.split(',')[1] : '');
+  };
+  reader.onerror = () => apply('');
+  reader.readAsDataURL(file);
+}
+
+function sendDiscussion(node) {
+  if (!state.transport || !state.lot || state.sendingRequestId) return;
+  const lot = String(state.lot.shipment_id || '');
+  const key = discussionKey(lot, node.id);
+  const draft = ensureDraft(key);
+  const text = String(draft.text || '').trim();
+  if (!text && !draft.file) {
+    draft.notice = 'Nhập nội dung hoặc đính kèm chứng từ.';
+    renderJourneyMapForShipment(state.lot);
+    return;
+  }
+  draft.notice = '';
+  const requestId = `JRN-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+  state.sendingRequestId = requestId;
+  state.triggerSeq += 1;
+  const files = draft.file
+    ? [{ name: draft.file.name, mime: draft.file.mime, size: draft.file.size, base64: draft.file.base64 }]
+    : [];
+  state.transport(NOTE_CREATE_EVENT, {
+    seq: state.triggerSeq,
+    event: NOTE_CREATE_EVENT,
+    payload: {
+      requestId,
+      shipmentId: lot,
+      nodeId: String(node.id),
+      stageId: String(node.id),
+      body: text,
+      // The portal can only ever publish customer-visible content; the server
+      // enforces it again regardless of this value.
+      visibility: 'CUSTOMER',
+      replyToId: String(draft.replyTo || ''),
+      files,
+    },
+  });
+  if (state.sendTimer) clearTimeout(state.sendTimer);
+  state.sendTimer = setTimeout(() => {
+    if (state.sendingRequestId !== requestId) return;
+    state.sendingRequestId = '';
+    const current = ensureDraft(key);
+    current.notice = 'Chưa nhận được xác nhận từ máy chủ. Vui lòng thử lại.';
+    if (state.lot) renderJourneyMapForShipment(state.lot);
+  }, 20000);
+  renderJourneyMapForShipment(state.lot);
+}
+
+function requestDownload(noteId, attachmentId) {
+  if (!state.transport || !state.lot || state.downloadPendingId) return;
+  const requestId = `JRN-DOWN-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+  state.downloadPendingId = requestId;
+  state.triggerSeq += 1;
+  state.transport(NOTE_DOWNLOAD_EVENT, {
+    seq: state.triggerSeq,
+    event: NOTE_DOWNLOAD_EVENT,
+    payload: {
+      requestId,
+      shipmentId: String(state.lot.shipment_id || ''),
+      nodeId: String(state.selectedNodeId || ''),
+      stageId: String((state.discussion && state.discussion.stageId) || state.selectedNodeId || ''),
+      noteId: String(noteId),
+      attachmentId: String(attachmentId),
+    },
+  });
+  if (state.lot) renderJourneyMapForShipment(state.lot);
+}
+
+function buildDiscussionComposer(node) {
+  const wrap = document.createElement('div');
+  wrap.className = 'journey-discussion-composer';
+  wrap.dataset.testid = 'journey-discussion-composer';
+  const disc = discussionFor(node);
+  if (!disc) return wrap;
+  const key = discussionKey(state.lot && state.lot.shipment_id, node.id);
+  const draft = ensureDraft(key);
+  if (!disc.canWrite) {
+    const readOnly = document.createElement('div');
+    readOnly.className = 'journey-discussion-empty';
+    readOnly.textContent = 'Tài khoản này chỉ được xem trao đổi.';
+    wrap.appendChild(readOnly);
+    return wrap;
+  }
+  if (draft.replyTo) {
+    const banner = document.createElement('div');
+    banner.className = 'journey-discussion-reply-banner';
+    banner.dataset.testid = 'journey-discussion-reply-banner';
+    const text = document.createElement('span');
+    text.textContent = `Đang trả lời ${draft.replyName || 'bình luận'}`;
+    const cancel = document.createElement('button');
+    cancel.type = 'button';
+    cancel.className = 'journey-discussion-cancel';
+    cancel.setAttribute('aria-label', 'Bỏ trả lời');
+    cancel.textContent = '×';
+    cancel.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      draft.replyTo = '';
+      draft.replyName = '';
+      renderJourneyMapForShipment(state.lot);
+    });
+    banner.appendChild(text);
+    banner.appendChild(cancel);
+    wrap.appendChild(banner);
+  }
+  const body = document.createElement('textarea');
+  body.className = 'journey-discussion-input';
+  body.dataset.testid = 'journey-discussion-body';
+  body.rows = 2;
+  body.maxLength = 4000;
+  body.placeholder = draft.replyTo ? 'Viết phản hồi…' : 'Viết bình luận…';
+  body.value = String(draft.text || '');
+  body.addEventListener('input', () => { draft.text = body.value; });
+  body.addEventListener('pointerdown', (ev) => ev.stopPropagation());
+  body.addEventListener('keydown', (ev) => ev.stopPropagation());
+  wrap.appendChild(body);
+  const row = document.createElement('div');
+  row.className = 'journey-discussion-actions';
+  const fileInput = document.createElement('input');
+  fileInput.type = 'file';
+  fileInput.accept = 'image/*,application/pdf';
+  fileInput.style.display = 'none';
+  fileInput.dataset.testid = 'journey-discussion-file';
+  fileInput.addEventListener('change', () => {
+    readPickedFile(fileInput.files && fileInput.files[0], key);
+  });
+  const attach = document.createElement('button');
+  attach.type = 'button';
+  attach.className = 'journey-discussion-attach';
+  attach.dataset.testid = 'journey-discussion-attach';
+  attach.textContent = '📎 Đính kèm';
+  attach.disabled = Boolean(state.sendingRequestId);
+  attach.addEventListener('click', (ev) => {
+    ev.stopPropagation();
+    fileInput.click();
+  });
+  const send = document.createElement('button');
+  send.type = 'button';
+  send.className = 'journey-discussion-send';
+  send.dataset.testid = 'journey-discussion-send';
+  send.textContent = state.sendingRequestId ? 'Đang gửi…' : 'Gửi';
+  send.disabled = Boolean(state.sendingRequestId);
+  send.addEventListener('click', (ev) => {
+    ev.stopPropagation();
+    sendDiscussion(node);
+  });
+  row.appendChild(fileInput);
+  row.appendChild(attach);
+  if (draft.file) {
+    const picked = document.createElement('span');
+    picked.className = 'journey-discussion-picked';
+    picked.textContent = String(draft.file.name || '');
+    row.appendChild(picked);
+  }
+  row.appendChild(send);
+  wrap.appendChild(row);
+  const notice = String(draft.notice || draft.fileNotice || '');
+  if (notice) {
+    const note = document.createElement('div');
+    note.className = 'journey-discussion-notice';
+    note.dataset.testid = 'journey-discussion-notice';
+    note.setAttribute('role', draft.notice ? 'alert' : 'status');
+    note.textContent = notice;
+    wrap.appendChild(note);
+  }
+  return wrap;
 }
 
 function renderNodeBubble(node, pos, docs) {
@@ -790,6 +1290,7 @@ function renderNodeBubble(node, pos, docs) {
 
   listDiv.appendChild(taskStage);
   listDiv.appendChild(taskDocs);
+  listDiv.appendChild(buildDiscussionThread(node));
 
   const foot = document.createElement('div');
   foot.className = 'journey-bubble-foot';
@@ -803,30 +1304,9 @@ function renderNodeBubble(node, pos, docs) {
   openBtn.textContent = 'Xem chi tiết chỉ-đọc →';
   openBtn.addEventListener('click', () => openStageModal(String(node.id), 'info'));
   foot.appendChild(openBtn);
-  // Map-first: jump straight to the discussion/chứng từ pane of THIS lot and
-  // THIS stage. The pane itself is the existing Streamlit one — this button
-  // only asks for it to be opened, it never renders a second comment surface.
-  const talkBtn = document.createElement('button');
-  talkBtn.type = 'button';
-  talkBtn.className = 'journey-bubble-open';
-  talkBtn.dataset.testid = 'journey-open-discussion';
-  talkBtn.setAttribute('aria-label', `Trao đổi / Chứng từ công đoạn ${String(node.label || node.id)}`);
-  talkBtn.style.cssText = [
-    'margin-top:2px', 'min-height:32px', 'padding:6px 8px', 'border-radius:8px',
-    'border:1px solid #1D5B8F', 'background:#1D5B8F', 'color:#fff',
-    'font-size:12px', 'font-weight:800', 'cursor:pointer',
-  ].join(';');
-  talkBtn.textContent = '💬 Trao đổi / Chứng từ';
-  talkBtn.disabled = !state.transport;
-  if (!state.transport) {
-    talkBtn.title = 'Chưa kết nối được phiên Streamlit để mở trao đổi.';
-  }
-  talkBtn.addEventListener('click', () => {
-    if (!emitJourneyFocus(String(node.id), node)) return;
-    talkBtn.textContent = '⏳ Đang mở trao đổi…';
-    talkBtn.disabled = true;
-  });
-  foot.appendChild(talkBtn);
+  // Issue #236 — the conversation is written/read HERE, in the node's own
+  // bubble. No Streamlit form is opened above the map.
+  foot.appendChild(buildDiscussionComposer(node));
 
   wrap.appendChild(head);
   wrap.appendChild(listDiv);

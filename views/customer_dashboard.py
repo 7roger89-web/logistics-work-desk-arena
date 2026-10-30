@@ -26,6 +26,7 @@ from core import customer_portal as portal
 from core import customer_portal_oidc as oidc
 from views import customer_portal_component as component
 from views import journey_focus
+from views import journey_inline
 
 _CUSTOMER_CSS = """
 <style>
@@ -138,13 +139,23 @@ def _account_label(email: str) -> str:
     return f"{head}***@{domain}"
 
 
-def build_model(view: portal.CustomerDashboardView) -> dict[str, Any]:
-    """Build the exact component payload for one trusted dashboard view."""
+def build_model(
+    view: portal.CustomerDashboardView,
+    *,
+    discussion: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Build the exact component payload for one trusted dashboard view.
+
+    ``discussion`` is the ONE node conversation this customer just opened
+    (bounded lot + stage, CUSTOMER-visible notes only). It is ``None`` until a
+    node is opened, so no comments are preloaded for any lot.
+    """
     return customer_journey.build_portal_model(
         view,
         demo_flag=_demo_flag(),
         notice=_notice_from_view(view),
         account_label=_account_label(view.principal.email),
+        discussion=discussion,
     )
 
 
@@ -157,29 +168,70 @@ def _text(value: Any, limit: int = 0) -> str:
     return cleaned[:limit] if limit else cleaned
 
 
-def _render_customer_focus_pane(
-    view: portal.CustomerDashboardView,
-    principal: portal.CustomerPrincipal,
-    focus: Mapping[str, Any],
-    *,
-    db: Any = None,
-) -> None:
-    """The ONE existing pane, opened on the lot + stage a node click asked for."""
-    from views.journey_discussion import render_customer_discussion
+#: One monotonic counter for the customer component's typed events. Keyed apart
+#: from the internal shell so the two portals can never consume each other's
+#: triggers (and a replayed value never writes twice).
+PORTAL_SEQ_KEY = "hexa_portal_event_seq"
 
-    lot = _text(focus.get("shipment_id"), 120)
-    header_col, close_col = st.columns([4, 1])
-    with header_col:
-        st.markdown(
-            f"<div class='g1-customer-account'>Mở từ Journey Map · "
-            f"lô <b>{html_lib.escape(lot)}</b></div>",
-            unsafe_allow_html=True,
+
+def _portal_context() -> tuple[portal.CustomerPrincipal, portal.CustomerDashboardView] | None:
+    """Re-prove the OIDC principal (never a browser-supplied identity)."""
+    state = oidc.current_oidc_session()
+    if state.kind != oidc.STATE_AUTHENTICATED:
+        return None
+    try:
+        principal = portal.build_customer_principal(verified_email=state.email)
+        view = portal.load_customer_dashboard(principal)
+    except (portal.PortalAccessDenied, portal.PortalDataError):
+        return None
+    return principal, view
+
+
+def handle_portal_events(
+    result: Any,
+    principal: portal.CustomerPrincipal,
+    cards: Any,
+) -> bool:
+    """Consume the customer component's one-shot events (focus/write/download).
+
+    The focus intent is only stored here; every read and write re-resolves the
+    lot + stage against THIS principal's server-built cards and the existing
+    note backend re-checks tenant, visibility and permission.
+    Returns True when anything changed, so a non-callback runtime can rerun.
+    """
+    if result is None:
+        return False
+    changed = False
+    try:
+        if journey_focus.capture_from_result(
+            st.session_state, result,
+            scope={"customer_id": _text(getattr(principal, "customer_id", ""), 120)},
+        ):
+            changed = True
+    except Exception:  # noqa: BLE001 - a bad intent never breaks the portal
+        pass
+    session = {"seq": st.session_state.get(PORTAL_SEQ_KEY, 0)}
+    try:
+        outcomes = journey_inline.consume_customer_triggers(
+            session, result, principal=principal, cards=cards,
         )
-    with close_col:
-        if st.button("Đóng", key=f"customer_focus_close_{lot}"):
-            journey_focus.clear(st.session_state)
-            st.rerun()
-    render_customer_discussion(view.cards, principal, db=db, focus=focus)
+    except Exception:  # noqa: BLE001 - one bad event never breaks the portal
+        outcomes = []
+    st.session_state[PORTAL_SEQ_KEY] = max(
+        st.session_state.get(PORTAL_SEQ_KEY, 0), session.get("seq", 0),
+    )
+    return changed or bool(outcomes)
+
+
+def on_portal_event() -> None:
+    """v2 prefix callback: run BEFORE the script so the next payload is fresh."""
+    context = _portal_context()
+    if context is None:
+        return
+    principal, view = context
+    handle_portal_events(
+        st.session_state.get(component.COMPONENT_KEY), principal, view.cards,
+    )
 
 
 def render_customer_dashboard(
@@ -216,20 +268,17 @@ def render_customer_dashboard(
         st.info("Chưa có lô hàng nào được công bố cho tài khoản này.")
         st.caption("Không có lô hàng hoặc thông tin công bố nào được hiển thị.")
 
-    # Journey Map node → the EXISTING stage-discussion pane. The stored intent
-    # is re-resolved against THIS principal's own server-built lots, so a lot
-    # belonging to another customer (however it reached the browser) can only
-    # fail closed here.
-    focus = journey_focus.for_customer(
-        journey_focus.current(st.session_state),
-        _text(getattr(principal, "customer_id", ""), 120),
-        view.cards,
-    )
-    if focus:
-        _render_customer_focus_pane(view, principal, focus, db=db)
+    # Issue #236 — the Journey Map owns the conversation. This is the ONLY
+    # thread delivered: the node + lot the customer just opened, bounded, with
+    # CUSTOMER-visible notes only. There is deliberately NO Streamlit comment
+    # form above (or below) the map.
+    discussion = journey_inline.build_customer_discussion(principal, view.cards, db=db)
 
     try:
-        component_result = component.render(build_model(view))
+        component_result = component.render(
+            build_model(view, discussion=discussion),
+            on_change=on_portal_event,
+        )
     except component.PortalAssetError:
         component_result = None
         st.error(
@@ -237,24 +286,11 @@ def render_customer_dashboard(
             "Không có dữ liệu nào được hiển thị."
         )
 
-    # Fallback capture for a runtime where the v2 prefix callback did not run:
-    # the same one-shot intent is stored here, then ONE rerun moves the pane
-    # above the map (the seq guard prevents a second capture, hence no loop).
-    if journey_focus.capture_from_result(
-        st.session_state, component_result,
-        scope={"customer_id": _text(getattr(principal, "customer_id", ""), 120)},
-    ):
+    # Fallback for a runtime where the v2 prefix callback did not run: consume
+    # the same one-shot events here, then ONE rerun delivers the fresh thread
+    # (the seq guards prevent a second consume, hence no loop).
+    if handle_portal_events(component_result, principal, view.cards):
         st.rerun()
-
-    # Trao đổi theo công đoạn: chỉ lô của chính khách này, chỉ nội dung đã cho
-    # phép, cùng luồng với màn hình lô hàng của Trường Thành.
-    if not focus:
-        try:
-            from views.journey_discussion import render_customer_discussion
-
-            render_customer_discussion(view.cards, principal, db=db)
-        except Exception as exc:  # noqa: BLE001 - never take the portal down
-            st.caption(f"Không tải được trao đổi công đoạn ({type(exc).__name__}).")
 
 
 def render_owner_portal_access_control(

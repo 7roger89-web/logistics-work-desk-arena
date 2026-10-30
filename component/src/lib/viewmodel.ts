@@ -2489,6 +2489,61 @@ export interface ViewModel {
   unknownLabel?: string;
   /** Issue #212 — Bể thông tin / ghi nhanh. Unverified source snippets. */
   inbox?: InboxSlice;
+  /**
+   * Issue #236 — the ONE Journey Map node conversation the operator opened:
+   * exactly one lot + one stage, bounded by the backend. `null` means no node
+   * panel is open. No other lot's comments are ever embedded.
+   */
+  journeyDiscussion?: JourneyDiscussion | null;
+}
+
+export interface JourneyNoteAttachment {
+  id: string;
+  name: string;
+  mime: string;
+  sizeLabel: string;
+}
+
+export interface JourneyNote {
+  id: string;
+  /** Root comment id, or "" for a root comment. One level of replies only. */
+  reply_to_id?: string;
+  body: string;
+  visibility: "CUSTOMER" | "INTERNAL";
+  author_kind: string;
+  author_name: string;
+  author_role: string;
+  created_at: string;
+  attachments: JourneyNoteAttachment[];
+  replies?: JourneyNote[];
+}
+
+export interface JourneyDiscussionDownload {
+  noteId: string;
+  attachmentId: string;
+  name: string;
+  mime: string;
+  base64: string;
+  seq: number;
+}
+
+export interface JourneyDiscussion {
+  shipmentId: string;
+  /** One of the seven canonical discussion stages. */
+  stageId: string;
+  /** The raw Journey Map node id the operator clicked (display only). */
+  nodeId: string;
+  nodeLabel: string;
+  stageLabel: string;
+  canWrite: boolean;
+  canAttach: boolean;
+  canSeeInternal: boolean;
+  maxFiles: number;
+  maxBytes: number;
+  notes: JourneyNote[];
+  count: number;
+  download?: JourneyDiscussionDownload | null;
+  error?: string;
 }
 
 export interface InboxAttachment {
