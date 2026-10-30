@@ -19,6 +19,18 @@ Never claim a law source was read when it was not. `TASK_BRANCH != LAW_AUTHORITY
 At task start report exactly one:
 `P2P_LAW_SOURCE=CANONICAL_AUTHENTICATED|LOCAL_INSTALLED|LOCAL_PORTABLE|INLINE_CAPSULE|LAW_CONTEXT_BLOCKED`.
 
+## Active product goal checkpoint (mandatory task orientation)
+
+After the Supreme Law preflight and bounded ACTIVE experience lookup, **before choosing substantive project work**:
+
+1. Confirm the actual repository origin and target ref. For this project, the target is `7roger89-web/logistics-work-desk-arena` (NOT `logistics-work-desk`). Do not use another checkout or change its origin to make a task appear valid.
+2. Read `docs/NEXT.md` **from that same target ref**, if present. It is the short, mutable `GOAL / PROGRESS / CURRENT / NEXT / BLOCKERS / SUCCESS CHECKS` checkpoint, not Supreme Law or a second GoalPlan. If missing or stale, recover from the latest Owner-approved goal, canonical GoalPlan/TaskPlan when available, and fresh relevant GitHub refs/PRs; do not stall safe progress just to create a report.
+3. Re-measure only the refs, PRs and evidence material to the next action. Never mistake a historical SHA, PR body, local checkout or Git branch HEAD for the deployed Cloud runtime. Explicit current Owner intent and authoritative goal state outrank an obsolete checkpoint.
+4. Choose **one smallest useful action** advancing the active product goal. Do not replace feature development with recursive prompt review, broad QA, research, documentation or new infrastructure unless a specific acceptance, safety or permission blocker makes that action necessary. If Cloud QA is blocked, record that blocker and continue any independent, safe development/test slice.
+5. On a **material milestone, priority change or real blocker**, update the checkpoint's CURRENT/NEXT/BLOCKERS and append one dated, evidence-bound PR/commit note in the authorized branch. No per-tool-call activity log, duplicate roadmap, new daemon or memory system. If no write access, report the state and do not claim the file was updated.
+
+This project-level routing instruction does not change Supreme Law, approved scope, RBAC, Owner production/deployment gates, independent verification requirements or the authority of the active GoalPlan/TaskPlan. Evidence-based QA remains required for the actual changed surface; it is not a substitute for shipping the requested functionality.
+
 ## Evidence-first verification (P2P)
 
 For non-trivial implementation, repair, review, testing, or any correctness/readiness claim, apply `P2P_EVIDENCE_FIRST_VERIFICATION_V1`. When canonical cross-repository access is available, read:
