@@ -3,7 +3,7 @@
 Repo: `7roger89-web/logistics-work-desk-arena`
 Base (staging integration): `arena/ae5f9f47-logistics-work-desk-arena` @ `1144af5`
 Branch: `arena/f1a205f4-logistics-work-desk-arena`
-Code commit: `661fdfc`
+Code commit: `661fdfc`  ·  evidence/docs commit: `cf30b3b` (final HEAD)
 PR: #248
 
 Everything below was produced in this workspace; no number is estimated.
@@ -20,6 +20,7 @@ Everything below was produced in this workspace; no number is estimated.
 | 5 | `05-clean-b-fresh-venv-no-pycache.txt` | same venv, `__pycache__` + `.pytest_cache` purged | **0 failed, 0 error**, 2352 passed, 44 skipped |
 | 6 | `06-final-clean-1.txt` | final HEAD `661fdfc`, fresh venv, `-p no:cacheprovider` | **0 failed, 0 error**, 2352 passed, 44 skipped |
 | 7 | `07-final-clean-2.txt` | final HEAD `661fdfc`, project venv, `-p no:cacheprovider` | **0 failed, 0 error**, 2352 passed, 44 skipped |
+| 8 | `08-final-clean-3.txt` | final HEAD `cf30b3b` (docs/evidence only), fresh venv, `-p no:cacheprovider` | **0 failed, 0 error**, 2352 passed, 44 skipped |
 
 Baseline difference 0 vs 1 is *environment*, not code: `test_journey_map_focus`
 (×3), `test_inbox_snippets::test_dom_acceptance_*` and
