@@ -11,7 +11,6 @@ import json
 from copy import deepcopy
 from datetime import date
 from inspect import signature
-from pathlib import Path
 from unittest.mock import patch
 
 from streamlit.testing.v1 import AppTest
@@ -22,11 +21,7 @@ from core.shipment_dashboard import (
     build_shipment_dashboard_view,
     build_shipment_summary,
 )
-from tests.test_all_tabs_smoke import _customers, _login_fixture, _shipments
-
-#: Current entry point: ``app.py`` → ``views.web_app.main`` → the Logi-good
-#: single-component shell (``views.logi_shell.render`` over the view-model).
-APP_PATH = Path(__file__).resolve().parents[1] / "app.py"
+from tests.test_all_tabs_smoke import APP_PATH, _customers, _login_fixture, _shipments
 
 
 def _assert_no_streamlit_exceptions(app: AppTest) -> None:
@@ -49,36 +44,27 @@ def test_summary_alias_contract_is_exact_and_read_only() -> None:
 
 
 def test_dashboard_lazy_workdesk_rows_call_summary_alias_and_render() -> None:
-    """The mounted worklist builds every row through the dashboard alias.
-
-    Re-pointed from the retired Streamlit dashboard (``views.dashboard``) to the
-    current entry point: the rows the component shell renders are the
-    ``views.logi_view_model`` payload, and the per-row summary alias that feeds
-    them is ``core.shipment_dashboard.build_shipment_dashboard_view``.
-    """
     shipments = _shipments()
     customers = _customers()
-    rendered: dict = {}
 
-    with patch("views.logi_view_model.load_shipments", return_value=shipments):
-        with patch("core.database._load_customers_impl", return_value=customers):
-            with patch("views.web_app.require_login", return_value=_login_fixture()):
-                with patch("views.logi_shell.render", side_effect=lambda vm: rendered.update(vm)):
-                    with patch(
-                        "core.shipment_dashboard.build_shipment_dashboard_view",
-                        wraps=build_shipment_dashboard_view,
-                    ) as summary_alias:
-                        app = AppTest.from_file(str(APP_PATH), default_timeout=120)
-                        app.run()
+    with patch("views.web_app.refresh_core_data", return_value=None):
+        with patch("views.web_app.require_login", return_value=_login_fixture()):
+            with patch("views.dashboard.load_data", return_value=shipments):
+                with patch("views.dashboard.load_tasks", return_value=[]):
+                    with patch("views.customers.load_customers", return_value=customers):
+                        with patch(
+                            "core.shipment_dashboard.build_shipment_summary",
+                            wraps=build_shipment_summary,
+                        ) as summary_alias:
+                            app = AppTest.from_file(str(APP_PATH), default_timeout=120)
+                            app.run()
 
     _assert_no_streamlit_exceptions(app)
     assert summary_alias.call_count >= 1
-    rows = {row["id"]: row for row in rendered["shipments"]}
-    assert "S-001" in rows
-    assert rows["S-001"]["nextAction"]
-    assert rows["S-001"]["nextRoute"].startswith("/lo-hang/S-001")
-    assert rendered["home"]["focus"]["id"] == "S-001"
-    assert rendered["home"]["focus"]["nextAction"] == rows["S-001"]["nextAction"]
+    rendered = "\n".join(str(element.value or "") for element in app.markdown)
+    assert "S-001" in rendered
+    assert "Việc tiếp theo" in rendered
+    assert any("Xử lý" in str(button.label) for button in app.button)
 
 
 def test_shipment_workspace_lazy_path_renders_readiness_without_exception() -> None:

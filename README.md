@@ -149,16 +149,10 @@ npm run build
 
 Ma trận phân quyền duy nhất nằm ở `core/auth.py` (`ROLE_PERMISSIONS`), gồm đủ
 **7 role**: `admin`, `sale`, `support`, `accounting`, `operations`, `sales`,
-`viewer` (fallback chỉ-đọc).
-
-Chỉ có **3 role** tạo/gán được từ UI (`admin`, `sale`, `support` — theo
-`core/users.SUPPORTED_ROLES`); 4 role còn lại (`accounting`, `operations`,
-`sales`, `viewer`) chỉ tồn tại cho legacy/tương thích ngược và làm fallback,
-KHÔNG tạo được user mới với chúng. Trong đó `accounting`, `operations`,
-`sales` là **tên role cũ được giữ để tương thích ngược** (với entry
-`secrets.toml` cũ và test fixture cũ) — không phải nhóm quyền mới; role chưa
-biết luôn rơi về `viewer`. `views/user_access.py` đã hiển thị đúng phân biệt
-này (`roles.assignable` vs `roles.legacy`).
+`viewer` (fallback chỉ-đọc). Trong đó `accounting` / `operations` / `sales` là
+**tên role cũ được giữ để tương thích ngược** (với entry `secrets.toml` cũ và
+test fixture cũ) — không phải nhóm quyền mới; role chưa biết luôn rơi về
+`viewer`.
 
 ---
 
@@ -214,6 +208,51 @@ Sự thật hiện trạng của bộ test (đừng tin tài liệu cũ, đừng
 
 ---
 
+## 10. Customer Dashboard G1 (chỉ staging, read-only)
+
+G1 là **một nhánh giao diện trong cùng entrypoint** `web_app.py` /
+`views/web_app.py` — không phải app thứ hai, không server HTTP mới. Trên host
+staging `thu-log-g1-test.streamlit.app`, trang chủ mặc định là **cổng Google
+khách hàng** để khớp với hành vi `st.login()` trả người dùng về HOME sau OIDC.
+Admin/Support vào đường `https://thu-log-g1-test.streamlit.app/?portal=internal`
+bằng mật khẩu nội bộ; `?portal=customer` vẫn hoạt động. Tham số `portal`
+chỉ chọn giao diện, không xác thực hay cấp quyền. Các host khác giữ nguyên
+hành vi cũ, và luồng Google OIDC
+chỉ chạy sau khi người dùng bấm **“Đăng nhập khách hàng bằng Google”** hoặc khi
+Streamlit quay lại từ `/oauth2callback`.
+
+- `requirements.txt` đã thêm `Authlib>=1.3.2` cho `st.login()` / `st.user` /
+  `st.logout()` của Streamlit. Cài lại bằng `pip install -r requirements.txt`.
+- Cấu hình OIDC nằm **duy nhất** trong `.streamlit/secrets.toml` (file local,
+  gitignored), theo mẫu `.streamlit/secrets.toml.example`: `[auth]` có
+  `redirect_uri` tuyệt đối tận cùng `/oauth2callback`, `cookie_secret` ngẫu
+  nhiên >=32 byte, và `[auth.google]` có `client_id`, `client_secret`,
+  `server_metadata_url`. Không đưa Client ID/Secret thật hay cookie secret vào
+  `.env`, source, test, PR hoặc README. Thiếu/cấu hình sai thì cổng khách hàng
+  đóng an toàn và không hiển thị dữ liệu.
+- Quyền portal **mặc định không có**. Email liên hệ trên profile `customers` là
+  thông tin liên lạc, không phải danh tính đăng nhập. Owner/Admin cấp tối đa
+  **một email portal** trên chính hồ sơ khách hàng (`portal_access_email`) qua
+  control trong UI nội bộ; email OIDC đã xác minh được đối chiếu server-side với
+  field này để suy ra `customers.id`. Không có bảng mapping mới, không có UI giả
+  lập danh tính trong production. Support không thấy control này.
+- Dữ liệu staging G1: thiết lập `ENV_IDENTITY=STAGING`,
+  `MONGO_DB_NAME=logistics_staging` (hoặc tên staging được allowlist),
+  `MONGO_URI` trỏ đúng database staging, rồi chạy
+  `python scripts/seed_customer_portal_staging.py --confirm-staging`. Script từ
+  chối `ENV_IDENTITY=PRODUCTION`, `logistics_db`, thiếu URI hoặc tên DB không
+  hợp lệ; fixture dùng email `.example` và không chứa credential thật.
+- Customer chỉ nhận thẻ lô đã công bố (mã lô, trạng thái “ĐÃ XÁC NHẬN”,
+  phiên bản duyệt, phương thức, thời điểm duyệt). Thông tin chi phí, lợi nhuận,
+  tài liệu nội bộ, view-model nội bộ hoặc dữ liệu khách B không đi vào customer
+  screen. G1 chưa tải tài liệu và chưa có phase 2.
+- Trạng thái trung thực tại bàn giao: `OIDC_LIVE=NOT_TESTED` và
+  `PRODUCTION_DEPLOY=NOT_DONE_BY_BOUNDARY`. Test staging dùng AppTest với claim
+  OIDC tổng hợp; cần một lượt Google OAuth thật trên môi trường staging có config
+  thật trước khi bật production. Xem `docs/CUSTOMER_DASHBOARD_G1_HANDOFF.md`.
+
+---
+
 ## Khoảng trống đã biết
 
 - LICENSE chưa có (GitHub báo `license: null`).
@@ -223,3 +262,32 @@ Sự thật hiện trạng của bộ test (đừng tin tài liệu cũ, đừng
 - Thiếu `pyproject.toml` / `pytest.ini` / `ruff.toml`.
 - `requirements.txt` không lock, còn `streamlit-option-menu` nghi đã chết.
 - Repo ~189 MB nên clone chậm.
+- Chưa có file LICENSE.
+
+### G1.5 — Dữ liệu nghiệp vụ được phép công bố (staging)
+
+Cổng Lục Giác chỉ nhận dữ liệu sau khi Trường Thành phát hành manifest
+`customer_publications` trạng thái `PUBLISHED`, đúng `customer_id`,
+`shipment_id` và phiên bản đã ghim trong shipment.
+
+- **Tiến độ:** đọc từ `public_events` theo cặp `id/version` trong
+  `event_versions`. Chỉ hiện bản ghi `verified=true`, có `verified_at`,
+  `visibility=CUSTOMER`, `public_title`, `occurred_at`, đúng khách và lô.
+  Một bước chỉ thành hoàn thành nếu có sự kiện đúng công đoạn được duyệt.
+- **Chứng từ:** đọc metadata từ `public_documents` theo `document_versions`.
+  Cần `verified=true`, `status=AVAILABLE`, `visibility=CUSTOMER`, loại chứng từ
+  thuộc allowlist. Không tải tệp/GridFS, không đọc tài liệu riêng của nội bộ.
+- **Tài liệu báo giá:** chỉ hiện metadata của tệp `CUSTOMER_QUOTE`
+  từ `public_documents` khi đúng `document_versions` được duyệt,
+  đúng khách/lô, `verified=true`, `status=AVAILABLE`,
+  `visibility=CUSTOMER`. Không đọc giá từ `quotes.calculation`,
+  không trả số tiền hay tải tệp/GridFS; `quote` luôn null (Owner 5C).
+- **Công nợ:** vẫn `UNKNOWN / Chưa đối soát`. Báo giá bán KHÔNG phải công nợ;
+  chưa có hợp đồng công bố đối soát tài chính để đọc các sổ thu/chi nội bộ.
+
+Các collection public là nguồn dữ liệu đã được phê duyệt, không đồng nghĩa
+mọi thông tin trong shipment/quote/attachment nội bộ đều được phép công bố.
+Không có bản release thì cổng tiếp tục hiện `CHƯA ĐỐI SOÁT`, không tự tạo
+dữ liệu hay suy diễn tiến độ từ trạng thái shipment. Việc deploy code
+không tự tạo collection hoặc bản ghi phát hành. Test:
+`tests/test_customer_portal_sources_g15.py`.

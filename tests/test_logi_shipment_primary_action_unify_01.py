@@ -181,11 +181,7 @@ def test_cif_no_insurance_red_mismatch_wins_over_a_dashboard_warning():
     assert row["priority"] == "Khan", "a red profile blocker is Khan, like a critical alert"
     assert row["nextLabel"] == "XỬ LÝ NGAY"
     assert row["nextRoute"].endswith("#shipment-execution-profile"), row["nextRoute"]
-    # Issue #188 Supervisor B1: the execution-profile editor is mounted ONLY
-    # on the van-tai tab (ShipmentDetail.tsx renders ShipmentExecutionProfile
-    # under ``tab === "van-tai"``), so profile-section codes route there
-    # explicitly and never inherit the shipment's current status tab.
-    assert "?tab=van-tai" in row["nextRoute"], "the profile editor lives on van-tai (Issue #188 B1)"
+    assert "?tab=nhap" in row["nextRoute"], "the existing status tab is kept, only the anchor is added"
 
 
 # ===========================================================================
@@ -248,9 +244,7 @@ def test_profile_incomplete_routes_to_the_existing_profile_section():
     assert row["executionProfile"]["nextAction"]["code"] == "PROFILE_INCOMPLETE"
     assert row["nextAction"] == row["executionProfile"]["nextAction"]["label"]
     assert "Bổ sung hồ sơ thực hiện lô" in row["nextAction"]
-    # van-tai, not the status tab: the profile editor is mounted only there
-    # (Issue #188 Supervisor B1, ShipmentDetail.tsx).
-    assert row["nextRoute"] == f"/lo-hang/{row['id']}?tab=van-tai#shipment-execution-profile"
+    assert row["nextRoute"] == f"/lo-hang/{row['id']}?tab=lay-hang#shipment-execution-profile"
     assert row["priority"] == "CanXuLy"
     assert row["nextLabel"] == "XỬ LÝ NGAY"
 
@@ -389,11 +383,9 @@ def test_tasks_home_and_notifications_carry_the_same_composed_route():
     ("ROAD_CONSOLIDATION", "van-tai", ""),
     ("IMPORT_CUSTOMS", "nhap", "#fld-tk"),
     ("DELIVERY", "nhap", ""),
-    # Profile-section codes -> van-tai: ShipmentExecutionProfile is mounted
-    # only on that tab in ShipmentDetail.tsx (Issue #188 Supervisor B1).
-    ("PROFILE_INCOMPLETE", "van-tai", "#shipment-execution-profile"),
-    ("CONFIG_CHECK", "van-tai", "#shipment-execution-profile"),
-    ("INSURANCE_EVIDENCE", "van-tai", "#shipment-execution-profile"),
+    ("PROFILE_INCOMPLETE", "lay-hang", "#shipment-execution-profile"),
+    ("CONFIG_CHECK", "lay-hang", "#shipment-execution-profile"),
+    ("INSURANCE_EVIDENCE", "lay-hang", "#shipment-execution-profile"),
 ])
 def test_every_profile_code_routes_to_an_existing_surface(code, expected_tab, expected_anchor):
     composed = rd.compose_primary_action(

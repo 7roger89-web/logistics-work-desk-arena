@@ -1,25 +1,12 @@
 from __future__ import annotations
-"""Mounted behavior checks for the LOG-C09 entity-context navigation.
-
-Re-pointed from the retired Streamlit entity workspace (``views.dashboard`` /
-``views.shipment`` buttons ``customer_active_open_*``, ``dashboard_overview_*``,
-``shipment_*_context_*``) to the current entry point: ``app.py`` →
-``views.web_app.main`` → the ONE Logi-good shell, whose entity context is the
-``partnerContext`` slice of ``views.logi_view_model.build_view_model()``
-(``/ngu-canh-doi-tac``). The selection key is the bounded dispatcher's own
-session key, so the navigation is exercised exactly the way the UI drives it.
-"""
+import streamlit as st
+"""Mounted Streamlit behavior checks for LOG-C09 context navigation."""
 import unittest
 from contextlib import ExitStack
 from pathlib import Path
 from unittest.mock import patch
 from streamlit.testing.v1 import AppTest
-
 APP_PATH = Path(__file__).resolve().parents[1] / "app.py"
-#: Session key of the bounded ``partner_context_select`` dispatcher event.
-SELECTION_KEY = "logi_partner_context_selection"
-
-
 def _shipments() -> dict[str, dict]:
     return {
         "S-001": {
@@ -49,68 +36,62 @@ def _shipments() -> dict[str, dict]:
         }
     }
 
-
-def _customers() -> dict[str, dict]:
-    return {"CUS-1": {"id": "CUS-1", "name": "Acme", "contact_person": "Lan"}}
-
-
 def _login_fixture(user):
     """Set the login fixture user into the Streamlit session and return it."""
     import streamlit as st
     st.session_state.current_user = user
     return user
 
-
 class EntityContextMountedTests(unittest.TestCase):
-    def _mount(self, selection: str | None = None) -> tuple[AppTest, dict]:
-        """Mount the current shell and capture the render it publishes."""
-        rendered: dict = {}
+    def _app(self, page: str, request: dict[str, str] | None = None) -> AppTest:
         app = AppTest.from_file(str(APP_PATH), default_timeout=60)
-        if selection is not None:
-            app.session_state[SELECTION_KEY] = selection
+        app.session_state.active_page = page
+        app.session_state.db_shipments = _shipments()
+        app.session_state.db_customers = {"CUS-1": {"id": "CUS-1", "name": "Acme", "contact_person": "Lan"}}
+        app.session_state.entity_context_request = request or {}
+        return app
+    def test_entity_workspace_opens_shipment_360(self) -> None:
+        app = self._app("Ngữ Cảnh Đối Tác", {"entity_type": "customer", "entity_key": "CUS-1"})
+        # Keep patch contexts alive for the AppTest run.
         with ExitStack() as stack:
             stack.enter_context(patch("views.web_app.require_login", side_effect=lambda: (_login_fixture({"username": "fixture", "display_name": "Fixture", "role": "admin"}), {"username": "fixture", "display_name": "Fixture", "role": "admin"})[-1]))
-            stack.enter_context(patch("views.logi_view_model.load_shipments", return_value=_shipments()))
-            stack.enter_context(patch("core.database._load_customers_impl", return_value=_customers()))
-            stack.enter_context(patch("views.logi_shell.render", side_effect=lambda vm: rendered.update(vm)))
+            stack.enter_context(patch("core.database.init_connection", return_value=None))
+            stack.enter_context(patch("views.web_app.refresh_core_data", return_value=None))
+            stack.enter_context(patch("views.dashboard.cached_load_data", return_value=_shipments()))
+            stack.enter_context(patch("views.dashboard.load_tasks", return_value=[]))
+            stack.enter_context(patch("views.shipment.load_proxy_payments", return_value={}))
+            stack.enter_context(patch("views.shipment.load_entrustments", return_value={}))
+            stack.enter_context(patch("views.shipment.load_audit_logs", return_value=[]))
             app.run()
             self.assertFalse(app.exception)
-        return app, rendered
-
-    def test_entity_workspace_opens_shipment_360(self) -> None:
-        """One partner selection links straight to the real shipment workspace."""
-        app, rendered = self._mount("Blue Agent")
-
-        context = rendered["partnerContext"]
-        self.assertEqual(context["status"], "OK")
-        self.assertEqual(context["selectedLabel"], "Blue Agent")
-        self.assertTrue(context["readOnly"])
-        linked = {row["shipmentId"]: row for row in context["shipments"]}
-        self.assertIn("S-001", linked)
-        # Same navigation the retired "open" button performed: the shipment route.
-        self.assertTrue(linked["S-001"]["canOpen"])
-        self.assertEqual(linked["S-001"]["openHref"], "/lo-hang/S-001")
-
+            self.assertTrue(any("Khách hàng 360" in item.value for item in app.subheader))
+            open_button = next(item for item in app.button if item.key.startswith("customer_active_open_"))
+            open_button.click()
+            app.run()
+            self.assertFalse(app.exception)
+            self.assertIn("btn_close_top", {item.key for item in app.button})
     def test_shipment_360_workspace_has_entity_context_buttons(self) -> None:
-        """The shipment row still surfaces the entities it can navigate to."""
-        app, rendered = self._mount()
-
-        row = next(item for item in rendered["shipments"] if item["id"] == "S-001")
-        # Customer context: the row carries the canonical customer id the
-        # customer master can resolve.
-        self.assertEqual(row["customerId"], "CUS-1")
-        self.assertIn("CUS-1", {customer["id"] for customer in rendered["customers"]})
-        # Partner context: the shipment's partner is a selectable entity and
-        # selecting it navigates back to this same shipment.
-        partner_option = next(
-            option for option in rendered["partnerContext"]["options"]
-            if option["key"] == "Blue Agent"
-        )
-        self.assertIn("shipment partner/agent index", partner_option["sources"])
-        # Document context: the row's execution checklist stays reachable.
-        self.assertTrue(row["docs"])
-        self.assertTrue(row["nextRoute"].startswith("/lo-hang/S-001"))
-
-
+        """Verify the 360 workspace renders entity context navigation buttons."""
+        app = self._app("Tổng Quan Công Việc")
+        with ExitStack() as stack:
+            stack.enter_context(patch("views.web_app.require_login", side_effect=lambda: (_login_fixture({"username": "fixture", "display_name": "Fixture", "role": "admin"}), {"username": "fixture", "display_name": "Fixture", "role": "admin"})[-1]))
+            stack.enter_context(patch("core.database.init_connection", return_value=None))
+            stack.enter_context(patch("views.web_app.refresh_core_data", return_value=None))
+            stack.enter_context(patch("views.dashboard.cached_load_data", return_value=_shipments()))
+            stack.enter_context(patch("views.dashboard.load_tasks", return_value=[]))
+            stack.enter_context(patch("views.shipment.load_proxy_payments", return_value={}))
+            stack.enter_context(patch("views.shipment.load_entrustments", return_value={}))
+            stack.enter_context(patch("views.shipment.load_audit_logs", return_value=[]))
+            app.run()
+            open_button = next(item for item in app.button if item.key == "dashboard_overview_S-001")
+            open_button.click()
+            app.run()
+            self.assertFalse(app.exception)
+            keys = {item.key for item in app.button}
+            self.assertTrue({
+                "shipment_customer_context_S-001",
+                "shipment_factory_context_S-001",
+                "shipment_partner_context_S-001",
+            }.issubset(keys))
 if __name__ == "__main__":
     unittest.main()

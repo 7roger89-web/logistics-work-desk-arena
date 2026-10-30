@@ -5,14 +5,48 @@ component root running the literal Logi-good React UI. Inner data is the
 presentation view-model over the CURRENT Logistics readers and writers
 (``views.logi_real_data`` + ``views.logi_view_model``). The visible donor UI is
 frozen; Phase B changed the data and the business actions, not the design.
+
+G1 adds a read-only customer branch to this SAME entrypoint.  Internal
+Admin/Support authentication and the React shell are untouched; the customer
+branch renders native Streamlit only and never builds the internal view-model.
 """
 
 from __future__ import annotations
 
+import logging
+from urllib.parse import urlparse
+
 import streamlit as st
 
+from core import customer_portal_oidc
 from core.auth import require_login
 from core.config import DISPLAY_COMPANY_NAME
+
+LOGGER = logging.getLogger("logistics.customer_portal_router")
+_STAGING_CUSTOMER_HOST = "thu-log-g1-test.streamlit.app"
+
+
+def _customer_entry_mode(portal_mode: str | None, app_url: str) -> bool:
+    """Route staging HOME to Google after the Streamlit OAuth callback.
+
+    st.login() redirects to the app homepage, dropping ?portal=customer.
+    This switch affects presentation only, never identity or permissions.
+    """
+    if portal_mode == "internal":
+        return False
+    if portal_mode == "customer":
+        return True
+    try:
+        return urlparse(app_url).hostname == _STAGING_CUSTOMER_HOST
+    except ValueError:
+        return False
+
+
+def _current_app_url() -> str:
+    try:
+        return str(st.context.url or "")
+    except Exception:  # noqa: BLE001 - older/bare Streamlit runtime
+        return ""
 
 
 def main() -> None:
@@ -25,21 +59,70 @@ def main() -> None:
         initial_sidebar_state="collapsed",
     )
 
+    # Google always returns to HOME: make staging HOME customer-first.
+    # Internal Admin remains available via ?portal=internal + password login.
+    customer_only_entry = _customer_entry_mode(
+        st.query_params.get("portal"), _current_app_url()
+    )
+
+    # OAuth return lands on this SAME app URL after Streamlit's own
+    # /oauth2callback route.  A verified Google session is detected here before
+    # the internal password gate; no query parameter carries a customer_id.
+    oidc_state = customer_portal_oidc.current_oidc_session()
+    if oidc_state.kind != customer_portal_oidc.STATE_NONE:
+        from views import customer_dashboard
+
+        customer_portal_oidc.activate_customer_session()
+        if oidc_state.kind != customer_portal_oidc.STATE_AUTHENTICATED:
+            customer_dashboard.render_oidc_problem(oidc_state)
+            return
+        from core import customer_portal
+
+        try:
+            # THE principal path: OIDC-verified email -> customers.id in MongoDB.
+            principal = customer_portal.build_customer_principal(
+                verified_email=oidc_state.email
+            )
+        except customer_portal.PortalAccessDenied:
+            LOGGER.warning("CUSTOMER_PORTAL_ACCESS kind=denied")
+            customer_dashboard.render_customer_denied()
+            return
+        except customer_portal.PortalDataError:
+            LOGGER.warning("CUSTOMER_PORTAL_ACCESS kind=data_unavailable")
+            customer_dashboard.render_customer_denied()
+            return
+        customer_dashboard.render_customer_dashboard(principal)
+        return
+
+    if customer_only_entry:
+        # Customers never see the internal password/first-admin form or shell.
+        # Successful Google callbacks use the OIDC branch above.
+        from views import customer_dashboard
+
+        customer_dashboard.render_customer_login_choice(standalone=True)
+        return
+
     # AUTH GATE — must be before any business view-model is built or the
     # Logistics component is mounted.  When AUTH_REQUIRED=true and no session
     # exists, require_login() renders the existing login/bootstrap UI and
     # returns None, so we stop this Streamlit run immediately.
     user = require_login()
     if user is None:
+        from views import customer_dashboard
+
+        customer_dashboard.render_customer_login_choice()
         return
 
     # Authenticated-only imports stay OUT of the login critical path.  The
     # login screen does not need the large Logistics view-model graph or the
     # component bundle, so importing them before require_login() only adds
     # cold-session work without changing any authentication semantics.
-    from views import logi_shell, logi_view_model
+    from views import customer_dashboard, logi_shell, logi_view_model
 
     # Real Logistics view-model. With no MONGO_URI configured the app runs on
     # an isolated staging transport; a real URI always takes precedence.
     vm = logi_view_model.build_view_model()
+    # Owner/Admin-only portal email control lives on the customers profile.
+    # Support sees no control and the financial RBAC matrix is unchanged.
+    customer_dashboard.render_owner_portal_access_control(user)
     logi_shell.render(vm)
