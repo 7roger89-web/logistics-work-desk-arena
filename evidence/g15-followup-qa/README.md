@@ -31,3 +31,7 @@ python -m pytest -q tests/test_customer_portal_publish_g15.py tests/test_custome
 ```
 
 The QA-only Streamlit harness explicitly simulates identities; it is not a login implementation and must not be deployed.
+
+## After PR #232 branch fast-forward (2026-10-30)
+
+The first paragraph above records the **original Arena session constraint** at the time the QA was produced. Subsequently, Control Tower verified `arena/a1cadc10-logistics-work-desk-arena@dd1c63d` is a direct descendant of `PR #232@b67f306` (`ahead=3, behind=0`), then fast-forwarded PR #232's branch ref with `force=false`. The security fix and regression tests are **now included in PR #232**. The branch checkpoint `docs/NEXT.md` was updated afterward; do not use the historical `b67f306` as current HEAD. This does **not** constitute a staging merge, production deployment or independent test run on the new documentation-only HEAD.
