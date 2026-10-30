@@ -29,3 +29,10 @@ Node.js v22.22.3
 }
 
 Node.js v22.22.3
+
+=== unwired legacy scripts (not part of the pytest gate)
+dom_acceptance_execution_profile exit=1
+dom_acceptance_amount_integrity exit=1
+dom_acceptance_finance_actual_entry exit=1
+dom_acceptance_real_use_repair exit=1
+dom_acceptance_shipment_slash_id exit=1
