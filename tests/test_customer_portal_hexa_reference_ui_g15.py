@@ -34,6 +34,7 @@ from streamlit.testing.v1 import AppTest
 from core import customer_journey as journey
 from core import customer_portal as portal
 from core import customer_portal_oidc as oidc
+from core import customer_portal_publish as publication
 from views import web_app
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -437,14 +438,6 @@ def test_no_lots_state_is_safe_and_still_mounted_once(seed_module):
 def test_owner_granted_publication_fields_reach_the_ui_without_scope_change(seed_module):
     """An Owner-approved release is shown; it never widens the tenant."""
     db = _db(seed_module, negative_cases=False)
-    db.customer_publications.update_one(
-        {"shipment_id": seed_module.LOT_A1},
-        {"$set": {
-            "event_versions": {"EV-1": "v1"},
-            "document_versions": {"DOC-1": "v1"},
-            "quote": {"id": "QT-9", "version": "v1"},
-        }},
-    )
     db.shipments.update_one({"id": seed_module.LOT_A1}, {"$set": {"quote_id": "QT-9"}})
     db.public_events = db["public_events"]
     db.public_events.insert_one({
@@ -464,6 +457,16 @@ def test_owner_granted_publication_fields_reach_the_ui_without_scope_change(seed
         "id": "QT-9", "version": "v1", "customer_id": seed_module.CUSTOMER_A_ID,
         "status": "SENT", "calculation": {"selling_price_total_vnd": 1000.0},
     })
+    # G1.5: only an Admin-approved release is readable. The publisher stores the
+    # digest of the exact allowlisted projection, so this stays the ONE path
+    # that puts approved source fields on the customer card.
+    approved, message = publication.publish_verified_sources(
+        seed_module.CUSTOMER_A_ID, seed_module.LOT_A1,
+        event_versions={"EV-1": "v1"}, document_versions={"DOC-1": "v1"},
+        expected_current_version="v1", actor_role="admin",
+        actor_username="staging-owner", db=db,
+    )
+    assert approved, message
 
     card = portal.load_customer_dashboard(
         portal.CustomerPrincipal(
