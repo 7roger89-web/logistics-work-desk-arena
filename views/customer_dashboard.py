@@ -13,6 +13,7 @@ local UI state (selected lot, node bubble, modal, zoom) but it writes nothing.
 """
 from __future__ import annotations
 
+import functools
 import hashlib
 import html as html_lib
 import json
@@ -174,14 +175,21 @@ def _text(value: Any, limit: int = 0) -> str:
 PORTAL_SEQ_KEY = "hexa_portal_event_seq"
 
 
-def _portal_context() -> tuple[portal.CustomerPrincipal, portal.CustomerDashboardView] | None:
-    """Re-prove the OIDC principal (never a browser-supplied identity)."""
+def _portal_context(
+    db: Any = None,
+) -> tuple[portal.CustomerPrincipal, portal.CustomerDashboardView] | None:
+    """Re-prove the OIDC principal (never a browser-supplied identity).
+
+    ``db`` is the handle the portal was rendered from, so the prefix callback
+    re-reads the SAME database as the script body instead of a second,
+    independently resolved one.
+    """
     state = oidc.current_oidc_session()
     if state.kind != oidc.STATE_AUTHENTICATED:
         return None
     try:
-        principal = portal.build_customer_principal(verified_email=state.email)
-        view = portal.load_customer_dashboard(principal)
+        principal = portal.build_customer_principal(verified_email=state.email, db=db)
+        view = portal.load_customer_dashboard(principal, db=db)
     except (portal.PortalAccessDenied, portal.PortalDataError):
         return None
     return principal, view
@@ -191,12 +199,21 @@ def handle_portal_events(
     result: Any,
     principal: portal.CustomerPrincipal,
     cards: Any,
+    *,
+    db: Any = None,
 ) -> bool:
     """Consume the customer component's one-shot events (focus/write/download).
 
     The focus intent is only stored here; every read and write re-resolves the
     lot + stage against THIS principal's server-built cards and the existing
     note backend re-checks tenant, visibility and permission.
+
+    ``db`` is the SAME handle the portal just rendered from
+    (:func:`render_customer_dashboard`). It must be passed down to every write
+    so the note is stored in the database the next read resolves, instead of a
+    second, independently resolved handle — see
+    ``tests/test_journey_notes.py::
+    test_customer_portal_comment_is_written_to_the_db_the_portal_rendered``.
     Returns True when anything changed, so a non-callback runtime can rerun.
     """
     if result is None:
@@ -213,7 +230,7 @@ def handle_portal_events(
     session = {"seq": st.session_state.get(PORTAL_SEQ_KEY, 0)}
     try:
         outcomes = journey_inline.consume_customer_triggers(
-            session, result, principal=principal, cards=cards,
+            session, result, principal=principal, cards=cards, db=db,
         )
     except Exception:  # noqa: BLE001 - one bad event never breaks the portal
         outcomes = []
@@ -223,14 +240,14 @@ def handle_portal_events(
     return changed or bool(outcomes)
 
 
-def on_portal_event() -> None:
+def on_portal_event(*, db: Any = None) -> None:
     """v2 prefix callback: run BEFORE the script so the next payload is fresh."""
-    context = _portal_context()
+    context = _portal_context(db)
     if context is None:
         return
     principal, view = context
     handle_portal_events(
-        st.session_state.get(component.COMPONENT_KEY), principal, view.cards,
+        st.session_state.get(component.COMPONENT_KEY), principal, view.cards, db=db,
     )
 
 
@@ -274,10 +291,13 @@ def render_customer_dashboard(
     # form above (or below) the map.
     discussion = journey_inline.build_customer_discussion(principal, view.cards, db=db)
 
+    # The ONE db handle this render resolved is bound into the event callback
+    # and the fallback consumer, so a comment lands in the same database the
+    # thread is read back from.
     try:
         component_result = component.render(
             build_model(view, discussion=discussion),
-            on_change=on_portal_event,
+            on_change=functools.partial(on_portal_event, db=db),
         )
     except component.PortalAssetError:
         component_result = None
@@ -289,7 +309,7 @@ def render_customer_dashboard(
     # Fallback for a runtime where the v2 prefix callback did not run: consume
     # the same one-shot events here, then ONE rerun delivers the fresh thread
     # (the seq guards prevent a second consume, hence no loop).
-    if handle_portal_events(component_result, principal, view.cards):
+    if handle_portal_events(component_result, principal, view.cards, db=db):
         st.rerun()
 
 
