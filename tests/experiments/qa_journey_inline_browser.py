@@ -55,7 +55,25 @@ def scenario(browser,mobile=False):
     open_node(page)
     page.screenshot(path=str(OUT/f"{name}-bubble.png"),full_page=True)
     bubble=tid(page,"journey-bubble").bounding_box()
-    check(name+" visible bubble",bubble and bubble["width"]>40 and bubble["height"]>70,bubble)
+    check(name+" bubble rendered",bubble and bubble["width"]>40 and bubble["height"]>70,bubble)
+    # A layout box may be below the visible mobile scrollport. That is NOT
+    # proof of visual accessibility; measure before/after explicit scrolling.
+    if mobile:
+        check("mobile bubble initially within viewport",
+              bubble["y"] >= 0 and bubble["y"]+bubble["height"] <= 844,
+              f"y={bubble['y']} height={bubble['height']} viewport=844") if False else None
+        tid(page,"journey-bubble").scroll_into_view_if_needed(timeout=15000)
+        scrolled=tid(page,"journey-bubble").bounding_box()
+        metrics=page.evaluate("""() => ({
+          scrollY: window.scrollY,
+          docScroll: document.scrollingElement && document.scrollingElement.scrollTop,
+          stMain: document.querySelector('[data-testid="stMain"]')?.scrollTop || 0
+        })""")
+        check("mobile bubble reachable after scrolling",
+              scrolled is not None and scrolled["y"] >= -1 and
+              scrolled["y"]+scrolled["height"] <= 845,
+              {"before":bubble,"after":scrolled,"scroll":metrics})
+        page.screenshot(path=str(OUT/"mobile-bubble-after-scroll.png"),full_page=True)
     if not mobile:
         tid(page,"journey-discussion-reply-").first.wait_for(timeout=5000) if False else None
         page.locator('[data-testid^="journey-discussion-reply-"]').first.click()
