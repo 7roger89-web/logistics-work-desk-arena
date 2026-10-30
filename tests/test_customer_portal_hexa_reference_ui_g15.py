@@ -34,6 +34,7 @@ from streamlit.testing.v1 import AppTest
 from core import customer_journey as journey
 from core import customer_portal as portal
 from core import customer_portal_oidc as oidc
+from core import customer_portal_publish as publication
 from views import web_app
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -279,14 +280,13 @@ def test_road_lot_model_has_no_fabricated_amounts_eta_or_documents():
     ]
 
 
-def test_published_quote_and_debt_are_only_shown_when_the_allowlist_released_them():
+def test_owner_5c_never_projects_quote_money_or_invents_debt():
     model = journey.build_lot_model(_Card(quote={"id": "QT-1", "version": "v1", "status": "SENT", "selling_total_vnd": 1234.0}))
-    assert model["quote"] == {"id": "QT-1", "version": "v1", "status": "SENT", "selling_total_vnd": 1234.0}
-    # A released quote is not a reconciliation: debt still stays unknown.
+    assert model["quote"] is None
     assert model["debt_summary"]["status"] == "UNKNOWN"
-    # Non-numeric or negative values are never printed as money.
+    assert "1234" not in json.dumps(model)
     bad = journey.build_lot_model(_Card(quote={"id": "QT-2", "selling_total_vnd": -5}))
-    assert bad["quote"]["selling_total_vnd"] is None
+    assert bad["quote"] is None
 
 
 def test_portal_model_kpi_counts_only_verified_eta_and_never_a_customer_action():
@@ -438,14 +438,6 @@ def test_no_lots_state_is_safe_and_still_mounted_once(seed_module):
 def test_owner_granted_publication_fields_reach_the_ui_without_scope_change(seed_module):
     """An Owner-approved release is shown; it never widens the tenant."""
     db = _db(seed_module, negative_cases=False)
-    db.customer_publications.update_one(
-        {"shipment_id": seed_module.LOT_A1},
-        {"$set": {
-            "event_versions": {"EV-1": "v1"},
-            "document_versions": {"DOC-1": "v1"},
-            "quote": {"id": "QT-9", "version": "v1"},
-        }},
-    )
     db.shipments.update_one({"id": seed_module.LOT_A1}, {"$set": {"quote_id": "QT-9"}})
     db.public_events = db["public_events"]
     db.public_events.insert_one({
@@ -465,6 +457,16 @@ def test_owner_granted_publication_fields_reach_the_ui_without_scope_change(seed
         "id": "QT-9", "version": "v1", "customer_id": seed_module.CUSTOMER_A_ID,
         "status": "SENT", "calculation": {"selling_price_total_vnd": 1000.0},
     })
+    # G1.5: only an Admin-approved release is readable. The publisher stores the
+    # digest of the exact allowlisted projection, so this stays the ONE path
+    # that puts approved source fields on the customer card.
+    approved, message = publication.publish_verified_sources(
+        seed_module.CUSTOMER_A_ID, seed_module.LOT_A1,
+        event_versions={"EV-1": "v1"}, document_versions={"DOC-1": "v1"},
+        expected_current_version="v1", actor_role="admin",
+        actor_username="staging-owner", db=db,
+    )
+    assert approved, message
 
     card = portal.load_customer_dashboard(
         portal.CustomerPrincipal(
@@ -474,15 +476,21 @@ def test_owner_granted_publication_fields_reach_the_ui_without_scope_change(seed
         ),
         db=db,
     ).cards[0]
-    # G1's loader still passes no event/document/quote source: the allowlist gate
-    # is upstream, so the UI honestly shows "nothing approved" rather than data.
-    assert card.timeline == ()
-    assert card.documents == ()
+    # A TT-approved, version-pinned publication reads genuine source records
+    # and retains the independent tenant/visibility/verified allowlist.
+    assert len(card.timeline) == 1
+    assert card.timeline[0]["title"] == "Đã lấy hàng tại kho"
+    assert card.documents == ({
+        "id": "DOC-1", "version": "v1", "kind": "PL", "title": "Packing List",
+    },)
     assert card.quote is None
 
     model = journey.build_lot_model(card)
-    assert all(node["state"] == "UNKNOWN" for node in model["journey"]["nodes"])
-    assert model["documents"] == []
+    assert {n["id"] for n in model["journey"]["nodes"] if n["completed"]} == {"pickup"}
+    assert len(model["documents"]) == 1
+    assert model["quote"] is None
+    assert "selling_total_vnd" not in json.dumps(model)
+    assert model["debt_summary"]["status"] == "UNKNOWN"
 
 
 def test_revoked_access_after_mount_shows_no_data(seed_module):

@@ -313,6 +313,23 @@ function secondaryLine(parts) {
 }
 
 function renderDashboard(model) {
+  // A Streamlit rerun can reuse this shadow root for a different principal or
+  // a revoked publication. Remove the previous lot, not just the table rows:
+  // an open modal, bubble, toolbar and JS state otherwise survive the rerun.
+  state.lot = null;
+  state.selectedNodeId = null;
+  state.lastModalNodeId = null;
+  state.activeBubblePos = null;
+  closeStageModal(true);
+  toggleUtilityBubble(false);
+  ['journey-bubble-slot', 'journey-modal-body', 'modal-kicker', 'modal-title',
+    'modal-sub', 'modal-badge'].forEach((id) => clearChildren(q(id)));
+  ['utility-doc-count', 'utility-docs-sub'].forEach((id) => {
+    const el = q(id); if (el) el.textContent = '0 tệp';
+  });
+  const quoteSub = q('utility-quote-sub');
+  if (quoteSub) quoteSub.textContent = 'Chưa công bố';
+  showUnpublishedState();
   const tbody = q('dash-shipments-tbody');
   const cardsBox = q('dash-shipments-cards');
   const selectorBox = q('customer-shipment-selector');
@@ -557,10 +574,10 @@ function renderJourneyMapForShipment(row) {
   setText('toolbar-next', secondaryLine([row.next_step, row.contact_point ? `Đầu mối: ${row.contact_point}` : '']));
 
   const docs = Array.isArray(row.documents) ? row.documents : [];
-  const quote = row.quote || null;
+  const quoteDocs = docs.filter((doc) => doc && doc.kind === 'CUSTOMER_QUOTE');
   setText('utility-doc-count', `${docs.length} tệp`);
   setText('utility-docs-sub', `${docs.length} tệp`);
-  setText('utility-quote-sub', quote ? formatVnd(quote.selling_total_vnd) : 'Chưa công bố');
+  setText('utility-quote-sub', quoteDocs.length ? `${quoteDocs.length} tài liệu` : 'Chưa công bố');
 
   const journey = row.journey || { nodes: [], edges: [] };
   const nodes = Array.isArray(journey.nodes) ? journey.nodes : [];
@@ -854,7 +871,7 @@ function renderReadonlyModalBody(node, activeTab) {
   const pub = row.publication || {};
   const docs = Array.isArray(row.documents) ? row.documents : [];
   const timeline = Array.isArray(row.timeline) ? row.timeline : [];
-  const quote = row.quote || null;
+  const quoteDocs = docs.filter((doc) => doc && doc.kind === 'CUSTOMER_QUOTE');
   const fin = row.finance_detail || null;
 
   const grid = document.createElement('div');
@@ -906,18 +923,19 @@ function renderReadonlyModalBody(node, activeTab) {
     container.appendChild(table);
   }
 
-  container.appendChild(sectionTitle('BÁO GIÁ BÁN ĐƯỢC CÔNG BỐ'));
-  if (!quote) {
-    container.appendChild(emptyBox('Chưa công bố báo giá bán cho lô này.', 'quote-section'));
+  container.appendChild(sectionTitle('TÀI LIỆU BÁO GIÁ ĐÃ DUYỆT'));
+  if (quoteDocs.length === 0) {
+    container.appendChild(emptyBox('Chưa có tài liệu báo giá được duyệt cho lô này.', 'quote-section'));
   } else {
-    const qGrid = document.createElement('div');
-    qGrid.className = 'readonly-grid';
-    qGrid.dataset.testid = 'quote-section';
-    qGrid.appendChild(readonlyBox('Mã báo giá', String(quote.id || '—')));
-    qGrid.appendChild(readonlyBox('Phiên bản', String(quote.version || '—')));
-    qGrid.appendChild(readonlyBox('Trạng thái', String(quote.status || '—')));
-    qGrid.appendChild(readonlyBox('Tổng bán đã công bố', formatVnd(quote.selling_total_vnd)));
-    container.appendChild(qGrid);
+    const quoteList = document.createElement('div');
+    quoteList.className = 'readonly-grid';
+    quoteList.dataset.testid = 'quote-section';
+    quoteDocs.forEach((doc) => {
+      quoteList.appendChild(readonlyBox('Mã tài liệu', String(doc.id || '—')));
+      quoteList.appendChild(readonlyBox('Phiên bản', String(doc.version || '—')));
+      quoteList.appendChild(readonlyBox('Tên báo giá', String(doc.title || '—')));
+    });
+    container.appendChild(quoteList);
   }
 
   container.appendChild(sectionTitle('CÔNG NỢ DỊCH VỤ'));
@@ -1040,7 +1058,7 @@ function bindOnce() {
   // Keyboard parity with the reference (Esc closes the modal, then the bubble).
   // The listener sits on the host document because keydown targets do not
   // retarget into a shadow root from outside it.
-  const doc = root.ownerDocument || document;
+  const doc = state.root.ownerDocument || document;
   doc.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape' && e.key !== 'Esc') return;
     if (!state.root || !state.root.querySelector('#journey-workspace-shell')) return;
