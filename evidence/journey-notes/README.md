@@ -70,3 +70,10 @@ Không có lỗi mới so với baseline; tập lỗi nền (34) không đổi.
 - Chưa nối vào `stage_comments`/`stage_documents` của Journey Map trong
   component React: phần trao đổi hiển thị bằng widget Streamlit ngay dưới bản đồ.
 - Chưa có nguồn sự kiện/chứng từ thật được nghiệp vụ duyệt: dữ liệu thử là giả lập.
+
+## Hậu kiểm khi tích hợp nhánh PR #234 (30/10/2026)
+
+- PR #232 G1.5 **đã merge staging** tại `e75a239277573f0d470607818e40b8d11f775e44` trước khi mở PR #234; câu “chờ PR #232” phía trên là bối cảnh lịch sử của patch gốc.
+- **7/7 blob sha** của patch gốc trong `7roger89-web/CHUNLI@arena/5bc30481-chunli/logi/journey-notes` khớp khi áp dụng lên đúng staging SHA. Thay đổi sau patch: đọc/tải phải xác minh chủ lô còn hiệu lực, tệp bị REVOKED phải ẩn, key ô soạn thảo tách customer/lot, tối đa 200 comment mới nhất, báo lỗi khi chọn >4 tệp.
+- **31 PASS và 3 mutation proofs chỉ áp dụng cho patch gốc**, **không phải** cho HEAD cuối chứa các guard mới. Các regression test mới `test_shipment_reassignment_revokes_old_tenant_notes_and_bytes`, `test_removed_shipment_denies_old_stage_notes_and_download`, `test_streamlit_customer_composer_keys_are_scoped_per_tenant_and_lot`, `test_revoked_attachment_status_blocks_download_and_listing`, `test_latest_notes_remain_visible_after_read_limit` **NOT_RUN trên runtime với PyMongo/Streamlit**. PR #234 giữ trạng thái Draft, chưa đủ điều kiện merge staging.
+- Chưa có bằng chứng Cloud deployed SHA/DB identity, Google OIDC thực hoặc dữ liệu thật; không ghi production.
