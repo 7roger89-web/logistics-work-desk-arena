@@ -1251,9 +1251,11 @@ function renderNodeBubble(node, pos, docs) {
   taskDocs.appendChild(body2);
   taskDocs.addEventListener('click', () => openStageModal(String(node.id), 'docs'));
 
+  // The action the user opened this node for is the conversation; keep stage
+  // and published-document summaries underneath, still accessible by scrolling.
+  listDiv.appendChild(buildDiscussionThread(node));
   listDiv.appendChild(taskStage);
   listDiv.appendChild(taskDocs);
-  listDiv.appendChild(buildDiscussionThread(node));
 
   const foot = document.createElement('div');
   foot.className = 'journey-bubble-foot';
