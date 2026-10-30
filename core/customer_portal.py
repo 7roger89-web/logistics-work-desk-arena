@@ -19,6 +19,7 @@ from dataclasses import dataclass
 from typing import Any, Mapping
 
 from core.database import get_db
+from core.customer_portal_sources import PublicSourceUnavailable, read_approved_sources
 from core.hexa_customer_publication import (
     PUBLICATION_SCHEMA,
     PublicationDenied,
@@ -42,6 +43,7 @@ _SHIPMENT_PROJECTION = {
     "customer_id": 1,
     "transport_mode": 1,
     "customer_publication_version": 1,
+    "quote_id": 1,
 }
 _MANIFEST_PROJECTION = {
     "_id": 0,
@@ -288,15 +290,29 @@ def load_customer_dashboard(principal: CustomerPrincipal, *, db: Any = None) -> 
             "id": shipment_id,
             "customer_id": principal.customer_id,
             "transport_mode": row.get("transport_mode"),
+            "quote_id": row.get("quote_id"),
         }
         try:
+            # Validate approved publication and tenant BEFORE source reads.
+            build_customer_publication(
+                shipment=shipment,
+                principal=principal.publication_principal(),
+                publication=dict(manifest),
+            )
+            events, documents, quote = read_approved_sources(
+                database,
+                customer_id=principal.customer_id,
+                shipment_id=shipment_id,
+                shipment_quote_id=row.get("quote_id"),
+                publication=manifest,
+            )
             public = build_customer_publication(
                 shipment=shipment,
                 principal=principal.publication_principal(),
                 publication=dict(manifest),
-                events=(),
-                documents=(),
-                quote=None,
+                events=events,
+                documents=documents,
+                quote=quote,
             )
         except PublicationDenied:
             denied_lots += 1
@@ -305,6 +321,12 @@ def load_customer_dashboard(principal: CustomerPrincipal, *, db: Any = None) -> 
                 shipment_id,
             )
             continue
+        except PublicSourceUnavailable:
+            LOGGER.warning("CUSTOMER_PORTAL_SOURCE_DENIED reason=invalid_or_ambiguous")
+            raise PortalDataError() from None
+        except Exception as exc:  # noqa: BLE001 - fail closed; no sensitive data
+            LOGGER.warning("CUSTOMER_PORTAL_SOURCE_READ_FAILED type=%s", type(exc).__name__)
+            raise PortalDataError() from None
         if (public.get("schema") != PUBLICATION_SCHEMA
                 or clean_id(public.get("reference")) != shipment_id):
             data_issues += 1

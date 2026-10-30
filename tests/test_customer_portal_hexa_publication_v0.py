@@ -70,13 +70,35 @@ def sample():
 
 
 class PublicationTests(unittest.TestCase):
+    def test_quote_document_requires_exact_approval(self):
+        args = sample()
+        args["publication"]["document_versions"]["QUOTATION-DOC"] = "v7"
+        args["documents"].append({
+            "id": "QUOTATION-DOC", "version": "v7", "customer_id": "LG",
+            "shipment_id": "ROAD-001", "kind": "CUSTOMER_QUOTE",
+            "public_title": "Báo giá bản 7", "status": "AVAILABLE",
+            "visibility": "CUSTOMER", "verified": True,
+            "internal_locator": "PRIVATE_MARKER_NOT_FOR_CUSTOMERS",
+        })
+        result = build_customer_publication(**args)
+        self.assertIn({"id": "QUOTATION-DOC", "version": "v7",
+                       "kind": "CUSTOMER_QUOTE", "title": "Báo giá bản 7"},
+                      result["documents"])
+        self.assertIsNone(result["quote"])
+        self.assertNotIn("PRIVATE_MARKER_NOT_FOR_CUSTOMERS", json.dumps(result))
+        self.assertNotIn("7500000", json.dumps(result))
+        args["publication"]["document_versions"]["QUOTATION-DOC"] = "v6"
+        self.assertNotIn("QUOTATION-DOC", [
+            d["id"] for d in build_customer_publication(**args)["documents"]
+        ])
+
     def test_known_good_and_secrets(self):
         args = sample()
         result = build_customer_publication(**args)
         self.assertEqual(result["reference"], "ROAD-001")
         self.assertEqual([e["id"] for e in result["timeline"]], ["E1"])
         self.assertEqual([d["id"] for d in result["documents"]], ["D1"])
-        self.assertEqual(result["quote"]["selling_total_vnd"], 7500000)
+        self.assertIsNone(result["quote"])  # 5C: price never leaves internal quote engine
         self.assertFalse(any(s in json.dumps(result) for s in SENTINELS))
         self.assertNotIn("customer_id", result)
 
@@ -186,12 +208,12 @@ class PublicationTests(unittest.TestCase):
     def test_missing_price_stays_unknown(self):
         args = sample()
         args["quote"]["calculation"]["selling_price_total_vnd"] = None
-        self.assertIsNone(build_customer_publication(**args)["quote"]["selling_total_vnd"])
+        self.assertIsNone(build_customer_publication(**args)["quote"])
 
     def test_negative_price_stays_unknown(self):
         args = sample()
         args["quote"]["calculation"]["selling_price_total_vnd"] = -300
-        self.assertIsNone(build_customer_publication(**args)["quote"]["selling_total_vnd"])
+        self.assertIsNone(build_customer_publication(**args)["quote"])
 
     def test_no_internal_stage_status_leak(self):
         args = sample()

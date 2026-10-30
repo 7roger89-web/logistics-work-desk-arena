@@ -557,10 +557,10 @@ function renderJourneyMapForShipment(row) {
   setText('toolbar-next', secondaryLine([row.next_step, row.contact_point ? `Đầu mối: ${row.contact_point}` : '']));
 
   const docs = Array.isArray(row.documents) ? row.documents : [];
-  const quote = row.quote || null;
+  const quoteDocs = docs.filter((doc) => doc && doc.kind === 'CUSTOMER_QUOTE');
   setText('utility-doc-count', `${docs.length} tệp`);
   setText('utility-docs-sub', `${docs.length} tệp`);
-  setText('utility-quote-sub', quote ? formatVnd(quote.selling_total_vnd) : 'Chưa công bố');
+  setText('utility-quote-sub', quoteDocs.length ? `${quoteDocs.length} tài liệu` : 'Chưa công bố');
 
   const journey = row.journey || { nodes: [], edges: [] };
   const nodes = Array.isArray(journey.nodes) ? journey.nodes : [];
@@ -854,7 +854,7 @@ function renderReadonlyModalBody(node, activeTab) {
   const pub = row.publication || {};
   const docs = Array.isArray(row.documents) ? row.documents : [];
   const timeline = Array.isArray(row.timeline) ? row.timeline : [];
-  const quote = row.quote || null;
+  const quoteDocs = docs.filter((doc) => doc && doc.kind === 'CUSTOMER_QUOTE');
   const fin = row.finance_detail || null;
 
   const grid = document.createElement('div');
@@ -906,18 +906,19 @@ function renderReadonlyModalBody(node, activeTab) {
     container.appendChild(table);
   }
 
-  container.appendChild(sectionTitle('BÁO GIÁ BÁN ĐƯỢC CÔNG BỐ'));
-  if (!quote) {
-    container.appendChild(emptyBox('Chưa công bố báo giá bán cho lô này.', 'quote-section'));
+  container.appendChild(sectionTitle('TÀI LIỆU BÁO GIÁ ĐÃ DUYỆT'));
+  if (quoteDocs.length === 0) {
+    container.appendChild(emptyBox('Chưa có tài liệu báo giá được duyệt cho lô này.', 'quote-section'));
   } else {
-    const qGrid = document.createElement('div');
-    qGrid.className = 'readonly-grid';
-    qGrid.dataset.testid = 'quote-section';
-    qGrid.appendChild(readonlyBox('Mã báo giá', String(quote.id || '—')));
-    qGrid.appendChild(readonlyBox('Phiên bản', String(quote.version || '—')));
-    qGrid.appendChild(readonlyBox('Trạng thái', String(quote.status || '—')));
-    qGrid.appendChild(readonlyBox('Tổng bán đã công bố', formatVnd(quote.selling_total_vnd)));
-    container.appendChild(qGrid);
+    const quoteList = document.createElement('div');
+    quoteList.className = 'readonly-grid';
+    quoteList.dataset.testid = 'quote-section';
+    quoteDocs.forEach((doc) => {
+      quoteList.appendChild(readonlyBox('Mã tài liệu', String(doc.id || '—')));
+      quoteList.appendChild(readonlyBox('Phiên bản', String(doc.version || '—')));
+      quoteList.appendChild(readonlyBox('Tên báo giá', String(doc.title || '—')));
+    });
+    container.appendChild(quoteList);
   }
 
   container.appendChild(sectionTitle('CÔNG NỢ DỊCH VỤ'));
