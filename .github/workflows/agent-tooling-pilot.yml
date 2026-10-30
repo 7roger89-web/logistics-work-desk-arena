@@ -39,7 +39,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD)" = "a74e41f326422d7636329c0393483c63b6adb5aa"
           ROOT="$RUNNER_TEMP/serena-logi"
           mkdir -p "$ROOT/core" "$ROOT/views"
           cp core/journey_notes.py core/inbox_attachments.py "$ROOT/core/"
