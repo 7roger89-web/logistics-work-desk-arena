@@ -60,6 +60,7 @@ class FakeStore:
         self.deleted: list[str] = []
         self.fail = fail
         self.counter = 0
+        self.reads = 0
 
     def upload_file(self, *, name: str, mime: str, data: bytes, metadata=None):
         if self.fail:
@@ -70,6 +71,7 @@ class FakeStore:
         return {"storage_file_id": file_id, "stored_name": name, "stored_size": len(data)}
 
     def download_file(self, file_id: str):
+        self.reads += 1
         if file_id not in self.files:
             raise KeyError(file_id)
         return self.files[file_id]
@@ -1276,3 +1278,189 @@ def test_a_comment_never_changes_the_published_progress(db, store):
     assert stages_after == stages_before
     assert db.public_events.find_one({"id": "EV-1"}) == published
     assert db.quick_notes.count_documents({"kind": notes.JOURNEY_NOTE_KIND}) == 1
+
+
+# --------------------------------------------------------------------------
+# Issue #236 blocker: a download must prove the OPEN lot + stage
+# --------------------------------------------------------------------------
+
+def test_attachment_read_is_bound_to_the_expected_lot_and_stage(db, store):
+    outcome = _write(db, body="Tệp của lô A · lấy hàng", stage="pickup",
+                     files=[_png()], store=store)
+    note_id = outcome["note"]["id"]
+    attachment_id = outcome["note"]["attachments"][0]["id"]
+    scope = {"customer_id": CUSTOMER_A, "shipment_id": LOT_A, "stage_id": "pickup"}
+
+    # 1. The right scope reads the real bytes.
+    good = notes.read_note_attachment(
+        note_id=note_id, attachment_id=attachment_id, actor=CUSTOMER_ACTOR,
+        db=db, gridfs=store, expected_scope=scope,
+    )
+    assert good["ok"] is True and good["data"] == PNG_1PX
+    assert store.reads == 1
+
+    # 2. Every mismatch is refused BEFORE storage is touched.
+    for bad in (
+        {**scope, "shipment_id": LOT_B},
+        {**scope, "customer_id": CUSTOMER_B},
+        {**scope, "stage_id": "customs"},
+        {"customer_id": CUSTOMER_A, "shipment_id": LOT_A},          # no stage
+        {"shipment_id": LOT_A, "stage_id": "pickup"},               # no customer
+        {},                                                         # fail closed
+    ):
+        refused = notes.read_note_attachment(
+            note_id=note_id, attachment_id=attachment_id, actor=SALE,
+            db=db, gridfs=store, expected_scope=bad,
+        )
+        assert refused["ok"] is False
+        assert "data" not in refused
+        assert refused["error"] == "Không tìm thấy chứng từ."
+    assert store.reads == 1, "a refused scope must never read bytes"
+
+    # 3. Omitting the parameter keeps the previous contract for other callers.
+    legacy = notes.read_note_attachment(
+        note_id=note_id, attachment_id=attachment_id, actor=SALE, db=db, gridfs=store,
+    )
+    assert legacy["ok"] is True and store.reads == 2
+
+
+def _second_lot_for_customer_a(db, lot="G1-LG-002"):
+    db.shipments.insert_one({"id": lot, "customer_id": CUSTOMER_A, "transport_mode": "SEA"})
+    return lot
+
+
+def test_inline_download_refuses_a_note_from_another_lot_even_with_its_ids(db, store):
+    """Knowing the note/file ids of another lot must not fetch its bytes."""
+    _seed_public_event(db)
+    other_lot = _second_lot_for_customer_a(db)
+    other = _write(db, body="TỆP CỦA LÔ KHÁC", stage="pickup", lot=other_lot,
+                   files=[_png()], store=store)
+    reads_after_upload = store.reads
+    app, state, stack = _portal_inline(db, store)
+    with stack:
+        _focus(app, LOT_A, "pickup")
+        app.run()
+        assert not app.exception, [str(e.value) for e in app.exception]
+        _trigger(state, "journey_note_download", {
+            "shipmentId": LOT_A, "stageId": "pickup",
+            "noteId": other["note"]["id"],
+            "attachmentId": other["note"]["attachments"][0]["id"],
+            "requestId": "REQ-CROSS-LOT-1",
+        })
+        app.run()
+        assert not app.exception, [str(e.value) for e in app.exception]
+        discussion = state["model"]["discussion"]
+        assert discussion["download"] is None, "no bytes may reach the payload"
+        assert discussion["downloadOutcome"]["ok"] is False
+        state["result"] = None
+        app.run()
+        assert not app.exception, [str(e.value) for e in app.exception]
+        assert state["model"]["discussion"]["download"] is None
+    assert store.reads == reads_after_upload, "a cross-lot download must not read storage"
+
+
+def test_inline_download_refuses_a_note_from_another_stage_of_the_same_lot(db, store):
+    _seed_public_event(db)
+    other_stage = _write(db, body="TỆP CỦA CÔNG ĐOẠN KHÁC", stage="customs",
+                         files=[_png()], store=store)
+    reads_after_upload = store.reads
+    app, state, stack = _portal_inline(db, store)
+    with stack:
+        _focus(app, LOT_A, "pickup")
+        app.run()
+        assert not app.exception, [str(e.value) for e in app.exception]
+        _trigger(state, "journey_note_download", {
+            "shipmentId": LOT_A, "stageId": "pickup",
+            "noteId": other_stage["note"]["id"],
+            "attachmentId": other_stage["note"]["attachments"][0]["id"],
+            "requestId": "REQ-CROSS-STAGE-1",
+        })
+        app.run()
+        assert not app.exception, [str(e.value) for e in app.exception]
+        discussion = state["model"]["discussion"]
+        assert discussion["download"] is None
+        assert discussion["downloadOutcome"]["ok"] is False
+        state["result"] = None
+        app.run()
+        assert not app.exception, [str(e.value) for e in app.exception]
+        assert state["model"]["discussion"]["download"] is None
+    assert store.reads == reads_after_upload
+
+
+_STAFF_INLINE_EVENT_SCRIPT = (
+    "import streamlit as st\n"
+    "from views import journey_inline\n"
+    "user = {'username': 'sale.thanh', 'role': 'sale'}\n"
+    "st.session_state['out'] = journey_inline.consume_staff_triggers(\n"
+    "    {'seq': 0}, st.session_state['event'], user=user,\n"
+    "    shipments=st.session_state['rows'],\n"
+    ")\n"
+    "slot = st.session_state.get(journey_inline.STAFF_DOWNLOAD_KEY)\n"
+    "st.session_state['slot'] = bool(slot)\n"
+    "st.session_state['slot_len'] = len(str((slot or {}).get('base64') or ''))\n"
+)
+
+
+def _staff_inline_event(db, store, event, payload, rows):
+    with _internal_stack(db, store):
+        app = AppTest.from_string(_STAFF_INLINE_EVENT_SCRIPT, default_timeout=120)
+        app.session_state["rows"] = rows
+        app.session_state["event"] = {
+            event: {"seq": 1, "event": event, "payload": payload},
+        }
+        app.run()
+        assert not app.exception, [str(e.value) for e in app.exception]
+        return (
+            app.session_state["out"], app.session_state["slot"],
+            app.session_state["slot_len"],
+        )
+
+
+def test_staff_inline_download_refuses_a_lot_outside_the_projection(db, store):
+    """A staff download cannot cross into a lot the operator's projection lacks."""
+    outside = "G1-LG-900"
+    db.shipments.insert_one({"id": outside, "customer_id": CUSTOMER_A})
+    hidden = _write(db, body="TỆP LÔ NGOÀI PROJECTION", stage="pickup", lot=outside,
+                    files=[_png()], store=store)
+    reads_after_upload = store.reads
+    rows = [{"id": LOT_A, "customerId": CUSTOMER_A,
+             "journey": {"nodes": [{"id": "pickup-1", "label": "Lấy hàng"}]}}]
+
+    # The forged focus for the hidden lot is itself refused: it is not in rows.
+    outcomes, slot, slot_len = _staff_inline_event(db, store, "journey_note_download", {
+        "shipmentId": outside, "stageId": "pickup",
+        "noteId": hidden["note"]["id"],
+        "attachmentId": hidden["note"]["attachments"][0]["id"],
+        "requestId": "REQ-HIDDEN-FOCUS-1",
+    }, rows)
+    assert len(outcomes) == 1 and outcomes[0]["ok"] is False
+    assert outcomes[0]["gate"] == "INVALID_SCOPE"
+    assert slot is False and slot_len == 0
+
+    # Even with a VALID focus (lot A), the hidden lot's ids are refused.
+    outcomes, slot, slot_len = _staff_inline_event(db, store, "journey_note_download", {
+        "shipmentId": LOT_A, "stageId": "pickup", "nodeId": "pickup-1",
+        "noteId": hidden["note"]["id"],
+        "attachmentId": hidden["note"]["attachments"][0]["id"],
+        "requestId": "REQ-HIDDEN-IDS-1",
+    }, rows)
+    assert len(outcomes) == 1 and outcomes[0]["ok"] is False
+    assert outcomes[0]["gate"] == "NOT_FOUND"
+    assert slot is False and slot_len == 0, "no byte may be queued for the browser"
+    assert store.reads == reads_after_upload
+
+
+def test_staff_inline_download_matches_a_note_in_the_same_open_scope(db, store):
+    _seed_public_event(db)
+    note = _write(db, body="TỆP ĐÚNG PHẠM VI", stage="pickup", files=[_png()], store=store)
+    rows = [{"id": LOT_A, "customerId": CUSTOMER_A,
+             "journey": {"nodes": [{"id": "pickup-1", "label": "Lấy hàng"}]}}]
+    outcomes, slot, slot_len = _staff_inline_event(db, store, "journey_note_download", {
+        "shipmentId": LOT_A, "stageId": "pickup", "nodeId": "pickup-1",
+        "noteId": note["note"]["id"],
+        "attachmentId": note["note"]["attachments"][0]["id"],
+        "requestId": "REQ-MATCH-1",
+    }, rows)
+    assert len(outcomes) == 1 and outcomes[0]["ok"] is True
+    assert slot is True and slot_len > 0
+    assert store.reads >= 1

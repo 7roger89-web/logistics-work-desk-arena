@@ -30,6 +30,8 @@ Hoàn thiện **Logistics Work Desk thực sự dùng được**: Trường Thà
 ## BLOCKERS / GATES
 
 - PR #234 đã **MERGED staging**. Bằng chứng code: QA Arena `48 PASS` stage notes, `138 PASS` tests phụ thuộc; full suite còn **34 lỗi nền** theo cùng máy/baseline. Control Tower đọc lại code/test trên HEAD QA và không thấy blocker mới; các test không được chạy lại trong container hiện tại (thiếu Streamlit/mongomock).
+- **Blocker review #237 (đã sửa):** tải chứng từ trong Journey Map từng không buộc note vào đúng lô + công đoạn đang mở. Nay `read_note_attachment(..., expected_scope=…)` kiểm tra `customer_id + shipment_id + stage_id` của chính note **trước khi** đọc byte; `views/journey_inline.py` luôn truyền phạm vi server đã resolve. 5 test mới (đúng phạm vi, lô khác, công đoạn khác, lô ngoài projection, fail-closed) + mutation proof (bỏ binding → 3 test FAIL). Full suite `34F/2262P` trùng tập FAILED nền 34.
+- **Browser blocker:** sandbox không có trình duyệt và CDN tải browser bị chặn (`cdn.playwright.dev`, `storage.googleapis.com`), nên `VISUAL_PASS=NOT_VERIFIED` và transport byte component v2 chưa được chạy end-to-end trên trình duyệt thật. Cần môi trường có Chromium để đóng mục này.
 - `thu-log-g1-test.streamlit.app`: deployed SHA và danh tính DB runtime chưa được chứng minh; **không ghi Cloud/production** chỉ để test.
 - Nguồn chứng từ/sự kiện Lục Giác thật chưa được nghiệp vụ xác nhận; hash/fixture chỉ chứng minh contract phần mềm. Thông tin chi phí, margin, báo giá nội bộ và công nợ thiếu đối soát tuyệt đối không công bố.
 - `main` trước công việc này: `9e4190b278dd2ced8771c5249582753d34e561db`; không merge `main` hoặc deploy production nếu thiếu Owner Gate. PR #226 lịch sử Draft, không phải workstream tiếp theo.

@@ -23,8 +23,8 @@ Ngày QA: 30/10/2026. Nhánh: `arena/385e4a4d-logistics-work-desk-arena`, nền 
 
 | Kiểm chứng | Kết quả | Đường dẫn |
 | --- | --- | --- |
-| Toàn bộ suite Python | `34 failed / 2255 passed / 44 skipped` — **trùng đúng tập FAILED nền 34** của `a570383` (baseline `2247 passed`) | `/tmp/after2.txt` (so với `/tmp/baseline_suite.txt`) |
-| `tests/test_journey_notes.py` | 54 PASS (thêm reply/orphan/replay/revoked/no-progress-change/inline UI) | `tests/test_journey_notes.py` |
+| Toàn bộ suite Python | `34 failed / 2262 passed / 44 skipped` — **trùng đúng tập FAILED nền 34** của `a570383` (baseline `2247 passed`) | `/tmp/after3_suite.txt` (so với `/tmp/baseline_suite.txt`) |
+| `tests/test_journey_notes.py` | **59 PASS** (thêm reply/orphan/replay/revoked/no-progress-change/inline UI + 5 test bind phạm vi tải) | `tests/test_journey_notes.py` |
 | `tests/test_journey_map_focus.py` | 54 PASS (payload đúng node, không form Streamlit, từ chối focus lạ) | `tests/test_journey_map_focus.py` |
 | Nhóm phụ thuộc (portal/journey/inbox) | 181 PASS | lệnh trong log phiên |
 | jsdom — khách | `PASS … focus + reply + file + download inside the node bubble, scope separated` | `tests/component/dom_acceptance_journey_focus_customer.mjs` |
@@ -39,10 +39,50 @@ Các test jsdom chứng minh: payload focus chỉ có `{shipment_id, stage_id}` 
 `requestId`; chữ người dùng là text (không thành DOM); chạm vào hội thoại không pan/zoom;
 refresh không reset pan/zoom và không gửi lại intent.
 
+## Sửa blocker review `6519682460` — tải chứng từ phải đúng lô + công đoạn đang mở
+
+**Lỗi:** `_handle_download` gọi `read_note_attachment(note_id, attachment_id, actor, db)` mà không buộc
+ghi chú phải thuộc **đúng** `customer_id + shipment_id + stage_id` mà server đã resolve cho panel.
+Biết mã note/tệp của lô khác (hoặc công đoạn khác, hoặc lô ngoài projection của nhân viên) là có thể
+lấy được byte, rồi `_store_download` gắn nhầm phạm vi.
+
+**Sửa (nhỏ nhất, giữ nguyên backend/quyền/UI):**
+
+- `core/journey_notes.py::read_note_attachment` nhận thêm `expected_scope` (tùy chọn, tương thích
+  ngược). Khi có, nó so `customer_id`, `shipment_id`, `stage_id` **của chính row** với phạm vi server
+  vừa resolve, **trước khi** tra attachment và **trước khi** gọi kho byte. Lệch → trả cùng một thông
+  báo "Không tìm thấy chứng từ." (không tạo oracle), log `reason=focus_scope_mismatch`.
+  Thiếu bất kỳ thành phần nào của `expected_scope` → fail closed (không khớp).
+- `views/journey_inline.py::_handle_download` luôn truyền `expected_scope` từ focus đã xác minh
+  (`customer_id` lấy từ projection/RBAC của chính danh tính, không phải từ trình duyệt).
+- Không đổi `create`, không đổi visibility/RBAC, không thêm collection/kênh tải thứ hai.
+
+**Chứng minh (test mới trong `tests/test_journey_notes.py`):**
+
+| Ca | Kỳ vọng | Test |
+| --- | --- | --- |
+| Tệp đúng lô + đúng công đoạn | tải được, byte khớp `PNG_1PX` | `test_attachment_read_is_bound_to_the_expected_lot_and_stage`, `test_staff_inline_download_matches_a_note_in_the_same_open_scope`, `test_ui_staff_public_note_file_and_customer_reply_meet_at_the_same_stage` |
+| Cùng khách, **lô khác**, biết mã tệp | từ chối, `download=None`, không đọc kho | `test_inline_download_refuses_a_note_from_another_lot_even_with_its_ids` |
+| Cùng lô, **công đoạn khác**, biết mã tệp | từ chối, không đọc kho | `test_inline_download_refuses_a_note_from_another_stage_of_the_same_lot` |
+| **Lô ngoài projection** của nhân viên (cả focus giả lẫn mã tệp) | `INVALID_SCOPE` / `NOT_FOUND`, không byte nào vào slot | `test_staff_inline_download_refuses_a_lot_outside_the_projection` |
+| `expected_scope` sai/thiếu thành phần | fail closed, kho không bị đọc | `test_attachment_read_is_bound_to_the_expected_lot_and_stage` |
+| Khách khác, tệp thu hồi | vẫn từ chối như trước | các test cũ giữ nguyên |
+
+"Không có byte nào" được đo bằng `FakeStore.reads` (số lần gọi kho) **không tăng** và
+`discussion["download"] is None`; với nhân viên, slot `STAFF_DOWNLOAD_KEY` rỗng (`slot=False`,
+`slot_len=0`).
+
+**Mutation proof:** bỏ đúng dòng `expected_scope=…` trong `_handle_download` → 3 test tấn công
+(`another_lot`, `another_stage`, `projection`) FAIL; khôi phục → 8/8 PASS. Vì vậy test bắt đúng lỗi
+reviewer mô tả, không phải test trang trí.
+
 ## Chưa xác minh (không tự nhận)
 
-- **`VISUAL_PASS=NOT_VERIFIED`**: sandbox không có trình duyệt thật. Không có ảnh chụp 1280px /
-  390px, không kiểm chứng trực quan clipping, bottom sheet thật, hay độ mượt pan/zoom.
+- **`VISUAL_PASS=NOT_VERIFIED`**: sandbox không có trình duyệt thật. Đã thử: không có
+  `chromium`/`google-chrome`/`firefox` trong PATH, `playwright` không được cài, và CDN tải browser bị
+  chặn (`cdn.playwright.dev` và `storage.googleapis.com` đều không kết nối được — chỉ npm/pypi/github
+  mở). Vì vậy không có ảnh chụp 1280px/390px, không kiểm chứng trực quan clipping, bottom sheet thật,
+  hay độ mượt pan/zoom; không có roundtrip tệp trên trình duyệt thật.
 - **Transport byte của component v2 trong runtime Streamlit thật** chưa chạy end-to-end ở đây.
   Cơ sở an toàn: dùng đúng đường đã có của `views/logi_inbox.py` (`files[]` base64 →
   `decode_upload_payload` / `validate_upload`, tối đa 4 tệp × 20 MB, `MAX_BASE64_CHARS` chặn

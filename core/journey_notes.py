@@ -152,6 +152,27 @@ def _customer_read_allowed(actor: Mapping[str, str], customer_id: str) -> bool:
     return actor.get("kind") != "customer" or actor.get("customer_id") == customer_id
 
 
+def _matches_expected_scope(row: Mapping[str, Any], expected: Mapping[str, Any]) -> bool:
+    """True only when the note really belongs to the server-resolved lot + stage.
+
+    Fail closed: an incomplete expectation never matches, so a caller cannot
+    accidentally widen the boundary by passing an empty dict.
+    """
+    try:
+        want_customer = _clean(expected.get("customer_id"), 120)
+        want_shipment = _clean(expected.get("shipment_id"), 120)
+        want_stage = _clean(expected.get("stage_id"), 40).lower()
+    except Exception:  # noqa: BLE001 - a malformed expectation never matches
+        return False
+    if not want_customer or not want_shipment or not want_stage:
+        return False
+    return (
+        _clean(row.get("customer_id"), 120) == want_customer
+        and _clean(row.get("shipment_id"), 120) == want_shipment
+        and _clean(row.get("stage_id"), 40).lower() == want_stage
+    )
+
+
 def _scope(database: Any, customer_id: str, shipment_id: str) -> None:
     if not customer_id or not shipment_id:
         raise JourneyNoteDenied("Thiếu khách hàng hoặc lô hàng hợp lệ.")
@@ -510,10 +531,20 @@ def read_note_attachment(
     db: Any = None,
     gridfs: Any = None,
     drive: Any = None,
+    expected_scope: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Read ONE attached file after re-proving the note and the exact file id.
 
     A customer may only read files of customer-visible notes on their own lot.
+
+    ``expected_scope`` binds the read to the ONE lot + stage the caller has
+    already resolved on the server (a Journey Map node). When supplied, the
+    note's OWN stored ``customer_id`` + ``shipment_id`` + ``stage_id`` must
+    equal it exactly — otherwise nothing is read from storage and no bytes are
+    returned. That check happens BEFORE the note is even looked up in memory,
+    so a crafted trigger can never fetch another lot's or another stage's file
+    just by knowing its ids. Omitting it keeps the previous contract for every
+    other caller.
     """
     resolved_actor = _actor(actor)
     identifier, wanted = _clean(note_id, 80), _clean(attachment_id, 120)
@@ -529,6 +560,12 @@ def read_note_attachment(
         LOGGER.warning("JOURNEY_NOTE_ATTACHMENT_READ_FAILED")
         return {"ok": False, "error": "Không đọc được chứng từ."}
     if not isinstance(row, Mapping):
+        return {"ok": False, "error": "Không tìm thấy chứng từ."}
+    if expected_scope is not None and not _matches_expected_scope(row, expected_scope):
+        # The note exists and may even be readable by this actor, but it is NOT
+        # the note of the lot + stage that is currently open. Refuse with the
+        # same message as "not found": no existence oracle, no bytes.
+        LOGGER.warning("JOURNEY_NOTE_ATTACHMENT_DENIED reason=focus_scope_mismatch")
         return {"ok": False, "error": "Không tìm thấy chứng từ."}
     if not _customer_read_allowed(resolved_actor, _clean(row.get("customer_id"), 120)):
         LOGGER.warning("JOURNEY_NOTE_ATTACHMENT_DENIED reason=foreign_customer")

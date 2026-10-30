@@ -505,8 +505,17 @@ def _handle_download(
     if not note_id or not attachment_id:
         return _result(event, shipment_id, False, "Thiếu mã trao đổi hoặc mã tệp.",
                        requestId=request_id, gate="INVALID_REQUEST")
+    # The note MUST belong to the lot + stage the server resolved for this
+    # panel. Without this binding a crafted trigger could name a note of
+    # another lot/stage (or a lot outside the staff projection) and receive
+    # its bytes; the check runs before storage is touched.
     outcome = notes.read_note_attachment(
         note_id=note_id, attachment_id=attachment_id, actor=actor, db=db,
+        expected_scope={
+            "customer_id": _text(focus.get("customer_id"), 120),
+            "shipment_id": shipment_id,
+            "stage_id": stage_id,
+        },
     )
     if not outcome.get("ok"):
         return _result(event, shipment_id, False,
