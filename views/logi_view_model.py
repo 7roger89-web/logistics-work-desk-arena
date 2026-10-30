@@ -54,6 +54,7 @@ from views import user_management as logi_user_management
 from views import notebooklm_registry as logi_notebooklm
 from views import logi_docgen_upload as logi_templates
 from views import logi_inbox
+from views import journey_focus
 
 STATE_KEY = "logi_state"
 SEQ_KEY = "logi_seq"
@@ -1307,6 +1308,14 @@ PARTNER_CONTEXT_EVENTS = {"partner_context_select"}
 # existing canonical C2B/C2D and C2C surfaces the desk links to.
 RECONCILIATION_EVENTS = {"reconciliation_filter"}
 
+# JOURNEY MAP → the EXISTING stage-discussion pane. ONE bounded READ-ONLY
+# intent event: it writes no shipment field, no note, no attachment and no
+# audit entry. The payload carries ONLY {shipment_id, stage_id}; the handler
+# re-validates the lot against this operator's RBAC-filtered projection and the
+# stage against the canonical STAGE_IDS tuple (views.journey_focus) before the
+# pane opens. There is deliberately no second comment/upload system.
+JOURNEY_FOCUS_EVENTS = {"journey_focus"}
+
 # LOGI_USER_MANAGEMENT_01 — the four Admin-only account-management events for
 # /nguoi-dung (see views.user_management for the bounded dispatcher). Every
 # handler re-checks the Admin RBAC boundary itself; this set only decides
@@ -1323,7 +1332,8 @@ ALL_EVENTS = (ALLOWED_EVENTS | PHASE_B_EVENTS | logi_c1.C1_EVENTS
               | TARIFF_EVENTS | TRANSLATION_EVENTS | PARTNER_CONTEXT_EVENTS
               | RECONCILIATION_EVENTS | USER_MANAGEMENT_EVENTS
               | NOTEBOOKLM_EVENTS | DOCUMENT_REVIEW_EVENTS
-              | DOCGEN_TEMPLATE_EVENTS | logi_inbox.INBOX_EVENTS)
+              | DOCGEN_TEMPLATE_EVENTS | logi_inbox.INBOX_EVENTS
+              | JOURNEY_FOCUS_EVENTS)
 
 #: LOGI_TRADE_DOCUMENT_SHIPMENT_REVIEW_RUN3_01 — the ONE ephemeral session slot
 #: holding the last read-only shipment document review. It is presentation/read
@@ -6131,6 +6141,53 @@ def consume_reconciliation_triggers(session: dict, result: Any) -> list[dict[str
     return outcomes
 
 
+def consume_journey_focus_triggers(session: dict, result: Any) -> list[dict[str, Any]]:
+    """The ONE bounded READ-ONLY Journey Map → discussion-pane dispatcher.
+
+    Same one-shot ``seq`` protection as every other v2 trigger. It mutates no
+    business data: it records WHICH node the operator clicked so the existing
+    ``views.journey_discussion`` pane can open on that lot + stage. The lot id
+    and stage id are lookup inputs only — :func:`views.journey_focus.for_staff`
+    re-resolves both against the RBAC-filtered projection right before the pane
+    reads, so a forged pair simply opens nothing.
+    """
+    outcomes: list[dict[str, Any]] = []
+    for event_name in sorted(JOURNEY_FOCUS_EVENTS):
+        payload = result.get(event_name) if hasattr(result, "get") else None
+        if not isinstance(payload, dict):
+            continue
+        seq = payload.get("seq")
+        if isinstance(seq, bool) or not isinstance(seq, int):
+            continue
+        if seq <= session.get("seq", 0):
+            continue
+        session["seq"] = seq
+        data = payload.get("payload") if isinstance(payload.get("payload"), dict) else {}
+        lot = str(data.get("shipment_id") or "").strip()[:120]
+        stage = str(data.get("stage_id") or "").strip().lower()[:40]
+        username = str((st.session_state.get("current_user") or {}).get("username") or "")[:120]
+        recorded = journey_focus.capture(
+            st.session_state,
+            {"seq": seq, "shipment_id": lot, "stage_id": stage},
+            scope={"username": username},
+        )
+        outcomes.append(_result(
+            event_name, lot, recorded,
+            "" if recorded else "Không mở được trao đổi cho công đoạn này.",
+            readback={"shipmentId": lot, "stageId": stage},
+        ))
+    return outcomes
+
+
+def journey_focus_pane(user: Mapping[str, Any], shipments: Any) -> dict[str, Any] | None:
+    """Resolve the stored Journey Map intent against the operator's own lots."""
+    return journey_focus.for_staff(
+        journey_focus.current(st.session_state),
+        str((user or {}).get("username") or ""),
+        shipments or (),
+    )
+
+
 def dispatch(
     result: Any,
     *,
@@ -6227,6 +6284,15 @@ def dispatch(
                                     review_session["seq"])
     outcomes.extend(review_outcomes)
 
+    # Journey Map → the EXISTING stage-discussion pane. A READ-ONLY intent: the
+    # handler only records which lot + stage the operator clicked; the pane
+    # re-validates both against this operator's own projection when it renders.
+    focus_session = {"seq": st.session_state.get(SEQ_KEY, 0)}
+    focus_outcomes = consume_journey_focus_triggers(focus_session, result)
+    st.session_state[SEQ_KEY] = max(st.session_state.get(SEQ_KEY, 0),
+                                    focus_session["seq"])
+    outcomes.extend(focus_outcomes)
+
     # LOGI_USER_MANAGEMENT_01 — Admin-only account-management writes for
     # /nguoi-dung. Shares the same seq counter so a replayed trigger can never
     # double-write; every outcome (success or Admin/lockout/duplicate refusal)
@@ -6283,6 +6349,9 @@ def dispatch(
         # A read-only review outcome (bounded review OR honest refusal) also
         # needs ONE rerun so the settled requestId + result reach the component.
         or bool(review_outcomes)
+        # A Journey Map node click is consumed AFTER the page header, so ONE
+        # rerun re-renders the page with the focused discussion pane on top.
+        or bool(focus_outcomes)
     )
     if needs_rerun and allow_rerun:
         st.rerun()

@@ -13,6 +13,7 @@ from typing import Any, Mapping, Sequence
 import streamlit as st
 
 from core import journey_notes as notes
+from views import journey_focus
 
 _STAGE_OPTIONS = tuple(zip(notes.STAGE_IDS, (notes.STAGE_LABELS[s] for s in notes.STAGE_IDS)))
 
@@ -30,6 +31,12 @@ def _escape(value: str) -> str:
 
 def _stage_label(stage_id: str) -> str:
     return notes.STAGE_LABELS.get(_text(stage_id), _text(stage_id) or "Công đoạn")
+
+
+def _stage_index(stage_id: str) -> int:
+    """Position of one canonical stage in the selector (0 when unknown)."""
+    candidate = _text(stage_id, 40).lower()
+    return notes.STAGE_IDS.index(candidate) if candidate in notes.STAGE_IDS else 0
 
 
 def _stage_choice(label: str, key: str, *, index: int = 0) -> str:
@@ -172,22 +179,44 @@ def render_internal_discussion(
     *,
     db: Any = None,
     key_prefix: str = "jd_internal",
+    focus_stage: str = "",
+    expanded: bool = False,
 ) -> None:
-    """Trường Thành: đọc + ghi toàn bộ luồng (cả nội bộ lẫn khách nhìn thấy)."""
+    """Trường Thành: đọc + ghi toàn bộ luồng (cả nội bộ lẫn khách nhìn thấy).
+
+    ``focus_stage`` is the canonical stage a Journey Map node click asked for;
+    it only opens the selector on that stage and expands THIS lot's pane. It is
+    never trusted as data on its own (see :mod:`views.journey_focus`).
+    """
     shipment = _text(shipment_id, 120)
     customer = _text(customer_id, 120)
     if not shipment or not customer:
         st.caption("Chưa xác định được khách hàng của lô này để trao đổi.")
         return
+    focus = _text(focus_stage, 40).lower()
+    focused = focus in notes.STAGE_IDS
     actor = {
         "kind": "user",
         "username": _text(user.get("username"), 100),
         "role": _text(user.get("role"), 40).lower(),
     }
     scoped_prefix = f"{key_prefix}_{customer}_{shipment}"
-    with st.expander("💬 Trao đổi theo công đoạn (Trường Thành ↔ khách hàng)", expanded=False):
+    # The focused pane is keyed by stage so a Journey Map click really lands on
+    # that stage instead of reusing a previously chosen selector value.
+    stage_key = f"{scoped_prefix}_stage" + (f"_focus_{focus}" if focused else "")
+    title = "💬 Trao đổi theo công đoạn (Trường Thành ↔ khách hàng)"
+    if focused:
+        title = f"💬 Trao đổi / Chứng từ · lô {shipment} · công đoạn {_stage_label(focus)}"
+    with st.expander(title, expanded=expanded or focused):
+        if focused:
+            st.caption(
+                f"Đang mở từ Journey Map · lô {shipment} · công đoạn {_stage_label(focus)}. "
+                "Nội dung và chứng từ dưới đây thuộc đúng lô và đúng công đoạn này."
+            )
         try:
-            stage = _stage_choice("Công đoạn", f"{scoped_prefix}_stage")
+            stage = _stage_choice(
+                "Công đoạn", stage_key, index=_stage_index(focus) if focused else 0,
+            )
             thread = notes.list_stage_notes(
                 customer_id=customer, shipment_id=shipment, stage_id=stage,
                 actor=actor, db=db,
@@ -196,7 +225,7 @@ def render_internal_discussion(
             st.error(_text(denied, 300) or "Không đọc được trao đổi.")
             return
         _show_flash(scoped_prefix, stage)
-        _render_thread(thread, key_prefix=scoped_prefix, db=db, actor=actor)
+        _render_thread(thread, key_prefix=f"{scoped_prefix}_{stage}", db=db, actor=actor)
         _composer(
             key_prefix=scoped_prefix, db=db, actor=actor, customer_id=customer,
             shipment_id=shipment, stage_id=stage,
@@ -212,8 +241,14 @@ def render_customer_discussion(
     *,
     db: Any = None,
     key_prefix: str = "jd_customer",
+    focus: Mapping[str, Any] | None = None,
 ) -> None:
-    """Lục Giác: chỉ thấy nội dung đã cho phép, chỉ ghi vào lô của chính mình."""
+    """Lục Giác: chỉ thấy nội dung đã cho phép, chỉ ghi vào lô của chính mình.
+
+    ``focus`` comes from :mod:`views.journey_focus` and has already been checked
+    against the customer's OWN lots; it can only ever select a lot that is in
+    ``cards`` and a stage in the canonical tuple.
+    """
     if not cards:
         return
     actor = {
@@ -221,16 +256,36 @@ def render_customer_discussion(
         "customer_id": _text(getattr(principal, "customer_id", ""), 120),
         "name": _text(getattr(principal, "display_name", ""), 100),
     }
-    for position, card in enumerate(cards):
+    lot_filter = _text((focus or {}).get("shipment_id"), 120)
+    focus_stage = _text((focus or {}).get("stage_id"), 40).lower()
+    if focus_stage not in notes.STAGE_IDS:
+        focus_stage = ""
+    if not actor["customer_id"]:
+        return
+    targets = [card for card in cards
+               if not lot_filter or _text(getattr(card, "reference", ""), 120) == lot_filter]
+    if not targets:
+        return
+    for position, card in enumerate(targets):
         shipment = _text(getattr(card, "reference", ""), 120)
         if not shipment:
             continue
         # Isolation is based on the server-proven principal and lot, not the
         # positional card index, which can be reused by another tenant.
         prefix = f"{key_prefix}_{actor['customer_id']}_{shipment}_{position}"
-        with st.expander(f"💬 Trao đổi công đoạn · lô {shipment}", expanded=False):
+        focused = bool(focus_stage)
+        stage_key = f"{prefix}_stage" + (f"_focus_{focus_stage}" if focused else "")
+        with st.expander(f"💬 Trao đổi công đoạn · lô {shipment}", expanded=focused):
+            if focused:
+                st.caption(
+                    f"Đang mở từ Journey Map · lô {shipment} · công đoạn "
+                    f"{_stage_label(focus_stage)}."
+                )
             try:
-                stage = _stage_choice("Công đoạn", f"{prefix}_stage")
+                stage = _stage_choice(
+                    "Công đoạn", stage_key,
+                    index=_stage_index(focus_stage) if focused else 0,
+                )
                 thread = notes.list_stage_notes(
                     customer_id=actor["customer_id"], shipment_id=shipment,
                     stage_id=stage, actor=actor, db=db,
@@ -239,7 +294,7 @@ def render_customer_discussion(
                 st.error(_text(denied, 300) or "Không đọc được trao đổi.")
                 continue
             _show_flash(prefix, stage)
-            _render_thread(thread, key_prefix=prefix, db=db, actor=actor)
+            _render_thread(thread, key_prefix=f"{prefix}_{stage}", db=db, actor=actor)
             _composer(
                 key_prefix=prefix, db=db, actor=actor,
                 customer_id=actor["customer_id"], shipment_id=shipment, stage_id=stage,

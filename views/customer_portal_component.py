@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import base64
 from pathlib import Path
+from typing import Any
 
 import streamlit as st
 
@@ -39,6 +40,12 @@ REFERENCE_BYTES = 826336
 SEA_CHART_SHA256 = "f83d42167dffcb1ac629f261923408a2c6d5d6d7564cf63083aa869bababdef9"
 
 COMPONENT_KEY = "hexa-customer-portal"
+
+#: The ONE typed event this component may send back to Python: "open the
+#: existing stage discussion pane for the node I just clicked". The payload is
+#: an intent only ({shipment_id, stage_id}); views.journey_focus re-validates it
+#: against the server-built projection before anything is read or written.
+FOCUS_EVENT = "journey_focus"
 
 
 class PortalAssetError(RuntimeError):
@@ -87,19 +94,37 @@ def _renderer():
     return _state["renderer"]
 
 
-def render(model: dict, *, height: str | int = "content") -> None:
+def on_focus_change() -> None:
+    """v2 prefix callback: remember the node intent BEFORE the script reruns.
+
+    Runs before the main script body, so the discussion pane can be rendered
+    above the map in the same rerun. Nothing is trusted here either — the
+    intent is only stored; :func:`views.journey_focus.for_customer` re-checks
+    the lot against this principal's own server-built cards.
+    """
+    from views import journey_focus
+
+    raw = st.session_state.get(COMPONENT_KEY)
+    if raw is None:
+        return
+    journey_focus.capture_from_result(st.session_state, raw, event=FOCUS_EVENT)
+
+
+def render(model: dict, *, height: str | int = "content") -> Any:
     """Mount the reference UI for one server-built model.
 
-    The component is intentionally presentational: lot selection, node bubbles,
-    modals and zoom are local UI state (the acceptance contract allows that) and
-    nothing is written back to the server. A Python rerun rebuilds the payload
-    from the trusted principal, so a forged browser state cannot change tenancy.
+    The component is presentational: lot selection, node bubbles, modals and
+    zoom are local UI state and nothing is written to the server. The ONE
+    exception is the typed ``journey_focus`` trigger, which only asks Python to
+    open the existing stage-discussion pane; a forged value cannot change
+    tenancy because the pane re-resolves the lot server-side.
     """
     _html, _css, _js, sea_chart = load_assets()
     payload = {"model": model, "assets": {"sea_chart": sea_chart}}
-    _renderer()(
+    return _renderer()(
         key=COMPONENT_KEY,
         data=payload,
         width="stretch",
         height=height,
+        **{f"on_{FOCUS_EVENT}_change": on_focus_change},
     )

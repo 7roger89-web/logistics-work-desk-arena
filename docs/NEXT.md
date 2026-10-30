@@ -17,11 +17,11 @@ Hoàn thiện **Logistics Work Desk thực sự dùng được**: Trường Thà
 
 ## CURRENT
 
-**Chốt xong PR #234 ở mức code staging.** Việc nghiệp vụ tiếp theo là khiến Journey Map thực sự dễ dùng: chọn trực tiếp mốc hành trình → mở trao đổi/chứng từ **đúng lô và mốc đó**, tái dùng backend đã có, không viết lại persistence. Hiện comment là pane Streamlit **bên dưới bản đồ** chứ chưa tích hợp vào modal/node React. Cloud deployed SHA, DB identity và Google OIDC thật vẫn chưa xác minh; merge code không đồng nghĩa app đang chạy đã có chức năng.
+**Đã nối Journey Map với pane trao đổi/chứng từ đang có** (nhánh `arena/d46744d8-…`, PR vào staging): bấm node 00–06 ở cả cổng khách (`hexa-portal.js`) và shell nội bộ (React `JourneyMap`) → một trigger `journey_focus` read-only → server tái xác minh lô theo projection của chính danh tính (khách: `cards`; nội bộ: `vm["shipments"]` + `customer_id` lấy từ row) và công đoạn theo `STAGE_IDS` → mở **đúng pane hiện có** (`views/journey_discussion.py`) trên đúng công đoạn, phía trên bản đồ. Không tạo backend/DB/upload thứ hai. Pane nội bộ vẫn là Streamlit đặt phía trên shell, **không** nằm trong React; Cloud SHA/DB identity/Google OIDC thật vẫn chưa xác minh.
 
 ## NEXT — công việc kế tiếp có giá trị
 
-1. **Map-first nhỏ nhất:** điều khiển chọn 1 node Journey Map phải định vị/mở đúng pane trao đổi/chứng từ của **chính lô và công đoạn đó** (reuse `core/journey_notes.py` + `views/journey_discussion.py`). Không tạo hệ thống comment thứ hai; không hiển thị note `INTERNAL` cho khách. Test desktop/mobile, đổi khách, 0/1/2 lô và reset nháp; chỉ phát triển sau khi đo lại staging HEAD và xác minh binding thật giữa component và Streamlit.
+1. **Map-first nhỏ nhất — ĐÃ LÀM ở lớp code (chờ review/merge):** node → đúng pane đúng lô/công đoạn, reuse `core/journey_notes.py` + `views/journey_discussion.py`, không comment system thứ hai, khách không thấy `INTERNAL`. Bằng chứng: `evidence/journey-map-focus/README.md` (20 test mới, 2 lane jsdom desktop/mobile 0/1/2 lô, 5/5 mutation bị giết, full suite 35F/2216P trùng tập FAILED nền). Việc còn lại của mục này: (a) đưa pane nội bộ **vào trong** React thay vì phía trên shell — cần lane riêng và Owner quyết; (b) UAT Cloud.
 2. **UAT staging an toàn:** trước bất kỳ thao tác ghi Cloud, đọc/kiểm chứng deployed SHA và danh tính DB của `thu-log-g1-test.streamlit.app` bằng cách không tiết lộ secret. Nếu chưa xác minh, giữ `CLOUD_QA=BLOCKED`, tiếp tục QA với dữ liệu giả cô lập. Test Trường Thành gửi → Lục Giác xem/trả lời → reload/download, nguồn đã duyệt và Google OIDC thật khi điều kiện cho phép.
 3. Sau UAT, mới quyết định mở tính năng kế hoạch/thanh toán/công nợ; tránh lặp lại G1.5/#232/#234 và không đưa `main`/production vào luồng này khi chưa có Owner Gate.
 
@@ -46,5 +46,7 @@ Hoàn thiện **Logistics Work Desk thực sự dùng được**: Trường Thà
 - **30/10 (QA thực chạy):** 48 PASS `test_journey_notes.py`, 138 PASS tập G1.5 phụ thuộc, full suite 34F/2197P/44S trùng baseline; sửa 3 lỗi UI (nháp lẫn công đoạn, gửi xong chưa thấy note, nhãn tệp chưa escape) tại `2e510d5`; Cloud QA vẫn `BLOCKED`.
 
 - **30/10 (staging integration):** Control Tower fast-forward patch QA Arena vào PR #234 HEAD `cc9f9a7ae50abe9244ae2a457e5e3dbcb31bcc5a`, kiểm tra nguồn/test/20 điều kiện an toàn, merge **staging** ở `0e20a93c48f95b76839c093c9cb56bfcb1472e5f`; `main` giữ nguyên. Cloud UAT vẫn BLOCKED vì runtime SHA/DB chưa xác minh.
+
+- **30/10 (Journey Map dùng được):** thêm nút “💬 Trao đổi / Chứng từ” tại node Journey Map ở cả hai cổng; một trigger `journey_focus` read-only, server tái xác minh danh tính/lô/công đoạn, mở đúng pane đang có; sửa luôn phát hiện `views/shipment.py` (pane nội bộ PR #234) không được route. Đo tại `7ac441b`: baseline 35F/2196P → sau sửa 35F/2216P (không failure mới); `tests/test_journey_notes.py` 48 PASS. Cloud UAT vẫn BLOCKED; không browser thật trong sandbox.
 
 **Duy trì:** chỉ cập nhật CURRENT/NEXT/BLOCKERS và một mốc PR/SHA khi việc thực sự đổi. Không log từng thao tác, không dựng bảng roadmap khác.
