@@ -553,6 +553,207 @@ def test_customer_portal_posts_and_reloads_a_stage_comment(db, store):
     assert rows[0]["visibility"] == notes.VISIBILITY_CUSTOMER
 
 
+#: The REAL portal event seam, mounted with only the component boundary
+#: stubbed: one typed create event goes through
+#: ``customer_dashboard.handle_portal_events`` and the next payload reads the
+#: thread back from the SAME handle.
+_PORTAL_EVENT_SCRIPT = (
+    "import streamlit as st\n"
+    "from views import customer_dashboard\n"
+    "principal = st.session_state['principal']\n"
+    "cards = st.session_state['cards']\n"
+    "db = st.session_state['db']\n"
+    "st.session_state['changed'] = customer_dashboard.handle_portal_events(\n"
+    "    st.session_state.get('event'), principal, cards, db=db,\n"
+    ")\n"
+    "st.session_state['discussion'] = (\n"
+    "    customer_dashboard.journey_inline.build_customer_discussion(\n"
+    "        principal, cards, db=db,\n"
+    "    )\n"
+    ")\n"
+)
+
+
+def _portal_event_app(db, *, principal, cards, wrong=None):
+    """Run the portal's event seam with a SECOND db standing in for a stray resolve.
+
+    ``core.database.get_db`` is deliberately pointed at a different (empty)
+    database: anything the portal writes must still land in ``db`` — the handle
+    the portal rendered from — otherwise a comment is acknowledged and then
+    missing on reload.
+    """
+    app = AppTest.from_string(_PORTAL_EVENT_SCRIPT, default_timeout=120)
+    app.session_state["principal"] = principal
+    app.session_state["cards"] = cards
+    app.session_state["db"] = db
+    app.session_state["logi_journey_focus"] = {
+        "shipment_id": LOT_A, "stage_id": "pickup",
+    }
+    stack = contextlib.ExitStack()
+    if wrong is not None:
+        stack.enter_context(patch("core.database.get_db", return_value=wrong))
+        stack.enter_context(patch("core.customer_portal.get_db", return_value=wrong))
+    return app, stack
+
+
+def test_customer_portal_comment_is_written_to_the_db_the_portal_rendered(db, store):
+    """Issue #236 follow-up: the write must use the portal's OWN db handle.
+
+    Regression: the read side received ``db=db`` while the event consumer
+    resolved a second handle (``core.database.get_db()``), so a customer
+    comment was refused ("Không gửi được trao đổi") or stored somewhere the
+    reload never reads back.
+    """
+    from core import customer_portal as portal
+
+    _seed_public_event(db)
+    principal = portal.build_customer_principal(verified_email=EMAIL_A, db=db)
+    view = portal.load_customer_dashboard(principal, db=db)
+    wrong = mongomock.MongoClient()["journey_notes_other_handle"]
+
+    body = "Khách hỏi: hàng đã lấy chưa?"
+    app, stack = _portal_event_app(db, principal=principal, cards=view.cards, wrong=wrong)
+    with stack:
+        app.session_state["event"] = {
+            "journey_note_create": {
+                "seq": 1, "event": "journey_note_create",
+                "payload": {
+                    "shipmentId": LOT_A, "stageId": "pickup", "body": body,
+                    "visibility": "CUSTOMER", "replyToId": "", "files": [],
+                    "requestId": "REQ-PORTAL-DB-1",
+                },
+            },
+        }
+        app.run()
+        assert not app.exception, [str(e.value) for e in app.exception]
+        outcome = app.session_state["discussion"]["outcome"]
+        assert outcome["ok"] is True, outcome
+        assert outcome["requestId"] == "REQ-PORTAL-DB-1"
+
+        # RELOAD: the same one-shot event is gone; the thread still shows it.
+        app.session_state["event"] = None
+        app.run()
+        assert not app.exception, [str(e.value) for e in app.exception]
+        discussion = app.session_state["discussion"]
+        assert [row["body"] for row in discussion["notes"]] == [body]
+        assert discussion["notes"][0]["visibility"] == notes.VISIBILITY_CUSTOMER
+
+    # Written exactly once, in the portal handle — never in the stray handle.
+    assert db.quick_notes.count_documents(
+        {"kind": notes.JOURNEY_NOTE_KIND, "body": body},
+    ) == 1
+    assert wrong.quick_notes.count_documents({}) == 0
+
+
+_PORTAL_CALLBACK_SCRIPT = (
+    "import functools\n"
+    "import streamlit as st\n"
+    "from views import customer_dashboard\n"
+    "handler = functools.partial(\n"
+    "    customer_dashboard.on_portal_event, db=st.session_state['db'],\n"
+    ")\n"
+    "st.session_state['handler_is_callable'] = callable(handler)\n"
+    "handler()\n"
+)
+
+
+def test_customer_portal_prefix_callback_writes_through_the_same_db(db, store):
+    """The OIDC prefix callback (production path) writes to the same handle.
+
+    The callback is registered as ``functools.partial(on_portal_event, db=db)``;
+    here it is invoked directly with the component trigger in session state and
+    a patched verified context, so the write path is the production one.
+    """
+    from core import customer_portal as portal
+    from views import customer_dashboard as dash
+    from views import customer_portal_component as component
+
+    _seed_public_event(db)
+    principal = portal.build_customer_principal(verified_email=EMAIL_A, db=db)
+    view = portal.load_customer_dashboard(principal, db=db)
+    wrong = mongomock.MongoClient()["journey_notes_other_handle_callback"]
+    body = "Bình luận qua callback OIDC"
+
+    app = AppTest.from_string(_PORTAL_CALLBACK_SCRIPT, default_timeout=120)
+    app.session_state["db"] = db
+    app.session_state[component.COMPONENT_KEY] = {
+        "journey_note_create": {
+            "seq": 1, "event": "journey_note_create",
+            "payload": {
+                "shipmentId": LOT_A, "stageId": "pickup", "body": body,
+                "visibility": "CUSTOMER", "replyToId": "", "files": [],
+                "requestId": "REQ-PORTAL-CALLBACK-1",
+            },
+        },
+    }
+    with contextlib.ExitStack() as stack:
+        stack.enter_context(patch.object(dash, "_portal_context", return_value=(principal, view)))
+        stack.enter_context(patch("core.database.get_db", return_value=wrong))
+        stack.enter_context(patch("core.customer_portal.get_db", return_value=wrong))
+        app.run()
+        assert not app.exception, [str(e.value) for e in app.exception]
+        assert app.session_state["handler_is_callable"] is True
+
+    assert db.quick_notes.count_documents({"kind": notes.JOURNEY_NOTE_KIND, "body": body}) == 1
+    assert wrong.quick_notes.count_documents({}) == 0
+
+
+def test_customer_portal_event_seam_refuses_another_tenant_lot(db, store):
+    """A forged lot/stage through the same handle writes nothing, reads nothing.
+
+    The db handle travels with the event; tenant identity still comes ONLY from
+    the verified principal + its server-built cards.
+    """
+    from core import customer_portal as portal
+
+    _seed_public_event(db)
+    _write(db, body="LÔ CỦA KHÁCH KHÁC", stage="pickup", customer=CUSTOMER_B, lot=LOT_B)
+    db.shipments.insert_one({"id": "G1-MD-002", "customer_id": CUSTOMER_B})
+    principal = portal.build_customer_principal(verified_email=EMAIL_A, db=db)
+    view = portal.load_customer_dashboard(principal, db=db)
+
+    app, stack = _portal_event_app(db, principal=principal, cards=view.cards)
+    with stack:
+        app.session_state["event"] = {
+            "journey_note_create": {
+                "seq": 1, "event": "journey_note_create",
+                "payload": {
+                    "shipmentId": LOT_B, "stageId": "pickup",
+                    "body": "GỬI SANG LÔ KHÁC", "visibility": "CUSTOMER",
+                    "replyToId": "", "files": [], "requestId": "REQ-FOREIGN-DB-1",
+                },
+            },
+        }
+        app.run()
+        assert not app.exception, [str(e.value) for e in app.exception]
+        outcome = app.session_state["discussion"]["outcome"]
+        assert outcome["ok"] is False and outcome["requestId"] == "REQ-FOREIGN-DB-1"
+        # The portal keeps reading its OWN verified lot; the foreign thread is
+        # never loaded, and the foreign tenant's content never leaks.
+        discussion = app.session_state["discussion"]
+        assert discussion["shipmentId"] == LOT_A
+        assert "LÔ CỦA KHÁCH KHÁC" not in json.dumps(discussion, ensure_ascii=False)
+
+    assert db.quick_notes.count_documents(
+        {"kind": notes.JOURNEY_NOTE_KIND, "shipment_id": LOT_B},
+    ) == 1  # only the pre-existing note of the other tenant
+    assert db.quick_notes.count_documents({"body": "GỬI SANG LÔ KHÁC"}) == 0
+
+
+def test_customer_portal_event_seam_passes_its_db_handle():
+    """The real entrypoint binds ONE handle into read, callback and write."""
+    import inspect
+
+    from views import customer_dashboard
+
+    portal_view = inspect.getsource(customer_dashboard.render_customer_dashboard)
+    assert "journey_inline.build_customer_discussion(principal, view.cards, db=db)" in portal_view
+    assert "handle_portal_events(component_result, principal, view.cards, db=db)" in portal_view
+    assert "functools.partial(on_portal_event, db=db)" in portal_view
+    handler = inspect.getsource(customer_dashboard.handle_portal_events)
+    assert "consume_customer_triggers(" in handler and "db=db" in handler
+
+
 def test_customer_portal_never_shows_internal_notes(db):
     from core import customer_portal as portal
     from core.customer_portal_publish import publish_verified_sources
