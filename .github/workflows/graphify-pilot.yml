@@ -89,6 +89,8 @@ jobs:
           echo "SOURCE_SHA=f472274b00cf4849b4837c18d496dfd3dd1e2d33"
           find "$SOURCE" -type f | sort
           graphify extract "$SOURCE" --code-only --out "$OUT"
+          graphify cluster-only "$OUT" --no-label
+          graphify export html --graph "$OUT/graphify-out/graph.json"
           REPORT="$OUT/graphify-out"
           test -s "$REPORT/graph.json"
           test -s "$REPORT/graph.html"
