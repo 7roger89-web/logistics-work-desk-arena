@@ -33,7 +33,7 @@ jobs:
           set +e
           "$BIN" run --lang python --pattern 'journey_inline.consume_customer_triggers($$$ARGS)' --json=stream views/customer_dashboard.py > tool-pilot-out/ast/customer_event_call.jsonl 2> tool-pilot-out/ast/py.stderr
           echo "AST_PY_EXIT=$?"
-          "$BIN" run --lang typescript --pattern 'dispatchLogiEvent("journey_note_create", $$$ARGS)' --json=stream component/src/components/JourneyDiscussionPanel.tsx > tool-pilot-out/ast/react_write_call.jsonl 2> tool-pilot-out/ast/ts.stderr
+          "$BIN" run --lang tsx --pattern 'dispatchLogiEvent("journey_note_create", $$$ARGS)' --json=stream component/src/components/JourneyDiscussionPanel.tsx > tool-pilot-out/ast/react_write_call.jsonl 2> tool-pilot-out/ast/ts.stderr
           echo "AST_TS_EXIT=$?"
           "$BIN" run --lang javascript --pattern 'state.transport(NOTE_CREATE_EVENT, $$$ARGS)' --json=stream assets/customer_portal/hexa-portal.js > tool-pilot-out/ast/customer_js_write_call.jsonl 2> tool-pilot-out/ast/js.stderr
           echo "AST_JS_EXIT=$?"
@@ -43,7 +43,7 @@ jobs:
             head -c 600 "$file" || true
             echo
           done
-          rg -n 'consume_customer_triggers|journey_note_create|NOTE_CREATE_EVENT' views/customer_dashboard.py component/src/components/JourneyDiscussionPanel.tsx assets/customer_portal/hexa-portal.js > tool-pilot-out/ast/ripgrep_reference.txt
+          grep -nEH 'consume_customer_triggers|journey_note_create|NOTE_CREATE_EVENT' views/customer_dashboard.py component/src/components/JourneyDiscussionPanel.tsx assets/customer_portal/hexa-portal.js > tool-pilot-out/ast/text_reference.txt
           python - <<'PY'
           import json
           from pathlib import Path
