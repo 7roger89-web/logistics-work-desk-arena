@@ -43,6 +43,28 @@ jobs:
           export PLAYWRIGHT_MCP_EXECUTABLE_PATH="$(command -v google-chrome)"
           export QA_OUT_DIR="$RUNNER_TEMP/logi-note-browser-gate"
           bash scripts/qa_journey_note_pre_fix.sh
+      - name: Smoke customer ↔ staff ↔ customer without fixed sleeps
+        shell: bash
+        env:
+          QA_TEST_PASSWORD: Qa-Passw0rd-2026
+          AUTH_REQUIRED: 'true'
+        run: |
+          set -euo pipefail
+          export PLAYWRIGHT_CLI_SESSION="logi-note-smoke-ci"
+          export PLAYWRIGHT_MCP_EXECUTABLE_PATH="$(command -v google-chrome)"
+          CLI="$RUNNER_TEMP/pw-cli/node_modules/.bin/playwright-cli"
+          OUT="$RUNNER_TEMP/logi-note-browser-gate"
+          python -m streamlit run tests/component/g15_lg_tt_discussion_runtime.py --server.port=9503 --server.address=127.0.0.1 --server.headless=true > "$OUT/SMOKE.app.log" 2>&1 &
+          server_pid=$!
+          trap '"$CLI" close >/dev/null 2>&1 || true; kill "$server_pid" 2>/dev/null || true' EXIT
+          for i in $(seq 1 100); do
+            if curl -fsS http://127.0.0.1:9503/_stcore/health >/dev/null 2>&1; then break; fi
+            sleep 0.25
+          done
+          curl -fsS http://127.0.0.1:9503/_stcore/health
+          "$CLI" open http://127.0.0.1:9503/ > "$OUT/SMOKE.open.log"
+          "$CLI" run-code --filename=tests/component/browser_g15_lg_tt_smoke.js | tee "$OUT/SMOKE.browser.log"
+          echo "FULL_JOURNEY_SMOKE_PASS"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
