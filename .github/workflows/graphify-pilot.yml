@@ -129,3 +129,43 @@ jobs:
           path: ${{ runner.temp }}/logi_graphify_pilot/graphify-out/
           retention-days: 7
           if-no-files-found: warn
+
+  browser-streamlit-v2:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    env:
+      MONGO_URI: ''
+      ENV_IDENTITY: STAGING
+      BROWSER_URL: http://127.0.0.1:9501
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify the app implementation is the unchanged PR237 snapshot
+        run: git diff --exit-code f472274b00cf4849b4837c18d496dfd3dd1e2d33 -- core views assets component
+      - name: Install isolated test dependencies + browser driver
+        run: |
+          python -m pip install -r requirements.txt playwright
+          google-chrome --version
+      - name: Start isolated actual Streamlit v2 runtime
+        run: |
+          mkdir -p test-results/graphify-journey-browser
+          python -m streamlit run tests/experiments/qa_journey_inline_host.py --server.port=9501 --server.address=127.0.0.1 --server.headless=true > test-results/graphify-journey-browser/streamlit.log 2>&1 &
+          echo $! > test-results/graphify-journey-browser/server.pid
+          for i in $(seq 1 70); do
+            if curl -fsS http://127.0.0.1:9501/_stcore/health; then break; fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:9501/_stcore/health
+      - name: Actual Chromium desktop/mobile and PNG/PDF roundtrip
+        run: python tests/experiments/qa_journey_inline_browser.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: journey-actual-streamlit-browser-qa
+          path: test-results/graphify-journey-browser/
+          retention-days: 7
+          if-no-files-found: warn
