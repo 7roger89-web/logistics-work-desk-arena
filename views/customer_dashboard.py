@@ -13,7 +13,9 @@ local UI state (selected lot, node bubble, modal, zoom) but it writes nothing.
 """
 from __future__ import annotations
 
+import hashlib
 import html as html_lib
+import json
 from typing import Any, Callable, Mapping
 
 import streamlit as st
@@ -354,9 +356,18 @@ def _render_admin_publication_control(
         )
         if conflicting_versions:
             st.error("Không được chọn hai phiên bản cho cùng một mã mốc/chứng từ.")
+        # Re-confirm whenever selected IDs/versions change. Streamlit state
+        # must never carry a previous approval checkbox into another release.
+        selection_signature = hashlib.sha256(
+            json.dumps(
+                {"events": event_versions, "documents": document_versions},
+                sort_keys=True, ensure_ascii=False,
+            ).encode("utf-8")
+        ).hexdigest()[:16]
         confirmed = st.checkbox(
             "Tôi đã đối chiếu nguồn nghiệp vụ và xác nhận chỉ công bố những mục đã duyệt.",
-            key=f"{key_prefix}_publish_confirmation_{customer_id}_{shipment_id}",
+            key=(f"{key_prefix}_publish_confirmation_{customer_id}_"
+                 f"{shipment_id}_{selection_signature}"),
         )
         ready = bool(confirmed and (event_versions or document_versions) and not conflicting_versions)
         if st.button(
