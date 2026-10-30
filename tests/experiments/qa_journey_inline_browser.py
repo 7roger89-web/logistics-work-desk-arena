@@ -18,8 +18,11 @@ def check(what,ok,detail=""):
     print("PASS",what,detail,flush=True)
 def tid(page,name): return page.get_by_test_id(name)
 def open_node(page):
-    tid(page,"btn-open-journey-QA-LOT").wait_for(timeout=45000)
-    tid(page,"btn-open-journey-QA-LOT").click()
+    # Product behavior: a single published lot opens its Journey immediately.
+    # The dashboard button remains in hidden markup in that state.
+    tid(page,"shipment-journey").wait_for(timeout=45000)
+    if not tid(page,"shipment-journey").is_visible():
+        tid(page,"btn-open-journey-QA-LOT").click()
     tid(page,"journey-node-pickup").wait_for(timeout=25000)
     tid(page,"journey-node-pickup").click()
     tid(page,"journey-discussion").wait_for(timeout=25000)
