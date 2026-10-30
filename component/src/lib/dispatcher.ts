@@ -196,7 +196,15 @@ export type LogiEventName =
   // audit write): the payload is { shipment_id, stage_id } only, and the server
   // re-validates the lot against this operator's own RBAC projection before the
   // pane reads anything. There is deliberately no second comment system.
-  | "journey_focus";
+  | "journey_focus"
+  // Issue #236 — inline comment/reply + chứng từ INSIDE the Journey Map node
+  // panel. ``journey_note_create`` carries the text, the optional parent root
+  // id and at most MAX_FILES_PER_SUBMIT files as bounded base64 (the SAME
+  // transport ``shipment_attachment_upload``/``inbox_snippet_create`` already
+  // use). ``journey_note_download`` carries only identifiers; the server reads
+  // the ONE file and returns its bytes on the bounded download channel.
+  | "journey_note_create"
+  | "journey_note_download";
 
 const ALLOWED_EVENTS: ReadonlySet<string> = new Set<LogiEventName>([
   "shipment_update",
@@ -282,6 +290,9 @@ const ALLOWED_EVENTS: ReadonlySet<string> = new Set<LogiEventName>([
   "inbox_snippet_search",
   // LOGI Journey Map → existing stage-discussion pane (read-only intent).
   "journey_focus",
+  // Issue #236 — the SAME thread, written/read from inside the node panel.
+  "journey_note_create",
+  "journey_note_download",
 ]);
 
 type Transport = (event: string, value: unknown) => void;

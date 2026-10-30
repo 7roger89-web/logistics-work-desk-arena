@@ -55,6 +55,7 @@ from views import notebooklm_registry as logi_notebooklm
 from views import logi_docgen_upload as logi_templates
 from views import logi_inbox
 from views import journey_focus
+from views import journey_inline
 
 STATE_KEY = "logi_state"
 SEQ_KEY = "logi_seq"
@@ -1171,6 +1172,12 @@ def build_view_model() -> dict:
         # "write succeeded": success, duplicate/RBAC/validation refusals and the
         # fresh readback all arrive HERE, after the canonical writer ran.
         "lastWrites": _last_writes_readback(),
+        # Issue #236 — the ONE conversation the operator opened from the Journey
+        # Map: exactly one lot + one stage, bounded, read through the existing
+        # note backend. ``None`` means no node panel is open. No other lot's
+        # comments are ever embedded, and no attachment bytes are included
+        # except the ONE file the operator just asked to download.
+        "journeyDiscussion": journey_inline.build_staff_discussion(user, rows, db=db),
         "unknownLabel": rd.UNKNOWN_LABEL,
     }
     _remember(model)
@@ -1316,6 +1323,14 @@ RECONCILIATION_EVENTS = {"reconciliation_filter"}
 # pane opens. There is deliberately no second comment/upload system.
 JOURNEY_FOCUS_EVENTS = {"journey_focus"}
 
+# JOURNEY MAP → inline comment/reply + chứng từ (Issue #236). Same existing
+# backend (``core.journey_notes`` + ``core.inbox_attachments``), same bounded
+# dispatcher; the difference from PR #235 is that the thread is rendered INSIDE
+# the Journey Map node panel instead of a Streamlit form above the map. The
+# browser sends lot/node/text/one bounded file; tenant, stage, visibility and
+# permission are re-derived by ``views.journey_inline``.
+JOURNEY_THREAD_EVENTS = journey_inline.STAFF_EVENTS
+
 # LOGI_USER_MANAGEMENT_01 — the four Admin-only account-management events for
 # /nguoi-dung (see views.user_management for the bounded dispatcher). Every
 # handler re-checks the Admin RBAC boundary itself; this set only decides
@@ -1333,7 +1348,7 @@ ALL_EVENTS = (ALLOWED_EVENTS | PHASE_B_EVENTS | logi_c1.C1_EVENTS
               | RECONCILIATION_EVENTS | USER_MANAGEMENT_EVENTS
               | NOTEBOOKLM_EVENTS | DOCUMENT_REVIEW_EVENTS
               | DOCGEN_TEMPLATE_EVENTS | logi_inbox.INBOX_EVENTS
-              | JOURNEY_FOCUS_EVENTS)
+              | JOURNEY_FOCUS_EVENTS | JOURNEY_THREAD_EVENTS)
 
 #: LOGI_TRADE_DOCUMENT_SHIPMENT_REVIEW_RUN3_01 — the ONE ephemeral session slot
 #: holding the last read-only shipment document review. It is presentation/read
@@ -6319,6 +6334,25 @@ def dispatch(
                                     focus_session["seq"])
     outcomes.extend(focus_outcomes)
 
+    # Issue #236 — comment/reply and one-file download for the node panel that
+    # is open INSIDE the Journey Map. Writes go through the SAME canonical note
+    # backend as every other discussion surface; the browser's intent is
+    # re-verified against this operator's RBAC projection before any read/write.
+    thread_session = {"seq": st.session_state.get(SEQ_KEY, 0)}
+    thread_outcomes = journey_inline.consume_staff_triggers(
+        thread_session,
+        result,
+        user=st.session_state.get("current_user") or {},
+        shipments=list((_state().get("shipments") or {}).values()),
+    )
+    st.session_state[SEQ_KEY] = max(st.session_state.get(SEQ_KEY, 0),
+                                    thread_session["seq"])
+    outcomes.extend(thread_outcomes)
+    write_outcomes.extend(
+        outcome for outcome in thread_outcomes
+        if outcome.get("event") == "journey_note_create"
+    )
+
     # LOGI_USER_MANAGEMENT_01 — Admin-only account-management writes for
     # /nguoi-dung. Shares the same seq counter so a replayed trigger can never
     # double-write; every outcome (success or Admin/lockout/duplicate refusal)
@@ -6376,8 +6410,11 @@ def dispatch(
         # needs ONE rerun so the settled requestId + result reach the component.
         or bool(review_outcomes)
         # A Journey Map node click is consumed AFTER the page header, so ONE
-        # rerun re-renders the page with the focused discussion pane on top.
+        # rerun delivers the bounded thread for that node's panel.
         or bool(focus_outcomes)
+        # Issue #236 — a saved comment/reply or a just-read attachment also
+        # needs ONE rerun so the payload carries the fresh thread / bytes.
+        or bool(thread_outcomes)
     )
     if needs_rerun and allow_rerun:
         st.rerun()

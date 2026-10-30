@@ -3,6 +3,7 @@ import { CheckCircle2, Circle, Clock, CircleAlert, MapPin } from 'lucide-react';
 import type { JourneyNode, Shipment } from '../lib/viewmodel';
 import { cx } from '../lib/format';
 import { dispatchLogiEvent } from '../lib/dispatcher';
+import JourneyDiscussionPanel from './JourneyDiscussionPanel';
 
 // Approved prototype B, original ZIP cfe20232…: the canvas geometry, branch,
 // edge routing and fit/pan/zoom interaction are retained. Only IDs/data access
@@ -60,6 +61,10 @@ export default function JourneyMap({ shipment: s, nodes, selectedId, onPick, col
   const vp = useRef<HTMLDivElement>(null), autoFit = useRef(true), moved = useRef(false);
   const cleanupDrag = useRef<(() => void) | undefined>(undefined);
   const [dragging, setDragging] = useState(false);
+  // Issue #236 — which node's conversation is open. Local UI state only: the
+  // conversation itself is server data keyed by shipment + node.
+  const [talkNode, setTalkNode] = useState('');
+  const [vpSize, setVpSize] = useState({ w: 0, h: 0 });
   const sea = nodes.some(n => n.id === 'booking');
   const positions = new Map(nodes.map((n, i) => [n.id, sea && DEMO_POS[n.id] ? DEMO_POS[n.id] : { x: col(i % 5), y: 140 + Math.floor(i / 5) * 212, w: W, h: H }]));
   const canvasHeight = sea ? CH : Math.max(CH, 140 + Math.ceil(nodes.length / 5) * 212);
@@ -73,8 +78,10 @@ export default function JourneyMap({ shipment: s, nodes, selectedId, onPick, col
   }, [canvasHeight]);
   useEffect(() => {
     const el = vp.current; if (!el) return;
+    const measure = () => setVpSize({ w: el.clientWidth, h: el.clientHeight });
+    measure();
     if (typeof ResizeObserver === 'undefined') { fit(); return; }
-    const ro = new ResizeObserver(() => { if (autoFit.current) fit(); });
+    const ro = new ResizeObserver(() => { measure(); if (autoFit.current) fit(); });
     ro.observe(el); fit(); return () => ro.disconnect();
   }, [fit, collapsed]);
   const zoomAt = useCallback((f: number, px: number, py: number) => {
@@ -112,6 +119,24 @@ export default function JourneyMap({ shipment: s, nodes, selectedId, onPick, col
   // End-of-map marker only. Journey occurrence + Work Module completion is NOT
   // whole-shipment closure: documents/finance may still be open or UNKNOWN.
   const pick = (id: string, e: React.MouseEvent) => { if (e.detail === 0 || !moved.current) onPick(id); };
+  // The node panel is positioned in VIEWPORT space (never inside the scaled
+  // canvas), so pan/zoom can neither clip nor distort it. On a narrow screen it
+  // becomes a bottom sheet of the SAME Journey component.
+  const talkRow = nodes.find(n => n.id === talkNode);
+  const talkPos = talkNode ? positions.get(talkNode) : undefined;
+  const narrow = vpSize.w > 0 && vpSize.w < 640;
+  const panelStyle: React.CSSProperties = !talkRow
+    ? { display: 'none' }
+    : narrow
+      ? { left: 8, right: 8, bottom: 8, maxHeight: '64vh' }
+      : talkPos
+        ? {
+          left: clamp(tf.x + (talkPos.x + talkPos.w + 10) * tf.k, 8, Math.max(8, vpSize.w - 376)),
+          top: clamp(tf.y + talkPos.y * tf.k, 8, Math.max(8, vpSize.h - 440)),
+          width: 360,
+          maxHeight: Math.max(260, vpSize.h - 24),
+        }
+        : { right: 8, top: 8, width: 360, maxHeight: 420 };
   return <div ref={vp} className={cx('journey-canvas relative min-w-0 flex-1 select-none overflow-hidden', dragging ? 'cursor-grabbing' : 'cursor-grab')} onPointerDown={pan} data-testid="journey-map-viewport" aria-label="Journey Map, kéo để di chuyển, cuộn để zoom">
     <div className="absolute left-0 top-0 origin-top-left" style={{ width: CW, height: canvasHeight, transform: `translate(${tf.x}px, ${tf.y}px) scale(${tf.k})` }} data-testid="journey-map-transform">
       {positions.has('si-vgm') && positions.has('gate-in') && <div className="absolute rounded-2xl border-2 border-dashed border-slate-400/70 bg-slate-200/30" style={{ left: DEMO_POS['si-vgm'].x - 14, top: DEMO_POS['si-vgm'].y - 36, width: W + 28, height: DEMO_POS['gate-in'].y + H - DEMO_POS['si-vgm'].y + 50 }} data-testid="journey-parallel-branch"><span className="absolute -top-2.5 left-3 rounded bg-slate-200 px-1.5 text-[10px] font-extrabold tracking-wider text-slate-600">NHÁNH SONG SONG</span></div>}
@@ -132,8 +157,15 @@ export default function JourneyMap({ shipment: s, nodes, selectedId, onPick, col
         data-testid={`journey-node-discussion-${n.id}`}
         aria-label={`Trao đổi / Chứng từ công đoạn ${n.label}`}
         title={`Trao đổi / Chứng từ · ${n.label}`}
+        aria-expanded={talkNode === n.id}
         onPointerDown={(e) => e.stopPropagation()}
-        onClick={(e) => { e.stopPropagation(); dispatchLogiEvent('journey_focus', { shipment_id: s.id, stage_id: n.id }); }}
+        onClick={(e) => {
+          e.stopPropagation();
+          // Open the node's conversation IN the map, and ask the server for
+          // THAT lot + stage thread (the intent is re-validated server-side).
+          setTalkNode(n.id);
+          dispatchLogiEvent('journey_focus', { shipment_id: s.id, stage_id: n.id });
+        }}
         style={{ left: p.x + p.w - 34, top: p.y + p.h - 34, width: 30, height: 30 }}
         className="absolute z-20 flex items-center justify-center rounded-full border border-slate-300 bg-white text-[13px] shadow-sm hover:bg-slate-50"
       >💬</button>; })}
@@ -153,5 +185,12 @@ export default function JourneyMap({ shipment: s, nodes, selectedId, onPick, col
     </div>
     <div className="pointer-events-none absolute bottom-16 right-3 z-20 flex flex-col gap-1 rounded-lg border border-slate-300 bg-white/95 px-2.5 py-2 text-[11px] font-semibold text-slate-600 shadow">{Object.entries(JOURNEY_META).map(([state, m]) => { const Icon = m.icon; return <span key={state} className="flex items-center gap-1.5"><Icon size={12} className={m.text} />{m.label}</span>; })}</div>
     <div className="pointer-events-none absolute right-3 top-3 z-20 rounded bg-white/80 px-2 py-1 text-[10.5px] text-slate-500">Kéo để di chuyển · Cuộn để zoom · Click node để xem</div>
+    {talkRow && <JourneyDiscussionPanel
+      shipmentId={s.id}
+      nodeId={talkRow.id}
+      nodeLabel={talkRow.label}
+      onClose={() => setTalkNode('')}
+      style={panelStyle}
+    />}
   </div>;
 }

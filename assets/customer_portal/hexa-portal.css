@@ -372,3 +372,45 @@
 .hexa-portal .unknown-text { color: #64748b; font-style: italic; }
 .hexa-portal .modal-section-title { margin: 12px 0 6px; font-size: 13px; font-weight: 800; color: #0f172a; }
 .hexa-portal .modal-empty { background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 7px; padding: 10px 12px; font-size: 12px; color: #475569; }
+
+/* ---------------------------------------------------------------- Issue #236
+   Inline node conversation (comment + ONE level of replies + composer) inside
+   the Journey Map bubble. Sizes are tuned for the 290px desktop bubble and the
+   250px mobile bubble; the thread scrolls, the composer stays reachable. */
+.journey-discussion { border-top: 1px solid #e2e8f0; margin-top: 6px; padding-top: 6px; }
+.journey-discussion-head { font-size: 10.5px; font-weight: 800; color: #0f2236; letter-spacing: .04em; margin-bottom: 4px; }
+.journey-discussion-list { display: flex; flex-direction: column; gap: 6px; max-height: 240px; overflow-y: auto; padding-right: 2px; }
+.journey-discussion-thread { display: block; }
+.journey-discussion-note { border: 1px solid #e2e8f0; border-radius: 8px; background: #fff; padding: 6px 7px; }
+.journey-discussion-note.is-reply { background: #f8fafc; margin-top: 4px; }
+.journey-discussion-note-head { display: flex; flex-wrap: wrap; gap: 4px; font-size: 10px; color: #64748b; }
+.journey-discussion-author { font-weight: 800; color: #0f172a; }
+.journey-discussion-body-text { margin: 3px 0 0; font-size: 11.5px; line-height: 1.35; color: #0f172a; white-space: pre-wrap; overflow-wrap: anywhere; }
+.journey-discussion-files { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.journey-discussion-files li { display: flex; align-items: center; gap: 4px; font-size: 10.5px; color: #475569; }
+.journey-discussion-file-name { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.journey-discussion-file-size { color: #94a3b8; }
+.journey-discussion-file-download { border: 1px solid #cbd5e1; background: #fff; border-radius: 5px; font-size: 10px; font-weight: 800; color: #1e5aa8; padding: 3px 7px; min-height: 28px; cursor: pointer; }
+.journey-discussion-file-download:disabled { opacity: .5; cursor: default; }
+.journey-discussion-reply { border: none; background: transparent; color: #1e5aa8; font-size: 10.5px; font-weight: 800; padding: 3px 0 0; min-height: 26px; cursor: pointer; }
+.journey-discussion-replies { margin-left: 8px; border-left: 2px solid #e2e8f0; padding-left: 5px; }
+.journey-discussion-empty { font-size: 10.5px; color: #64748b; padding: 6px 0; }
+.journey-discussion-error { font-size: 10.5px; color: #b91c1c; background: #fef2f2; border-radius: 6px; padding: 4px 6px; }
+.journey-discussion-retry { width: 100%; border: 1px dashed #94a3b8; background: #fff; border-radius: 6px; padding: 6px; min-height: 32px; font-size: 10.5px; font-weight: 700; color: #123A5E; cursor: pointer; }
+.journey-discussion-composer { border-top: 1px solid #e2e8f0; padding-top: 5px; display: flex; flex-direction: column; gap: 4px; }
+.journey-discussion-reply-banner { display: flex; align-items: center; gap: 4px; background: #DCEBFA; color: #154C79; border-radius: 5px; padding: 3px 6px; font-size: 10px; font-weight: 700; }
+.journey-discussion-reply-banner span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.journey-discussion-cancel { border: none; background: transparent; font-size: 13px; font-weight: 800; cursor: pointer; color: #154C79; min-width: 24px; min-height: 24px; }
+.journey-discussion-input { width: 100%; resize: vertical; min-height: 42px; max-height: 96px; border: 1px solid #cbd5e1; border-radius: 6px; padding: 5px 6px; font-size: 11.5px; font-family: var(--sans); }
+.journey-discussion-actions { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+.journey-discussion-attach { border: 1px solid #cbd5e1; background: #fff; border-radius: 6px; padding: 5px 8px; min-height: 32px; font-size: 10.5px; font-weight: 800; color: #334155; cursor: pointer; }
+.journey-discussion-attach:disabled { opacity: .55; cursor: default; }
+.journey-discussion-picked { min-width: 0; max-width: 96px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10px; color: #475569; }
+.journey-discussion-send { margin-left: auto; border: 1px solid #1D5B8F; background: #1D5B8F; color: #fff; border-radius: 6px; padding: 6px 12px; min-height: 32px; font-size: 10.5px; font-weight: 800; cursor: pointer; }
+.journey-discussion-send:disabled { opacity: .55; cursor: default; }
+.journey-discussion-notice { font-size: 10px; color: #b45309; }
+.journey-bubble:focus-within { outline: none; }
+@media (max-width: 720px) {
+  .journey-discussion-list { max-height: 190px; }
+  .journey-bubble { max-width: calc(100% - 16px); }
+}

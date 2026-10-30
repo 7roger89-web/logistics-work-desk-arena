@@ -40,6 +40,9 @@ WRITE_PERMISSION = "shipment_edit"
 MAX_BODY = 4000
 MAX_NOTES_READ = 200
 MAX_FILES_PER_SUBMIT = 4
+#: One level of replies is the whole model (Facebook-like comment + reply).
+#: A reply always stores the ROOT comment id, so a chain can never grow.
+MAX_REPLY_DEPTH = 1
 
 STAGE_IDS: tuple[str, ...] = (
     "plan", "pickup", "consolidate", "transit", "customs", "delivery", "finance",
@@ -58,6 +61,12 @@ _PROJECTION = {
     "_id": 0, "id": 1, "kind": 1, "customer_id": 1, "shipment_id": 1,
     "stage_id": 1, "body": 1, "visibility": 1, "author_kind": 1,
     "author_name": 1, "author_role": 1, "created_at": 1, "attachments": 1,
+    "reply_to_id": 1,
+}
+
+_PARENT_PROJECTION = {
+    "_id": 0, "id": 1, "kind": 1, "customer_id": 1, "shipment_id": 1,
+    "stage_id": 1, "visibility": 1, "reply_to_id": 1, "is_deleted": 1,
 }
 
 
@@ -92,6 +101,11 @@ def _resolve_db(db: Any = None) -> Any:
         LOGGER.warning("JOURNEY_NOTE_DB_UNAVAILABLE reason=None")
         raise JourneyNoteDenied("Cơ sở dữ liệu chưa sẵn sàng.")
     return resolved
+
+
+def user_may_write(role: Any) -> bool:
+    """Public read of the ONE write check (no second RBAC matrix)."""
+    return _user_may_write(role)
 
 
 def _user_may_write(role: Any) -> bool:
@@ -138,6 +152,27 @@ def _customer_read_allowed(actor: Mapping[str, str], customer_id: str) -> bool:
     return actor.get("kind") != "customer" or actor.get("customer_id") == customer_id
 
 
+def _matches_expected_scope(row: Mapping[str, Any], expected: Mapping[str, Any]) -> bool:
+    """True only when the note really belongs to the server-resolved lot + stage.
+
+    Fail closed: an incomplete expectation never matches, so a caller cannot
+    accidentally widen the boundary by passing an empty dict.
+    """
+    try:
+        want_customer = _clean(expected.get("customer_id"), 120)
+        want_shipment = _clean(expected.get("shipment_id"), 120)
+        want_stage = _clean(expected.get("stage_id"), 40).lower()
+    except Exception:  # noqa: BLE001 - a malformed expectation never matches
+        return False
+    if not want_customer or not want_shipment or not want_stage:
+        return False
+    return (
+        _clean(row.get("customer_id"), 120) == want_customer
+        and _clean(row.get("shipment_id"), 120) == want_shipment
+        and _clean(row.get("stage_id"), 40).lower() == want_stage
+    )
+
+
 def _scope(database: Any, customer_id: str, shipment_id: str) -> None:
     if not customer_id or not shipment_id:
         raise JourneyNoteDenied("Thiếu khách hàng hoặc lô hàng hợp lệ.")
@@ -156,6 +191,59 @@ def _scope(database: Any, customer_id: str, shipment_id: str) -> None:
         raise JourneyNoteDenied("Không tìm thấy hồ sơ khách hàng hợp lệ.")
     if not isinstance(shipment, Mapping) or _clean(shipment.get("customer_id")) != customer_id:
         raise JourneyNoteDenied("Lô hàng không thuộc khách hàng đã chọn.")
+
+
+def _validate_reply_parent(
+    database: Any,
+    *,
+    reply_to_id: Any,
+    customer_id: str,
+    shipment_id: str,
+    stage_id: str,
+    actor_kind: str,
+    visibility: str,
+) -> str:
+    """Return the ROOT comment id a reply may attach to, or raise.
+
+    A parent must still exist, belong to the SAME customer + lot + stage, and
+    be visible to the actor. A reply to a reply is folded back to the root so
+    the model stays one level. Customer content can never hang under an
+    INTERNAL parent, and an INTERNAL parent is never exposed to a customer.
+    """
+    parent_id = _clean(reply_to_id, 80)
+    if not parent_id:
+        return ""
+    try:
+        parent = database[NOTE_COLLECTION].find_one(
+            {"id": parent_id, "kind": JOURNEY_NOTE_KIND, "is_deleted": {"$ne": True}},
+            _PARENT_PROJECTION,
+        )
+    except Exception:  # noqa: BLE001
+        LOGGER.warning("JOURNEY_NOTE_REPLY_PARENT_READ_FAILED")
+        raise JourneyNoteDenied("Không kiểm tra được bình luận được trả lời.") from None
+    if not isinstance(parent, Mapping):
+        raise JourneyNoteDenied("Bình luận được trả lời không còn tồn tại.")
+    if (
+        _clean(parent.get("customer_id")) != customer_id
+        or _clean(parent.get("shipment_id")) != shipment_id
+        or _clean(parent.get("stage_id"), 40).lower() != stage_id
+    ):
+        raise JourneyNoteDenied("Bình luận cha không thuộc đúng lô và công đoạn này.")
+    parent_visibility = (
+        VISIBILITY_CUSTOMER
+        if _clean(parent.get("visibility"), 20).upper() == VISIBILITY_CUSTOMER
+        else VISIBILITY_INTERNAL
+    )
+    if actor_kind == "customer" and parent_visibility != VISIBILITY_CUSTOMER:
+        raise JourneyNoteDenied("Không thể trả lời bình luận nội bộ.")
+    if visibility == VISIBILITY_CUSTOMER and parent_visibility != VISIBILITY_CUSTOMER:
+        # A public reply under an INTERNAL comment would either leak internal
+        # context or create a reply whose parent the customer cannot see.
+        raise JourneyNoteDenied(
+            "Không thể trả lời công khai vào bình luận nội bộ. Chọn nội bộ hoặc tạo bình luận mới."
+        )
+    root = _clean(parent.get("reply_to_id"), 80)
+    return root or _clean(parent.get("id"), 80)
 
 
 def _public_note(row: Mapping[str, Any]) -> dict[str, Any]:
@@ -184,8 +272,53 @@ def _public_note(row: Mapping[str, Any]) -> dict[str, Any]:
         "author_name": _clean(row.get("author_name"), 100),
         "author_role": _clean(row.get("author_role"), 40),
         "created_at": _clean(row.get("created_at"), 40),
+        # Optional root-comment id. Old flat notes simply have no parent.
+        "reply_to_id": _clean(row.get("reply_to_id"), 80),
         "attachments": attachments,
     }
+
+
+def build_thread(rows: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
+    """Group ONE stage's notes into root comments with ONE level of replies.
+
+    Pure and defensive: a reply whose parent is NOT in the visible set (an
+    INTERNAL parent filtered out for a customer, or a parent that was removed)
+    is dropped — never promoted to a root comment. Promoting it would deliver
+    an answer whose question the reader may not see (Issue #236: no
+    invisible-parent reply, no INTERNAL leakage through a child).
+    Notes are already chronological; a reply is never nested twice.
+    """
+    ordered = [dict(row) for row in rows or () if isinstance(row, Mapping)]
+    roots: dict[str, dict[str, Any]] = {}
+    for row in ordered:
+        identifier = _clean(row.get("id"), 80)
+        if not identifier:
+            continue
+        row["id"] = identifier
+        row["reply_to_id"] = _clean(row.get("reply_to_id"), 80)
+        row["replies"] = []
+        roots[identifier] = row
+    visible = dict(roots)
+    likely_roots: list[dict[str, Any]] = []
+    replies: list[dict[str, Any]] = []
+    for row in visible.values():
+        parent_id = row.get("reply_to_id") or ""
+        if not parent_id:
+            likely_roots.append(row)
+            continue
+        parent = visible.get(parent_id)
+        if parent is not None and parent is not row:
+            replies.append(row)
+        # else: the parent is not visible -> the reply is dropped below.
+    for row in replies:
+        parent = visible.get(row.get("reply_to_id") or "")
+        # One level only: reply-to-reply attaches to the same root.
+        if parent is not None and parent.get("reply_to_id") and parent.get("reply_to_id") in visible:
+            parent = visible[parent["reply_to_id"]]
+        if parent is None or parent is row:
+            continue
+        parent["replies"].append(row)
+    return likely_roots
 
 
 def list_stage_notes(
@@ -260,6 +393,7 @@ def create_stage_note(
     gridfs: Any = None,
     drive: Any = None,
     storage_backend: str | None = None,
+    reply_to_id: str = "",
 ) -> dict[str, Any]:
     """Append ONE note (with optional files) to one lot's stage thread.
 
@@ -289,6 +423,17 @@ def create_stage_note(
     _scope(database, customer_id, shipment_id)
     if not _customer_read_allowed(resolved_actor, customer_id):
         raise JourneyNoteDenied("Khách hàng không thể ghi vào lô của người khác.")
+    # A reply must point at a real, still-visible ROOT comment of the SAME
+    # tenant/lot/stage. This is checked before a single file byte is stored.
+    parent_id = _validate_reply_parent(
+        database,
+        reply_to_id=reply_to_id,
+        customer_id=customer_id,
+        shipment_id=shipment_id,
+        stage_id=stage,
+        actor_kind=resolved_actor["kind"],
+        visibility=final_visibility,
+    )
 
     note_id = f"jn-{uuid4().hex}"
     stored: list[dict[str, Any]] = []
@@ -339,6 +484,7 @@ def create_stage_note(
         "updated_at": _now(),
         "updated_by": resolved_actor["username"],
         "attachments": attachments,
+        "reply_to_id": parent_id,
         "is_deleted": False,
     }
     try:
@@ -385,10 +531,20 @@ def read_note_attachment(
     db: Any = None,
     gridfs: Any = None,
     drive: Any = None,
+    expected_scope: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Read ONE attached file after re-proving the note and the exact file id.
 
     A customer may only read files of customer-visible notes on their own lot.
+
+    ``expected_scope`` binds the read to the ONE lot + stage the caller has
+    already resolved on the server (a Journey Map node). When supplied, the
+    note's OWN stored ``customer_id`` + ``shipment_id`` + ``stage_id`` must
+    equal it exactly — otherwise nothing is read from storage and no bytes are
+    returned. That check happens BEFORE the note is even looked up in memory,
+    so a crafted trigger can never fetch another lot's or another stage's file
+    just by knowing its ids. Omitting it keeps the previous contract for every
+    other caller.
     """
     resolved_actor = _actor(actor)
     identifier, wanted = _clean(note_id, 80), _clean(attachment_id, 120)
@@ -404,6 +560,12 @@ def read_note_attachment(
         LOGGER.warning("JOURNEY_NOTE_ATTACHMENT_READ_FAILED")
         return {"ok": False, "error": "Không đọc được chứng từ."}
     if not isinstance(row, Mapping):
+        return {"ok": False, "error": "Không tìm thấy chứng từ."}
+    if expected_scope is not None and not _matches_expected_scope(row, expected_scope):
+        # The note exists and may even be readable by this actor, but it is NOT
+        # the note of the lot + stage that is currently open. Refuse with the
+        # same message as "not found": no existence oracle, no bytes.
+        LOGGER.warning("JOURNEY_NOTE_ATTACHMENT_DENIED reason=focus_scope_mismatch")
         return {"ok": False, "error": "Không tìm thấy chứng từ."}
     if not _customer_read_allowed(resolved_actor, _clean(row.get("customer_id"), 120)):
         LOGGER.warning("JOURNEY_NOTE_ATTACHMENT_DENIED reason=foreign_customer")

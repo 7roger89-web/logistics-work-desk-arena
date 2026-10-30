@@ -13,7 +13,6 @@ branch renders native Streamlit only and never builds the internal view-model.
 
 from __future__ import annotations
 
-import html as html_lib
 import logging
 from urllib.parse import urlparse
 
@@ -48,48 +47,6 @@ def _current_app_url() -> str:
         return str(st.context.url or "")
     except Exception:  # noqa: BLE001 - older/bare Streamlit runtime
         return ""
-
-
-def _render_journey_focus_pane(user: dict, vm: dict) -> None:
-    """Open the ONE existing stage-discussion pane for the clicked journey node.
-
-    Read-only intent handling: the lot is looked up in the operator's OWN
-    shipment projection (already RBAC-filtered) and ``customer_id`` comes from
-    that projection, never from the browser. Nothing is written here; the pane
-    itself re-checks permission and lot ownership on every read/write.
-    """
-    try:
-        from core.auth import has_permission
-        from views import journey_discussion, logi_view_model
-
-        if not has_permission("shipment_edit"):
-            return
-        focus = logi_view_model.journey_focus_pane(user, vm.get("shipments"))
-        if not focus:
-            return
-        header_col, close_col = st.columns([4, 1])
-        node_label = str(focus.get("node_label") or "").strip()
-        with header_col:
-            st.markdown(
-                "**💬 Trao đổi / Chứng từ · lô "
-                f"{html_lib.escape(focus.get('shipment_id') or '')}"
-                + (f" · node {html_lib.escape(node_label)}" if node_label else "")
-                + "**"
-            )
-        with close_col:
-            if st.button("Đóng", key=f"journey_focus_close_{focus.get('shipment_id')}"):
-                from views import journey_focus
-
-                journey_focus.clear(st.session_state)
-                st.rerun()
-        journey_discussion.render_internal_discussion(
-            focus.get("shipment_id") or "",
-            focus.get("customer_id") or "",
-            user,
-            focus_stage=focus.get("stage_id") or "",
-        )
-    except Exception as exc:  # noqa: BLE001 - a discussion pane never blocks the shell
-        st.caption(f"Không mở được trao đổi công đoạn ({type(exc).__name__}).")
 
 
 def _staging_identity_checks() -> dict[str, bool]:
@@ -219,10 +176,10 @@ def main() -> None:
     # an isolated staging transport; a real URI always takes precedence.
     vm = logi_view_model.build_view_model()
     _render_staging_identity_check(user)
-    # Journey Map node → the EXISTING stage-discussion pane. The intent was
-    # captured by the component prefix callback; here it is re-resolved against
-    # THIS operator's own RBAC-filtered shipments before anything is read.
-    _render_journey_focus_pane(user, vm)
+    # Issue #236 — comments/replies/chứng từ live INSIDE the Journey Map node
+    # panel: ``vm["journeyDiscussion"]`` carries the ONE thread the operator
+    # opened, and ``journey_note_*`` events write through the same dispatcher.
+    # There is deliberately NO Streamlit discussion form above the map.
     # Owner/Admin-only portal email control lives on the customers profile.
     # Support sees no control and the financial RBAC matrix is unchanged.
     customer_dashboard.render_owner_portal_access_control(user)

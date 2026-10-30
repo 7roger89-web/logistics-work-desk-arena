@@ -499,14 +499,15 @@ _DASH_SCRIPT = (
 )
 
 
-def _dash_app(focus, database) -> AppTest:
+def _dash_app(focus, database) -> tuple[AppTest, dict]:
     """Run the REAL dashboard wiring with only the DB and portal read stubbed.
 
-    The stubs are applied from the test process (never from inside the script)
-    so no module attribute is left mutated for the rest of the suite.
+    The captured component payload is the ONLY place the conversation may live:
+    the test also proves no Streamlit comment form is rendered anywhere.
     """
     from views import customer_dashboard as dash
 
+    captured: dict = {}
     view = types.SimpleNamespace(
         cards=[_Card(LOT_A), _Card(LOT_B)],
         principal=types.SimpleNamespace(customer_id=CUSTOMER_A, display_name="Lục Giác",
@@ -517,41 +518,49 @@ def _dash_app(focus, database) -> AppTest:
     app.session_state["__focus__"] = focus
     with (
         patch.object(dash.portal, "load_customer_dashboard", return_value=view),
-        patch.object(dash, "build_model", lambda view: {}),
-        patch.object(dash.component, "render", lambda model, **kw: None),
+        patch.object(
+            dash.component, "render",
+            lambda model, **kw: captured.setdefault("model", model),
+        ),
         patch("core.database.get_db", return_value=database),
         patch("core.journey_notes._resolve_db", return_value=database),
     ):
         app.run()
     assert not app.exception, [str(item.value) for item in app.exception]
-    return app
+    return app, captured
 
 
-def test_dashboard_opens_the_existing_pane_for_the_clicked_node(db):
-    app = _dash_app(
+def test_dashboard_delivers_the_clicked_node_thread_to_the_component(db):
+    app, captured = _dash_app(
         {"shipment_id": LOT_A, "stage_id": "customs", "customer_id": CUSTOMER_A}, db,
     )
-    shown = _visible(app)
-    assert "Đang mở từ Journey Map" in shown
-    assert [e.label for e in app.expander] == ["💬 Trao đổi công đoạn · lô G1-LG-001"]
-    assert list(app.selectbox)[0].value == "04 · Thông quan"
-    assert INTERNAL_NOTE not in shown and CUSTOMER_NOTE in shown
+    # Issue #236 fail condition: NO Streamlit conversation form above/beside the map.
+    assert not list(app.expander)
+    assert not list(app.selectbox)
+    assert not list(app.text_area)
+    assert not list(app.file_uploader)
+    discussion = captured["model"]["discussion"]
+    assert discussion["shipmentId"] == LOT_A
+    assert discussion["stageId"] == "customs"
+    assert discussion["canWrite"] is True and discussion["canSeeInternal"] is False
+    bodies = {note["body"] for note in discussion["notes"]}
+    assert CUSTOMER_NOTE in bodies
+    # INTERNAL never enters the customer payload — not even as a hidden field.
+    serialized = json.dumps(captured["model"], ensure_ascii=False)
+    assert INTERNAL_NOTE not in serialized
+    assert OTHER_LOT_NOTE not in serialized
 
 
 def test_dashboard_drops_a_focus_belonging_to_another_customer(db):
-    app = _dash_app(
+    app, captured = _dash_app(
         # The lot exists, but the stored intent was opened for another customer:
         # after a customer switch nothing of that session may survive.
         {"shipment_id": LOT_A, "stage_id": "customs", "customer_id": CUSTOMER_B}, db,
     )
-    shown = _visible(app)
-    assert "Đang mở từ Journey Map" not in shown
-    assert INTERNAL_NOTE not in shown and CUSTOMER_NOTE not in shown
-    # The ordinary (unfocused) pane list is rendered instead.
-    assert [e.label for e in app.expander] == [
-        "💬 Trao đổi công đoạn · lô G1-LG-001",
-        "💬 Trao đổi công đoạn · lô G1-MD-001",
-    ]
+    assert not list(app.expander) and not list(app.text_area)
+    serialized = json.dumps(captured["model"], ensure_ascii=False)
+    assert INTERNAL_NOTE not in serialized and CUSTOMER_NOTE not in serialized
+    assert captured["model"]["discussion"] is None
 
 
 # --------------------------------------------------------------------------- #
@@ -577,16 +586,80 @@ def _run_app(database, focus, *, permission: bool = True) -> AppTest:
     return app
 
 
-def test_real_app_opens_the_existing_internal_pane_above_the_shell(db):
+_MODEL_SCRIPT = (
+    "import json, streamlit as st\n"
+    "from views import logi_view_model as model\n"
+    "vm = model.build_view_model()\n"
+    "st.session_state['discussion'] = vm.get('journeyDiscussion')\n"
+)
+
+
+def _discussion_for(database, focus) -> dict:
+    """The exact payload the REAL app delivers for one stored node intent."""
+    app = AppTest.from_string(_MODEL_SCRIPT, default_timeout=180)
+    app.session_state["logi_journey_focus"] = focus
+    app.session_state["current_user"] = {
+        "username": focus.get("username", "local-admin"), "role": "sale",
+    }
+    with (
+        patch("core.auth.has_permission", lambda *a, **k: True),
+        patch("core.database.get_db", return_value=database),
+        patch("core.journey_notes._resolve_db", return_value=database),
+        patch("views.logi_sandbox.ensure_backend", return_value=None),
+    ):
+        app.run()
+    assert not app.exception, [str(item.value) for item in app.exception]
+    return app.session_state["discussion"]
+
+
+def test_real_app_has_no_streamlit_discussion_form_above_the_shell(db):
+    """Issue #236 fail condition: the old wide Streamlit panel must be ABSENT."""
     app = _run_app(
         db, {"shipment_id": LOT_A, "stage_id": "customs", "username": "local-admin"},
     )
     assert not app.exception, [str(item.value) for item in app.exception]
-    labels = [element.label for element in app.expander]
-    assert labels[0] == "💬 Trao đổi / Chứng từ · lô G1-LG-001 · công đoạn Thông quan"
-    assert list(app.selectbox)[0].value == "04 · Thông quan"
-    assert "Đang mở từ Journey Map" in _visible(app)
-    assert INTERNAL_NOTE in _visible(app)
+    assert not [e for e in app.expander if "Trao đổi" in e.label]
+    assert not list(app.text_area)
+    assert not list(app.file_uploader)
+
+
+def test_component_payload_carries_the_clicked_stage_thread(db):
+    discussion = _discussion_for(
+        db,
+        {"shipment_id": LOT_A, "stage_id": "customs", "node_id": "customs-import",
+         "username": "local-admin"},
+    )
+    assert discussion["shipmentId"] == LOT_A
+    assert discussion["stageId"] == "customs"
+    assert discussion["nodeId"] == "customs-import"
+    assert discussion["canWrite"] is True and discussion["canSeeInternal"] is True
+    bodies = {note["body"] for note in discussion["notes"]}
+    assert INTERNAL_NOTE in bodies and CUSTOMER_NOTE in bodies
+    assert OTHER_LOT_NOTE not in json.dumps(discussion, ensure_ascii=False)
+
+
+def test_component_payload_never_carries_another_lots_thread(db):
+    discussion = _discussion_for(
+        db,
+        {"shipment_id": "LOT-NOT-VISIBLE", "stage_id": "customs", "username": "local-admin"},
+    )
+    assert discussion is None
+
+
+def test_component_payload_is_absent_for_a_role_without_the_existing_write_permission(db):
+    app = AppTest.from_string(_MODEL_SCRIPT, default_timeout=180)
+    app.session_state["current_user"] = {"username": "chi.xem", "role": "viewer"}
+    app.session_state["logi_journey_focus"] = {
+        "shipment_id": LOT_A, "stage_id": "customs", "username": "chi.xem",
+    }
+    with (
+        patch("core.database.get_db", return_value=db),
+        patch("core.journey_notes._resolve_db", return_value=db),
+        patch("views.logi_sandbox.ensure_backend", return_value=None),
+    ):
+        app.run()
+    assert not app.exception, [str(item.value) for item in app.exception]
+    assert app.session_state["discussion"] is None
 
 
 def test_real_app_never_opens_a_pane_outside_the_operators_projection(db):
@@ -606,18 +679,37 @@ def test_real_app_denies_the_pane_without_the_existing_write_permission(db):
     assert not [label for label in (e.label for e in app.expander) if "Trao đổi / Chứng từ ·" in label]
 
 
-def test_real_app_opens_the_transit_pane_for_the_fixture_node(fixture_db):
-    """Same mapping, but through the REAL app entrypoint the operator loads."""
-    app = _run_app(
-        fixture_db,
-        {"shipment_id": "LO-0307", "stage_id": "transit", "node_id": "MAIN_CARRIAGE",
-         "username": "local-admin"},
+def test_real_app_delivers_the_fixture_node_thread_inside_the_map_payload(fixture_db):
+    """Same mapping, but with the REAL fixture projection row the shell renders."""
+    row = _fixture_row()
+    script = (
+        "import json, streamlit as st\n"
+        "from views import journey_inline\n"
+        "rows = [json.loads(st.session_state['row'])]\n"
+        "st.session_state['discussion'] = journey_inline.build_staff_discussion(\n"
+        "    st.session_state['current_user'], rows)\n"
     )
+    app = AppTest.from_string(script, default_timeout=120)
+    app.session_state["row"] = json.dumps(row)
+    app.session_state["current_user"] = {"username": "local-admin", "role": "sale"}
+    app.session_state["logi_journey_focus"] = {
+        "shipment_id": "LO-0307", "stage_id": "transit", "node_id": "MAIN_CARRIAGE",
+        "username": "local-admin",
+    }
+    with (
+        patch("core.database.get_db", return_value=fixture_db),
+        patch("core.journey_notes._resolve_db", return_value=fixture_db),
+    ):
+        app.run()
     assert not app.exception, [str(item.value) for item in app.exception]
-    labels = [element.label for element in app.expander]
-    assert labels[0] == "💬 Trao đổi / Chứng từ · lô LO-0307 · công đoạn Vận chuyển"
-    assert list(app.selectbox)[0].value == "03 · Vận chuyển"
-    assert INTERNAL_TRANSIT_NOTE in _visible(app)
+    discussion = app.session_state["discussion"]
+    assert discussion["shipmentId"] == "LO-0307"
+    assert discussion["stageId"] == "transit"
+    assert discussion["nodeLabel"] == "Chặng chính"
+    bodies = {note["body"] for note in discussion["notes"]}
+    assert INTERNAL_TRANSIT_NOTE in bodies and CUSTOMER_TRANSIT_NOTE in bodies
+    # …and the neighbouring bucket is NOT mixed in.
+    assert OTHER_STAGE_NOTE not in json.dumps(discussion, ensure_ascii=False)
 
 
 # --------------------------------------------------------------------------- #
@@ -722,9 +814,11 @@ def test_real_fixture_second_node_opens_its_own_bucket(fixture_db):
     "script,marker",
     [
         ("dom_acceptance_journey_focus_customer.mjs",
-         "PASS Journey Map node → discussion intent"),
+         "PASS Journey Map node → inline discussion (customer)"),
         ("dom_acceptance_journey_focus_shell.mjs",
          "PASS Journey Map node action (shell)"),
+        ("dom_acceptance_journey_inline_shell.mjs",
+         "PASS Journey Map inline discussion (shell)"),
     ],
 )
 def test_front_end_node_action_is_exercised_on_the_real_assets(script, marker):
