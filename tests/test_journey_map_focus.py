@@ -18,6 +18,7 @@ What this file actually proves (and nothing more):
 from __future__ import annotations
 
 import base64
+import json
 import shutil
 import subprocess
 import types
@@ -28,6 +29,8 @@ import mongomock
 import pytest
 from streamlit.testing.v1 import AppTest
 
+from core import journey_notes as notes
+from core import shipment_journey as journey_catalog
 from views import journey_focus
 
 _ROOT_PATH = Path(__file__).resolve().parents[1]
@@ -179,6 +182,117 @@ def test_staff_intent_takes_the_customer_from_the_server_projection():
     # A projection row with no customer link can never open a note pane.
     assert journey_focus.for_staff({"shipment_id": LOT_A, "stage_id": "delivery"},
                                    "sale.thanh", [{"id": LOT_A, "customerId": ""}]) is None
+
+
+# --------------------------------------------------------------------------- #
+# internal Journey Map node ids → the seven existing discussion stages
+# --------------------------------------------------------------------------- #
+
+FIXTURE_188 = _ROOT_PATH / "tests" / "component" / "fixtures" / "view_model_journey_fresh_188.json"
+FIXTURE_LOT = "LO-0307"
+INTERNAL_TRANSIT_NOTE = "Chặng chính: hãng tàu đổi ETD — nội bộ theo dõi."
+CUSTOMER_TRANSIT_NOTE = "Khách đã xác nhận chấp nhận ETD mới."
+OTHER_STAGE_NOTE = "GHI CHÚ CỦA CÔNG ĐOẠN KHÁC — không được lẫn."
+
+
+def _fixture_row(shipment_id: str = FIXTURE_LOT) -> dict:
+    data = json.loads(FIXTURE_188.read_text(encoding="utf-8"))
+    return next(row for row in data["before"]["shipments"] if row["id"] == shipment_id)
+
+
+def test_every_real_internal_node_maps_to_one_of_the_seven_stages():
+    """The map is explicit AND complete for the ids the shell really renders."""
+    mapped = journey_focus.STAFF_NODE_STAGES
+    missing = sorted(node for node in journey_catalog.JOURNEY_STAGE_IDS
+                     if node.lower() not in mapped)
+    assert missing == [], f"internal journey node ids without a discussion stage: {missing}"
+    assert set(notes.STAGE_IDS) <= set(mapped)
+    assert all(stage in notes.STAGE_IDS for stage in mapped.values())
+    # The eleven base nodes build_journey() can emit, all present.
+    assert {"booking", "pickup", "customs-export", "si-vgm", "gate-in", "etd",
+            "on-board", "transit", "arrival", "customs-import", "delivery"} <= set(mapped)
+
+
+@pytest.mark.parametrize(
+    "node_id,expected",
+    [
+        # ROAD fixture node the shell really renders.
+        ("MAIN_CARRIAGE", "transit"),
+        # SEA nodes (booking → transit).
+        ("booking", "plan"),
+        ("si-vgm", "consolidate"),
+        ("gate-in", "consolidate"),
+        ("etd", "transit"),
+        ("on-board", "transit"),
+        ("arrival", "transit"),
+        # Export/import customs.
+        ("customs-export", "customs"),
+        ("customs-import", "customs"),
+        ("customs", "customs"),
+        # Delivery.
+        ("delivery", "delivery"),
+        ("final_delivery", "delivery"),
+        # Service-scope nodes that can become journey nodes.
+        ("ORIGIN_TERMINAL_OR_BORDER", "consolidate"),
+        ("CROSS_BORDER", "transit"),
+        ("sea_documents", "consolidate"),
+        ("insurance_evidence", "finance"),
+        # The canonical seven still work unchanged.
+        ("plan", "plan"),
+        ("pickup", "pickup"),
+        ("finance", "finance"),
+    ],
+)
+def test_each_internal_node_lands_in_its_documented_stage(node_id, expected):
+    session: dict = {}
+    assert journey_focus.capture(
+        session, {"seq": 1, "shipment_id": FIXTURE_LOT, "stage_id": node_id},
+        node_stages=journey_focus.STAFF_NODE_STAGES,
+    ) is True
+    resolved = journey_focus.for_staff(
+        journey_focus.current(session), "sale.thanh",
+        [{"id": FIXTURE_LOT, "customerId": "CUST-DUCLONG"}],
+    )
+    assert resolved["stage_id"] == expected
+    assert resolved["node_id"] == node_id
+
+
+@pytest.mark.parametrize(
+    "node_id", ["warehouse-x", "module:inst:step-1", "", "stage-99", "MAIN_CARRIAGE_X"],
+)
+def test_an_unmapped_internal_node_still_fails_closed(node_id):
+    session: dict = {}
+    assert journey_focus.capture(
+        session, {"seq": 1, "shipment_id": FIXTURE_LOT, "stage_id": node_id},
+        node_stages=journey_focus.STAFF_NODE_STAGES,
+    ) is False
+    assert journey_focus.current(session) is None
+    assert journey_focus.for_staff(
+        {"shipment_id": FIXTURE_LOT, "stage_id": node_id, "node_id": node_id},
+        "sale.thanh", [{"id": FIXTURE_LOT, "customerId": "CUST-DUCLONG"}],
+    ) is None
+
+
+def test_the_customer_contract_never_accepts_internal_node_ids():
+    """The customer portal keeps its own seven canonical stages only."""
+    request = {"shipment_id": LOT_A, "stage_id": "MAIN_CARRIAGE", "customer_id": CUSTOMER_A}
+    assert journey_focus.for_customer(request, CUSTOMER_A, [_Card(LOT_A)]) is None
+    # …and a customer intent of another tenant still fails closed.
+    assert journey_focus.for_customer(
+        {"shipment_id": LOT_A, "stage_id": "transit", "customer_id": CUSTOMER_B},
+        CUSTOMER_A, [_Card(LOT_A)],
+    ) is None
+
+
+def test_a_stored_internal_focus_does_not_survive_a_different_operator():
+    session: dict = {}
+    journey_focus.capture(
+        session, {"seq": 1, "shipment_id": FIXTURE_LOT, "stage_id": "MAIN_CARRIAGE"},
+        scope={"username": "sale.thanh"}, node_stages=journey_focus.STAFF_NODE_STAGES,
+    )
+    row = {"id": FIXTURE_LOT, "customerId": "CUST-DUCLONG"}
+    assert journey_focus.for_staff(journey_focus.current(session), "sale.thanh", [row]) is not None
+    assert journey_focus.for_staff(journey_focus.current(session), "nguoi.khac", [row]) is None
 
 
 # --------------------------------------------------------------------------- #
@@ -490,6 +604,111 @@ def test_real_app_denies_the_pane_without_the_existing_write_permission(db):
     )
     assert not app.exception, [str(item.value) for item in app.exception]
     assert not [label for label in (e.label for e in app.expander) if "Trao đổi / Chứng từ ·" in label]
+
+
+def test_real_app_opens_the_transit_pane_for_the_fixture_node(fixture_db):
+    """Same mapping, but through the REAL app entrypoint the operator loads."""
+    app = _run_app(
+        fixture_db,
+        {"shipment_id": "LO-0307", "stage_id": "transit", "node_id": "MAIN_CARRIAGE",
+         "username": "local-admin"},
+    )
+    assert not app.exception, [str(item.value) for item in app.exception]
+    labels = [element.label for element in app.expander]
+    assert labels[0] == "💬 Trao đổi / Chứng từ · lô LO-0307 · công đoạn Vận chuyển"
+    assert list(app.selectbox)[0].value == "03 · Vận chuyển"
+    assert INTERNAL_TRANSIT_NOTE in _visible(app)
+
+
+# --------------------------------------------------------------------------- #
+# REQUIRED REPRODUCTION: real fixture node LO-0307 / MAIN_CARRIAGE
+#   click intent → real dispatcher/normalizer → EXISTING transit pane
+# --------------------------------------------------------------------------- #
+
+@pytest.fixture()
+def fixture_db():
+    row = _fixture_row()
+    database = mongomock.MongoClient().db
+    database.customers.insert_one(
+        {"id": row["customerId"], "name": row["customer"], "is_deleted": False})
+    database.shipments.insert_one(
+        {"id": row["id"], "customer_id": row["customerId"], "is_deleted": False})
+    database.quick_notes.insert_many([
+        _note("jn-307-int", row["id"], "transit", INTERNAL_TRANSIT_NOTE, "INTERNAL",
+              customer=row["customerId"]),
+        _note("jn-307-cust", row["id"], "transit", CUSTOMER_TRANSIT_NOTE, "CUSTOMER",
+              customer=row["customerId"]),
+        _note("jn-307-other", row["id"], "customs", OTHER_STAGE_NOTE, "INTERNAL",
+              customer=row["customerId"]),
+    ])
+    return database
+
+
+def test_real_fixture_main_carriage_click_opens_the_transit_pane(fixture_db):
+    row = _fixture_row()
+    node = row["journey"]["nodes"][0]
+    assert (node["id"], node["label"]) == ("MAIN_CARRIAGE", "Chặng chính")
+    script = (
+        "import json, streamlit as st\n"
+        "from views import logi_view_model as model\n"
+        "from views.journey_discussion import render_internal_discussion\n"
+        "row = json.loads(st.session_state['row'])\n"
+        "st.session_state['current_user'] = {'username': 'sale.thanh', 'role': 'sale'}\n"
+        # EXACTLY the payload component/src/components/JourneyMap.tsx sends.
+        "trigger = {'journey_focus': {'seq': 1, 'event': 'journey_focus',\n"
+        "    'payload': {'shipment_id': row['id'],\n"
+        "                'stage_id': row['journey']['nodes'][0]['id']}}}\n"
+        "outcomes = model.consume_journey_focus_triggers({'seq': 0}, trigger)\n"
+        "focus = model.journey_focus_pane({'username': 'sale.thanh'}, [row])\n"
+        "st.session_state['outcomes'] = outcomes\n"
+        "st.session_state['focus'] = focus\n"
+        "render_internal_discussion(focus['shipment_id'], focus['customer_id'],\n"
+        "    {'username': 'sale.thanh', 'role': 'sale'}, focus_stage=focus['stage_id'])\n"
+    )
+    app = AppTest.from_string(script, default_timeout=120)
+    app.session_state["row"] = json.dumps(row)
+    with (
+        patch("core.database.get_db", return_value=fixture_db),
+        patch("core.journey_notes._resolve_db", return_value=fixture_db),
+    ):
+        app.run()
+    assert not app.exception, [str(item.value) for item in app.exception]
+
+    outcomes = app.session_state["outcomes"]
+    assert outcomes and outcomes[0]["ok"] is True
+    # The outcome still reports the RAW intent the browser sent…
+    assert outcomes[0]["readback"] == {"shipmentId": "LO-0307", "stageId": "main_carriage"}
+    # …while the resolved focus is the existing SEVEN-stage bucket.
+    focus = app.session_state["focus"]
+    assert focus["shipment_id"] == "LO-0307"
+    assert focus["stage_id"] == "transit"
+    assert focus["customer_id"] == "CUST-DUCLONG"  # from the projection, not the browser
+    assert focus["node_id"] == "MAIN_CARRIAGE" and focus["node_label"] == "Chặng chính"
+
+    # The EXISTING pane, opened on Vận chuyển.
+    assert list(app.selectbox)[0].value == "03 · Vận chuyển"
+    assert app.expander[0].label == "💬 Trao đổi / Chứng từ · lô LO-0307 · công đoạn Vận chuyển"
+    shown = _visible(app)
+    assert "Đang mở từ Journey Map" in shown
+    # Internal data survives for staff…
+    assert INTERNAL_TRANSIT_NOTE in shown
+    assert CUSTOMER_TRANSIT_NOTE in shown
+    # …and the neighbouring bucket is NOT mixed in.
+    assert OTHER_STAGE_NOTE not in shown
+
+
+def test_real_fixture_second_node_opens_its_own_bucket(fixture_db):
+    """`delivery` on the same fixture lot is Giao hàng, not the transit thread."""
+    row = _fixture_row()
+    assert [node["id"] for node in row["journey"]["nodes"]] == ["MAIN_CARRIAGE", "delivery"]
+    session: dict = {}
+    assert journey_focus.capture(
+        session, {"seq": 1, "shipment_id": "LO-0307", "stage_id": "delivery"},
+        node_stages=journey_focus.STAFF_NODE_STAGES,
+    ) is True
+    focus = journey_focus.for_staff(journey_focus.current(session), "sale.thanh", [row])
+    assert focus["stage_id"] == "delivery"
+    assert focus["node_id"] == "delivery"
 
 
 # --------------------------------------------------------------------------- #

@@ -107,12 +107,41 @@ Hai test âm: lô ngoài projection → không pane; thiếu `shipment_edit` →
 | JS luôn gửi `stage_id='plan'` | FAIL đúng chỗ |
 | Bỏ `journey_focus` khỏi allowlist trong **dist** | FAIL đúng chỗ (0 trigger) |
 
+## 4.5 Sửa blocker review: node nội bộ → 7 nhóm trao đổi (HEAD sau 445881b)
+
+Review chỉ ra: node nội bộ `MAIN_CARRIAGE` (và các node SEA như `si-vgm`, `gate-in`, `etd`,
+`on-board`, `arrival`) không thuộc `STAGE_IDS` nên bấm 💬 không mở pane. Sửa nhỏ nhất:
+`views/journey_focus.STAFF_NODE_STAGES` — bảng ánh xạ **tường minh** từ id node thật của shell
+(`core.shipment_journey.JOURNEY_STAGE_IDS`, 22 id, gồm 11 node base của `build_journey`) sang một
+trong bảy công đoạn. Không suy diễn theo prefix/thứ tự; id không có trong bảng (vd node Work Module)
+vẫn **fail closed**. Cổng khách giữ nguyên 7 stage canonical, không áp bảng này. Backend/quyền
+không đổi.
+
+Bằng chứng mới (đo tại HEAD này):
+
+| Kiểm tra | Kết quả |
+|---|---|
+| `pytest tests/test_journey_map_focus.py -q` | **49 passed** |
+| `pytest tests/test_journey_notes.py … -q` (focused) | **122 passed** |
+| Fixture thật `LO-0307 / MAIN_CARRIAGE` → dispatcher → pane | PASS: readback `{LO-0307, main_carriage}`, focus `transit` + `customer_id CUST-DUCLONG` (từ projection) + `node_label "Chặng chính"`, selectbox `03 · Vận chuyển`, note INTERNAL hiện, note của bucket `customs` **không** lẫn |
+| `LO-0307 / delivery` | PASS: bucket `delivery` |
+| App thật `app.py` với `LO-0307` | PASS: expander `… lô LO-0307 · công đoạn Vận chuyển` |
+| SEA + service-scope nodes (`booking`, `si-vgm`, `gate-in`, `etd`, `on-board`, `arrival`, `customs-export`, `customs-import`, `delivery`, `CROSS_BORDER`, `insurance_evidence`, …) | PASS theo bảng |
+| Node lạ (`warehouse-x`, `module:inst:step-1`, rỗng) | PASS fail-closed: không lưu, không pane |
+| Đổi khách / đổi người thao tác | PASS: focus của khách/người khác không resolve |
+| jsdom shell | PASS: mỗi node gửi **id thô của chính nó** (`MAIN_CARRIAGE`, `delivery`); mapping ở Python |
+| Mutation | 3/3 bị giết: bỏ `main_carriage`; cho id lạ mặc định `transit`; bỏ map khỏi dispatcher |
+| Full suite | baseline tại `445881b`: 34F/2217P → sau sửa **34F/2247P**, tập FAILED giống hệt |
+
 ## 5. Chưa chứng minh / blocker còn lại
 
 * **Không có browser thật** trong sandbox (Playwright/browser binary không có; chỉ jsdom +
   Streamlit AppTest). Desktop/mobile là mô phỏng DOM, **không** phải ảnh chụp thiết bị thật.
 * **Cloud UAT vẫn BLOCKED**: deployed SHA của `thu-log-g1-test.streamlit.app`, danh tính DB runtime
   và Google OIDC thật chưa xác minh. Không ghi dữ liệu Cloud trong phiên này.
+* Bảng ánh xạ chỉ phủ id node **có thật** trong `core/shipment_journey.JOURNEY_STAGE_IDS`; node
+  Work Module (`module:<instance>:<step>`) cố ý **không** map (fail closed) — cần Owner quyết nếu
+  muốn mỗi bước module có luồng riêng.
 * `views/shipment.py` (pane nội bộ của PR #234) vẫn **chết** — không route. Pane nội bộ nay chạy
   qua `views/web_app.py` + `views.logi_discussion`, nhưng vẫn là **Streamlit pane đặt phía trên
   shell**, không nằm trong React; muốn “in-map” thật cho Trường Thành cần một lane riêng (đọc

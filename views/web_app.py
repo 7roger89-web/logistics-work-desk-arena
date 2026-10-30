@@ -68,10 +68,13 @@ def _render_journey_focus_pane(user: dict, vm: dict) -> None:
         if not focus:
             return
         header_col, close_col = st.columns([4, 1])
+        node_label = str(focus.get("node_label") or "").strip()
         with header_col:
             st.markdown(
                 "**💬 Trao đổi / Chứng từ · lô "
-                f"{html_lib.escape(focus.get('shipment_id') or '')}**"
+                f"{html_lib.escape(focus.get('shipment_id') or '')}"
+                + (f" · node {html_lib.escape(node_label)}" if node_label else "")
+                + "**"
             )
         with close_col:
             if st.button("Đóng", key=f"journey_focus_close_{focus.get('shipment_id')}"):

@@ -113,6 +113,16 @@ assert.ok(
   "the node action must not fire a business write event",
 );
 
+// 2b. the OTHER fixture node travels with its own raw id (the 7-stage mapping
+// is deliberately server-side: the browser never invents a discussion stage).
+const second = lot.journey.nodes[1].id;
+await click(byId(`journey-node-discussion-${second}`), "second discussion action");
+const secondSent = triggers.slice(before + 1);
+assert.equal(secondSent.length, 1);
+assert.equal(secondSent[0].event, "journey_focus");
+assert.deepEqual(secondSent[0].value.payload, { shipment_id: LOT, stage_id: second },
+  "each node must send its own id; mapping to a discussion stage is Python's job");
+
 // 3. the node itself still selects the stage (the map interaction is intact)
 await click(byId(`journey-node-${STAGE}`), "journey node");
 assert.equal(
@@ -122,8 +132,8 @@ assert.equal(
 );
 assert.equal(
   triggers.filter((t) => t.event === "journey_focus").length,
-  1,
-  "selecting a node must not emit a discussion intent",
+  2,
+  "selecting a node must not emit an extra discussion intent",
 );
 
 // 4. a zero-node lot has no node action at all
@@ -138,6 +148,6 @@ assert.equal(
 );
 
 console.log(
-  `PASS Journey Map node action (shell): ${lot.journey.nodes.length} nodes, one read-only intent {${LOT}, ${STAGE}}, node interaction intact, zero-node lot inert`,
+  `PASS Journey Map node action (shell): ${lot.journey.nodes.length} nodes each send their own read-only intent (${LOT}: ${STAGE}, ${second}), node interaction intact, zero-node lot inert`,
 );
 process.exit(0);

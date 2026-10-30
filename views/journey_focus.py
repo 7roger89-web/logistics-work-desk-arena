@@ -33,6 +33,65 @@ MAX_LOT = 120
 MAX_STAGE = 40
 MAX_ACTOR = 120
 
+#: INTERNAL shell node id → ONE of the seven discussion stages that
+#: ``core.journey_notes`` already owns.
+#:
+#: The shell's Journey Map is richer than the discussion model: it renders the
+#: eleven base nodes built by ``core.shipment_journey.build_journey``
+#: (booking / pickup / customs-export / si-vgm / gate-in / etd / on-board /
+#: transit / arrival / customs-import / delivery) plus service-scope nodes such
+#: as ``MAIN_CARRIAGE``. The discussion backend stays a SEVEN-stage contract, so
+#: the map below states explicitly which lifecycle bucket each real node belongs
+#: to. Nodes that share a bucket share ONE thread — they are never turned into
+#: fake separate threads. Anything not listed here (e.g. a Work Module node id)
+#: keeps failing closed, exactly as before.
+#:
+#: Keys are lower-case because every incoming intent is lower-cased first.
+STAFF_NODE_STAGES: dict[str, str] = {
+    # 00 Kế hoạch — booking/planning happens before anything moves.
+    "booking": "plan",
+    # 01 Lấy hàng — origin pickup at the factory/warehouse.
+    "pickup": "pickup",
+    # 02 Gom hàng — export handling, equipment, SI/VGM, gate-in and origin
+    # hand-off all happen BEFORE the main carriage departs.
+    "si-vgm": "consolidate",
+    "gate-in": "consolidate",
+    "sea_equipment": "consolidate",
+    "sea_consolidation": "consolidate",
+    "road_truck_profile": "consolidate",
+    "road_consolidation": "consolidate",
+    "origin_handoff": "consolidate",
+    "origin_terminal_or_border": "consolidate",
+    "sea_documents": "consolidate",
+    "air_documents": "consolidate",
+    # 03 Vận chuyển — the main carriage itself, including ETD/ATD, sailing,
+    # arrival and cross-border/transhipment coordination.
+    "main_carriage": "transit",
+    "etd": "transit",
+    "on-board": "transit",
+    "transit": "transit",
+    "arrival": "transit",
+    "rail_carriage": "transit",
+    "cross_border": "transit",
+    # 04 Thông quan — export AND import declarations.
+    "customs-export": "customs",
+    "customs-import": "customs",
+    "export_customs": "customs",
+    # 05 Giao hàng — destination trucking and final delivery.
+    "delivery": "delivery",
+    "destination_trucking": "delivery",
+    "final_delivery": "delivery",
+    # 06 Thanh toán — cargo insurance is an arrangement with a cost, so it is
+    # discussed where money is discussed.
+    "insurance_evidence": "finance",
+    "cargo_insurance_arrangement": "finance",
+}
+
+#: The seven canonical ids are accepted unchanged on both portals.
+for _stage_id in notes.STAGE_IDS:  # pragma: no branch - fixed tuple
+    STAFF_NODE_STAGES.setdefault(_stage_id, _stage_id)
+del _stage_id
+
 
 def _text(value: Any, limit: int = 0) -> str:
     if value is None or isinstance(value, bool):
@@ -43,13 +102,36 @@ def _text(value: Any, limit: int = 0) -> str:
     return cleaned[:limit] if limit else cleaned
 
 
-def normalize(intent: Any) -> dict[str, str] | None:
-    """Shrink one browser intent to ``{shipment_id, stage_id}`` or ``None``."""
+def resolve_node_stage(node_id: Any, node_stages: Mapping[str, str] | None = None) -> str:
+    """Canonical discussion stage for ONE journey node id (``""`` = unknown).
+
+    A canonical id is accepted as-is; otherwise only an EXPLICIT entry in
+    ``node_stages`` counts. There is no fuzzy/prefix/ordering inference, so an
+    unmapped id can never silently borrow another stage's thread.
+    """
+    candidate = _text(node_id, MAX_STAGE).lower()
+    if not candidate:
+        return ""
+    if candidate in notes.STAGE_IDS:
+        return candidate
+    mapped = _text((node_stages or {}).get(candidate), MAX_STAGE).lower()
+    return mapped if mapped in notes.STAGE_IDS else ""
+
+
+def normalize(intent: Any,
+              *,
+              node_stages: Mapping[str, str] | None = None) -> dict[str, str] | None:
+    """Shrink one browser intent to ``{shipment_id, stage_id}`` or ``None``.
+
+    ``node_stages`` is only supplied for the INTERNAL shell, whose Journey Map
+    renders richer node ids (``MAIN_CARRIAGE``, ``si-vgm``…). The customer
+    portal keeps its own seven canonical ids and is never mapped.
+    """
     if not isinstance(intent, Mapping):
         return None
     lot = _text(intent.get("shipment_id"), MAX_LOT)
-    stage = _text(intent.get("stage_id"), MAX_STAGE).lower()
-    if not lot or stage not in notes.STAGE_IDS:
+    stage = resolve_node_stage(intent.get("stage_id"), node_stages)
+    if not lot or not stage:
         return None
     return {"shipment_id": lot, "stage_id": stage}
 
@@ -59,6 +141,7 @@ def capture(
     intent: Any,
     *,
     scope: Mapping[str, str] | None = None,
+    node_stages: Mapping[str, str] | None = None,
 ) -> bool:
     """Remember ONE verified-shape intent; ``True`` only when it was new.
 
@@ -80,10 +163,15 @@ def capture(
     if seq <= last:
         return False
     session[SEQ_KEY] = seq
-    normalized = normalize(intent)
+    normalized = normalize(intent, node_stages=node_stages)
     if normalized is None:
         return False
     stored: dict[str, str] = dict(normalized)
+    # Keep the raw node id the operator clicked (display/debug only). It is
+    # never used as a discussion scope on its own.
+    raw_node = _text(intent.get("stage_id"), MAX_STAGE)
+    if raw_node:
+        stored["node_id"] = raw_node
     for key, value in (scope or {}).items():
         cleaned = _text(value, MAX_ACTOR)
         if cleaned:
@@ -94,7 +182,8 @@ def capture(
 
 def capture_from_result(session: MutableMapping[str, Any], result: Any,
                         *, event: str = "journey_focus",
-                        scope: Mapping[str, str] | None = None) -> bool:
+                        scope: Mapping[str, str] | None = None,
+                        node_stages: Mapping[str, str] | None = None) -> bool:
     """Read the v2 trigger payload for ``event`` (same shape as the shell)."""
     if not hasattr(result, "get"):
         return False
@@ -109,6 +198,7 @@ def capture_from_result(session: MutableMapping[str, Any], result: Any,
         {"seq": payload.get("seq"), "shipment_id": data.get("shipment_id"),
          "stage_id": data.get("stage_id")},
         scope=scope,
+        node_stages=node_stages,
     )
 
 
@@ -154,7 +244,7 @@ def for_staff(request: Mapping[str, Any] | None, username: str,
     ``customer_id`` comes from that projection (server truth), never from the
     browser intent, so a forged lot/customer pair can only ever fail closed.
     """
-    normalized = normalize(request)
+    normalized = normalize(request, node_stages=STAFF_NODE_STAGES)
     actor = _text(username, MAX_ACTOR)
     if normalized is None or not actor:
         return None
@@ -169,5 +259,9 @@ def for_staff(request: Mapping[str, Any] | None, username: str,
         customer = _text(row.get("customerId"), MAX_ACTOR)
         if not customer:
             return None
-        return {**normalized, "customer_id": customer}
+        resolved = {**normalized, "customer_id": customer}
+        raw_node = _text((request or {}).get("node_id"), MAX_STAGE)
+        if raw_node:
+            resolved["node_id"] = raw_node
+        return resolved
     return None

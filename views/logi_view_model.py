@@ -6164,12 +6164,18 @@ def consume_journey_focus_triggers(session: dict, result: Any) -> list[dict[str,
         session["seq"] = seq
         data = payload.get("payload") if isinstance(payload.get("payload"), dict) else {}
         lot = str(data.get("shipment_id") or "").strip()[:120]
-        stage = str(data.get("stage_id") or "").strip().lower()[:40]
+        # Keep the node id AS SENT (the shell's ids are case-sensitive, e.g.
+        # MAIN_CARRIAGE); only the lookup/mapping lower-cases it.
+        raw_stage = str(data.get("stage_id") or "").strip()[:40]
+        stage = raw_stage.lower()
         username = str((st.session_state.get("current_user") or {}).get("username") or "")[:120]
         recorded = journey_focus.capture(
             st.session_state,
-            {"seq": seq, "shipment_id": lot, "stage_id": stage},
+            {"seq": seq, "shipment_id": lot, "stage_id": raw_stage},
             scope={"username": username},
+            # The shell's map renders richer ids (MAIN_CARRIAGE, si-vgm…); the
+            # explicit map keeps the SEVEN-stage discussion contract.
+            node_stages=journey_focus.STAFF_NODE_STAGES,
         )
         outcomes.append(_result(
             event_name, lot, recorded,
@@ -6180,12 +6186,32 @@ def consume_journey_focus_triggers(session: dict, result: Any) -> list[dict[str,
 
 
 def journey_focus_pane(user: Mapping[str, Any], shipments: Any) -> dict[str, Any] | None:
-    """Resolve the stored Journey Map intent against the operator's own lots."""
-    return journey_focus.for_staff(
+    """Resolve the stored Journey Map intent against the operator's own lots.
+
+    Also returns the CLICKED node's own label (read from the same projection) so
+    the pane can say which rich node was mapped onto which of the seven stages.
+    """
+    focus = journey_focus.for_staff(
         journey_focus.current(st.session_state),
         str((user or {}).get("username") or ""),
         shipments or (),
     )
+    if not focus:
+        return None
+    node_id = str(focus.get("node_id") or "")
+    if node_id:
+        for row in shipments or ():
+            if not isinstance(row, Mapping):
+                continue
+            if str(row.get("id") or "") != focus["shipment_id"]:
+                continue
+            journey = row.get("journey") if isinstance(row.get("journey"), Mapping) else {}
+            for node in journey.get("nodes") or ():
+                if isinstance(node, Mapping) and str(node.get("id") or "") == node_id:
+                    focus["node_label"] = str(node.get("label") or "")
+                    break
+            break
+    return focus
 
 
 def dispatch(
