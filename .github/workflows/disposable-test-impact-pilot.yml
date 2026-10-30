@@ -1,0 +1,104 @@
+name: LOGI disposable Python test impact verification
+
+on:
+  push:
+    branches:
+      - experiments/test-impact-20261030
+
+permissions:
+  contents: read
+
+jobs:
+  test-impact-vs-file-picked:
+    runs-on: ubuntu-latest
+    timeout-minutes: 19
+    env:
+      ENV_IDENTITY: PREVIEW
+      MONGO_URI: ''
+      PYTHONUNBUFFERED: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 2fcb74ea7fc37890589601c43d5c74a3271ab10e
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install isolated test impact tools (never application dependencies)
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "2fcb74ea7fc37890589601c43d5c74a3271ab10e"
+          python -m pip install --disable-pip-version-check -r requirements.txt 'pytest==8.4.2' 'pytest-testmon==2.2.0' 'pytest-picked==0.5.1'
+          python -m pytest --version
+          mkdir -p test-impact-output
+          python -m pip freeze | grep -Ei 'pytest-testmon|pytest-picked|pytest==' > test-impact-output/versions.txt
+      - name: Collect real baseline trace and measure unchanged run
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pytest tests/test_journey_notes.py --testmon -q -p no:randomly --tb=short 2>&1 | tee test-impact-output/cold.log
+          test -s .testmondata
+          python -m pytest tests/test_journey_notes.py --testmon -q -p no:randomly --tb=short 2>&1 | tee test-impact-output/unchanged.log
+      - name: Reintroduce only the real PR243 regression in disposable checkout
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          path=Path('views/customer_dashboard.py')
+          src=path.read_text()
+          expected='session, result, principal=principal, cards=cards, db=db,'
+          assert src.count(expected)==1, 'exact PR243 repair must occur once'
+          path.write_text(src.replace(expected,'session, result, principal=principal, cards=cards,',1))
+          print('DISPOSABLE_REGRESSION=drop db=db at customer portal consumer call')
+          PY
+          git diff -- views/customer_dashboard.py > test-impact-output/mutation.patch
+          test -s test-impact-output/mutation.patch
+      - name: Compare real changed-code test selection against file-only picking
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +e
+          python -m pytest tests/test_journey_notes.py --testmon -q -p no:randomly --tb=short > test-impact-output/testmon-mutated.log 2>&1
+          tm_status=$?
+          python -m pytest tests/test_journey_notes.py --picked --mode=unstaged -q -p no:randomly --tb=short > test-impact-output/picked-mutated.log 2>&1
+          picked_status=$?
+          set -e
+          echo "testmon_exit=$tm_status" | tee test-impact-output/status.txt
+          echo "picked_exit=$picked_status" | tee -a test-impact-output/status.txt
+          python - <<'PY'
+          import json,re
+          from pathlib import Path
+          root=Path('test-impact-output')
+          cold=(root/'cold.log').read_text()
+          unchanged=(root/'unchanged.log').read_text()
+          testmon=(root/'testmon-mutated.log').read_text()
+          picked=(root/'picked-mutated.log').read_text()
+          for name,log in [('COLD',cold),('UNCHANGED',unchanged),('MUTATED_TESTMON',testmon),('MUTATED_PICKED',picked)]:
+              print('===== '+name+' =====')
+              print('\n'.join(log.splitlines()[-22:]))
+          assert re.search(r'67 passed',cold), 'baseline 67 tests must pass'
+          assert 'deselected' in unchanged or 'no tests ran' in unchanged, 'testmon should skip unaffected tests'
+          assert 'failed' in testmon and 'test_customer_portal_' in testmon, 'testmon must catch real DB-handle regression'
+          assert 'no tests ran' in picked or 'deselected' in picked, 'picked only changed backend; must not claim coverage'
+          (root/'summary.json').write_text(json.dumps({
+              'source_sha':'2fcb74ea7fc37890589601c43d5c74a3271ab10e',
+              'mutation':'drop explicit db=db at actual customer call',
+              'baseline':'67 tests PASS before mutation',
+              'unchanged_testmon_skips':True,
+              'testmon_detects_regression':True,
+              'pytest_picked_file_only_does_not_detect_backend_regression':True,
+              'warning':'testmon is an iteration optimization, not replacement for full regression and browser UAT',
+              'state_scope':'disposable GitHub runner; no application commits and no production changes'
+          },indent=2))
+          print('TEST_IMPACT_REAL_REPO_PROBE=PASS')
+          PY
+      - name: Upload read-only experiment receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: logi-test-impact-pilot-20261030
+          path: test-impact-output/
+          retention-days: 7
+          if-no-files-found: warn
