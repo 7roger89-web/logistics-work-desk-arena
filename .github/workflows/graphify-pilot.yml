@@ -27,16 +27,16 @@ jobs:
       - name: Install isolated test dependencies
         run: |
           python -m pip install --disable-pip-version-check -r requirements.txt pytest
-      - name: Recheck exact snapshot and run focused Python contracts
-        run: |
-          set -euo pipefail
-          test "$(git rev-parse HEAD)" = "f472274b00cf4849b4837c18d496dfd3dd1e2d33"
-          python -m pytest tests/test_journey_notes.py tests/test_journey_map_focus.py -q
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
       - name: Install existing component test dependencies
         run: npm ci --prefix component --no-audit --no-fund
+      - name: Recheck exact snapshot and run focused Python contracts
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "f472274b00cf4849b4837c18d496dfd3dd1e2d33"
+          python -m pytest tests/test_journey_notes.py tests/test_journey_map_focus.py -q
       - name: Verify three real DOM integration lanes
         run: |
           node tests/component/dom_acceptance_journey_focus_customer.mjs
@@ -88,9 +88,11 @@ jobs:
           done
           echo "SOURCE_SHA=f472274b00cf4849b4837c18d496dfd3dd1e2d33"
           find "$SOURCE" -type f | sort
-          graphify extract "$SOURCE" --code-only --no-cluster --out "$OUT"
+          graphify extract "$SOURCE" --code-only --out "$OUT"
           REPORT="$OUT/graphify-out"
           test -s "$REPORT/graph.json"
+          test -s "$REPORT/graph.html"
+          test -s "$REPORT/GRAPH_REPORT.md"
           python - "$REPORT" <<'PY'
           import json
           import pathlib
