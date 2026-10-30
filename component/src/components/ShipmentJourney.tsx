@@ -5,8 +5,9 @@ import { getViewModel, subscribeViewModel } from '../lib/viewmodel';
 import { useStore } from '../lib/store';
 import { cx, fmtCcy } from '../lib/format';
 import { Field, inputCls } from './ui';
-import JourneyMap, { JOURNEY_META as META, JourneyStatus } from './JourneyMap';
+import JourneyMap, { JOURNEY_META as META, JourneyStatus, journeyNodeNumber, planJourneyNode } from './JourneyMap';
 import JourneyQuickPanel, { stageAction } from './JourneyQuickPanel';
+import PlanQuickPanel from './PlanQuickPanel';
 
 export const JOURNEY_WORK = [
   { id: 'overview', label: 'Tổng quan' }, { id: 'info', label: 'Thông tin' },
@@ -445,15 +446,25 @@ export default function ShipmentJourney({ shipment: s, activeStage, work, onOpen
     if (attachOutcome.ok) { setAttachOpen(false); setChosen(''); setAttachPending(''); setAttachError(''); }
     else { setAttachError(String(attachOutcome.error || 'Backend từ chối gắn quy trình.')); setAttachPending(''); }
   }, [attachOutcome]);
-  const nodes = journey?.nodes ?? [];
+  // Issue #244 — Node 00 KẾ HOẠCH is the FIRST node of the SAME journey: the
+  // same map, the same rail, the same pick/panel state. It is prepended (not a
+  // second map) and carries only server-decided facts (`s.plan`).
+  const planNode = useMemo(() => planJourneyNode(s), [s]);
+  const nodes = useMemo(() => {
+    const journeyNodes = journey?.nodes ?? [];
+    return planNode ? [planNode, ...journeyNodes] : journeyNodes;
+  }, [journey, planNode]);
   // Issue #162 — the base map stays the base map. Module steps are NOT drawn as
   // extra branches by default; they live inside the rollup card and are
   // revealed on demand (the graph is still fully present in the payload).
   const baseNodes = nodes.filter(n => !n.moduleId);
   // Issue #190 — Quick Panel opens the CURRENT / PROBLEM factual node by
   // default: an explicit problem beats the positional current marker.
-  const problemNode = baseNodes.find(n => n.state === 'PROBLEM' || n.blockers.length);
-  const selected = nodes.find(n => n.id === picked) ?? nodes.find(n => n.id === activeStage) ?? problemNode ?? baseNodes.find(n => n.current) ?? baseNodes[0] ?? nodes[0];
+  // Node 00 never hijacks the default panel: the existing problem/current rules
+  // keep choosing among the operational nodes exactly as before #244.
+  const operationalNodes = baseNodes.filter(n => n.id !== 'plan');
+  const problemNode = operationalNodes.find(n => n.state === 'PROBLEM' || n.blockers.length);
+  const selected = nodes.find(n => n.id === picked) ?? nodes.find(n => n.id === activeStage) ?? problemNode ?? operationalNodes.find(n => n.current) ?? operationalNodes[0] ?? nodes[0];
   const stage = nodes.find(n => n.id === activeStage);
   const library = vm?.workModules;
   const choices = library?.templates ?? [];
@@ -513,7 +524,9 @@ export default function ShipmentJourney({ shipment: s, activeStage, work, onOpen
   const currentLabel = baseNodes.find(n => n.current)?.label || 'Chưa xác định';
   const renderSidePanel = (extraClass: string) => (
     <aside className={cx('journey-side border-l-2 border-slate-400 bg-white shadow-[-6px_0_16px_-8px_rgba(15,23,42,0.25)]', extraClass)} data-testid="journey-side-panel">
-        {panelMode === 'quick' && (selected.id === 'customs-import'
+        {panelMode === 'quick' && (selected.id === 'plan' && s.plan
+          ? <PlanQuickPanel key={`plan-${s.id}`} shipment={s} plan={s.plan} onOpenFinance={() => openGlobal('tai-chinh')} onClose={() => setPanelMode('overview')} />
+          : selected.id === 'customs-import'
           ? <div className="h-full min-h-0" data-testid="journey-customs-import-panel"><CustomsImportQuickPanel s={s} selected={selected} onOpen={open} runPrimary={runPrimary} onClose={() => setPanelMode('overview')} /></div>
           : <JourneyQuickPanel key={selected.id} shipment={s} selected={selected} onOpen={open} runPrimary={runPrimary} onClose={() => setPanelMode('overview')} />)}
         {panelMode === 'overview' && <div className="flex h-full flex-col bg-slate-50" data-testid="journey-overview-panel">
@@ -572,7 +585,7 @@ export default function ShipmentJourney({ shipment: s, activeStage, work, onOpen
             const m = META[n.state]; const Icon = m.icon;
             return <button key={n.id} type="button" data-testid={`journey-step-${n.id}`} data-state={n.state} aria-pressed={selected.id === n.id} onClick={() => pick(n.id)}
               className={cx('touch-target flex min-w-0 items-center gap-2 rounded-lg border-2 px-2.5 py-2 text-left text-xs font-bold', m.cls, selected.id === n.id && 'ring-2 ring-[#0f2a4a] ring-offset-1')}>
-              <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-slate-900/10 text-[10px] font-black">{idx + 1}</span>
+              <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-slate-900/10 text-[10px] font-black">{journeyNodeNumber(n, idx, baseNodes)}</span>
               <Icon size={13} className="shrink-0" aria-hidden="true" />
               <span className="min-w-0"><span className="block truncate text-[12.5px] font-extrabold">{n.label}</span><span className="block truncate text-[10.5px] font-semibold opacity-80">{n.current ? '📍 Đang ở đây' : m.label}{n.blockers.length > 0 ? ` · ⚠ ${n.blockers.length}` : ''}</span></span>
             </button>;
