@@ -1,8 +1,8 @@
 # TRẠNG THÁI
-TASK_ID: OPS-FIX-3
-MỤC TIÊU: Chốt 2 luật mới (cấm tạo PR body có backtick bằng chuỗi lệnh, phải dùng `--body-file`; khung prompt ghi rõ chỉ sửa `<file>`, 05/06 chỉ để ghi log) và đưa dòng ĐANG CHỜ về PR hiện tại.
-GIAI ĐOẠN: xong (chờ review/merge PR)
-ĐÃ THỬ: `grep -c "body-file"` 00-LUAT.md = 1; `grep -c "chỉ để ghi log"` 02-TEMPLATE.md = 1; `grep -n "ĐANG CHỜ"` 05 khớp `git rev-parse HEAD` của commit nội dung; `git diff --stat` đúng phạm vi ops/arena-control (00, 02, 05 + 06 log).
-ĐANG CHỜ: Review/merge PR #253 (nhánh arena/532dec89-logistics-work-desk-arena, head nội dung 9b6b57e; các commit nối sau chỉ ghi log 05/06 nên head thật = `git rev-parse HEAD` / `gh pr view 253 --json headRefOid`).
-BƯỚC TIẾP: Chờ review/merge PR #253 rồi merge vào main.
+TASK_ID: OPS-FIX-4
+MỤC TIÊU: Bỏ toàn bộ SHA khỏi file này; chốt luật cấm cặp backtick rỗng trong 00-LUAT; xác nhận 02 đã có placeholder thật trong backtick.
+GIAI ĐOẠN: xong (chờ merge)
+ĐÃ THỬ: `grep -cE "[0-9a-f]{7}"` 05 = 0; `grep -n "backtick rỗng"` 00 = 1 dòng; `grep -n "chỉ sửa"` 02 ra dòng có `<file>` trong backtick, không có cặp backtick rỗng.
+ĐANG CHỜ: Review/merge PR #253.
+BƯỚC TIẾP: Chờ merge PR #253.
 BLOCKER: Không có.
