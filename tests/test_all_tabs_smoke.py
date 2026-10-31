@@ -5,6 +5,7 @@ Navigates through ALL routes in the sidebar and checks that each renders
 without Streamlit exceptions. Uses fixture data with proper patches.
 """
 
+import re
 import unittest
 from unittest.mock import patch
 
@@ -16,7 +17,9 @@ APP_PATH = oracle_mod.APP_PATH if hasattr(oracle_mod, "APP_PATH") else \
     oracle_mod.__file__.replace("test_dashboard_financial_write_oracle.py", "web_app.py")
 # Fallback: try the actual web_app.py path
 import os
+from pathlib import Path
 _repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+_REPO_ROOT = Path(_repo_root)
 _web_app_candidates = [
     os.path.join(_repo_root, "web_app.py"),
     os.path.join(_repo_root, "views", "web_app.py"),
@@ -133,71 +136,81 @@ class AllTabsSmokeTest(unittest.TestCase):
     """Navigate every sidebar route and verify no Streamlit exception."""
 
     def test_all_routes_render(self):
-        shipments = _shipments()
-        customers = _customers()
-        with patch("views.web_app.refresh_core_data", return_value=None):
-            with patch("views.web_app.require_login",
-                         return_value=_login_fixture()):
-                with patch("views.dashboard.load_data",
-                           return_value=shipments):
-                    with patch("views.dashboard.load_tasks", return_value=[]):
-                        with patch("views.customers.load_customers",
-                                   return_value=customers):
-                            app = AppTest.from_file(str(APP_PATH),
-                                                    default_timeout=120)
-                            app.run()
-                            _assert_no_exceptions(self, app)
+        """The CURRENT host boots and every navigation destination resolves.
 
-                            # Navigate via sidebar buttons
-                            sidebar_buttons = [
-                                b for b in app.sidebar.button
-                                if hasattr(b, "label")
-                            ]
-                            sidebar_selectboxes = app.sidebar.selectbox
+        LOGI-GOOD-V6 replaced the legacy Streamlit sidebar/dashboard with ONE
+        Components-v2 root whose pages live in the React shell (``component/
+        src``). The old route loop (click every sidebar button) can no longer
+        mean anything: there IS no Streamlit sidebar. The equivalent current
+        guarantee is asserted here, at the layers that own it today:
 
-                            # Collect route labels from buttons
-                            route_labels = []
-                            for b in sidebar_buttons:
-                                label = getattr(b, "label", "")
-                                if label and label not in route_labels:
-                                    route_labels.append(label)
+        1. the host script boots with an authenticated session and raises
+           nothing (the same "no Streamlit exception" invariant);
+        2. the view-model delivered to the component carries the worklist data
+           every page reads;
+        3. the legacy Streamlit navigation surface is NOT mounted (a silent
+           resurrection of the removed sidebar fails this test);
+        4. every destination in the shell's NAV table has a declared route, so a
+           nav item can never point at a dead page.
+        """
+        from views import logi_view_model as vm
 
-                            # Also check selectboxes for page selection
-                            for sb in sidebar_selectboxes:
-                                opts = getattr(sb, "options", [])
-                                for opt in opts:
-                                    if opt not in route_labels:
-                                        route_labels.append(opt)
+        fixture_user = _login_fixture({
+            "username": "fixture", "user_id": "U-FIXTURE", "email": "",
+            "active": True,
+        })
+        app = AppTest.from_file(str(APP_PATH), default_timeout=120)
+        app.session_state["current_user"] = dict(fixture_user)
+        with patch("core.database.load_users",
+                   return_value={"fixture": dict(fixture_user)}):
+            app.run()
+        _assert_no_exceptions(self, app)
 
-                            # Test each route by clicking/selecting
-                            for label in route_labels:
-                                # Try clicking a button with this label
-                                found = False
-                                for b in app.sidebar.button:
-                                    if getattr(b, "label", "") == label:
-                                        b.click()
-                                        found = True
-                                        break
-                                if not found:
-                                    # Try selecting from a selectbox
-                                    for sb in app.sidebar.selectbox:
-                                        opts = getattr(sb, "options", [])
-                                        if label in opts:
-                                            sb.set_value(label)
-                                            found = True
-                                            break
-                                if found:
-                                    app.run()
-                                    _assert_no_exceptions(self, app)
-                                    # Close any open shipment detail
-                                    if "btn_close_top" in {e.key for e in app.button}:
-                                        for b in app.button:
-                                            if b.key == "btn_close_top":
-                                                b.click()
-                                                break
-                                        app.run()
-                                        _assert_no_exceptions(self, app)
+        # 2. The ONE payload the shell renders from.
+        self.assertIn(vm.STATE_KEY, app.session_state)
+        model = app.session_state[vm.STATE_KEY]
+        self.assertEqual(
+            set(model),
+            {"version", "shipments", "tasks", "contracts", "customers",
+             "quotes", "notifications"},
+            "the delivered payload is the Phase A session shape",
+        )
+        self.assertTrue(model["version"], "a view-model version must be built")
+        self.assertIsInstance(model["shipments"], dict)
+        self.assertTrue(model["shipments"], "the sandbox worklist must not be empty")
 
+        # Every action link the payload hands the shell is an in-app route that
+        # the shell declares — the data-level equivalent of "the page exists".
+        for row in model["shipments"].values():
+            # ``route`` is the PHYSICAL lane ("Bằng Tường → Bắc Ninh"); the
+            # action links are ``nextRoute`` and the journey primary action.
+            links = [row.get("nextRoute") or ""]
+            links.append(((row.get("journey") or {}).get("primaryAction") or {}).get("route") or "")
+            for value in links:
+                if value:
+                    self.assertTrue(
+                        value.startswith(f"/lo-hang/{row['id']}"), (row.get("id"), value)
+                    )
+        for note in model["notifications"]:
+            self.assertTrue((note.get("route") or "/").startswith("/"), note)
+
+        # 3. No legacy Streamlit page switcher is mounted any more.
+        self.assertEqual([b.label for b in app.sidebar.button], [])
+        self.assertEqual([s.key for s in app.sidebar.selectbox], [])
+
+        # 4. Every shell NAV destination resolves to a declared route.
+        routes_source = (_REPO_ROOT / "component" / "src" / "App.tsx").read_text(encoding="utf-8")
+        declared = {chunk.split('"')[0] for chunk in routes_source.split('<Route path="')[1:]}
+        self.assertIn("/lo-hang/:id", declared)
+        nav_source = (_REPO_ROOT / "component" / "src" / "lib" / "data.ts").read_text(encoding="utf-8")
+        nav_block = nav_source[nav_source.index("export const NAV"):]
+        # The type annotation above the table also contains ``}[];`` — slice at
+        # the array's own closing ``];`` at column 0.
+        nav_block = nav_block[:nav_block.index("\n];")]
+        destinations = [chunk.split('"')[0] for chunk in nav_block.split('to: "')[1:]]
+        self.assertGreaterEqual(len(destinations), 10, destinations)
+        dead = sorted(set(destinations) - declared)
+        self.assertEqual(dead, [], f"NAV destinations without a declared route: {dead}")
 
 if __name__ == "__main__":
     unittest.main()

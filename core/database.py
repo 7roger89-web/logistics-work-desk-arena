@@ -4233,12 +4233,19 @@ def save_contract_intl_snapshot(document: Mapping[str, Any], actor: str | None =
         except Exception:
             existing = None
         if existing is not None:
-            # Compare fingerprints of persisted vs attempted payload (ignoring _id/captured server fields if needed)
-            # We compare the core content: inputs/fx/fee_rules/outputs etc via canonical fingerprint
-            if _financial_fingerprint(existing) == _financial_fingerprint(dict(payload)):
+            # Compare fingerprints of persisted vs attempted payload (ignoring
+            # the driver-assigned ``_id``). pymongo/mongomock MUTATE the dict
+            # handed to ``insert_one`` by adding ``_id``; without dropping it a
+            # byte-identical retry would hash differently from the stored row and
+            # be reported as an attempted overwrite instead of an idempotent
+            # replay. Immutability itself is unchanged: any content difference
+            # still fails below.
+            attempted = {k: v for k, v in payload.items() if k != "_id"}
+            original = {k: v for k, v in dict(document).items() if k != "_id"}
+            if _financial_fingerprint(existing) == _financial_fingerprint(attempted):
                 return True
             # Also allow if existing equals original document fingerprint (covering minor server-added fields)
-            if _financial_fingerprint(existing) == _financial_fingerprint(dict(document)):
+            if _financial_fingerprint(existing) == _financial_fingerprint(original):
                 return True
         _set_last_error("Snapshot đã tồn tại và không thể ghi đè (immutable).")
         return False

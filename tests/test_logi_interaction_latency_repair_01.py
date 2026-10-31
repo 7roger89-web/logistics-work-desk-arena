@@ -354,6 +354,25 @@ class InteractionLatencyRepairTests(unittest.TestCase):
     # 5. Optimization Guard: Fails if optimization is removed / reverted
     # -----------------------------------------------------------------------
 
+    def _canonical_users_patch(self):
+        """The action path re-validates the ACTOR against the canonical store.
+
+        ``core.auth.fresh_session_identity_for_action`` fails CLOSED when the
+        session user is not in ``core.database.load_users``. These two tests
+        drive real dispatch through ``logi_shell``, so they must state a real
+        user record — inheriting an empty store would prove nothing about the
+        dispatcher (the callback would simply refuse, as designed).
+        """
+        return patch("core.database.load_users", return_value={
+            "test_user": {
+                "username": "test_user",
+                "display_name": "Test User",
+                "role": "admin",
+                "active": True,
+                "user_id": "u_test",
+            },
+        })
+
     def test_adversarial_reverting_to_baseline_produces_double_build_and_rerun(self) -> None:
         """Adversarial check: if callback does NOT run before script body (old baseline),
         the system does two full VM builds and triggers an explicit st.rerun."""
@@ -374,13 +393,18 @@ class InteractionLatencyRepairTests(unittest.TestCase):
                 return ComponentResult({}, trigger)
             return ComponentResult({}, {})
 
+        # A real session + canonical user record: the post-render fallback only
+        # dispatches for a session the canonical store still confirms.
+        st.session_state["current_user"] = {"username": "test_user", "role": "admin"}
+
         # Simulate OLD BASELINE: callback is lambda: None (no-op prefix),
         # so dispatch only runs post-render.
         with patch("views.logi_view_model.build_view_model", side_effect=lambda: bvm_calls.append(1) or {"version": 1}), \
              patch("streamlit.rerun", side_effect=lambda: rerun_calls.append(1)), \
              patch("views.logi_shell._renderer", return_value=fake_renderer), \
              patch("views.web_app.require_login", return_value={"username": "test_user", "role": "admin"}), \
-             patch("core.database.save_shipment_atomic", return_value=True):
+             patch("core.database.save_shipment_atomic", return_value=True), \
+             self._canonical_users_patch():
 
             # Old baseline run 1: (no callback, script body runs)
             web_app.main()
@@ -406,7 +430,8 @@ class InteractionLatencyRepairTests(unittest.TestCase):
         st.session_state[COMPONENT_KEY] = trigger
         st.session_state["current_user"] = {"username": "test_user", "role": "admin"}
 
-        with patch("core.database.save_shipment_atomic", return_value=True) as mock_save:
+        with patch("core.database.save_shipment_atomic", return_value=True) as mock_save, \
+                self._canonical_users_patch():
             # First callback in batch
             logi_shell._on_component_event()
             # Second callback in batch (e.g. fired by another trigger in aggregator)

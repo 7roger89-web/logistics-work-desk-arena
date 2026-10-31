@@ -51,6 +51,11 @@ const CATALOG_KIND_LABEL: Record<string, string> = {
   EQUIPMENT: "Container / thiết bị",
 };
 
+// The FINANCE/COST catalog is backend-owned: the browser receives every
+// service name/group through the authoritative catalog slice and never keeps a
+// copy of one. A blank group is therefore the honest default — the server's
+// normalize_catalog_entry applies the canonical SERVICE group when the operator
+// leaves it empty.
 const EMPTY_CATALOG: CatalogForm = {
   id: "",
   kind: "SERVICE",
@@ -59,7 +64,7 @@ const EMPTY_CATALOG: CatalogForm = {
   aliases: "",
   active: true,
   unit: "Lần",
-  group: "DỊCH VỤ XNK",
+  group: "",
   legacyCodes: "",
   country: "",
   unlocode: "",
@@ -364,7 +369,7 @@ function CatalogEditor() {
       aliases: (entry.aliases || []).join(", "),
       active: entry.active !== false,
       unit: entry.unit || "Lần",
-      group: entry.group || "DỊCH VỤ XNK",
+      group: entry.group || "",
       legacyCodes: (entry.legacy_codes || []).join(", "),
       country: entry.country || "",
       unlocode: entry.unlocode || "",

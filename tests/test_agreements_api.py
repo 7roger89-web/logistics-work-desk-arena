@@ -36,7 +36,15 @@ class LoadAgreementsTests(unittest.TestCase):
     def test_load_agreements_returns_dict_from_load_dict(self, load_dict):
         result = db.load_agreements()
         self.assertEqual(result, FIXTURES)
-        load_dict.assert_called_once_with("agreements", query={"is_deleted": {"$ne": True}})
+        # ``load_agreements`` now honours an optional explicit ``db`` handle
+        # (the render path passes the ONE handle it already resolved), so the
+        # call carries that keyword. The reader contract under test is unchanged:
+        # ONE read of ``agreements`` with the not-deleted predicate.
+        self.assertEqual(load_dict.call_count, 1)
+        called_args = load_dict.call_args
+        self.assertEqual(called_args.args, ("agreements",))
+        self.assertEqual(called_args.kwargs["query"], {"is_deleted": {"$ne": True}})
+        self.assertEqual(set(called_args.kwargs), {"query", "db"})
 
     @patch.object(db, "_load_dict", return_value={})
     def test_load_agreements_returns_empty_dict_when_none_stored(self, load_dict):

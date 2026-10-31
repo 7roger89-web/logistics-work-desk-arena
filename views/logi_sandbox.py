@@ -210,7 +210,32 @@ def ensure_backend(*, force_reseed: bool = False) -> str:
 
 
 def reset_backend() -> None:
-    """Drop the sandbox transport (used by tests for a clean database)."""
+    """Drop the sandbox transport (used by tests for a clean database).
+
+    A sandbox reset must also drop the SESSION-scoped generated-file store the
+    previous backend produced. Those payloads are keyed by shipment/record
+    identity (``logi_c1_doc_outputs_<id>`` / ``docgen_outputs_<id>``) and are
+    never overwritten ("existing revisions are never overwritten"), so a stale
+    entry from a previous isolated backend would be served as the readback of a
+    NEW document with the same id — an unfaithful byte readback across
+    databases. Clearing them here keeps one sandbox instance == one backend
+    plus the session state that backend produced; it never runs in production
+    (a real MONGO_URI never enters the sandbox).
+    """
     _state["transport"] = None
     _state["client"] = None
     _state["seeded"] = False
+    _clear_session_generated_outputs()
+
+
+def _clear_session_generated_outputs() -> None:
+    """Forget the session's generated-file payloads (sandbox reset only)."""
+    try:
+        import streamlit as st
+
+        state = st.session_state
+        for key in [k for k in state.keys() if isinstance(k, str)]:
+            if key.startswith("logi_c1_doc_outputs_") or key.startswith("docgen_outputs_"):
+                state.pop(key, None)
+    except Exception:  # noqa: BLE001 - no session (bare worker): nothing to clear
+        return

@@ -53,10 +53,23 @@ def test_seed_shape():
 
 
 def test_view_model_shape_via_app():
+    from unittest.mock import patch
+
     from streamlit.testing.v1 import AppTest
 
-    at = AppTest.from_file(str(REPO_ROOT / "app.py"), default_timeout=60)
-    at.run()
+    # The host is authenticated before the first run: ``require_login``
+    # re-derives the session identity from the canonical store on every rerun,
+    # so the store must contain THIS user. Without it the run correctly stops at
+    # the login screen and builds no view-model (nothing to assert).
+    fixture_user = {
+        "username": "fixture", "display_name": "Fixture", "role": "admin",
+        "active": True, "user_id": "U-FIXTURE", "email": "",
+    }
+    at = AppTest.from_file(str(REPO_ROOT / "app.py"), default_timeout=120)
+    at.session_state["current_user"] = dict(fixture_user)
+    with patch("core.database.load_users",
+               return_value={"fixture": dict(fixture_user)}):
+        at.run()
     assert not at.exception, f"app raised: {[str(e.value) for e in at.exception]}"
     assert logi_view_model.STATE_KEY in at.session_state
 

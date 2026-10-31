@@ -686,11 +686,21 @@ def _assert_build_read_budget(result: dict[str, Any]) -> None:
     Issue #195 — the total bound was recalibrated from 18 to 26: the product
     has grown since PR74 (Admin-published uploaded templates need the
     app_settings registry, the NotebookLM registry, work-module templates),
-    and each of those is a bounded once-per-build read, not an N+1.  The
-    strict guards that actually catch N+1 regressions stay: no
+    and each of those is a bounded once-per-build read, not an N+1.
+
+    Issue #212 — recalibrated again from 26 to 28 for the Bể thông tin / ghi
+    nhanh inbox slice: its projection asks the ``quick_notes`` collection for
+    the total/linked/unlinked counter triple, i.e. three count_documents per
+    BUILD (never per shipment, and the snippet list itself is still exactly one
+    ``find``).  Two new bounded counters + the pinned ``quick_notes.find`` are
+    the whole delta; the number is pinned by count below so a fourth scan (or a
+    per-shipment loop) still fails this guard.
+
+    The strict guards that actually catch N+1 regressions stay: no
     contracts.find_one, every collection's find at most once (app_settings at
     most 3: one shared uploaded-template registry read, one effective-catalog
-    build, one NotebookLM registry), and nothing per shipment.
+    build, one NotebookLM registry), quick_notes.count_documents at most 3, and
+    nothing per shipment.
     """
     ops = _build_ops_by_collection(result)
     assert ops.get("contracts.find_one", 0) == 0, ops   # was one read PER CONTRACT
@@ -701,7 +711,17 @@ def _assert_build_read_budget(result: dict[str, Any]) -> None:
                        "financial_obligations", "financial_transactions", "financial_allocations"):
         assert ops.get(f"{collection}.find", 0) <= 1, (collection, ops)
     assert ops.get("shipments.find", 0) <= 2, ops
-    assert sum(ops.values()) <= 26, ops
+    # Issue #212 — the three inbox counters are a bounded per-build constant.
+    assert ops.get("quick_notes.count_documents", 0) <= 3, ops
+    # ``core.utils.resolve_tariff_db_path`` is ``lru_cache(maxsize=1)``: the
+    # Admin-published tariff asset is read at most ONCE PER PROCESS, so whether
+    # this single read lands inside THIS build depends on test order (it is
+    # already warm when another test resolved it first). Pin it explicitly and
+    # keep it out of the per-build N+1 total instead of making the total
+    # order-dependent.
+    cached_asset_reads = ops.get("app_assets.find_one", 0)
+    assert cached_asset_reads <= 1, ops
+    assert sum(ops.values()) - cached_asset_reads <= 28, ops
 
 
 # ---------------------------------------------------------------------------

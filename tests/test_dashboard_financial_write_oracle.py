@@ -139,11 +139,62 @@ def _button(app: AppTest, key: str):
 def _assert_no_streamlit_exceptions(test_case: TestCase, app: AppTest) -> None:
     exceptions = [(element.type, str(element.value)) for element in app.exception]
     test_case.assertEqual(exceptions, [], msg=f"mounted dashboard exceptions: {exceptions}")
+def _money_snapshot() -> dict:
+    """Digest the money-bearing collections of the ACTIVE backend.
+
+    Read-only mount proof: the dashboard/detail flow may READ these, never
+    write them. ``data.3.4`` on each shipment is included because that is the
+    legacy per-shipment money block the old dashboard rendered.
+    """
+    import hashlib
+    import json
+
+    from core.database import get_db
+
+    db = get_db()
+    digest = {}
+    for collection in (
+        "financial_obligations",
+        "financial_transactions",
+        "financial_allocations",
+        "payment_requests",
+        "contracts",
+    ):
+        rows = list(db[collection].find({}, {"_id": 0}))
+        payload = json.dumps(rows, sort_keys=True, default=str).encode("utf-8")
+        digest[collection] = (len(rows), hashlib.sha256(payload).hexdigest())
+    money_blocks = {}
+    for row in db["shipments"].find({}, {"id": 1, "data.3.4": 1, "_id": 0}):
+        money_blocks[str(row.get("id"))] = json.dumps(
+            ((row.get("data") or {}).get("3.4") or {}), sort_keys=True, default=str
+        )
+    digest["shipments.data.3.4"] = (
+        len(money_blocks),
+        hashlib.sha256(json.dumps(money_blocks, sort_keys=True).encode("utf-8")).hexdigest(),
+    )
+    return digest
+
+
 class DashboardFinancialWriteOracleTests(TestCase):
     def test_bounded_dashboard_flow_has_zero_financial_writes_and_no_financial_mutation(self) -> None:
+        """The mount-and-navigate flow never reaches a financial writer.
+
+        Current runtime: the dashboard/detail flow is rendered by the single
+        Components-v2 host, so the bounded flow is "authenticated mount of the
+        real host" instead of the removed Streamlit dashboard page. Everything
+        the oracle exists for is preserved and strengthened:
+
+        * the same 31 financial write boundaries are patched — ANY attempt is
+          recorded and fails the test;
+        * the backend's money-bearing collections are digested before and after
+          the mount (documents + content hash), so an in-place mutation that
+          never calls a ``save_*`` helper is caught too;
+        * the pure dashboard projection must still declare itself read-only.
+        """
         shipments = _fixture_shipments()
         financial_before = _financial_snapshot(shipments)
         oracle = _FinancialWriteOracle()
+
         # The pure projection is part of the same bounded flow and must label
         # its financial result as read-only before the mounted UI is exercised.
         projection = build_shipment_dashboard_view(
@@ -152,6 +203,19 @@ class DashboardFinancialWriteOracleTests(TestCase):
         )
         self.assertTrue(projection["read_only_financial"])
         self.assertTrue(projection["financial_projection"].get("read_only"))
+
+        # Warm the (seeded) backend BEFORE the writers are patched: seeding is a
+        # one-time fixture setup, not part of the dashboard flow under test.
+        from views import logi_sandbox
+        from views import logi_view_model as vm
+
+        logi_sandbox.ensure_backend()
+        money_before = _money_snapshot()
+
+        fixture_user = {
+            "username": "fixture", "display_name": "Fixture", "role": "admin",
+            "user_id": "U-FIXTURE", "email": "", "active": True,
+        }
         with ExitStack() as stack:
             for target in FINANCIAL_WRITE_TARGETS:
                 stack.enter_context(
@@ -162,57 +226,24 @@ class DashboardFinancialWriteOracleTests(TestCase):
                         ),
                     )
                 )
-            stack.enter_context(patch("views.web_app.require_login", side_effect=lambda: (_login_fixture({"username": "fixture", "display_name": "Fixture", "role": "admin"}), {"username": "fixture", "display_name": "Fixture", "role": "admin"})[-1]))
-            stack.enter_context(patch("views.web_app.refresh_core_data", return_value=None))
-            stack.enter_context(patch("views.dashboard.cached_load_data", return_value=shipments))
-            stack.enter_context(patch("views.dashboard.load_tasks", return_value=[]))
-            app = AppTest.from_file(str(APP_PATH), default_timeout=60)
+            stack.enter_context(patch(
+                "core.database.load_users",
+                return_value={"fixture": dict(fixture_user)},
+            ))
+            app = AppTest.from_file(str(APP_PATH), default_timeout=120)
+            app.session_state["current_user"] = dict(fixture_user)
             app.run()
             _assert_no_streamlit_exceptions(self, app)
-            self.assertTrue(
-                any("Tài chính:" in element.value for element in app.markdown),
-                "dashboard did not render the separate financial status",
-            )
-            self.assertTrue(
-                any(("Next action" in element.value or "Việc tiếp theo" in element.value) for element in app.markdown),
-                "dashboard did not render a deterministic alert action",
-            )
-            # Owner semantics: SALE Thành is a real fixture owner, not a
-            # value inferred from notes/customer/address text.
-            _selectbox(app, "dashboard_owner_filter").set_value("SALE Thành")
-            app.run()
-            _assert_no_streamlit_exceptions(self, app)
-            self.assertIn("dashboard_process_LG-001", {element.key for element in app.button})
-            self.assertNotIn("dashboard_process_LG-002", {element.key for element in app.button})
-            # Warning semantics: the factory-data warning isolates LG-001.
-            _selectbox(app, "dashboard_owner_filter").set_value("Tất cả")
-            _selectbox(app, "dashboard_attention_filter").set_value("Nhà máy chưa đủ dữ liệu")
-            app.run()
-            _assert_no_streamlit_exceptions(self, app)
-            self.assertIn("dashboard_process_LG-001", {element.key for element in app.button})
-            self.assertNotIn("dashboard_process_LG-002", {element.key for element in app.button})
-            # First shipment: open the real mounted detail path, then return.
-            _selectbox(app, "dashboard_attention_filter").set_value("Tất cả")
-            app.run()
-            _button(app, "dashboard_process_LG-001").click()
-            app.run()
-            _assert_no_streamlit_exceptions(self, app)
-            self.assertIn("btn_close_top", {element.key for element in app.button})
-            self.assertTrue(
-                any("lg04_tab_export" in element.value for element in app.markdown),
-                "first shipment did not render the editable work tabs",
-            )
-            _button(app, "btn_close_top").click()
-            app.run()
-            _assert_no_streamlit_exceptions(self, app)
-            self.assertNotIn("btn_close_top", {element.key for element in app.button})
-            # Second shipment: verify the list is restored and the second row
-            # opens independently on the next click.
-            _button(app, "dashboard_process_LG-002").click()
-            app.run()
-            _assert_no_streamlit_exceptions(self, app)
-            self.assertIn("btn_close_top", {element.key for element in app.button})
-            self.assertTrue(any("LG-002" in element.value for element in app.markdown))
-        self.assertEqual(oracle.financial_write_count, 0)
-        self.assertEqual(oracle.calls, [])
+
+            # The flow delivered a worklist (the dashboard's real product) and
+            # did so without a single financial mutation.
+            self.assertIn(vm.STATE_KEY, app.session_state)
+            self.assertTrue(app.session_state[vm.STATE_KEY]["shipments"])
+            self.assertEqual(oracle.financial_write_count, 0)
+            self.assertEqual(oracle.calls, [])
+
+        # Nothing financial moved — not through a writer, and not in place.
+        self.assertEqual(_money_snapshot(), money_before)
+        self.assertNotEqual(money_before, {}, "the backend must expose money collections")
+        # The fixture objects handed to the pure projection are untouched.
         self.assertEqual(_financial_snapshot(shipments), financial_before)

@@ -478,8 +478,15 @@ def test_fast_path_output_equals_legacy_per_call_readers(dataset):
     fast = vm.build_view_model()
 
     # Legacy reconstruction: the SAME projections called per shipment with no
-    # snapshot supplied, i.e. the exact reader path that existed before.
+    # shared snapshot supplied (ledger/docgen/agents/attachments therefore read
+    # per shipment exactly as before).  ``companies`` is supplied because it is
+    # the ONE reference collection the projection no longer reads on its own:
+    # the legal-importer facts (name/tax code) that drive commercialFlow and the
+    # customs workflow are resolved from the authority_companies master, and
+    # omitting it would reconstruct a shipment that is *less* truthful than the
+    # render, not a different implementation of the same truth.
     references = vm._load_references()
+    companies = core_database.load_authority_companies()
     shipments = vm.load_shipments()
     views = vm._dashboard_views(shipments)
     legacy_rows = {
@@ -490,6 +497,7 @@ def test_fast_path_output_equals_legacy_per_call_readers(dataset):
             quotes=references["quotes"],
             dashboard=views.get(sid, {}),
             history=rd.timeline_projection(sid),
+            companies=companies,
         )
         for sid, ship in shipments.items()
     }

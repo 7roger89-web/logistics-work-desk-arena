@@ -109,12 +109,21 @@ def test_service_catalog_is_projected_from_core_config():
     assert catalog, "the canonical catalog must be projected, not emptied"
     assert len(catalog) == len(GETFLY_SERVICES_LIST)
     assert [entry["code"] for entry in catalog] == [item["code"] for item in GETFLY_SERVICES_LIST]
+    # Every row is the canonical four fields PLUS the two identity fields the
+    # catalog itself owns (a stable id for writes and the source it came from).
+    # No other key may appear: the picker must not invent a price/unit twice.
+    assert {frozenset(entry) for entry in catalog} == {
+        frozenset({"id", "code", "name", "unit", "group", "source"})
+    }
     assert catalog[0] == {
+        "id": f"LEGACY:{GETFLY_SERVICES_LIST[0]['code']}",
         "code": GETFLY_SERVICES_LIST[0]["code"],
         "name": GETFLY_SERVICES_LIST[0]["name"],
         "unit": GETFLY_SERVICES_LIST[0]["unit"],
         "group": GETFLY_SERVICES_LIST[0]["group"],
+        "source": "LEGACY_CONFIG",
     }
+    assert {entry["source"] for entry in catalog} == {"LEGACY_CONFIG"}
     # Read-only projection: mutating the result cannot affect the constant.
     catalog[0]["name"] = "SỬA TRÁI PHÉP"
     assert GETFLY_SERVICES_LIST[0]["name"] != "SỬA TRÁI PHÉP"

@@ -43,28 +43,48 @@ def test_summary_alias_contract_is_exact_and_read_only() -> None:
     assert actual["financial_projection"].get("read_only") is True
 
 
-def test_dashboard_lazy_workdesk_rows_call_summary_alias_and_render() -> None:
-    shipments = _shipments()
-    customers = _customers()
+def test_dashboard_lazy_workdesk_rows_build_one_projection_and_render() -> None:
+    """The mounted desk builds its rows through the ONE lazy projection.
 
-    with patch("views.web_app.refresh_core_data", return_value=None):
-        with patch("views.web_app.require_login", return_value=_login_fixture()):
-            with patch("views.dashboard.load_data", return_value=shipments):
-                with patch("views.dashboard.load_tasks", return_value=[]):
-                    with patch("views.customers.load_customers", return_value=customers):
-                        with patch(
-                            "core.shipment_dashboard.build_shipment_summary",
-                            wraps=build_shipment_summary,
-                        ) as summary_alias:
-                            app = AppTest.from_file(str(APP_PATH), default_timeout=120)
-                            app.run()
+    LOG-HOTFIX-04 pinned the legacy Streamlit dashboard's lazy-row path and its
+    ``build_shipment_summary`` alias. That page is unmounted (the desk is the
+    React shell), but the property the hotfix cared about is unchanged and is
+    asserted on the CURRENT path: the delivered worklist is built by
+    ``core.shipment_dashboard.build_shipment_dashboard_view`` exactly once per
+    shipment (no per-widget recomputation), and each row still carries a
+    deterministic next action for the UI to render.
+    """
+    calls: list[str] = []
+
+    from core.shipment_dashboard import build_shipment_dashboard_view as real_view
+
+    def _spy(shipment, *args, **kwargs):
+        calls.append(str(shipment.get("id") or shipment.get("shipment_id") or "?"))
+        return real_view(shipment, *args, **kwargs)
+
+    fixture_user = _login_fixture({
+        "username": "fixture", "user_id": "U-FIXTURE", "email": "", "active": True,
+    })
+    with patch("core.shipment_dashboard.build_shipment_dashboard_view", side_effect=_spy):
+        app = AppTest.from_file(str(APP_PATH), default_timeout=120)
+        app.session_state["current_user"] = dict(fixture_user)
+        with patch("core.database.load_users",
+                   return_value={"fixture": dict(fixture_user)}):
+            app.run()
 
     _assert_no_streamlit_exceptions(app)
-    assert summary_alias.call_count >= 1
-    rendered = "\n".join(str(element.value or "") for element in app.markdown)
-    assert "S-001" in rendered
-    assert "Việc tiếp theo" in rendered
-    assert any("Xử lý" in str(button.label) for button in app.button)
+
+    from views import logi_view_model as vm
+
+    model = app.session_state[vm.STATE_KEY]
+    rows = list(model["shipments"].values())
+    assert rows, "the desk delivered no worklist"
+    # ONE dashboard projection per shipment — the lazy path, not per widget.
+    assert sorted(calls) == sorted(row["id"] for row in rows), (calls, [r["id"] for r in rows])
+    for row in rows:
+        assert row["nextAction"], row["id"]
+        assert row["priority"] in {"Khan", "CanXuLy", "BinhThuong"}, row["id"]
+        assert row["nextLabel"] and row["nextRoute"].startswith("/lo-hang/"), row["id"]
 
 
 def test_shipment_workspace_lazy_path_renders_readiness_without_exception() -> None:

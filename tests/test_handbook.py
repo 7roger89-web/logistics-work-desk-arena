@@ -238,12 +238,28 @@ def test_projection_declares_read_only_scope_limits():
 def test_no_authoring_or_search_surface_was_added():
     from views import logi_view_model as vm
 
-    # The page needs no server-side action: no event, no writer, no index.
+    # The page needs no server-side action: no handbook/knowledge authoring
+    # event exists in the ONE dispatcher contract.
     assert not any(
         token in name
         for name in vm.ALL_EVENTS
-        for token in ("note", "handbook", "knowledge", "article", "publish")
+        for token in ("handbook", "knowledge", "article")
     )
+    # ``note`` and ``publish`` DO appear in the event contract, but they belong
+    # to features that are NOT the handbook: Journey-node comments/replies
+    # (Issue #236), the Admin-only NotebookLM source registry for /notebook, and
+    # docgen-template publication (LOGI-193). Pin the exact sets so no future
+    # handbook authoring action can hide behind any of those words (this is
+    # strictly narrower than the old blanket substring ban, which had started
+    # flagging those unrelated features).
+    assert {name for name in vm.ALL_EVENTS if "note" in name} == {
+        "journey_note_create",
+        "journey_note_download",
+        "notebooklm_registry_save",
+    }
+    assert {name for name in vm.ALL_EVENTS if "publish" in name} == {
+        "docgen_template_publish",
+    }
     projection = hb.handbook_projection(field_paths={})
     assert "search" not in projection
     assert not any("index" in section for section in projection)
