@@ -1,0 +1,138 @@
+PRODUCT_HEAD_BEFORE_FIX=2941181d0f17701a7039d431262a0f35e27a848b
+PRODUCT_SOURCE_SHA256=f14430997ed6009739e3de13e1fa4ce59a597cf29884abe9d1b8fc1994bc1a77
+FROZEN_TEST_SHA256=a7ed0e8fc59251b0823359ea021188678b2a6bf1dfd85b2224e908eb565c2d1a
+COMMAND=.venv/bin/python -m pytest tests/test_intl_payment_comparator.py -q -p no:cacheprovider -o junit_family=xunit1 --junitxml=/home/user/s1-evidence/before.xml
+................FFF................................                      [100%]
+=================================== FAILURES ===================================
+________________ test_s1_duplicate_key_replay_ignores_driver_id ________________
+
+s1_snapshot_db = Database(mongomock.MongoClient('localhost', 27017), 'test_logi_s1_0c6c88d3c3f643adb2311f58f23e17cb')
+s1_sale = None
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f99d4677510>
+record_property = <function record_property.<locals>.append_property at 0x7f99d4658f40>
+
+    def test_s1_duplicate_key_replay_ignores_driver_id(
+        s1_snapshot_db, s1_sale, monkeypatch, record_property,
+    ):
+        """Interleave a competing real save between the outer lookup and insert."""
+        import core.database as dbmod
+    
+        db = s1_snapshot_db
+        monkeypatch.setattr(dbmod, "get_db", lambda: db)
+        assert dbmod.ensure_indexes(), dbmod.get_last_db_error()
+        collection = db.contract_intl_payment_snapshots
+        assert collection.index_information()["uq_contract_intl_snapshot_id"]["unique"]
+        real_lookup = collection.find_one
+        winner_state = None
+        competed = False
+    
+        def competing_lookup(*args, **kwargs):
+            nonlocal winner_state, competed
+            existing = real_lookup(*args, **kwargs)
+            if not competed:
+                competed = True
+                # A second real writer wins after the outer writer read "empty".
+                assert dbmod.save_contract_intl_snapshot(_s1_snapshot_payload()) is True
+                winner_state = _s1_state(db)
+                return None
+            return existing
+    
+        with patch.object(collection, "find_one", side_effect=competing_lookup), \
+                patch.object(collection, "insert_one", wraps=collection.insert_one) as insert:
+            saved = dbmod.save_contract_intl_snapshot(_s1_snapshot_payload())
+            state = _s1_state(db)
+>           assert saved is True, {
+                "saved": saved, "error": dbmod.get_last_db_error(),
+                "rows": len(state[0]), "audits": len(state[1]),
+            }
+E           AssertionError: {'audits': 1, 'error': 'Snapshot đã tồn tại và không thể ghi đè (immutable).', 'rows': 1, 'saved': False}
+E           assert False is True
+
+tests/test_intl_payment_comparator.py:403: AssertionError
+---------------------------- Captured stderr setup -----------------------------
+2026-10-31 03:25:26.635 WARNING streamlit.runtime.scriptrunner_utils.script_run_context: Thread 'MainThread': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+--------------------------- Captured stderr teardown ---------------------------
+2026-10-31 03:25:26.700 WARNING streamlit.runtime.scriptrunner_utils.script_run_context: Thread 'MainThread': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+________________ test_s1_failed_lookup_never_inserts[no-index] _________________
+
+s1_snapshot_db = Database(mongomock.MongoClient('localhost', 27017), 'test_logi_s1_8c6e5d09221f4d28a5d4d03254fed05a')
+s1_sale = None
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f99d4514750>
+unique_index = False
+record_property = <function record_property.<locals>.append_property at 0x7f99d4658cc0>
+
+    @pytest.mark.parametrize("unique_index", [False, True], ids=["no-index", "unique-index"])
+    def test_s1_failed_lookup_never_inserts(
+        s1_snapshot_db, s1_sale, monkeypatch, unique_index, record_property,
+    ):
+        import core.database as dbmod
+    
+        db = s1_snapshot_db
+        monkeypatch.setattr(dbmod, "get_db", lambda: db)
+        collection = db.contract_intl_payment_snapshots
+        if unique_index:
+            assert dbmod.ensure_indexes(), dbmod.get_last_db_error()
+            assert collection.index_information()["uq_contract_intl_snapshot_id"]["unique"]
+        else:
+            assert "uq_contract_intl_snapshot_id" not in collection.index_information()
+    
+        # Fault only the snapshot lookup. Contract authorization/lookup and all
+        # persistence remain real; a buggy insert would actually persist a row.
+        with patch.object(collection, "find_one", side_effect=PyMongoError("S1_LOOKUP_UNAVAILABLE")), \
+                patch.object(collection, "insert_one", wraps=collection.insert_one) as insert:
+            saved = dbmod.save_contract_intl_snapshot(_s1_snapshot_payload())
+            state = _s1_state(db)
+>           assert saved is False, {"saved": saved, "rows": state[0], "audits": state[1]}
+E           AssertionError: {'audits': [{'action': 'create', 'actor': 'sale.s1', 'actor_role': 'sale', 'actor_user_id': 'U-S1-SALE', ...}], 'rows'...', 'created_at': '2026-10-31T00:00:00+00:00', 'created_by': 'sale.s1', 'created_by_role': 'sale', ...}], 'saved': True}
+E           assert True is False
+
+tests/test_intl_payment_comparator.py:442: AssertionError
+---------------------------- Captured stderr setup -----------------------------
+2026-10-31 03:25:26.700 WARNING streamlit.runtime.scriptrunner_utils.script_run_context: Thread 'MainThread': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+--------------------------- Captured stderr teardown ---------------------------
+2026-10-31 03:25:26.712 WARNING streamlit.runtime.scriptrunner_utils.script_run_context: Thread 'MainThread': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+______________ test_s1_failed_lookup_never_inserts[unique-index] _______________
+
+s1_snapshot_db = Database(mongomock.MongoClient('localhost', 27017), 'test_logi_s1_c363bf15c11e4c88a9f68a0cd580c8de')
+s1_sale = None
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f99d45160d0>
+unique_index = True
+record_property = <function record_property.<locals>.append_property at 0x7f99d4658b80>
+
+    @pytest.mark.parametrize("unique_index", [False, True], ids=["no-index", "unique-index"])
+    def test_s1_failed_lookup_never_inserts(
+        s1_snapshot_db, s1_sale, monkeypatch, unique_index, record_property,
+    ):
+        import core.database as dbmod
+    
+        db = s1_snapshot_db
+        monkeypatch.setattr(dbmod, "get_db", lambda: db)
+        collection = db.contract_intl_payment_snapshots
+        if unique_index:
+            assert dbmod.ensure_indexes(), dbmod.get_last_db_error()
+            assert collection.index_information()["uq_contract_intl_snapshot_id"]["unique"]
+        else:
+            assert "uq_contract_intl_snapshot_id" not in collection.index_information()
+    
+        # Fault only the snapshot lookup. Contract authorization/lookup and all
+        # persistence remain real; a buggy insert would actually persist a row.
+        with patch.object(collection, "find_one", side_effect=PyMongoError("S1_LOOKUP_UNAVAILABLE")), \
+                patch.object(collection, "insert_one", wraps=collection.insert_one) as insert:
+            saved = dbmod.save_contract_intl_snapshot(_s1_snapshot_payload())
+            state = _s1_state(db)
+>           assert saved is False, {"saved": saved, "rows": state[0], "audits": state[1]}
+E           AssertionError: {'audits': [{'action': 'create', 'actor': 'sale.s1', 'actor_role': 'sale', 'actor_user_id': 'U-S1-SALE', ...}], 'rows'...', 'created_at': '2026-10-31T00:00:00+00:00', 'created_by': 'sale.s1', 'created_by_role': 'sale', ...}], 'saved': True}
+E           assert True is False
+
+tests/test_intl_payment_comparator.py:442: AssertionError
+---------------------------- Captured stderr setup -----------------------------
+2026-10-31 03:25:26.713 WARNING streamlit.runtime.scriptrunner_utils.script_run_context: Thread 'MainThread': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+--------------------------- Captured stderr teardown ---------------------------
+2026-10-31 03:25:26.729 WARNING streamlit.runtime.scriptrunner_utils.script_run_context: Thread 'MainThread': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+=========================== short test summary info ============================
+FAILED tests/test_intl_payment_comparator.py::test_s1_duplicate_key_replay_ignores_driver_id
+FAILED tests/test_intl_payment_comparator.py::test_s1_failed_lookup_never_inserts[no-index]
+FAILED tests/test_intl_payment_comparator.py::test_s1_failed_lookup_never_inserts[unique-index]
+3 failed, 48 passed in 0.98s
+
+PYTEST_EXIT=1

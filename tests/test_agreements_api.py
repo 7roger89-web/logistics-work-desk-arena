@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import unittest
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import ANY, patch
 
 from core import database as db
 
@@ -36,7 +36,11 @@ class LoadAgreementsTests(unittest.TestCase):
     def test_load_agreements_returns_dict_from_load_dict(self, load_dict):
         result = db.load_agreements()
         self.assertEqual(result, FIXTURES)
-        load_dict.assert_called_once_with("agreements", query={"is_deleted": {"$ne": True}})
+        # LOGI_... `_load_dict` gained an explicit optional `db` seam (render
+        # read reuse); the query filter and the single read are unchanged.
+        load_dict.assert_called_once_with(
+            "agreements", query={"is_deleted": {"$ne": True}}, db=ANY
+        )
 
     @patch.object(db, "_load_dict", return_value={})
     def test_load_agreements_returns_empty_dict_when_none_stored(self, load_dict):

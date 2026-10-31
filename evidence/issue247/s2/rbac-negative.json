@@ -1,0 +1,62 @@
+{
+  "result": false,
+  "error": "Bạn không có quyền thực hiện giao dịch tài chính.",
+  "actor": "qa.s2.sale",
+  "finance_write": false,
+  "before": {
+    "pid": 11774,
+    "database": "logistics_staging",
+    "client_object_id": 140019226810832,
+    "database_object_id": 140019320155408,
+    "transport": "SANDBOX_STAGING",
+    "shipment_id": "LO-0306",
+    "currency": "VND",
+    "version": 1,
+    "payments": [
+      {
+        "id": "PAY-CA1C3A81FF964319A6BB7704390D8E63",
+        "request_id": "SEED-REQ-0306-1",
+        "date": "2026-09-03",
+        "amount": 60000000,
+        "note": "Thu tạm ứng đợt 1 theo HDMB-0306",
+        "created_by": "minhtu"
+      }
+    ],
+    "payment_count": 1,
+    "requests": [],
+    "request_count": 0,
+    "audits": [],
+    "audit_count": 0,
+    "events": [],
+    "event_count": 0
+  },
+  "after": {
+    "pid": 11774,
+    "database": "logistics_staging",
+    "client_object_id": 140019226810832,
+    "database_object_id": 140019320155408,
+    "transport": "SANDBOX_STAGING",
+    "shipment_id": "LO-0306",
+    "currency": "VND",
+    "version": 1,
+    "payments": [
+      {
+        "id": "PAY-CA1C3A81FF964319A6BB7704390D8E63",
+        "request_id": "SEED-REQ-0306-1",
+        "date": "2026-09-03",
+        "amount": 60000000,
+        "note": "Thu tạm ứng đợt 1 theo HDMB-0306",
+        "created_by": "minhtu"
+      }
+    ],
+    "payment_count": 1,
+    "requests": [],
+    "request_count": 0,
+    "audits": [],
+    "audit_count": 0,
+    "events": [],
+    "event_count": 0
+  },
+  "state_unchanged": true,
+  "same_process_and_store": true
+}

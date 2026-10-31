@@ -1,0 +1,14 @@
+{
+  "python": "Python 3.11.2",
+  "node": "v22.22.3",
+  "npm": "10.9.8",
+  "npm_ci_exit": 0,
+  "mongo_uri_present": false,
+  "local_env_exists": false,
+  "local_secrets_exists": false,
+  "database": "fresh mongomock per S1 test, dropped and checked in fixture teardown",
+  "pr_head_before": "2941181d0f17701a7039d431262a0f35e27a848b",
+  "staging_head": "ba03ae7ac27f2020c761bf405e1aaaab80709c62",
+  "source_sha256": "cfe9edc4f2cbce0643cb8ea74de5e731f7d3e53fb4dd51df8ee13881ff770d56",
+  "frozen_test_sha256": "a7ed0e8fc59251b0823359ea021188678b2a6bf1dfd85b2224e908eb565c2d1a"
+}

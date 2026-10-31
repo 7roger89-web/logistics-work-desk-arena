@@ -1,0 +1,38 @@
+=== dom_acceptance_create_shipment -> exit 0
+STEP 5 — REGRESSION: pre-existing duplicate + unrelated version change never false-navigate
+  ✓ pre-existing duplicate + unrelated version change can never false-navigate
+
+CREATE-SHIPMENT DOM acceptance PASSED — 5 checks
+=== dom_acceptance_finance_actual_entry -> exit 1
+  diff: 'simple'
+}
+
+Node.js v22.22.3
+=== dom_acceptance_g15_tenant_reset -> exit 0
+PASS G1.5 tenant/revocation model rerun clears stale data (0, 1, 2 lots)
+=== dom_acceptance_contract_slash_id -> exit 0
+  ✓ HDV 82/VSAL 2025 → MỞ → real ContractDetail (no Sắp có / NotFound)
+  ✓ canonical slash/percent/unicode fixture ids all resolve to detail
+  ✓ normal non-slash id HDMB-0306 still opens ContractDetail
+PASS contract slash-id specimen (3 groups)
+=== dom_acceptance_g1_customer_save_outcomes -> exit 0
+G1 PR #228 header customer save outcome DOM acceptance PASSED.
+=== dom_acceptance_journey_focus_shell -> exit 0
+PASS Journey Map node action (shell): 2 nodes each send their own read-only intent (LO-0307: MAIN_CARRIAGE, delivery), node interaction intact, zero-node lot inert
+=== dom_acceptance_execution_profile -> exit 1
+  diff: 'simple'
+}
+
+Node.js v22.22.3
+=== dom_acceptance_amount_integrity -> exit 1
+  diff: 'simple'
+}
+
+Node.js v22.22.3
+
+=== unwired legacy scripts (not part of the pytest gate)
+dom_acceptance_execution_profile exit=1
+dom_acceptance_amount_integrity exit=1
+dom_acceptance_finance_actual_entry exit=1
+dom_acceptance_real_use_repair exit=1
+dom_acceptance_shipment_slash_id exit=1

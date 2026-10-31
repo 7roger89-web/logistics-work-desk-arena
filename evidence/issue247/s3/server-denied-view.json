@@ -1,0 +1,5 @@
+{
+  "email_masked": "no***@example.test",
+  "exception": "PortalAccessDenied",
+  "principal_created": false
+}

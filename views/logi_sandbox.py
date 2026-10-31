@@ -96,6 +96,15 @@ try:
 except Exception:  # pragma: no cover - core.config always importable in-repo
     _ORIGINAL_MONGO_URI = ""
 
+#: ``core.database._init_connection_impl`` as it was BEFORE any sandbox
+#: install.  reset_backend() restores it (see below).
+try:
+    from core import database as _core_database_at_import
+
+    _ORIGINAL_INIT_CONNECTION_IMPL = _core_database_at_import._init_connection_impl
+except Exception:  # pragma: no cover - core.database always importable in-repo
+    _ORIGINAL_INIT_CONNECTION_IMPL = None
+
 
 def transport_name() -> str | None:
     return _state["transport"]
@@ -210,7 +219,20 @@ def ensure_backend(*, force_reseed: bool = False) -> str:
 
 
 def reset_backend() -> None:
-    """Drop the sandbox transport (used by tests for a clean database)."""
+    """Drop the sandbox transport (used by tests for a clean database).
+
+    Dropping ``_state`` alone is not enough: ``_install_sandbox_transport``
+    bound ``core.database._init_connection_impl`` to a closure over ITS client,
+    so every reader kept talking to the previous, already-seeded mongomock
+    database after a reset.  A later test then saw stale users/shipments it
+    never created (Issue #247: the first-admin bootstrap screen silently became
+    a login screen because the canonical user store still held three seeded
+    accounts).  A reset must therefore also unbind that connection.
+    """
     _state["transport"] = None
     _state["client"] = None
     _state["seeded"] = False
+    if _ORIGINAL_INIT_CONNECTION_IMPL is not None:
+        from core import database as core_database
+
+        core_database._init_connection_impl = _ORIGINAL_INIT_CONNECTION_IMPL

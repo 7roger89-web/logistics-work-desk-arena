@@ -1,0 +1,42 @@
+## SPEC_LOCK — Issue #247 / S2 — Staff payment UI real Chromium (31/10/2026)
+
+**OUTPUT FORMAT:** (1) PR #248 exact HEAD/base, preflight; (2) actual UI fixture and pre-state; (3) positive/negative browser steps, DB/audit readback, commands/exits/screenshots; (4) code changed or NO_CODE_CHANGE; (5) S2 PASS|BLOCKED and remaining Goal #247 UNKNOWN. One task only.
+
+### MỤC TIÊU (one observable vertical slice)
+On the existing **Trường Thành staff shipment detail** in Streamlit Components v2, an authorized TEST Support operator opens the **Tài chính / Công nợ** tab for synthetic `LO-0306`, clicks **“＋ GHI NHẬN THANH TOÁN”**, enters an isolated test amount (`137000`, fixture currency from shipment), clicks **“💾 LƯU KHOẢN THU”**, and can **reload** to see exactly ONE persisted new payment belonging to the SAME shipment and one matching request/audit. No premature green success before backend/readback. No duplicate write on immediate re-click/rerun. This proves the existing UI's `payment_record` flow; it **does not** claim the unrelated backend `save_contract_intl_snapshot` has a browser editor (it does not).
+
+### BỐI CẢNH, SOURCE CONTRACT (fresh-read before execution)
+- Repo `7roger89-web/logistics-work-desk-arena`, PR #248 target branch `arena/f1a205f4-logistics-work-desk-arena`, current observed HEAD `3516ce702f90d5a4a8582702ab0f9e38a1bd8cc6`; staging `ba03ae7ac27f2020c761bf405e1aaaab80709c62`. These are historical markers; measure anew. PR remains OPEN/HOLD; no main/Cloud/production.
+- `component/src/pages/ShipmentDetail.tsx` — `recordPay` dispatches `payment_record` with `shipmentId`, stable `requestId`, `amount`, `date`, `note`. `useEffect` waits for `lastWrites` matching `requestId` **AND** `s.finance.payments[].requestId` from a fresh view-model. Existing UI: `tab=tai-chinh`, `payment-record-sheet`, `payment-record-submit`.
+- `views/logi_view_model.py::_handle_payment_record` delegates to `core.database.save_direct_shipment_payment` and reprojects from `read_shipment`; `core.database.save_direct_shipment_payment` enforces `finance_write`, atomically records `data.3.4.payments` + `financial_action_requests` + `audit_logs action=direct_payment_created` + domain event with the SAME requestId.
+- `core/auth.py::ROLE_PERMISSIONS`: existing **support** has `finance_write`, operations does not. Do not elevate authorization. `views/logi_sandbox.py` preview seed uses explicit support actor and mongomock when `MONGO_URI` unset.
+- `evidence/arena-tooling-20261030/README.md` already PROVES running real Chromium 153 with `@playwright/cli@0.1.22`, `@sparticuz/chromium@153.0.0` and NSS libs on E2B with no Chrome binary. Reuse its exact isolation method; `playwright/issue244_plan_staff_qa.mjs` shows how to navigate real Streamlit Components-v2 shadow DOM. Do not assume the Browser worked without inspecting this source.
+- `component/src/pages/IntlPaymentTool.tsx` is **read-only**. Do not invent a snapshot save button, route, new writer, or UI for this task.
+
+### RÀNG BUỘC / NON-GOALS
+One browser acceptance slice only. Use real `app.py` and existing built React bundle with isolated synthetic DB/record; no test payments into staging Cloud, Atlas, Drive or production. Do not modify S1 source, auth/tenant policy, financial totals, conversion logic or create new app dependency/framework. A test harness/runner under existing `playwright/` and sanitized screenshots/logs is permitted when necessary; check whether existing runner can be extended more simply.
+
+### ACCEPTANCE FIXED BEFORE CODE
+1. **Identity/store:** one test-only Streamlit process + a coherent mongomock TEST DB; read initial shipment `LO-0306` source currency/payment count and actor's `finance_write` entitlement. If shipment absent or no finance-write role, prepare a valid synthetic fixture from existing seed; do not fake a success outcome.
+2. **UI real flow:** Chromium `1440×900` and `390×844`; navigate from visible shipment list → LO-0306 → Tài chính → payment sheet; type the valid amount (use actual shipment currency), click once, wait for backend-associated outcome and a matching fresh visible readback. The button must remain pending until backend acknowledgement; no successful toast without matching `requestId`. Reload same lot and reopen tab, persisted entry stays; no horizontal overflow or covered submit control. The test must capture actual DOM/event outcomes and screenshots, not just JS unit output.
+3. **Backend assertion on SAME store:** after click/reload, exactly one new item in `shipments.data.3.4.payments`, one same-key `financial_action_requests`, one matching `audit_logs(action=direct_payment_created)`. Each same `requestId` is scoped to same shipment; no double-write on replay/double-click. Do not assume mock DB in another OS process is shared. If DB probe cannot be observed in SAME process, `READBACK=NOT_VERIFIED`, not PASS.
+4. **Negative:** invalid/nonpositive amount is refused in UI with 0 writes; an unauthorized operator should remain denied by backend finance-write gate using same isolated DB and canonical auth function (may use focused existing negative test for this S2, but identify it explicitly). No test suppresses errors or weakens RBAC.
+5. **Evidence:** exact final-HEAD command, exit status, Chromium version, screenshots for desktop/mobile, source-level writer/reader readback and number of records before/after. Focused regressions run if source changes, full 0F/0E rerun after any code change and compare skip IDs. If NO_CODE_CHANGE, do not wastefully repeat two identical full suites just to make screenshots.
+
+### MUST NOT / WRONG PASS
+- `IntlPaymentTool` read-only page displayed → claim snapshot save succeeded, **FAIL**.
+- Click submit once, toast appears but DB readback missing / different requestId → **FAIL**.
+- Staff process and test harness each see their own mongomock DB → claim shared persisted evidence → **FAIL**.
+- jsdom-only output, or Chromium unavailable without trying previously proven local npm/NSS path → `BROWSER=NOT_VERIFIED`, not PASS.
+- Change `AUTH_REQUIRED` / `finance_write` guard to get green → REJECT.
+
+### LỆNH KIỂM TRA / EXPECTED
+- `git rev-parse HEAD`, `git status --short`, `git rev-parse origin/arena/ae5f9f47-logistics-work-desk-arena` → current SHA and clean scope (read-only before any edits).
+- Reuse actual `streamlit run app.py --server.port 9501` on test-only env; use correct `AUTH_REQUIRED=false`, `MONGO_URI` absent, `ENV_IDENTITY=PREVIEW` only after verifying their effective defaults. `GET /_stcore/health` must be healthy.
+- Use existing browser tooling README's package/LD_LIBRARY_PATH commands and shadow-root navigation: browser runner exit 0 only after real UI click + DB readback + negatives. The runner should produce JSON assertions and 2 screenshots with no secrets.
+- Optional `python -m pytest tests/test_logi_interaction_latency_finalize_02.py -k payment_record_truthful_readback -q` expected 0 FAIL; do not treat it as browser proof.
+
+### ẨN SỐ / ACTION GATE
+- Exact seed currency, selector IDs, whether same-process DB probe is already exposed by a test-only runner: **UNKNOWN; inspect current repo before code**. Scope is S2 staff; customer A/B browser denial and full final Issue #247 review remain separate acceptance S3/final. If genuine source bug is observed, stop and report fail-before + smallest candidate fix on existing PR; don't silently modify UI and relabel as QA.
+- **STOP** after S2 PASS or precisely identified BLOCKER. No merge to staging, no PR #250 integration, no Node 06.
+

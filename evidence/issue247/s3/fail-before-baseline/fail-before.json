@@ -1,0 +1,31 @@
+{
+  "aHasLot": false,
+  "aShadowHasLot": true,
+  "bHasForeign": false,
+  "bShadowHasForeign": false,
+  "bEmptyPortalLine": [
+    "Skip to main content",
+    "QA cô lập: danh tính giả lập trong fixture, dữ liệu mongomock dùng chung, không chứng minh đăng nhập OIDC thật.",
+    "QA identity (test only)",
+    "Trường Thành (nội bộ)",
+    "Lục Giác",
+    "Khách khác",
+    "Khách hàng:",
+    "Khách khác QA",
+    "· Tài khoản:",
+    "ot***@example.test",
+    "Đăng xuất"
+  ],
+  "bShadowSnippet": [
+    "  DỮ LIỆU STAGING — KHÔNG PHẢI SẢN XUẤT",
+    "        HEXA",
+    "          Khách khác QA",
+    "          Theo dõi trực quan trên hải đồ theo dữ liệu Trường Thành đã xác minh",
+    "        0 lô đã công bố",
+    "        ot***@example.test",
+    "  MỘT SỐ LÔ CHƯA ĐƯỢC CÔNG BỐ: Có lô bị từ chối công bố hoặc chưa có bản duyệt hợp lệ; hệ thống không hiển thị nội dung đó.",
+    "          Đang theo dõi: 0",
+    "          Có ETA kho đã xác minh: 0",
+    "          Cần khách xử lý: 0 (Chưa có yêu cầu được xác nhận)"
+  ]
+}

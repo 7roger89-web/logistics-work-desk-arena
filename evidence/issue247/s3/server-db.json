@@ -1,0 +1,13 @@
+{
+  "pid": 3977,
+  "database": "logistics_staging",
+  "client_module": "mongomock.mongo_client",
+  "client_object_id": 139815635353232,
+  "database_object_id": 139815654589520,
+  "transport": "SANDBOX_STAGING",
+  "mongo_uri_env": "",
+  "config_mongo_uri": "mongodb://mongomock.local/logistics_staging",
+  "env_identity": "PREVIEW",
+  "auth_required": true,
+  "streamlit_version": "1.66.1"
+}

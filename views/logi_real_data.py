@@ -1394,6 +1394,21 @@ def shipment_projection(
     customers = customers or {}
     contracts = contracts or {}
     quotes = quotes or {}
+    # The render-local snapshots are an optimisation, never a behaviour change:
+    # a standalone caller that omits the legal masters must still resolve the
+    # SAME importer/agent identity the render does.  Without this bounded
+    # fallback `project_commercial_flow` saw an empty master, reported
+    # "Không tìm thấy pháp nhân Trường Thành đã chọn" and every downstream gate
+    # (documentWorkflow / GNT readiness) disagreed with the render — the exact
+    # drift pinned by LOGI_REAL_DATA_RENDER_PERFORMANCE_01 test E.
+    if companies is None:
+        from core.database import load_authority_companies  # noqa: PLC0415
+
+        companies = load_authority_companies() or {}
+    if agents is None:
+        from core.database import load_authority_agents  # noqa: PLC0415
+
+        agents = load_authority_agents() or {}
     companies = companies or {}
 
     from core.shipment_operations import (

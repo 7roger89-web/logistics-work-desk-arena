@@ -236,14 +236,33 @@ def test_projection_declares_read_only_scope_limits():
 
 
 def test_no_authoring_or_search_surface_was_added():
+    from views import handbook as handbook_module
     from views import logi_view_model as vm
 
     # The page needs no server-side action: no event, no writer, no index.
+    # Scope note (Issue #247): the earlier token list also banned "note" and
+    # "publish", which now match features that have nothing to do with this
+    # page — Issue #236's in-node Journey comments (journey_note_create /
+    # journey_note_download), the document-pack template publish
+    # (docgen_template_publish) and the inbox snippet search
+    # (inbox_snippet_search).  The guard is therefore expressed on the
+    # HANDBOOK surface itself, which is stricter, not looser:
     assert not any(
         token in name
         for name in vm.ALL_EVENTS
-        for token in ("note", "handbook", "knowledge", "article", "publish")
+        for token in ("handbook", "knowledge", "article")
     )
+    # …no dispatch handler is bound to the handbook module…
+    assert not any(
+        "handbook" in f"{name} {getattr(handler, '__module__', '')}".lower()
+        for name, handler in vm._HANDLERS.items()
+    )
+    # …and the module itself exposes no authoring writer at all.
+    assert [
+        name for name in dir(handbook_module)
+        if name.startswith(("save_", "create_", "delete_", "update_", "set_", "publish", "write_"))
+    ] == []
+
     projection = hb.handbook_projection(field_paths={})
     assert "search" not in projection
     assert not any("index" in section for section in projection)
