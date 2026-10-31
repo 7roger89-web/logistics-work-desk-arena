@@ -1,0 +1,24 @@
+HEAD=3516ce702f90d5a4a8582702ab0f9e38a1bd8cc6
+COMMAND=python -m pytest tests/test_logi_interaction_latency_finalize_02.py -k payment_record_truthful_readback -q
+
+[LOGI_INTERACTION_LATENCY_FINALIZE_02] payment_record  N=95  RTT_MODEL=0ms/op  PROVIDER_MODEL=0ms
+  TOTAL_SERVER_MS=446.3  callback=8.6  body=437.7  payload_bytes=1901716
+  AUTH_REVALIDATION_MS=0.4  (callback 0.3/1 ops + body 0.1/1 ops)
+  EVENT_HANDLER_MS=8.3  DEEPL_PROVIDER_MS=0.0  HANDLER_PREREAD_MS=0.0 (ops=0)  WRITER_MS=1.2 (ops=6, audit included)  AUTHORITATIVE_READBACK_MS=5.8 (ops=18)
+  BUILD_VIEW_MODEL_TOTAL_MS=423.5 (ops=29)
+    LOAD_SHIPMENTS_MS=13.3 (ops=1)
+    LOAD_REFERENCES_MS=2.0 (ops=5)
+    DASHBOARD_VIEWS_MS=11.1 (ops=0)
+    READ_SHARED_SOURCES_MS=285.9 (ops=13)
+    PER_SHIPMENT_PROJECTION_MS=64.1 (ops=0)
+    GLOBAL_FINANCE_PROJECTIONS_MS=3.5 (ops=0)
+    SECONDARY_WORKSPACES_MS=2.6 (ops=3)
+    PAYLOAD_VERSION_MS=27.7 (ops=0)
+    OTHER_MS=13.2
+  SERIALIZATION_MS(json.dumps proxy)=25.0
+  POST_ACTION_SERVER_MS=443.5 (ops=48)  APP_NON_PROVIDER_MS=446.3
+  build_ops_by_collection={'agreements.find': 1, 'app_assets.find_one': 1, 'app_settings.find_one': 3, 'audit_logs.find': 1, 'authority_agents.find': 1, 'authority_companies.find': 1, 'contract_intl_payment_snapshots.find': 1, 'contracts.find': 1, 'cost_catalog.find': 1, 'customers.find': 1, 'docgen_documents.find': 1, 'financial_allocations.find': 1, 'financial_obligations.find': 1, 'financial_transactions.find': 1, 'knowledge_base.find': 1, 'quick_notes.count_documents': 3, 'quick_notes.find': 1, 'quotes.find': 1, 'rate_cards.find': 1, 'shipment_attachments.find': 1, 'shipments.find': 2, 'tasks.find': 1, 'users.find': 1, 'work_module_templates.find': 1}
+  all_ops_by_collection={'agreements.find': 2, 'app_assets.find_one': 1, 'app_settings.find_one': 4, 'audit_logs.find': 3, 'audit_logs.insert_one': 1, 'authority_agents.find': 2, 'authority_companies.find': 2, 'contract_intl_payment_snapshots.find': 1, 'contracts.find': 2, 'cost_catalog.find': 1, 'customers.find': 2, 'docgen_documents.find': 4, 'financial_action_requests.find_one': 1, 'financial_action_requests.insert_one': 1, 'financial_allocations.find': 2, 'financial_obligations.find': 2, 'financial_transactions.find': 2, 'knowledge_base.find': 1, 'notification_outbox.insert_one': 1, 'quick_notes.count_documents': 3, 'quick_notes.find': 1, 'quotes.find': 2, 'rate_cards.find': 1, 'shipment_attachments.find': 2, 'shipments.find': 2, 'shipments.find_one': 2, 'shipments.update_one': 1, 'tasks.find': 1, 'users.find': 3, 'work_module_templates.find': 2}
+.                                                                        [100%]
+1 passed, 17 deselected in 1.98s
+PYTEST_EXIT=0
