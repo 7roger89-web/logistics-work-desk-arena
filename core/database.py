@@ -4232,8 +4232,9 @@ def save_contract_intl_snapshot(document: Mapping[str, Any], actor: str | None =
     # first and apply the SAME fingerprint rule as the DuplicateKey branch.
     try:
         existing = db.contract_intl_payment_snapshots.find_one({"id": snap_id}, {"_id": 0})
-    except Exception:  # noqa: BLE001 - a failed guard check must fail closed below
-        existing = None
+    except Exception as exc:  # noqa: BLE001 - an unreadable guard is not an empty ledger
+        _set_last_error(f"Không thể kiểm tra snapshot hiện có: {exc}")
+        return False
     if existing is not None:
         if _financial_fingerprint(existing) == _financial_fingerprint(dict(payload)):
             return True
@@ -4250,11 +4251,13 @@ def save_contract_intl_snapshot(document: Mapping[str, Any], actor: str | None =
         except Exception:
             existing = None
         if existing is not None:
-            # Compare fingerprints of persisted vs attempted payload (ignoring _id/captured server fields if needed)
-            # We compare the core content: inputs/fx/fee_rules/outputs etc via canonical fingerprint
-            if _financial_fingerprint(existing) == _financial_fingerprint(dict(payload)):
+            # insert_one adds _id to its input before a duplicate-key reply.
+            # Compare financial content only; never relax the fingerprint helper
+            # shared by other ledgers or accept any changed financial field.
+            attempted = dict(payload)
+            attempted.pop("_id", None)
+            if _financial_fingerprint(existing) == _financial_fingerprint(attempted):
                 return True
-            # Also allow if existing equals original document fingerprint (covering minor server-added fields)
             if _financial_fingerprint(existing) == _financial_fingerprint(dict(document)):
                 return True
         _set_last_error("Snapshot đã tồn tại và không thể ghi đè (immutable).")

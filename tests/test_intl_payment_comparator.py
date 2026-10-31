@@ -16,7 +16,13 @@ BOC sanity 669.55/100 = 6.6955 is also validated.
 from __future__ import annotations
 
 import unittest
+from copy import deepcopy
 from decimal import Decimal
+from types import SimpleNamespace
+from uuid import uuid4
+
+import pytest
+from pymongo.errors import PyMongoError
 
 from core.fx_sources import parse_agribank_html, parse_bidv_html, parse_boc_html, discover_bidv_api_url
 from unittest.mock import patch, MagicMock
@@ -251,6 +257,223 @@ class ProvenanceImmutabilityTest(unittest.TestCase):
             ok3 = dbmod.save_contract_intl_snapshot(tampered)
             assert not ok3
             assert "immutable" in dbmod.get_last_db_error().lower()
+
+
+@pytest.fixture
+def s1_snapshot_db(record_property):
+    """Real, isolated persistence seam; never use the application's database."""
+    import mongomock
+
+    client = mongomock.MongoClient()
+    db = client[f"test_logi_s1_{uuid4().hex}"]
+    db.contracts.insert_one({"id": "CTR-001", "is_deleted": False})
+    try:
+        yield db
+    finally:
+        client.drop_database(db.name)
+        cleaned = db.name not in client.list_database_names()
+        client.close()
+        assert cleaned, "isolated S1 database must be removed after the test"
+        record_property("s1_test_db_cleanup", cleaned)
+
+
+@pytest.fixture
+def s1_sale(monkeypatch):
+    monkeypatch.setattr("core.auth.st", SimpleNamespace(session_state={
+        "current_user": {
+            "username": "sale.s1", "user_id": "U-S1-SALE",
+            "display_name": "Sale S1", "role": "sale",
+        },
+    }))
+
+
+@pytest.fixture
+def s1_viewer(monkeypatch):
+    monkeypatch.setattr("core.auth.st", SimpleNamespace(session_state={
+        "current_user": {
+            "username": "viewer.s1", "user_id": "U-S1-VIEWER",
+            "display_name": "Viewer S1", "role": "viewer",
+        },
+    }))
+
+
+def _s1_snapshot_payload():
+    return {
+        "id": "SNAP-001", "contract_id": "CTR-001", "mode": "B",
+        "created_at": "2026-10-31T00:00:00+00:00",
+        "inputs": {"target_cny": "10000"},
+        "fx": {"boc": {"status": "OK"}},
+        "fee_rules": {"recipient": 35}, "outputs": {"total": 1},
+        "formula_version": FORMULA_VERSION,
+    }
+
+
+def _s1_state(db):
+    """Read back both persisted rows and audit, excluding driver ObjectIds."""
+    rows = list(db.contract_intl_payment_snapshots.find({}, {"_id": 0}))
+    audits = list(db.audit_logs.find({}, {"_id": 0}))
+    return rows, audits
+
+
+@pytest.mark.parametrize("unique_index", [False, True], ids=["no-index", "unique-index"])
+def test_s1_snapshot_replay_and_tamper_readback(
+    s1_snapshot_db, s1_sale, monkeypatch, unique_index, record_property,
+):
+    import core.database as dbmod
+
+    db = s1_snapshot_db
+    monkeypatch.setattr(dbmod, "get_db", lambda: db)
+    collection = db.contract_intl_payment_snapshots
+    if unique_index:
+        # Use the canonical index creator, not a second index definition.
+        assert dbmod.ensure_indexes(), dbmod.get_last_db_error()
+        assert collection.index_information()["uq_contract_intl_snapshot_id"]["unique"]
+    else:
+        assert "uq_contract_intl_snapshot_id" not in collection.index_information()
+
+    payload = _s1_snapshot_payload()
+    assert dbmod.save_contract_intl_snapshot(payload) is True
+    stored_identity = collection.find_one({"id": "SNAP-001"})["_id"]
+    rows, audits = _s1_state(db)
+    assert len(rows) == len(audits) == 1
+    assert rows[0] == {
+        **_s1_snapshot_payload(), "created_by": "sale.s1",
+        "created_by_user_id": "U-S1-SALE", "created_by_role": "sale",
+        "is_deleted": False,
+    }
+    assert audits[0]["entity_type"] == "contract_intl_payment_snapshot"
+    assert audits[0]["entity_id"] == "SNAP-001"
+    assert audits[0]["action"] == "create"
+    assert audits[0]["actor"] == "sale.s1"
+    assert audits[0]["actor_role"] == "sale"
+    assert audits[0]["before"] is None
+    assert {k: v for k, v in audits[0]["after"].items() if k != "_id"} == rows[0]
+
+    # The writer deep-copies its input. Replays must accept both the original
+    # financial document and a retry carrying the driver-assigned identity.
+    driver_retry = deepcopy(payload)
+    driver_retry["_id"] = stored_identity
+    for retry in (payload, driver_retry):
+        assert dbmod.save_contract_intl_snapshot(retry) is True
+        assert _s1_state(db) == (rows, audits)
+
+    tampered = deepcopy(payload)
+    tampered["inputs"]["target_cny"] = "9999"
+    assert dbmod.save_contract_intl_snapshot(tampered) is False
+    assert "immutable" in dbmod.get_last_db_error().lower()
+    assert _s1_state(db) == (rows, audits)
+    record_property("s1_readback", {
+        "unique_index": unique_index, "first_rows": 1, "first_audits": 1,
+        "replay_rows": len(rows), "replay_audits": len(audits),
+        "tamper_rows": len(_s1_state(db)[0]), "tamper_audits": len(_s1_state(db)[1]),
+        "replay_and_tamper_state_unchanged": _s1_state(db) == (rows, audits),
+    })
+
+
+def test_s1_duplicate_key_replay_ignores_driver_id(
+    s1_snapshot_db, s1_sale, monkeypatch, record_property,
+):
+    """Interleave a competing real save between the outer lookup and insert."""
+    import core.database as dbmod
+
+    db = s1_snapshot_db
+    monkeypatch.setattr(dbmod, "get_db", lambda: db)
+    assert dbmod.ensure_indexes(), dbmod.get_last_db_error()
+    collection = db.contract_intl_payment_snapshots
+    assert collection.index_information()["uq_contract_intl_snapshot_id"]["unique"]
+    real_lookup = collection.find_one
+    winner_state = None
+    competed = False
+
+    def competing_lookup(*args, **kwargs):
+        nonlocal winner_state, competed
+        existing = real_lookup(*args, **kwargs)
+        if not competed:
+            competed = True
+            # A second real writer wins after the outer writer read "empty".
+            assert dbmod.save_contract_intl_snapshot(_s1_snapshot_payload()) is True
+            winner_state = _s1_state(db)
+            return None
+        return existing
+
+    with patch.object(collection, "find_one", side_effect=competing_lookup), \
+            patch.object(collection, "insert_one", wraps=collection.insert_one) as insert:
+        saved = dbmod.save_contract_intl_snapshot(_s1_snapshot_payload())
+        state = _s1_state(db)
+        assert saved is True, {
+            "saved": saved, "error": dbmod.get_last_db_error(),
+            "rows": len(state[0]), "audits": len(state[1]),
+        }
+        # One successful competing insert, then the outer insert conflicts.
+        assert insert.call_count == 2
+        assert "_id" in insert.call_args.args[0], "real driver added an internal _id"
+    assert state == winner_state
+    assert len(state[0]) == len(state[1]) == 1
+    assert state[0][0]["inputs"] == _s1_snapshot_payload()["inputs"]
+    assert state[1][0]["action"] == "create"
+    assert state[1][0]["actor"] == "sale.s1"
+    record_property("s1_readback", {
+        "saved": saved, "rows": len(state[0]), "audits": len(state[1]),
+        "insert_calls": insert.call_count, "unchanged_after_replay": state == winner_state,
+    })
+
+
+@pytest.mark.parametrize("unique_index", [False, True], ids=["no-index", "unique-index"])
+def test_s1_failed_lookup_never_inserts(
+    s1_snapshot_db, s1_sale, monkeypatch, unique_index, record_property,
+):
+    import core.database as dbmod
+
+    db = s1_snapshot_db
+    monkeypatch.setattr(dbmod, "get_db", lambda: db)
+    collection = db.contract_intl_payment_snapshots
+    if unique_index:
+        assert dbmod.ensure_indexes(), dbmod.get_last_db_error()
+        assert collection.index_information()["uq_contract_intl_snapshot_id"]["unique"]
+    else:
+        assert "uq_contract_intl_snapshot_id" not in collection.index_information()
+
+    # Fault only the snapshot lookup. Contract authorization/lookup and all
+    # persistence remain real; a buggy insert would actually persist a row.
+    with patch.object(collection, "find_one", side_effect=PyMongoError("S1_LOOKUP_UNAVAILABLE")), \
+            patch.object(collection, "insert_one", wraps=collection.insert_one) as insert:
+        saved = dbmod.save_contract_intl_snapshot(_s1_snapshot_payload())
+        state = _s1_state(db)
+        assert saved is False, {"saved": saved, "rows": state[0], "audits": state[1]}
+        insert.assert_not_called()
+    assert "S1_LOOKUP_UNAVAILABLE" in dbmod.get_last_db_error()
+    assert state == ([], [])
+    record_property("s1_readback", {
+        "unique_index": unique_index, "saved": saved,
+        "rows": len(state[0]), "audits": len(state[1]), "insert_calls": insert.call_count,
+    })
+
+
+@pytest.mark.parametrize("unique_index", [False, True], ids=["no-index", "unique-index"])
+def test_s1_viewer_denied_with_readback(
+    s1_snapshot_db, s1_viewer, monkeypatch, unique_index, record_property,
+):
+    import core.database as dbmod
+
+    db = s1_snapshot_db
+    monkeypatch.setattr(dbmod, "get_db", lambda: db)
+    collection = db.contract_intl_payment_snapshots
+    if unique_index:
+        assert dbmod.ensure_indexes(), dbmod.get_last_db_error()
+        assert collection.index_information()["uq_contract_intl_snapshot_id"]["unique"]
+    else:
+        assert "uq_contract_intl_snapshot_id" not in collection.index_information()
+
+    with patch.object(collection, "insert_one", wraps=collection.insert_one) as insert:
+        assert dbmod.save_contract_intl_snapshot(_s1_snapshot_payload()) is False
+        insert.assert_not_called()
+    assert "sales_write" in dbmod.get_last_db_error()
+    state = _s1_state(db)
+    assert state == ([], [])
+    record_property("s1_readback", {
+        "unique_index": unique_index, "saved": False,
+        "rows": len(state[0]), "audits": len(state[1]), "insert_calls": insert.call_count,
+    })
 
 
 class FeeZeroPreservationTest(unittest.TestCase):

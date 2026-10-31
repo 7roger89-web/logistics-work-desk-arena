@@ -1,0 +1,92 @@
+[
+  {
+    "id": "tests.test_intl_payment_comparator::test_s1_snapshot_replay_and_tamper_readback[no-index]",
+    "result": "PASS",
+    "readback": {
+      "unique_index": false,
+      "first_rows": 1,
+      "first_audits": 1,
+      "replay_rows": 1,
+      "replay_audits": 1,
+      "tamper_rows": 1,
+      "tamper_audits": 1,
+      "replay_and_tamper_state_unchanged": true
+    },
+    "test_db_cleanup": true
+  },
+  {
+    "id": "tests.test_intl_payment_comparator::test_s1_snapshot_replay_and_tamper_readback[unique-index]",
+    "result": "PASS",
+    "readback": {
+      "unique_index": true,
+      "first_rows": 1,
+      "first_audits": 1,
+      "replay_rows": 1,
+      "replay_audits": 1,
+      "tamper_rows": 1,
+      "tamper_audits": 1,
+      "replay_and_tamper_state_unchanged": true
+    },
+    "test_db_cleanup": true
+  },
+  {
+    "id": "tests.test_intl_payment_comparator::test_s1_duplicate_key_replay_ignores_driver_id",
+    "result": "PASS",
+    "readback": {
+      "saved": true,
+      "rows": 1,
+      "audits": 1,
+      "insert_calls": 2,
+      "unchanged_after_replay": true
+    },
+    "test_db_cleanup": true
+  },
+  {
+    "id": "tests.test_intl_payment_comparator::test_s1_failed_lookup_never_inserts[no-index]",
+    "result": "PASS",
+    "readback": {
+      "unique_index": false,
+      "saved": false,
+      "rows": 0,
+      "audits": 0,
+      "insert_calls": 0
+    },
+    "test_db_cleanup": true
+  },
+  {
+    "id": "tests.test_intl_payment_comparator::test_s1_failed_lookup_never_inserts[unique-index]",
+    "result": "PASS",
+    "readback": {
+      "unique_index": true,
+      "saved": false,
+      "rows": 0,
+      "audits": 0,
+      "insert_calls": 0
+    },
+    "test_db_cleanup": true
+  },
+  {
+    "id": "tests.test_intl_payment_comparator::test_s1_viewer_denied_with_readback[no-index]",
+    "result": "PASS",
+    "readback": {
+      "unique_index": false,
+      "saved": false,
+      "rows": 0,
+      "audits": 0,
+      "insert_calls": 0
+    },
+    "test_db_cleanup": true
+  },
+  {
+    "id": "tests.test_intl_payment_comparator::test_s1_viewer_denied_with_readback[unique-index]",
+    "result": "PASS",
+    "readback": {
+      "unique_index": true,
+      "saved": false,
+      "rows": 0,
+      "audits": 0,
+      "insert_calls": 0
+    },
+    "test_db_cleanup": true
+  }
+]
