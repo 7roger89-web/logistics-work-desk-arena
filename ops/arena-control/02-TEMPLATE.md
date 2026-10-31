@@ -14,6 +14,7 @@ MỤC TIÊU — một câu, quan sát được
 VỊ TRÍ — file:dòng, hoặc "tự tìm, báo trước khi sửa"
 HỢP ĐỒNG — chữ ký, schema, format in/out
 RÀNG BUỘC — được đổi gì, không được đổi gì
+(ghi rõ: chỉ sửa `<file>`; 05/06 chỉ để ghi log)
 NON-GOALS
 NGHIỆM THU — checklist, mỗi dòng một phép thử
 LỆNH KIỂM TRA — lệnh có sẵn trong repo
