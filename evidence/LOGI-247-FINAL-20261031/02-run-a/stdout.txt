@@ -1,0 +1,159 @@
+.................................................................... [  2%]
+........................................................................ [  5%]
+........................................................................ [  8%]
+........................................................................ [ 11%]
+.................................................................... [ 14%]
+.....................................................s............ssss [ 17%]
+ss...................................................................... [ 20%]
+........sssssssss.....ssssssssssss...................................... [ 23%]
+........................................................................ [ 26%]
+........................................................................ [ 29%]
+........................................................................ [ 32%]
+........................................................................ [ 35%]
+......sssss...s......................................................... [ 38%]
+.............................................................ssssss...s. [ 41%]
+.ss..s.................................................................. [ 44%]
+........................................................................ [ 47%]
+........................................................................ [ 50%]
+........................................................................ [ 53%]
+........................................................................ [ 56%]
+........................................................................ [ 59%]
+.......
+[LOGI_INTERACTION_LATENCY_FINALIZE_02] translate_text  N=95  RTT_MODEL=0ms/op  PROVIDER_MODEL=0ms
+  TOTAL_SERVER_MS=188.9  callback=4.9  body=183.9  payload_bytes=1884964
+  AUTH_REVALIDATION_MS=0.8  (callback 0.5/1 ops + body 0.3/1 ops)
+  EVENT_HANDLER_MS=4.4  DEEPL_PROVIDER_MS=0.0  HANDLER_PREREAD_MS=0.0 (ops=0)  WRITER_MS=0.0 (ops=0, audit included)  AUTHORITATIVE_READBACK_MS=0.0 (ops=0)
+  BUILD_VIEW_MODEL_TOTAL_MS=183.0 (ops=28)
+    LOAD_SHIPMENTS_MS=29.5 (ops=1)
+    LOAD_REFERENCES_MS=20.0 (ops=5)
+    DASHBOARD_VIEWS_MS=17.4 (ops=0)
+    READ_SHARED_SOURCES_MS=6.7 (ops=13)
+    PER_SHIPMENT_PROJECTION_MS=84.1 (ops=0)
+    GLOBAL_FINANCE_PROJECTIONS_MS=4.3 (ops=0)
+    SECONDARY_WORKSPACES_MS=3.0 (ops=2)
+    PAYLOAD_VERSION_MS=27.7 (ops=0)
+    OTHER_MS=0.0
+  SERIALIZATION_MS(json.dumps proxy)=25.9
+  POST_ACTION_SERVER_MS=183.9 (ops=29)  APP_NON_PROVIDER_MS=188.9
+  build_ops_by_collection={'agreements.find': 1, 'app_settings.find_one': 3, 'audit_logs.find': 1, 'authority_agents.find': 1, 'authority_companies.find': 1, 'contract_intl_payment_snapshots.find': 1, 'contracts.find': 1, 'cost_catalog.find': 1, 'customers.find': 1, 'docgen_documents.find': 1, 'financial_allocations.find': 1, 'financial_obligations.find': 1, 'financial_transactions.find': 1, 'knowledge_base.find': 1, 'quick_notes.count_documents': 3, 'quick_notes.find': 1, 'quotes.find': 1, 'rate_cards.find': 1, 'shipment_attachments.find': 1, 'shipments.find': 2, 'tasks.find': 1, 'users.find': 1, 'work_module_templates.find': 1}
+  all_ops_by_collection={'agreements.find': 1, 'app_settings.find_one': 3, 'audit_logs.find': 1, 'authority_agents.find': 1, 'authority_companies.find': 1, 'contract_intl_payment_snapshots.find': 1, 'contracts.find': 1, 'cost_catalog.find': 1, 'customers.find': 1, 'docgen_documents.find': 1, 'financial_allocations.find': 1, 'financial_obligations.find': 1, 'financial_transactions.find': 1, 'knowledge_base.find': 1, 'quick_notes.count_documents': 3, 'quick_notes.find': 1, 'quotes.find': 1, 'rate_cards.find': 1, 'shipment_attachments.find': 1, 'shipments.find': 2, 'tasks.find': 1, 'users.find': 3, 'work_module_templates.find': 1}
+..
+[LOGI_INTERACTION_LATENCY_FINALIZE_02] shipment_field_save  N=95  RTT_MODEL=0ms/op  PROVIDER_MODEL=0ms
+  TOTAL_SERVER_MS=164.1  callback=9.7  body=154.5  payload_bytes=1902127
+  AUTH_REVALIDATION_MS=0.4  (callback 0.2/1 ops + body 0.1/1 ops)
+  EVENT_HANDLER_MS=9.4  DEEPL_PROVIDER_MS=0.0  HANDLER_PREREAD_MS=0.4 (ops=1)  WRITER_MS=2.1 (ops=4, audit included)  AUTHORITATIVE_READBACK_MS=4.4 (ops=18)
+  BUILD_VIEW_MODEL_TOTAL_MS=153.9 (ops=28)
+    LOAD_SHIPMENTS_MS=19.9 (ops=1)
+    LOAD_REFERENCES_MS=11.7 (ops=5)
+    DASHBOARD_VIEWS_MS=14.4 (ops=0)
+    READ_SHARED_SOURCES_MS=4.9 (ops=13)
+    PER_SHIPMENT_PROJECTION_MS=74.3 (ops=0)
+    GLOBAL_FINANCE_PROJECTIONS_MS=3.5 (ops=0)
+    SECONDARY_WORKSPACES_MS=2.8 (ops=2)
+    PAYLOAD_VERSION_MS=25.5 (ops=0)
+    OTHER_MS=0.0
+  SERIALIZATION_MS(json.dumps proxy)=23.3
+  POST_ACTION_SERVER_MS=158.9 (ops=47)  APP_NON_PROVIDER_MS=164.1
+  build_ops_by_collection={'agreements.find': 1, 'app_settings.find_one': 3, 'audit_logs.find': 1, 'authority_agents.find': 1, 'authority_companies.find': 1, 'contract_intl_payment_snapshots.find': 1, 'contracts.find': 1, 'cost_catalog.find': 1, 'customers.find': 1, 'docgen_documents.find': 1, 'financial_allocations.find': 1, 'financial_obligations.find': 1, 'financial_transactions.find': 1, 'knowledge_base.find': 1, 'quick_notes.count_documents': 3, 'quick_notes.find': 1, 'quotes.find': 1, 'rate_cards.find': 1, 'shipment_attachments.find': 1, 'shipments.find': 2, 'tasks.find': 1, 'users.find': 1, 'work_module_templates.find': 1}
+  all_ops_by_collection={'agreements.find': 2, 'app_settings.find_one': 4, 'audit_logs.find': 3, 'audit_logs.insert_one': 1, 'authority_agents.find': 2, 'authority_companies.find': 2, 'contract_intl_payment_snapshots.find': 1, 'contracts.find': 2, 'cost_catalog.find': 1, 'customers.find': 2, 'docgen_documents.find': 4, 'financial_allocations.find': 2, 'financial_obligations.find': 2, 'financial_transactions.find': 2, 'knowledge_base.find': 1, 'quick_notes.count_documents': 3, 'quick_notes.find': 1, 'quotes.find': 2, 'rate_cards.find': 1, 'shipment_attachments.find': 2, 'shipments.find': 2, 'shipments.find_one': 4, 'shipments.find_one_and_update': 1, 'tasks.find': 1, 'users.find': 3, 'work_module_templates.find': 2}
+.
+[LOGI_INTERACTION_LATENCY_FINALIZE_02] payment_record  N=95  RTT_MODEL=0ms/op  PROVIDER_MODEL=0ms
+  TOTAL_SERVER_MS=290.1  callback=9.3  body=280.8  payload_bytes=1901688
+  AUTH_REVALIDATION_MS=0.4  (callback 0.3/1 ops + body 0.2/1 ops)
+  EVENT_HANDLER_MS=9.0  DEEPL_PROVIDER_MS=0.0  HANDLER_PREREAD_MS=0.0 (ops=0)  WRITER_MS=1.7 (ops=6, audit included)  AUTHORITATIVE_READBACK_MS=4.9 (ops=18)
+  BUILD_VIEW_MODEL_TOTAL_MS=280.0 (ops=28)
+    LOAD_SHIPMENTS_MS=21.0 (ops=1)
+    LOAD_REFERENCES_MS=18.4 (ops=5)
+    DASHBOARD_VIEWS_MS=13.8 (ops=0)
+    READ_SHARED_SOURCES_MS=4.7 (ops=13)
+    PER_SHIPMENT_PROJECTION_MS=73.7 (ops=0)
+    GLOBAL_FINANCE_PROJECTIONS_MS=121.7 (ops=0)
+    SECONDARY_WORKSPACES_MS=4.0 (ops=2)
+    PAYLOAD_VERSION_MS=30.7 (ops=0)
+    OTHER_MS=0.0
+  SERIALIZATION_MS(json.dumps proxy)=30.5
+  POST_ACTION_SERVER_MS=285.7 (ops=47)  APP_NON_PROVIDER_MS=290.1
+  build_ops_by_collection={'agreements.find': 1, 'app_settings.find_one': 3, 'audit_logs.find': 1, 'authority_agents.find': 1, 'authority_companies.find': 1, 'contract_intl_payment_snapshots.find': 1, 'contracts.find': 1, 'cost_catalog.find': 1, 'customers.find': 1, 'docgen_documents.find': 1, 'financial_allocations.find': 1, 'financial_obligations.find': 1, 'financial_transactions.find': 1, 'knowledge_base.find': 1, 'quick_notes.count_documents': 3, 'quick_notes.find': 1, 'quotes.find': 1, 'rate_cards.find': 1, 'shipment_attachments.find': 1, 'shipments.find': 2, 'tasks.find': 1, 'users.find': 1, 'work_module_templates.find': 1}
+  all_ops_by_collection={'agreements.find': 2, 'app_settings.find_one': 4, 'audit_logs.find': 3, 'audit_logs.insert_one': 1, 'authority_agents.find': 2, 'authority_companies.find': 2, 'contract_intl_payment_snapshots.find': 1, 'contracts.find': 2, 'cost_catalog.find': 1, 'customers.find': 2, 'docgen_documents.find': 4, 'financial_action_requests.find_one': 1, 'financial_action_requests.insert_one': 1, 'financial_allocations.find': 2, 'financial_obligations.find': 2, 'financial_transactions.find': 2, 'knowledge_base.find': 1, 'notification_outbox.insert_one': 1, 'quick_notes.count_documents': 3, 'quick_notes.find': 1, 'quotes.find': 2, 'rate_cards.find': 1, 'shipment_attachments.find': 2, 'shipments.find': 2, 'shipments.find_one': 2, 'shipments.update_one': 1, 'tasks.find': 1, 'users.find': 3, 'work_module_templates.find': 2}
+.
+[LOGI_INTERACTION_LATENCY_FINALIZE_02] shipment_commercial_flow_save  N=95  RTT_MODEL=0ms/op  PROVIDER_MODEL=0ms
+  TOTAL_SERVER_MS=166.1  callback=9.8  body=156.2  payload_bytes=1903141
+  AUTH_REVALIDATION_MS=0.5  (callback 0.3/1 ops + body 0.1/1 ops)
+  EVENT_HANDLER_MS=9.5  DEEPL_PROVIDER_MS=0.0  HANDLER_PREREAD_MS=0.4 (ops=1)  WRITER_MS=1.9 (ops=4, audit included)  AUTHORITATIVE_READBACK_MS=4.4 (ops=18)
+  BUILD_VIEW_MODEL_TOTAL_MS=155.6 (ops=28)
+    LOAD_SHIPMENTS_MS=19.2 (ops=1)
+    LOAD_REFERENCES_MS=11.0 (ops=5)
+    DASHBOARD_VIEWS_MS=14.8 (ops=0)
+    READ_SHARED_SOURCES_MS=5.1 (ops=13)
+    PER_SHIPMENT_PROJECTION_MS=74.0 (ops=0)
+    GLOBAL_FINANCE_PROJECTIONS_MS=4.9 (ops=0)
+    SECONDARY_WORKSPACES_MS=2.8 (ops=2)
+    PAYLOAD_VERSION_MS=26.2 (ops=0)
+    OTHER_MS=0.0
+  SERIALIZATION_MS(json.dumps proxy)=23.7
+  POST_ACTION_SERVER_MS=160.6 (ops=47)  APP_NON_PROVIDER_MS=166.1
+  build_ops_by_collection={'agreements.find': 1, 'app_settings.find_one': 3, 'audit_logs.find': 1, 'authority_agents.find': 1, 'authority_companies.find': 1, 'contract_intl_payment_snapshots.find': 1, 'contracts.find': 1, 'cost_catalog.find': 1, 'customers.find': 1, 'docgen_documents.find': 1, 'financial_allocations.find': 1, 'financial_obligations.find': 1, 'financial_transactions.find': 1, 'knowledge_base.find': 1, 'quick_notes.count_documents': 3, 'quick_notes.find': 1, 'quotes.find': 1, 'rate_cards.find': 1, 'shipment_attachments.find': 1, 'shipments.find': 2, 'tasks.find': 1, 'users.find': 1, 'work_module_templates.find': 1}
+  all_ops_by_collection={'agreements.find': 2, 'app_settings.find_one': 4, 'audit_logs.find': 3, 'audit_logs.insert_one': 1, 'authority_agents.find': 3, 'authority_companies.find': 3, 'contract_intl_payment_snapshots.find': 1, 'contracts.find': 2, 'cost_catalog.find': 1, 'customers.find': 2, 'docgen_documents.find': 4, 'financial_allocations.find': 2, 'financial_obligations.find': 2, 'financial_transactions.find': 2, 'knowledge_base.find': 1, 'quick_notes.count_documents': 3, 'quick_notes.find': 1, 'quotes.find': 2, 'rate_cards.find': 1, 'shipment_attachments.find': 2, 'shipments.find': 2, 'shipments.find_one': 4, 'shipments.find_one_and_update': 1, 'tasks.find': 1, 'users.find': 3, 'work_module_templates.find': 2}
+.
+[LOGI_INTERACTION_LATENCY_FINALIZE_02] shipment_document_selection_save  N=95  RTT_MODEL=0ms/op  PROVIDER_MODEL=0ms
+  TOTAL_SERVER_MS=164.5  callback=6.5  body=158.0  payload_bytes=1884924
+  AUTH_REVALIDATION_MS=0.4  (callback 0.2/1 ops + body 0.2/1 ops)
+  EVENT_HANDLER_MS=6.2  DEEPL_PROVIDER_MS=0.0  HANDLER_PREREAD_MS=0.4 (ops=1)  WRITER_MS=2.0 (ops=4, audit included)  AUTHORITATIVE_READBACK_MS=0.5 (ops=2)
+  BUILD_VIEW_MODEL_TOTAL_MS=157.4 (ops=28)
+    LOAD_SHIPMENTS_MS=20.0 (ops=1)
+    LOAD_REFERENCES_MS=16.6 (ops=5)
+    DASHBOARD_VIEWS_MS=14.8 (ops=0)
+    READ_SHARED_SOURCES_MS=5.0 (ops=13)
+    PER_SHIPMENT_PROJECTION_MS=75.8 (ops=0)
+    GLOBAL_FINANCE_PROJECTIONS_MS=3.8 (ops=0)
+    SECONDARY_WORKSPACES_MS=2.9 (ops=2)
+    PAYLOAD_VERSION_MS=26.0 (ops=0)
+    OTHER_MS=0.0
+  SERIALIZATION_MS(json.dumps proxy)=23.8
+  POST_ACTION_SERVER_MS=158.4 (ops=31)  APP_NON_PROVIDER_MS=164.5
+  build_ops_by_collection={'agreements.find': 1, 'app_settings.find_one': 3, 'audit_logs.find': 1, 'authority_agents.find': 1, 'authority_companies.find': 1, 'contract_intl_payment_snapshots.find': 1, 'contracts.find': 1, 'cost_catalog.find': 1, 'customers.find': 1, 'docgen_documents.find': 1, 'financial_allocations.find': 1, 'financial_obligations.find': 1, 'financial_transactions.find': 1, 'knowledge_base.find': 1, 'quick_notes.count_documents': 3, 'quick_notes.find': 1, 'quotes.find': 1, 'rate_cards.find': 1, 'shipment_attachments.find': 1, 'shipments.find': 2, 'tasks.find': 1, 'users.find': 1, 'work_module_templates.find': 1}
+  all_ops_by_collection={'agreements.find': 1, 'app_settings.find_one': 7, 'audit_logs.find': 2, 'audit_logs.insert_one': 1, 'authority_agents.find': 1, 'authority_companies.find': 1, 'contract_intl_payment_snapshots.find': 1, 'contracts.find': 1, 'cost_catalog.find': 1, 'customers.find': 1, 'docgen_documents.find': 1, 'financial_allocations.find': 1, 'financial_obligations.find': 1, 'financial_transactions.find': 1, 'knowledge_base.find': 1, 'quick_notes.count_documents': 3, 'quick_notes.find': 1, 'quotes.find': 1, 'rate_cards.find': 1, 'shipment_attachments.find': 1, 'shipments.find': 2, 'shipments.find_one': 4, 'shipments.find_one_and_update': 1, 'tasks.find': 1, 'users.find': 3, 'work_module_templates.find': 1}
+..
+[LOGI_INTERACTION_LATENCY_FINALIZE_02] overlap proof @ 60 ms/op: build 883 ms vs serial floor 1680 ms (28 ops); readback 671 ms vs serial floor 1080 ms (18 ops)
+...
+[LOGI_INTERACTION_LATENCY_FINALIZE_02] STREAMLIT-FREE workers: 4 worker threads ['logi-read_0', 'logi-read_1', 'logi-read_2', 'logi-read_3']; WORKER_STREAMLIT_API_CALLS=0; worker ops=['agreements.find', 'audit_logs.find', 'authority_agents.find', 'authority_companies.find', 'contracts.find', 'cost_catalog.find', 'customers.find', 'docgen_documents.find', 'financial_allocations.find', 'financial_obligations.find', 'financial_transactions.find', 'knowledge_base.find', 'quotes.find', 'rate_cards.find', 'shipment_attachments.find', 'shipments.find', 'tasks.find', 'users.find', 'work_module_templates.find']
+.....
+[LOGI_INTERACTION_LATENCY_FINALIZE_02] EXPLICIT_NONE_RERESOLVE=NO WORKER_GET_DB_CALLS=0 WORKER_STREAMLIT_API_CALLS=0
+.
+[LOGI_INTERACTION_LATENCY_FINALIZE_02] ERROR_CAPTURE_SURVIVES_EXCEPTION=PASS ERROR_REPLAY_ORDER=PASS LATER_ERRORS_AFTER_FIRST_EXCEPTION_PUBLISHED=NO SAME_EXCEPTION_RERAISED=PASS
+................................................. [ 62%]
+..........................................................
+[LOGI_REAL_DATA_RENDER_PERFORMANCE_01] N=95 legacy projections+payables=193.3ms  build_view_model=326.1ms (LOCAL sandbox timing — Atlas latency not represented)
+.............. [ 65%]
+........................................................................ [ 68%]
+........................................................................ [ 71%]
+........................................................................ [ 74%]
+........................................................................ [ 77%]
+........................................................................ [ 80%]
+........................................................................ [ 83%]
+........................................................................ [ 86%]
+........................................................................ [ 89%]
+........................................................................ [ 92%]
+........................................................................ [ 95%]
+........................................................................ [ 98%]
+.....................................                                    [100%]
+=========================== short test summary info ============================
+SKIPPED [7] ../venvA/lib/python3.11/site-packages/_pytest/unittest.py:521: set LOG_C02_RUN_MONGO_FIXTURES=1 for isolated Mongo proof
+SKIPPED [21] ../venvA/lib/python3.11/site-packages/_pytest/unittest.py:521: Historical source workbook is unavailable: D:\Copy of TOYS-2025 - Copy.xls
+SKIPPED [1] tests/test_lg05_excel_roundtrip_gnt.py:134: Owner's Excel file not present in test environment
+SKIPPED [1] tests/test_lg05_excel_roundtrip_gnt.py:140: Owner's Excel file not present in test environment
+SKIPPED [1] tests/test_lg05_excel_roundtrip_gnt.py:146: Owner's Excel file not present in test environment
+SKIPPED [1] tests/test_lg05_excel_roundtrip_gnt.py:153: Owner's Excel file not present in test environment
+SKIPPED [1] tests/test_lg05_excel_roundtrip_gnt.py:161: Owner's Excel file not present in test environment
+SKIPPED [1] tests/test_lg05_excel_roundtrip_gnt.py:202: Owner's Excel file not present in test environment
+SKIPPED [1] tests/test_log_docgen_01.py:465: Template assets not present
+SKIPPED [1] tests/test_log_docgen_01.py:414: Template assets not present
+SKIPPED [1] tests/test_log_docgen_01.py:439: Template assets not present
+SKIPPED [1] tests/test_log_docgen_01.py:427: Template assets not present
+SKIPPED [1] tests/test_log_docgen_01.py:475: Template assets not present
+SKIPPED [1] tests/test_log_docgen_01.py:406: Template assets not present
+SKIPPED [1] tests/test_log_docgen_01.py:524: Requires local templates
+SKIPPED [1] tests/test_log_docgen_01.py:604: no assets
+SKIPPED [1] tests/test_log_docgen_01.py:617: no assets
+SKIPPED [1] tests/test_log_docgen_01.py:611: no assets
+2359 passed, 44 skipped, 10 subtests passed in 151.55s (0:02:31)

@@ -1,0 +1,38 @@
+# Required check 'contract-shape' at PR #248 HEAD — observed state
+captured_at_utc=2026-10-31T10:47:25Z
+head_sha=9012ee01763df491ec4d8bda9836cc3dee060aac
+
+## C1. $ gh api repos/.../commits/9012ee0.../check-runs --jq ".check_runs[] | {name,status,conclusion,details_url}"
+{"completed_at":"2026-10-31T09:42:42Z","conclusion":"failure","details_url":"https://github.com/7roger89-web/logistics-work-desk-arena/actions/runs/41189792585/job/124504024279","name":"contract-shape","started_at":"2026-10-31T09:42:40Z","status":"completed"}
+{"completed_at":"2026-10-31T09:41:59Z","conclusion":"failure","details_url":"https://github.com/7roger89-web/logistics-work-desk-arena/actions/runs/41189742090/job/124503880173","name":"contract-shape","started_at":"2026-10-31T09:41:56Z","status":"completed"}
+exit_code=0
+stderr_bytes=0
+
+## C2. $ gh api repos/.../actions/runs?head_sha=9012ee0... --jq ".workflow_runs[] | {id,name,conclusion,event,created_at}"
+{"conclusion":"failure","created_at":"2026-10-31T09:42:38Z","event":"pull_request","id":41189792585,"name":"LOGI PR contract shape"}
+{"conclusion":"failure","created_at":"2026-10-31T09:41:54Z","event":"pull_request","id":41189742090,"name":"LOGI PR contract shape"}
+exit_code=0
+stderr_bytes=0
+
+## C3. Job log fetch — BLOCKED, outbound allowlist (evidence of the failed attempt, not a guess)
+$ gh api repos/.../actions/jobs/124504024279/logs
+exit_code=1
+stderr: Get "https://productionresultssa12.blob.core.windows.net/...": EOF
+
+## C4. Deterministic local reproduction of the workflow predicate
+The workflow payload is exactly (PR body, PR head SHA). Both are fetched from GitHub above;
+the predicate is pure Python with no network. Running the workflow body verbatim on the CURRENT
+PR body gives:
+PR_CONTRACT_SHAPE=FAIL
+ - Acceptance: include completed checks; do not leave unchecked acceptance
+local_reproduction_exit_code=1
+
+## C5. Interpretation
+- Both check-runs on the HEAD SHA are FAILURE. The only failing predicate is:
+  'Acceptance: include completed checks; do not leave unchecked acceptance'.
+- Two acceptance lines in the PR body are intentionally still '- [ ]': the exact-final-HEAD
+  full-suite gate (now measurable, evidence in this bundle) and the independent final review
+  (not yet performed, and not self-certifiable).
+- Ticking them by hand to turn the check green is the WRONG_PASS this gate exists to catch, and
+  the task forbids it. Therefore contract-shape stays FAIL and PR #248 stays on HOLD.
+- This is a PR-gate blocker, NOT a test failure: the two full suites below both exited 0.

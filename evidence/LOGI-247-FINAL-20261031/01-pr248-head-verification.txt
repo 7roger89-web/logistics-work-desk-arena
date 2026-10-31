@@ -1,0 +1,54 @@
+# PR #248 exact-HEAD verification — raw command transcript
+captured_at_utc=2026-10-31T10:46:42Z
+repo=7roger89-web/logistics-work-desk-arena
+
+## C1. GitHub REST (replacement for the failing 'gh pr view --json baseRefOid' field path)
+$ gh api repos/7roger89-web/logistics-work-desk-arena/pulls/248 --jq '{head: .head.sha, base: .base.sha, state: .state}'
+{"base":"ba03ae7ac27f2020c761bf405e1aaaab80709c62","head":"9012ee01763df491ec4d8bda9836cc3dee060aac","state":"open"}
+exit_code=0
+stderr_bytes=0
+
+## C1b. Extended REST fields
+$ gh api repos/.../pulls/248 --jq '{head:.head.sha,base:.base.sha,state:.state,mergeable:.mergeable,mergeable_state:.mergeable_state,head_ref:.head.ref,base_ref:.base.ref}'
+{"base":"ba03ae7ac27f2020c761bf405e1aaaab80709c62","base_ref":"arena/ae5f9f47-logistics-work-desk-arena","head":"9012ee01763df491ec4d8bda9836cc3dee060aac","head_ref":"arena/f1a205f4-logistics-work-desk-arena","mergeable":true,"mergeable_state":"blocked","state":"open"}
+exit_code=0
+stderr_bytes=0
+
+## C2. Git transport fallback
+$ git fetch origin pull/248/head
+exit_code=0
+stderr:
+From https://github.com/7roger89-web/logistics-work-desk-arena
+ * branch            refs/pull/248/head -> FETCH_HEAD
+$ git rev-parse FETCH_HEAD
+9012ee01763df491ec4d8bda9836cc3dee060aac
+exit_code=0
+
+## C3. Isolated detached worktrees at the verified HEAD
+$ git worktree add --detach /tmp/wtA 9012ee01763df491ec4d8bda9836cc3dee060aac   # exit_code=0
+$ git worktree add --detach /tmp/wtB 9012ee01763df491ec4d8bda9836cc3dee060aac   # exit_code=0
+
+## C4. HEAD inside each isolated worktree
+$ git -C /tmp/wtA rev-parse HEAD
+9012ee01763df491ec4d8bda9836cc3dee060aac
+exit_code=0
+$ git -C /tmp/wtA status --short | wc -l
+0
+$ git -C /tmp/wtB rev-parse HEAD
+9012ee01763df491ec4d8bda9836cc3dee060aac
+exit_code=0
+$ git -C /tmp/wtB status --short | wc -l
+0
+
+## C5. Local branch/worktree of this session (evidence branch, NOT the PR head branch)
+$ git branch --show-current
+arena/dfd56039-logistics-work-desk-arena
+$ git rev-parse HEAD
+fd9b265596da33c49d74a07a487022ab4a1838ea
+$ git status --short
+?? evidence/LOGI-247-FINAL-20261031/
+exit_code=0
+$ git worktree list
+/home/user/logistics-work-desk-arena  fd9b265 [arena/dfd56039-logistics-work-desk-arena]
+/tmp/wtA                              9012ee0 (detached HEAD)
+/tmp/wtB                              9012ee0 (detached HEAD)

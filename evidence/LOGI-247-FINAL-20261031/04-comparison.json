@@ -1,0 +1,51 @@
+{
+  "A_count": 2403,
+  "B_count": 2403,
+  "A_unique": 2403,
+  "A_eq_B": true,
+  "A_ids_sha256": "552021c2b3c15c7ab43b8153c8123b08c698de990538fc7839317363022fd197",
+  "B_ids_sha256": "552021c2b3c15c7ab43b8153c8123b08c698de990538fc7839317363022fd197",
+  "S1_collected": 2396,
+  "S1_head": "2941181d0f17701a7039d431262a0f35e27a848b",
+  "S1_collected_sha256": "aa58165392f7a81cf7c4f8bab47a6269beeec23583f6f3c71773aed609fda75d",
+  "raw_missing": 1,
+  "raw_added": 8,
+  "added_ids": [
+    "tests/test_excel_quote_import_v1.py::test_unsafe_or_unsupported_workbooks_rejected[big.xlsx-data3]",
+    "tests/test_intl_payment_comparator.py::test_s1_duplicate_key_replay_ignores_driver_id",
+    "tests/test_intl_payment_comparator.py::test_s1_failed_lookup_never_inserts[no-index]",
+    "tests/test_intl_payment_comparator.py::test_s1_failed_lookup_never_inserts[unique-index]",
+    "tests/test_intl_payment_comparator.py::test_s1_snapshot_replay_and_tamper_readback[no-index]",
+    "tests/test_intl_payment_comparator.py::test_s1_snapshot_replay_and_tamper_readback[unique-index]",
+    "tests/test_intl_payment_comparator.py::test_s1_viewer_denied_with_readback[no-index]",
+    "tests/test_intl_payment_comparator.py::test_s1_viewer_denied_with_readback[unique-index]"
+  ],
+  "missing_ids": [
+    "tests/test_excel_quote_import_v1.py::test_unsafe_or_unsupported_workbooks_rejected[big.xlsx-<S1-recording-redacted-the-param-payload>]"
+  ],
+  "skip_A": 44,
+  "skip_B": 44,
+  "skip_S1": 44,
+  "skip_A_eq_B": true,
+  "skip_A_eq_S1": true,
+  "skip_sha256": "12acbd9f7af86e099efc92f651eb3b2004abf0df7b871e7023441e04547a430d",
+  "skip_by_module": {
+    "tests.test_financial_ledger.MongoFinancialLedgerFixtureTests": 1,
+    "tests.test_financial_write_safety.MongoPersistenceFixtureTests": 6,
+    "tests.test_historical_owner_decisions.HistoricalOwnerDecisionTests": 4,
+    "tests.test_historical_review_analysis.HistoricalReviewAnalysisTests": 5,
+    "tests.test_historical_staging.HistoricalStagingTests": 12,
+    "tests.test_lg05_excel_roundtrip_gnt.TestExcelExportRoundTrip": 1,
+    "tests.test_lg05_excel_roundtrip_gnt.TestExcelRoundTrip": 5,
+    "tests.test_log_docgen_01.RbacTests": 3,
+    "tests.test_log_docgen_01.TemplateGenerationTests": 6,
+    "tests.test_log_docgen_01.VersionAndLinkageTests": 1
+  },
+  "notes": [
+    "S1 baseline JSON recorded the parametrized payload as a long 'xxxx…' placeholder; the live collector reports the real param id '[big.xlsx-data3]'. Same test, one id string on each side.",
+    "Genuine delta = +7 new S1 test ids (test_intl_payment_comparator.py), 0 genuinely lost test ids.",
+    "Skipped-ID sets A == B == S1 (44 ids, byte-identical after sort); sha256 12acbd9f7af86e099efc92f651eb3b2004abf0df7b871e7023441e04547a430d.",
+    "Skip IDs were read from xunit junit of a focused replica run over the only 7 files that contain skip sites (139 passed / 44 skipped, exit 0 in both envs); the two full runs independently reported 44 skipped with identical per-site counts.",
+    "No xfail/xpass/deselect: full-run summaries contain 'passed'/'skipped'/'subtests passed' only; no 'deselected', 'xfailed', 'xpassed' tokens."
+  ]
+}
