@@ -1,0 +1,4 @@
+attempt: gh api repos/.../actions/jobs/<job-id>/logs
+exit_code=1
+stderr:
+Get "https://productionresultssa3.blob.core.windows.net/actions-results/92ea41ea-ab51-8352-b64c-a36a5465756a/workflow-job-run-25ed338d-45a4-5bb0-a477-870b8a23bdf4/logs/job/job-logs.txt?rsct=text%2Fplain&se=2026-10-31T11%3A51%3A53Z&sig=u%2BxG1oVPoYtOpDRkOOVwZt83Ry4ws4rSWc0aBKRtQx8%3D&ske=2026-10-31T13%3A45%3A49Z&skoid=ca7593d4-ee42-46cd-af88-8b886a2f84eb&sks=b&skt=2026-10-31T09%3A45%3A49Z&sktid=398a6654-997b-47e9-b12b-9515b896b4de&skv=2025-11-05&sp=r&spr=https&sr=b&st=2026-10-31T11%3A41%3A48Z&sv=2025-11-05": EOF
