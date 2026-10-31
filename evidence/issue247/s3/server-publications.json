@@ -1,0 +1,55 @@
+{
+  "database": "logistics_staging",
+  "pid": 3977,
+  "a": {
+    "customer_id": "QA-LG",
+    "shipment_id": "QA-LOT",
+    "pointer_version": "g15-58054dc98b044c3f822f728e405cdfa5",
+    "manifest_version": "g15-58054dc98b044c3f822f728e405cdfa5",
+    "state": "PUBLISHED",
+    "schema": "hexa-customer-publication/v0",
+    "approved_by": "qa-fixture-admin",
+    "approved_at": "2026-10-31T08:40:28.189589+00:00",
+    "event_versions": {
+      "QA-EVENT-PICKUP": "v1"
+    },
+    "document_versions": {
+      "QA-DOC-PL-A": "v1"
+    },
+    "approved_content_sha256": "dcd66ce22f376ce8a31a34353956378d0ae426737d6b52c21086eb94954d7303"
+  },
+  "b": {
+    "customer_id": "QA-OTHER",
+    "shipment_id": "QA-FOREIGN",
+    "pointer_version": "g15-533342de7c9b455a8aef95e93bc65512",
+    "manifest_version": "g15-533342de7c9b455a8aef95e93bc65512",
+    "state": "PUBLISHED",
+    "schema": "hexa-customer-publication/v0",
+    "approved_by": "qa-fixture-admin",
+    "approved_at": "2026-10-31T08:40:28.190729+00:00",
+    "event_versions": {
+      "QA-OTHER-EVENT-PICKUP": "v1"
+    },
+    "document_versions": {
+      "QA-OTHER-DOC-BL": "v1",
+      "QA-OTHER-DOC-POD": "v1"
+    },
+    "approved_content_sha256": "e24d37b3cf9694c82645b74e8736a26e7ce93bf895d9731340f788b2c5fc7f98"
+  },
+  "internal_markers_present_in_db": {
+    "lot_notes": [
+      "SECRET_INTERNAL_QA_LOT",
+      "SECRET_INTERNAL_QA_OTHER_LOT"
+    ],
+    "event_notes": [
+      "SECRET_EVENT_A",
+      "SECRET_EVENT_B"
+    ],
+    "costs": [
+      987654321,
+      123456789
+    ],
+    "private_document": "QA-PRIVATE-DOC-A",
+    "unverified_document": "QA-UNVERIFIED-DOC-A"
+  }
+}

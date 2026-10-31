@@ -1,0 +1,8 @@
+DATE=2026-10-31T08:40:22Z
+REPO_HEAD=63f959431b64e0c8a0103bd8214265f71852e6b2
+SERVER_PID=3974
+SERVER_CMD=QA_TEST_PASSWORD=<ephemeral> AUTH_REQUIRED=true MONGO_URI= MONGO_DB_NAME= ENV_IDENTITY=PREVIEW S3_EVIDENCE_DIR=$PWD/evidence/issue247/s3 .venv/bin/python -m streamlit run tests/component/g15_lg_tt_discussion_runtime.py --server.address=0.0.0.0 --server.port=9503 --server.headless=true --browser.gatherUsageStats=false --server.fileWatcherType=none
+STREAMLIT=1.66.1
+MONGOMOCK=4.3.0
+NODE=v22.22.3 PUPPETEER_CORE=24.40.0
+CHROMIUM=Chromium 153.0.8010.0

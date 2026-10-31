@@ -1,0 +1,148 @@
+{
+  "database": "logistics_staging",
+  "pid": 3977,
+  "roles": {
+    "a": {
+      "role": "a",
+      "email_masked": "l***@example.test",
+      "email_sha256_12": "f0ea57e41d4a",
+      "principal_customer_id": "QA-LG",
+      "database": "logistics_staging",
+      "pid": 3977,
+      "denied_lots": 0,
+      "data_issues": 0,
+      "cards": [
+        {
+          "reference": "QA-LOT",
+          "publication_version": "g15-58054dc98b044c3f822f728e405cdfa5",
+          "approved_at": "2026-10-31T08:40:28.189589+00:00",
+          "timeline": [
+            {
+              "id": "QA-EVENT-PICKUP",
+              "version": "v1",
+              "title": "QA-A Đã lấy hàng tại kho Lục Giác",
+              "stage": "pickup"
+            }
+          ],
+          "documents": [
+            {
+              "id": "QA-DOC-PL-A",
+              "version": "v1",
+              "kind": "PL",
+              "title": "QA-A Packing list"
+            }
+          ]
+        }
+      ],
+      "payload_lot_ids": [
+        "QA-LOT"
+      ],
+      "payload_publication_versions": [
+        "g15-58054dc98b044c3f"
+      ],
+      "payload_document_ids": [
+        "QA-DOC-PL-A"
+      ],
+      "payload_document_titles": [
+        "QA-A Packing list"
+      ],
+      "payload_has_discussion": false,
+      "payload_bytes": 4295,
+      "forbidden_markers": [
+        "SECRET_INTERNAL",
+        "SECRET_GRIDFS",
+        "SECRET_UNVERIFIED",
+        "987654321",
+        "123456789",
+        "g15-533342de7c9b455a8aef95e93bc65512",
+        "g15-533342de7c9b455a",
+        "e24d37b3cf9694c82645b74e8736a26e7ce93bf895d9731340f788b2c5fc7f98",
+        "QA-OTHER",
+        "QA-FOREIGN",
+        "QA-OTHER-EVENT-PICKUP",
+        "QA-B Đã lấy hàng tại kho khách khác",
+        "QA-OTHER-DOC-BL",
+        "QA-OTHER-DOC-POD",
+        "QA-B Bill of lading",
+        "QA-B Biên bản giao hàng",
+        "dcd66ce22f376ce8a31a34353956378d0ae426737d6b52c21086eb94954d7303"
+      ],
+      "forbidden_markers_found": [],
+      "payload_clean": true
+    },
+    "b": {
+      "role": "b",
+      "email_masked": "ot***@example.test",
+      "email_sha256_12": "b0431fe80744",
+      "principal_customer_id": "QA-OTHER",
+      "database": "logistics_staging",
+      "pid": 3977,
+      "denied_lots": 0,
+      "data_issues": 0,
+      "cards": [
+        {
+          "reference": "QA-FOREIGN",
+          "publication_version": "g15-533342de7c9b455a8aef95e93bc65512",
+          "approved_at": "2026-10-31T08:40:28.190729+00:00",
+          "timeline": [
+            {
+              "id": "QA-OTHER-EVENT-PICKUP",
+              "version": "v1",
+              "title": "QA-B Đã lấy hàng tại kho khách khác",
+              "stage": "pickup"
+            }
+          ],
+          "documents": [
+            {
+              "id": "QA-OTHER-DOC-BL",
+              "version": "v1",
+              "kind": "BL",
+              "title": "QA-B Bill of lading"
+            },
+            {
+              "id": "QA-OTHER-DOC-POD",
+              "version": "v1",
+              "kind": "POD",
+              "title": "QA-B Biên bản giao hàng"
+            }
+          ]
+        }
+      ],
+      "payload_lot_ids": [
+        "QA-FOREIGN"
+      ],
+      "payload_publication_versions": [
+        "g15-533342de7c9b455a"
+      ],
+      "payload_document_ids": [
+        "QA-OTHER-DOC-BL",
+        "QA-OTHER-DOC-POD"
+      ],
+      "payload_document_titles": [
+        "QA-B Bill of lading",
+        "QA-B Biên bản giao hàng"
+      ],
+      "payload_has_discussion": false,
+      "payload_bytes": 4394,
+      "forbidden_markers": [
+        "SECRET_INTERNAL",
+        "SECRET_GRIDFS",
+        "SECRET_UNVERIFIED",
+        "987654321",
+        "123456789",
+        "g15-58054dc98b044c3f822f728e405cdfa5",
+        "g15-58054dc98b044c3f",
+        "dcd66ce22f376ce8a31a34353956378d0ae426737d6b52c21086eb94954d7303",
+        "QA-LG",
+        "QA-LOT",
+        "QA-EVENT-PICKUP",
+        "QA-A Đã lấy hàng tại kho Lục Giác",
+        "QA-DOC-PL-A",
+        "QA-A Packing list",
+        "e24d37b3cf9694c82645b74e8736a26e7ce93bf895d9731340f788b2c5fc7f98"
+      ],
+      "forbidden_markers_found": [],
+      "payload_clean": true
+    }
+  }
+}

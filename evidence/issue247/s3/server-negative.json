@@ -1,0 +1,42 @@
+{
+  "ungranted_email": {
+    "denied": true,
+    "exception": "PortalAccessDenied",
+    "email_masked": "no***@example.test"
+  },
+  "tenant_split": {
+    "a": {
+      "customer_id": "QA-LG",
+      "cards": [
+        "QA-LOT"
+      ],
+      "documents": [
+        "QA-DOC-PL-A"
+      ]
+    },
+    "b": {
+      "customer_id": "QA-OTHER",
+      "cards": [
+        "QA-FOREIGN"
+      ],
+      "documents": [
+        "QA-OTHER-DOC-BL",
+        "QA-OTHER-DOC-POD"
+      ]
+    }
+  },
+  "own_manifest_allowed": "ALLOWED",
+  "cross_tenant_manifest": "PublicationDenied",
+  "foreign_shipment_manifest": "PublicationDenied",
+  "cross_tenant_source_rows": {
+    "events": 0,
+    "documents": 0
+  },
+  "private_document": "PublicationWriteDenied",
+  "unverified_document": "PublicationWriteDenied",
+  "pointer_after_denials": "g15-58054dc98b044c3f822f728e405cdfa5",
+  "manifests_before_after": [
+    1,
+    1
+  ]
+}
