@@ -31,6 +31,57 @@ After the Supreme Law preflight and bounded ACTIVE experience lookup, **before c
 
 This project-level routing instruction does not change Supreme Law, approved scope, RBAC, Owner production/deployment gates, independent verification requirements or the authority of the active GoalPlan/TaskPlan. Evidence-based QA remains required for the actual changed surface; it is not a substitute for shipping the requested functionality.
 
+## LOGI execution-to-acceptance lock (Owner decision 2026-10-31)
+
+This section makes the **existing GitHub Issue + PR** executable. It is not a second
+Supreme Law, new TASK.md, skills framework or acceptance authority. Follow the
+preflight, original Owner intent and permission gates above first.
+
+1. **Before coding (SPEC_LOCK):** the assigned existing Issue must identify the
+   observable outcome; actor -> exact screen/entrypoint -> action -> data/role ->
+   visible result; current source of truth (real symbol/schema/route, at measured
+   ref); known assumptions/UNKNOWN; scope/non-goals; at least one realistic
+   **WRONG_PASS**; positive and negative acceptance; exact commands/expected
+   observable outputs. Record the locked acceptance in the Issue **before code**
+   (one dated comment is enough). For an unknown technical contract, investigate
+   source before locking it. For a genuine Owner intent ambiguity, ask the Owner
+   about that decision; do not silently choose the convenient UI.
+2. **Execute one testable slice:** Arena implements one real actor-to-result flow,
+   or one traceback-grounded root-cause cluster. A cross-layer fix may edit all
+   necessary files; unrelated improvements and tooling experiments are excluded.
+   When a larger Goal has many causes (e.g. Issue #247), each repair may close
+   its own acceptance but **must not claim the Goal is DONE** before its original
+   full acceptance passes. No extra Issues/PRs just to count stages.
+3. **Before declaring done:** put on the PR at **exact final HEAD** the original
+   SPEC_REF, WRONG_PASS and item-by-item acceptance, measured base/final SHAs,
+   commands with exit codes and actual results, FAILED/ERROR/SKIP IDs (when
+   applicable), and real browser/runtime evidence for affected user paths.
+   Evidence from mocks remains labeled MOCK. `0 new failures` is **not**
+   `0 failures`; the success rule written before coding is immutable unless
+   Owner approves a scope change.
+4. **Independent review ONCE against the locked contract:** compare the Owner
+   experience, full affected invariant (including sibling roles/routes), source
+   diff and real evidence, not the executor's self-defined PASS. Report each
+   acceptance line `PASS / FAIL / UNKNOWN` with evidence and one consolidated
+   list of blockers. If a found counterexample should have been in the spec,
+   repair the spec gap explicitly *before* another implementation round. New
+   review is for changed HEAD and outstanding blockers, not a fresh speculative
+   feature hunt. No supported evidence -> UNKNOWN, never PASS.
+5. **Merge/release gate:** required scope acceptance + independent review on
+   final HEAD must be PASS; a PR-format bot or a clean diff alone cannot approve
+   a merge. While Issue #247's **full-suite 0 FAILED / 0 ERROR** goal is open,
+   hold unrelated feature merges to staging. Allow only isolated test/root-cause
+   repairs with measured progress and docs/process-only PRs; do not treat an
+   intermediate repair as completion of #247. Any priority exception needs a
+   fresh Owner decision. Never merge to `main` or write Cloud/production without
+   the existing Owner gates and verified runtime identity.
+6. **Enforcement boundary:** `.github/pull_request_template.md` and the
+   `LOGI PR contract shape` GitHub Actions check validate the PR handoff shape
+   and final SHA, **not** behavioral truth. The staging branch was unprotected
+   at adoption: until GitHub marks the check REQUIRED via branch protection,
+   it does **not** technically prevent an unauthorized manual merge. The human
+   merger must check the independent acceptance and this gate explicitly.
+
 ## Evidence-first verification (P2P)
 
 For non-trivial implementation, repair, review, testing, or any correctness/readiness claim, apply `P2P_EVIDENCE_FIRST_VERIFICATION_V1`. When canonical cross-repository access is available, read:
