@@ -519,7 +519,19 @@ def test_lightweight_create_starts_one_canonical_leg_and_navigable_detail_data(s
     assert legs[0]["mode"] == "Air"
     assert legs[0]["origin"] == "CAN"
     assert legs[0]["destination"] == "HAN"
-    assert out["readback"]["transportLegsStructured"] is True
+    # Issue #195 FAST PATH: ``shipment_create`` returns a MINIMAL authoritative
+    # readback (id/customer/version of the freshly persisted document) — the
+    # full projection is built by the forced rerun, so the structured-legs fact
+    # is asserted on the FRESH projection of the persisted row, not smuggled
+    # into the create response.
+    assert set(out["readback"]) == {"id", "customer", "version"}
+    assert out["readback"]["id"] == "LO-OPS-V1"
+    assert out["readback"]["customer"] == fresh["customer"]
+    # The structured-legs flag is a PROJECTION field; it must be true on the
+    # fresh projection of the persisted document (the same shape the shell
+    # receives), not on the raw document.
+    from views import logi_real_data as rd
+    assert rd.shipment_projection(fresh)["transportLegsStructured"] is True
 
 
 def test_component_exposes_progressive_mode_specific_operational_editor():

@@ -179,8 +179,13 @@ def test_bootstrap_first_admin_flow_still_runs_with_no_session_and_no_users():
     from core import auth
 
     mock_st = _session_st({}, {})
+    # ``require_login`` decides bootstrap with ``core.database.has_any_users``
+    # (a two-field projection read), NOT with ``load_users``; both are pinned so
+    # this test cannot inherit a user store another test seeded into the shared
+    # sandbox backend.
     with patch.object(auth, "st", mock_st), patch.object(auth, "AUTH_REQUIRED", True), \
          patch("core.database.load_users", return_value={}), \
+         patch("core.database.has_any_users", return_value=False), \
          patch.object(auth, "_render_bootstrap_setup") as bootstrap:
         result = auth.require_login()
         assert result is None

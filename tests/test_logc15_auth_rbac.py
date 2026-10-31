@@ -20,6 +20,7 @@ Guarantees under test:
 from __future__ import annotations
 
 import unittest
+from types import SimpleNamespace
 
 from core.auth import (
     PermissionDeniedError,
@@ -253,8 +254,22 @@ class TestRoleMatrix(unittest.TestCase):
                              f"viewer must not hold {permission}")
 
     def test_unknown_role_falls_back_to_viewer(self) -> None:
-        has_permission_cache_state = {}  # no cache exists; call directly
-        self.assertFalse(has_permission("receivables"))  # unauthenticated -> viewer
+        from unittest.mock import patch
+
+        # No cache exists; call directly. The session is pinned EMPTY so this
+        # asserts the unauthenticated boundary on its own terms instead of
+        # inheriting a user another test left in the shared session state.
+        with patch("core.auth.st", SimpleNamespace(session_state={})):
+            self.assertFalse(has_permission("receivables"))  # unauthenticated -> viewer
+            self.assertFalse(has_permission("finance_write"))
+            self.assertTrue(has_permission("dashboard"))  # viewer read surface
+        # An authenticated-but-unknown role falls back to the viewer matrix too.
+        with patch("core.auth.st", SimpleNamespace(
+            session_state={"current_user": {"username": "u", "role": "khong-ton-tai"}}
+        )):
+            self.assertFalse(has_permission("receivables"))
+            self.assertFalse(has_permission("finance_write"))
+            self.assertTrue(has_permission("dashboard"))
 
     def test_permission_denied_error_for_unauthorized(self) -> None:
         from unittest.mock import patch

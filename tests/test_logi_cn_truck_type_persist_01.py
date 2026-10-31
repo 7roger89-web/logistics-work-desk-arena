@@ -73,11 +73,15 @@ def test_whitelist_gained_exactly_the_one_approved_key():
 
     LOGI_CONTRACT_AND_SHIPMENT_CORE_GAPS_01 later added one further key
     (``created_at`` — the lot's header date, under ``data/0.0``, not under the
-    transport section), so the total is now 31; the ``under_12`` pin below still
-    proves this ruling contributed exactly its one key.
+    transport section). The delivery-receipt / PXK identity slice then added the
+    three operator-typed receipt fields the shipment detail editor writes and the
+    PXK gate reads (``receiver_name``, ``receiver_title``, ``delivery_location``
+    under ``data/2.7``). The total is therefore 34 — the ``under_12`` pin below
+    still proves THIS ruling contributed exactly its one key, and every added key
+    is named explicitly below so a silent extra field cannot ride along.
     """
     assert vm.FIELD_PATHS["pickup_truck_type"] == ("data", "1.2", "pickup_truck_type")
-    assert len(vm.FIELD_PATHS) == 31
+    assert len(vm.FIELD_PATHS) == 34
 
     # No smuggled extra field under the transport section: the nine
     # pre-existing 1.2 keys plus the one the Owner has now ruled on.
@@ -85,6 +89,16 @@ def test_whitelist_gained_exactly_the_one_approved_key():
     assert under_12 == {
         "booking_no", "carrier", "mbl", "hbl", "vessel", "etd",
         "pol", "pod", "container_no", "qty_pkg", "pickup_truck_type",
+    }
+
+    # The three post-ruling delivery-receipt keys are pinned to their exact
+    # canonical paths (2.7), never to the transport section they would corrupt.
+    assert vm.FIELD_PATHS["receiver_name"] == ("data", "2.7", "receiver_name")
+    assert vm.FIELD_PATHS["receiver_title"] == ("data", "2.7", "receiver_title")
+    assert vm.FIELD_PATHS["delivery_location"] == ("data", "2.7", "delivery_location")
+    assert {k for k, p in vm.FIELD_PATHS.items() if p[1:2] == ("2.7",)} == {
+        "truck_no", "seal_no", "delivery_date", "phone_receiver", "addr",
+        "receiver_name", "receiver_title", "delivery_location",
     }
 
 

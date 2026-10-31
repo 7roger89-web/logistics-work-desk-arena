@@ -209,6 +209,13 @@ class ProvenanceImmutabilityTest(unittest.TestCase):
 
         client = mongomock.MongoClient()
         db = client["test_logi"]
+        # The append-only guarantee is enforced by the CANONICAL unique index on
+        # ``contract_intl_payment_snapshots.id`` (created by
+        # ``core.database.ensure_indexes``); without it a second insert of the
+        # same id would simply succeed and prove nothing. Create the real index
+        # set on this isolated database instead of a hand-rolled copy.
+        with patch.object(dbmod, "get_db", return_value=db):
+            assert dbmod.ensure_indexes(), dbmod.get_last_db_error()
         # seed contracts collection with one contract
         db.contracts.insert_one({"id": "CTR-001", "is_deleted": False})
         payload = {
@@ -222,7 +229,27 @@ class ProvenanceImmutabilityTest(unittest.TestCase):
             "outputs": {"total": 1},
             "formula_version": FORMULA_VERSION,
         }
-        with patch.object(dbmod, "get_db", return_value=db):
+        # The writer authorizes the ACTOR, so this test states its own actor
+        # instead of inheriting whatever session an earlier test left behind.
+        # A Sale holds sales_write; a Viewer must stay refused.
+        from types import SimpleNamespace
+
+        sale = SimpleNamespace(session_state={"current_user": {
+            "username": "sale.fixture", "user_id": "U-SALE", "role": "sale",
+            "display_name": "Sale Fixture",
+        }})
+        viewer = SimpleNamespace(session_state={"current_user": {
+            "username": "viewer.fixture", "user_id": "U-VIEWER", "role": "viewer",
+            "display_name": "Viewer Fixture",
+        }})
+        with patch.object(dbmod, "get_db", return_value=db), \
+                patch("core.auth.st", viewer):
+            assert not dbmod.save_contract_intl_snapshot(payload), (
+                "a viewer must never write a payment snapshot"
+            )
+            assert db.contract_intl_payment_snapshots.count_documents({}) == 0
+        with patch.object(dbmod, "get_db", return_value=db), \
+                patch("core.auth.st", sale):
             # First save succeeds
             ok = dbmod.save_contract_intl_snapshot(payload)
             assert ok, dbmod.get_last_db_error()
