@@ -1,0 +1,181 @@
+PASS desktop A account label :: l***@example.test
+PASS desktop A · own lot rendered :: QA-LOT
+PASS desktop A · own approved event rendered :: QA-A Đã lấy hàng tại kho Lục Giác
+PASS desktop A · foreign lot absent :: QA-FOREIGN
+PASS desktop A · foreign event absent :: QA-B Đã lấy hàng tại kho khác
+PASS desktop A · foreign document absent :: QA-B Bill of lading
+PASS desktop A · foreign document id absent :: QA-OTHER-DOC-BL
+PASS desktop A · foreign publication version absent :: g15-533342de7c9b455a
+PASS desktop A · foreign approved hash absent :: sha256
+PASS desktop A · no leftover form value :: []
+PASS desktop A · internal markers absent :: SECRET_/cost
+PASS desktop A · own dashboard reference present :: {"rows":["shipment-row-QA-LOT"],"cards":["shipment-card-QA-LOT"]}
+PASS desktop A · foreign dashboard reference absent :: {"rows":["shipment-row-QA-LOT"],"cards":["shipment-card-QA-LOT"]}
+PASS desktop A pickup completed :: [{"id":"journey-node-plan","state":"UNKNOWN"},{"id":"journey-node-pickup","state":"COMPLETED"},{"id":"journey-node-consolidate","state":"UNKNOWN"},{"id":"journey-node-transit","state":"UNKNOWN"},{"id":"journey-node-customs","state":"UNKNOWN"},{"id":"journey-node-delivery","state":"UNKNOWN"},{"id":"journey-node-finance","state":"UNKNOWN"}]
+PASS desktop A own document count :: 1 tệp
+PASS desktop A no horizontal overflow :: {"viewport":[1440,900],"documentHorizontalOverflow":false,"documentScrollWidth":1440,"shadowHorizontalOverflow":false,"shadowScrollWidth":1280,"shadowClientWidth":1280}
+PASS desktop A pickup node is a real hit target :: {"ok":true,"w":131,"h":84}
+PASS desktop A composer is the node conversation :: Viết bình luận…
+PASS desktop A draft typed locally :: S3-DRAFT-A-DO-NOT-LEAK
+PASS desktop A modal shows own document :: QA-A Packing list
+PASS desktop A modal shows own publication version :: g15-58054dc98b044c3f
+PASS desktop A modal hides foreign document :: QA-B Bill of lading
+PASS desktop A modal hit target :: {"ok":true,"w":510,"h":15}
+PASS desktop B account label :: ot***@example.test
+PASS desktop B is a positive control (own publication) :: QA-FOREIGN/QA-B Đã lấy hàng tại kho khác
+PASS desktop B · own lot rendered :: QA-FOREIGN
+PASS desktop B · own approved event rendered :: QA-B Đã lấy hàng tại kho khác
+PASS desktop B · foreign lot absent :: QA-LOT
+PASS desktop B · foreign event absent :: QA-A Đã lấy hàng tại kho Lục Giác
+PASS desktop B · foreign document absent :: QA-A Packing list
+PASS desktop B · foreign document id absent :: QA-DOC-PL-A
+PASS desktop B · foreign publication version absent :: g15-58054dc98b044c3f
+PASS desktop B · foreign approved hash absent :: sha256
+PASS desktop B · no leftover form value :: []
+PASS desktop B · internal markers absent :: SECRET_/cost
+PASS desktop B · own dashboard reference present :: {"rows":["shipment-row-QA-FOREIGN"],"cards":["shipment-card-QA-FOREIGN"]}
+PASS desktop B · foreign dashboard reference absent :: {"rows":["shipment-row-QA-FOREIGN"],"cards":["shipment-card-QA-FOREIGN"]}
+PASS desktop B carry-over bubble closed :: false
+PASS desktop B carry-over modal closed :: {"modalClass":"journey-modal-layer hidden","modalText":""}
+PASS desktop B toolbar is B's own lot :: QA-FOREIGN
+PASS desktop B own document count :: 2 tệp
+PASS desktop B pickup completed from B's own event :: [{"id":"journey-node-plan","state":"UNKNOWN"},{"id":"journey-node-pickup","state":"COMPLETED"},{"id":"journey-node-consolidate","state":"UNKNOWN"},{"id":"journey-node-transit","state":"UNKNOWN"},{"id":"journey-node-customs","state":"UNKNOWN"},{"id":"journey-node-delivery","state":"UNKNOWN"},{"id":"journey-node-finance","state":"UNKNOWN"}]
+PASS desktop B no horizontal overflow :: {"viewport":[1440,900],"documentHorizontalOverflow":false,"documentScrollWidth":1440,"shadowHorizontalOverflow":false,"shadowScrollWidth":1280,"shadowClientWidth":1280}
+PASS desktop B bubble carries B's approved event :: QA-B Đã lấy hàng tại
+PASS desktop B bubble hides A's event :: QA-A Đã lấy hàng tại kho Lục Giác
+PASS desktop B modal shows own documents :: B documents
+PASS desktop B modal shows own publication version :: g15-533342de7c9b455a
+PASS desktop B modal hides A's document and version :: A metadata
+PASS desktop A-again · own lot rendered :: QA-LOT
+PASS desktop A-again · own approved event rendered :: QA-A Đã lấy hàng tại kho Lục Giác
+PASS desktop A-again · foreign lot absent :: QA-FOREIGN
+PASS desktop A-again · foreign event absent :: QA-B Đã lấy hàng tại kho khác
+PASS desktop A-again · foreign document absent :: QA-B Bill of lading
+PASS desktop A-again · foreign document id absent :: QA-OTHER-DOC-BL
+PASS desktop A-again · foreign publication version absent :: g15-533342de7c9b455a
+PASS desktop A-again · foreign approved hash absent :: sha256
+PASS desktop A-again · no leftover form value :: []
+PASS desktop A-again · internal markers absent :: SECRET_/cost
+PASS desktop A-again · own dashboard reference present :: {"rows":["shipment-row-QA-LOT"],"cards":["shipment-card-QA-LOT"]}
+PASS desktop A-again · foreign dashboard reference absent :: {"rows":["shipment-row-QA-LOT"],"cards":["shipment-card-QA-LOT"]}
+PASS desktop A-again bubble shows A's own event :: QA-A Đã lấy hàng tại
+PASS desktop A-again bubble hides B's event :: QA-B Đã lấy hàng tại kho khác
+PASS desktop reload starts at granted A :: QA-LOT
+PASS desktop B-after-reload · own lot rendered :: QA-FOREIGN
+PASS desktop B-after-reload · own approved event rendered :: QA-B Đã lấy hàng tại kho khác
+PASS desktop B-after-reload · foreign lot absent :: QA-LOT
+PASS desktop B-after-reload · foreign event absent :: QA-A Đã lấy hàng tại kho Lục Giác
+PASS desktop B-after-reload · foreign document absent :: QA-A Packing list
+PASS desktop B-after-reload · foreign document id absent :: QA-DOC-PL-A
+PASS desktop B-after-reload · foreign publication version absent :: g15-58054dc98b044c3f
+PASS desktop B-after-reload · foreign approved hash absent :: sha256
+PASS desktop B-after-reload · no leftover form value :: []
+PASS desktop B-after-reload · internal markers absent :: SECRET_/cost
+PASS desktop B-after-reload · own dashboard reference present :: {"rows":["shipment-row-QA-FOREIGN"],"cards":["shipment-card-QA-FOREIGN"]}
+PASS desktop B-after-reload · foreign dashboard reference absent :: {"rows":["shipment-row-QA-FOREIGN"],"cards":["shipment-card-QA-FOREIGN"]}
+PASS desktop reload B has B's own document count :: 2 tệp
+PASS desktop denied identity message :: Tài khoản này chưa được cấp quyền xem dữ liệu
+PASS desktop denied screen exposes no lot
+PASS desktop denied screen has no portal account label :: account label
+PASS desktop no page errors :: []
+PASS mobile A account label :: l***@example.test
+PASS mobile A · own lot rendered :: QA-LOT
+PASS mobile A · own approved event rendered :: QA-A Đã lấy hàng tại kho Lục Giác
+PASS mobile A · foreign lot absent :: QA-FOREIGN
+PASS mobile A · foreign event absent :: QA-B Đã lấy hàng tại kho khác
+PASS mobile A · foreign document absent :: QA-B Bill of lading
+PASS mobile A · foreign document id absent :: QA-OTHER-DOC-BL
+PASS mobile A · foreign publication version absent :: g15-533342de7c9b455a
+PASS mobile A · foreign approved hash absent :: sha256
+PASS mobile A · no leftover form value :: []
+PASS mobile A · internal markers absent :: SECRET_/cost
+PASS mobile A · own dashboard reference present :: {"rows":["shipment-row-QA-LOT"],"cards":["shipment-card-QA-LOT"]}
+PASS mobile A · foreign dashboard reference absent :: {"rows":["shipment-row-QA-LOT"],"cards":["shipment-card-QA-LOT"]}
+PASS mobile A pickup completed :: [{"id":"journey-node-plan","state":"UNKNOWN"},{"id":"journey-node-pickup","state":"COMPLETED"},{"id":"journey-node-consolidate","state":"UNKNOWN"},{"id":"journey-node-transit","state":"UNKNOWN"},{"id":"journey-node-customs","state":"UNKNOWN"},{"id":"journey-node-delivery","state":"UNKNOWN"},{"id":"journey-node-finance","state":"UNKNOWN"}]
+PASS mobile A own document count :: 1 tệp
+PASS mobile A no horizontal overflow :: {"viewport":[390,844],"documentHorizontalOverflow":false,"documentScrollWidth":390,"shadowHorizontalOverflow":false,"shadowScrollWidth":358,"shadowClientWidth":358}
+PASS mobile A pickup node is a real hit target :: {"ok":true,"w":100,"h":67}
+PASS mobile A composer is the node conversation :: Viết bình luận…
+PASS mobile A draft typed locally :: S3-DRAFT-A-DO-NOT-LEAK
+PASS mobile A modal shows own document :: QA-A Packing list
+PASS mobile A modal shows own publication version :: g15-58054dc98b044c3f
+PASS mobile A modal hides foreign document :: QA-B Bill of lading
+PASS mobile A modal hit target :: {"ok":true,"w":286,"h":15}
+PASS mobile B account label :: ot***@example.test
+PASS mobile B is a positive control (own publication) :: QA-FOREIGN/QA-B Đã lấy hàng tại kho khác
+PASS mobile B · own lot rendered :: QA-FOREIGN
+PASS mobile B · own approved event rendered :: QA-B Đã lấy hàng tại kho khác
+PASS mobile B · foreign lot absent :: QA-LOT
+PASS mobile B · foreign event absent :: QA-A Đã lấy hàng tại kho Lục Giác
+PASS mobile B · foreign document absent :: QA-A Packing list
+PASS mobile B · foreign document id absent :: QA-DOC-PL-A
+PASS mobile B · foreign publication version absent :: g15-58054dc98b044c3f
+PASS mobile B · foreign approved hash absent :: sha256
+PASS mobile B · no leftover form value :: []
+PASS mobile B · internal markers absent :: SECRET_/cost
+PASS mobile B · own dashboard reference present :: {"rows":["shipment-row-QA-FOREIGN"],"cards":["shipment-card-QA-FOREIGN"]}
+PASS mobile B · foreign dashboard reference absent :: {"rows":["shipment-row-QA-FOREIGN"],"cards":["shipment-card-QA-FOREIGN"]}
+PASS mobile B carry-over bubble closed :: false
+PASS mobile B carry-over modal closed :: {"modalClass":"journey-modal-layer hidden","modalText":""}
+PASS mobile B toolbar is B's own lot :: QA-FOREIGN
+PASS mobile B own document count :: 2 tệp
+PASS mobile B pickup completed from B's own event :: [{"id":"journey-node-plan","state":"UNKNOWN"},{"id":"journey-node-pickup","state":"COMPLETED"},{"id":"journey-node-consolidate","state":"UNKNOWN"},{"id":"journey-node-transit","state":"UNKNOWN"},{"id":"journey-node-customs","state":"UNKNOWN"},{"id":"journey-node-delivery","state":"UNKNOWN"},{"id":"journey-node-finance","state":"UNKNOWN"}]
+PASS mobile B no horizontal overflow :: {"viewport":[390,844],"documentHorizontalOverflow":false,"documentScrollWidth":390,"shadowHorizontalOverflow":false,"shadowScrollWidth":358,"shadowClientWidth":358}
+PASS mobile B bubble carries B's approved event :: QA-B Đã lấy hàng tại
+PASS mobile B bubble hides A's event :: QA-A Đã lấy hàng tại kho Lục Giác
+PASS mobile B modal shows own documents :: B documents
+PASS mobile B modal shows own publication version :: g15-533342de7c9b455a
+PASS mobile B modal hides A's document and version :: A metadata
+PASS mobile A-again · own lot rendered :: QA-LOT
+PASS mobile A-again · own approved event rendered :: QA-A Đã lấy hàng tại kho Lục Giác
+PASS mobile A-again · foreign lot absent :: QA-FOREIGN
+PASS mobile A-again · foreign event absent :: QA-B Đã lấy hàng tại kho khác
+PASS mobile A-again · foreign document absent :: QA-B Bill of lading
+PASS mobile A-again · foreign document id absent :: QA-OTHER-DOC-BL
+PASS mobile A-again · foreign publication version absent :: g15-533342de7c9b455a
+PASS mobile A-again · foreign approved hash absent :: sha256
+PASS mobile A-again · no leftover form value :: []
+PASS mobile A-again · internal markers absent :: SECRET_/cost
+PASS mobile A-again · own dashboard reference present :: {"rows":["shipment-row-QA-LOT"],"cards":["shipment-card-QA-LOT"]}
+PASS mobile A-again · foreign dashboard reference absent :: {"rows":["shipment-row-QA-LOT"],"cards":["shipment-card-QA-LOT"]}
+PASS mobile A-again bubble shows A's own event :: QA-A Đã lấy hàng tại
+PASS mobile A-again bubble hides B's event :: QA-B Đã lấy hàng tại kho khác
+PASS mobile reload starts at granted A :: QA-LOT
+PASS mobile B-after-reload · own lot rendered :: QA-FOREIGN
+PASS mobile B-after-reload · own approved event rendered :: QA-B Đã lấy hàng tại kho khác
+PASS mobile B-after-reload · foreign lot absent :: QA-LOT
+PASS mobile B-after-reload · foreign event absent :: QA-A Đã lấy hàng tại kho Lục Giác
+PASS mobile B-after-reload · foreign document absent :: QA-A Packing list
+PASS mobile B-after-reload · foreign document id absent :: QA-DOC-PL-A
+PASS mobile B-after-reload · foreign publication version absent :: g15-58054dc98b044c3f
+PASS mobile B-after-reload · foreign approved hash absent :: sha256
+PASS mobile B-after-reload · no leftover form value :: []
+PASS mobile B-after-reload · internal markers absent :: SECRET_/cost
+PASS mobile B-after-reload · own dashboard reference present :: {"rows":["shipment-row-QA-FOREIGN"],"cards":["shipment-card-QA-FOREIGN"]}
+PASS mobile B-after-reload · foreign dashboard reference absent :: {"rows":["shipment-row-QA-FOREIGN"],"cards":["shipment-card-QA-FOREIGN"]}
+PASS mobile reload B has B's own document count :: 2 tệp
+PASS mobile denied identity message :: Tài khoản này chưa được cấp quyền xem dữ liệu
+PASS mobile denied screen exposes no lot
+PASS mobile denied screen has no portal account label :: account label
+PASS mobile no page errors :: []
+PASS server: one in-process mongomock TEST database :: {"database":"logistics_staging","module":"mongomock.mongo_client","uri":""}
+PASS server: same process for DB, publications and both readbacks :: {"pid":3977,"pids":[3977,3977,3977,3977]}
+PASS server: A and B have independent PUBLISHED manifests :: {"a":"g15-58054dc98b044c3f822f728e405cdfa5","b":"g15-533342de7c9b455a8aef95e93bc65512"}
+PASS server: A and B publish different sources :: {"a":{"QA-DOC-PL-A":"v1"},"b":{"QA-OTHER-DOC-BL":"v1","QA-OTHER-DOC-POD":"v1"}}
+PASS server: A view cards are exactly A's own lot :: ["QA-LOT"]
+PASS server: B view cards are exactly B's own lot :: ["QA-FOREIGN"]
+PASS server: A payload has no foreign/internal marker :: []
+PASS server: B payload has no foreign/internal marker :: []
+PASS server: A payload ids are A's own :: ["QA-LOT"]
+PASS server: B payload ids are B's own :: ["QA-FOREIGN"]
+PASS server: ungranted verified email raises PortalAccessDenied :: {"denied":true,"exception":"PortalAccessDenied","email_masked":"no***@example.test"}
+PASS server: tenant split has no overlap :: {"a":{"customer_id":"QA-LG","cards":["QA-LOT"],"documents":["QA-DOC-PL-A"]},"b":{"customer_id":"QA-OTHER","cards":["QA-FOREIGN"],"documents":["QA-OTHER-DOC-BL","QA-OTHER-DOC-POD"]}}
+PASS server: cross-tenant manifest denied :: {"own":"ALLOWED","cross":"PublicationDenied","foreign":"PublicationDenied"}
+PASS server: cross-tenant source read returns zero rows :: {"events":0,"documents":0}
+PASS server: INTERNAL and unverified sources cannot be published :: {"private":"PublicationWriteDenied","unverified":"PublicationWriteDenied","pointer":"g15-58054dc98b044c3f822f728e405cdfa5","counts":[1,1]}
+PASS server: denied browser identity never got a principal :: {"email_masked":"no***@example.test","exception":"PortalAccessDenied","principal_created":false}
+
+BROWSER_CHECKS=176 FAILED=0
+BROWSER_PAGE_ERRORS=0
+S3_BROWSER=PASS
+RUNNER_EXIT=0

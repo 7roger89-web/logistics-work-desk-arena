@@ -141,9 +141,20 @@ def _assert_no_streamlit_exceptions(test_case: TestCase, app: AppTest) -> None:
     test_case.assertEqual(exceptions, [], msg=f"mounted dashboard exceptions: {exceptions}")
 class DashboardFinancialWriteOracleTests(TestCase):
     def test_bounded_dashboard_flow_has_zero_financial_writes_and_no_financial_mutation(self) -> None:
+        """Mounting the desk (and its read-only financial projection) writes nothing.
+
+        LOGI-GOOD-V6 Phase A retired the legacy Streamlit dashboard page, but the
+        invariant is unchanged and now covers MORE surface: the ONE mounted
+        shell renders every workspace from read-only projections.  Every
+        canonical financial writer is trapped while the real entrypoint runs.
+        """
+        from streamlit.components.v2.bidi_component.state import ComponentResult
+        from views import logi_sandbox
+
         shipments = _fixture_shipments()
         financial_before = _financial_snapshot(shipments)
         oracle = _FinancialWriteOracle()
+
         # The pure projection is part of the same bounded flow and must label
         # its financial result as read-only before the mounted UI is exercised.
         projection = build_shipment_dashboard_view(
@@ -152,6 +163,16 @@ class DashboardFinancialWriteOracleTests(TestCase):
         )
         self.assertTrue(projection["read_only_financial"])
         self.assertTrue(projection["financial_projection"].get("read_only"))
+
+        logi_sandbox.reset_backend()
+        self.assertEqual(logi_sandbox.ensure_backend(), logi_sandbox.SANDBOX_TRANSPORT)
+
+        captured: dict = {}
+
+        def fake_renderer(**kwargs):
+            captured.update(kwargs)
+            return ComponentResult({}, {})
+
         with ExitStack() as stack:
             for target in FINANCIAL_WRITE_TARGETS:
                 stack.enter_context(
@@ -162,57 +183,44 @@ class DashboardFinancialWriteOracleTests(TestCase):
                         ),
                     )
                 )
-            stack.enter_context(patch("views.web_app.require_login", side_effect=lambda: (_login_fixture({"username": "fixture", "display_name": "Fixture", "role": "admin"}), {"username": "fixture", "display_name": "Fixture", "role": "admin"})[-1]))
-            stack.enter_context(patch("views.web_app.refresh_core_data", return_value=None))
-            stack.enter_context(patch("views.dashboard.cached_load_data", return_value=shipments))
-            stack.enter_context(patch("views.dashboard.load_tasks", return_value=[]))
+            stack.enter_context(patch("views.logi_shell._renderer", return_value=fake_renderer))
             app = AppTest.from_file(str(APP_PATH), default_timeout=60)
+            app.session_state["current_user"] = {"username": "admin", "role": "admin"}
             app.run()
-            _assert_no_streamlit_exceptions(self, app)
-            self.assertTrue(
-                any("Tài chính:" in element.value for element in app.markdown),
-                "dashboard did not render the separate financial status",
-            )
-            self.assertTrue(
-                any(("Next action" in element.value or "Việc tiếp theo" in element.value) for element in app.markdown),
-                "dashboard did not render a deterministic alert action",
-            )
-            # Owner semantics: SALE Thành is a real fixture owner, not a
-            # value inferred from notes/customer/address text.
-            _selectbox(app, "dashboard_owner_filter").set_value("SALE Thành")
-            app.run()
-            _assert_no_streamlit_exceptions(self, app)
-            self.assertIn("dashboard_process_LG-001", {element.key for element in app.button})
-            self.assertNotIn("dashboard_process_LG-002", {element.key for element in app.button})
-            # Warning semantics: the factory-data warning isolates LG-001.
-            _selectbox(app, "dashboard_owner_filter").set_value("Tất cả")
-            _selectbox(app, "dashboard_attention_filter").set_value("Nhà máy chưa đủ dữ liệu")
-            app.run()
-            _assert_no_streamlit_exceptions(self, app)
-            self.assertIn("dashboard_process_LG-001", {element.key for element in app.button})
-            self.assertNotIn("dashboard_process_LG-002", {element.key for element in app.button})
-            # First shipment: open the real mounted detail path, then return.
-            _selectbox(app, "dashboard_attention_filter").set_value("Tất cả")
-            app.run()
-            _button(app, "dashboard_process_LG-001").click()
-            app.run()
-            _assert_no_streamlit_exceptions(self, app)
-            self.assertIn("btn_close_top", {element.key for element in app.button})
-            self.assertTrue(
-                any("lg04_tab_export" in element.value for element in app.markdown),
-                "first shipment did not render the editable work tabs",
-            )
-            _button(app, "btn_close_top").click()
-            app.run()
-            _assert_no_streamlit_exceptions(self, app)
-            self.assertNotIn("btn_close_top", {element.key for element in app.button})
-            # Second shipment: verify the list is restored and the second row
-            # opens independently on the next click.
-            _button(app, "dashboard_process_LG-002").click()
-            app.run()
-            _assert_no_streamlit_exceptions(self, app)
-            self.assertIn("btn_close_top", {element.key for element in app.button})
-            self.assertTrue(any("LG-002" in element.value for element in app.markdown))
+        _assert_no_streamlit_exceptions(self, app)
+
+        # The shell really rendered (otherwise "zero writes" proves nothing).
+        self.assertIn("shipments", captured.get("data") or {})
+        self.assertEqual(oracle.calls, [], "the mounted desk reached a financial writer")
         self.assertEqual(oracle.financial_write_count, 0)
-        self.assertEqual(oracle.calls, [])
+        # …and the fixture documents are byte-identical (no in-place mutation).
         self.assertEqual(_financial_snapshot(shipments), financial_before)
+
+    def test_mounted_shell_exposes_the_read_only_financial_status(self) -> None:
+        """The desk still shows a financial status + a deterministic next action."""
+        from streamlit.components.v2.bidi_component.state import ComponentResult
+        from views import logi_sandbox
+
+        logi_sandbox.reset_backend()
+        logi_sandbox.ensure_backend()
+
+        captured: dict = {}
+
+        def fake_renderer(**kwargs):
+            captured.update(kwargs)
+            return ComponentResult({}, {})
+
+        with patch("views.logi_shell._renderer", return_value=fake_renderer):
+            app = AppTest.from_file(str(APP_PATH), default_timeout=60)
+            app.session_state["current_user"] = {"username": "admin", "role": "admin"}
+            app.run()
+        _assert_no_streamlit_exceptions(self, app)
+
+        vm = captured["data"]
+        home = vm["home"]
+        self.assertIn("summary", home)
+        self.assertIn("tiles", home)
+        self.assertTrue(vm["receivables"] is not None)
+        row = vm["shipments"][0]
+        self.assertTrue(row["nextAction"], "every row carries a deterministic next action")
+        self.assertTrue(row["nextRoute"].startswith("/lo-hang/"))

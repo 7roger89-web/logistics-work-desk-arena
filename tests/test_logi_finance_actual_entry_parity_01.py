@@ -101,7 +101,14 @@ def _line_payload(**overrides) -> dict:
 # ---------------------------------------------------------------------------
 
 def test_service_catalog_is_projected_from_core_config():
-    """The projection is exactly ``core.config.GETFLY_SERVICES_LIST`` re-shaped."""
+    """The projection carries ``core.config.GETFLY_SERVICES_LIST`` verbatim.
+
+    LOGI cost-intelligence (78ef2d7) later gave every row a STABLE identity
+    (``id`` / ``source``) so an Admin-maintained catalog entry can replace a
+    legacy code by stable id instead of by position.  The canonical facts
+    (code / name / unit / group), their order and the read-only contract are
+    unchanged; only those two identity fields are additive.
+    """
     from core.config import GETFLY_SERVICES_LIST
 
     catalog = rd.finance_service_catalog()
@@ -109,15 +116,19 @@ def test_service_catalog_is_projected_from_core_config():
     assert catalog, "the canonical catalog must be projected, not emptied"
     assert len(catalog) == len(GETFLY_SERVICES_LIST)
     assert [entry["code"] for entry in catalog] == [item["code"] for item in GETFLY_SERVICES_LIST]
-    assert catalog[0] == {
-        "code": GETFLY_SERVICES_LIST[0]["code"],
-        "name": GETFLY_SERVICES_LIST[0]["name"],
-        "unit": GETFLY_SERVICES_LIST[0]["unit"],
-        "group": GETFLY_SERVICES_LIST[0]["group"],
-    }
+    for entry, item in zip(catalog, GETFLY_SERVICES_LIST):
+        assert entry["name"] == item["name"]
+        # The backend applies its documented default when the canonical
+        # constant leaves a unit empty; never a silent divergence.
+        assert entry["unit"] == (item["unit"] or "Lần")
+        assert entry["group"] == item["group"]
+        assert entry["id"] == f"LEGACY:{item['code']}"
+        assert entry["source"] == "LEGACY_CONFIG"
     # Read-only projection: mutating the result cannot affect the constant.
     catalog[0]["name"] = "SỬA TRÁI PHÉP"
     assert GETFLY_SERVICES_LIST[0]["name"] != "SỬA TRÁI PHÉP"
+    # …and the canonical constant cannot leak mutable rows into the next read.
+    assert rd.finance_service_catalog()[0]["name"] == GETFLY_SERVICES_LIST[0]["name"]
 
 
 def test_service_catalog_is_not_hardcoded_in_react():

@@ -14,36 +14,57 @@ def _login_fixture(user):
     return user
 
 class LogC12HostNativeRuntimeTests(unittest.TestCase):
+    """The Sales workspace mounts in the live shell and exposes the quote intake.
+
+    LOGI-GOOD-V6 Phase A replaced the Streamlit "Kinh doanh & Báo giá" page with
+    the React ``SalesQuotes`` route inside the ONE shell, so this test now
+    proves the SAME contract on the live path: the approved navigation label is
+    gone from Streamlit only because the workspace moved — the quote slice still
+    arrives in the shell payload, the intake form still exists in the shipped
+    component source, and mounting the app raises nothing.
+    """
+
+    INTAKE_MARKERS = (
+        "Tạo báo giá mới",          # create panel title
+        "Khách hàng",               # customer picker
+        "dispatch(\"quote_create\"",  # the ONE create event
+    )
+
     def test_sales_workspace_mounts_and_exposes_intake_form(self):
+        from pathlib import Path
+
+        from streamlit.components.v2.bidi_component.state import ComponentResult
+        from views import logi_sandbox
+
+        logi_sandbox.reset_backend()
+        self.assertEqual(logi_sandbox.ensure_backend(), logi_sandbox.SANDBOX_TRANSPORT)
+
+        captured: dict = {}
+
+        def fake_renderer(**kwargs):
+            captured.update(kwargs)
+            return ComponentResult({}, {})
+
         app = AppTest.from_file(str(APP_PATH), default_timeout=60)
-        app.session_state.active_page = "Kinh doanh & Báo giá"
-        app.session_state.db_customers = {
-            "CUS-FIXTURE": {"id": "CUS-FIXTURE", "name": "Fixture Customer"},
-        }
-        app.session_state.db_quotes = {}
-        app.session_state.db_rate_cards = {}
-        app.session_state.db_shipments = {}
-        app.session_state.data_loaded = True
-        # Approved Vietnamese navigation label: "Kinh doanh & Báo giá" — the
-        # workspace must still mount under it. Patches stay alive for ALL runs
-        # (click triggers a rerun that must also be covered).
-        with ExitStack() as stack:
-            stack.enter_context(patch("views.web_app.require_login", side_effect=lambda: (_login_fixture({"display_name": "Fixture", "role": "SALE"}), {"display_name": "Fixture", "role": "SALE"})[-1]))
-            stack.enter_context(patch("views.web_app.has_permission", return_value=True))
-            stack.enter_context(patch("core.database.init_connection", return_value=None))
-            stack.enter_context(patch("views.web_app.refresh_core_data", return_value=None))
-            stack.enter_context(patch("views.quotations.load_quotes", return_value={}))
-            stack.enter_context(patch("views.quotations.load_customers", return_value=app.session_state.db_customers))
+        app.session_state["current_user"] = {"username": "admin", "role": "admin"}
+        with patch("views.logi_shell._renderer", return_value=fake_renderer):
             app.run()
-            self.assertFalse(app.exception)
-            sales_nav = next((item for item in app.button if "sale" in str(item.key).lower() or "b_o_gi" in str(item.key).lower()), None)
-            self.assertIsNotNone(sales_nav)
-            sales_nav.click()
-            app.run()
-            self.assertFalse(app.exception)
-        self.assertIn("new_quote_save", {item.key for item in app.button})
-        self.assertIn("new_quote_goods", {item.key for item in app.text_input})
-        self.assertIn("new_quote_bank_pct", {item.key for item in app.number_input})
-        self.assertIn("new_quote_swift", {item.key for item in app.number_input})
+        self.assertFalse(app.exception)
+
+        vm = captured.get("data") or {}
+        self.assertIn("quotes", vm)
+        self.assertIn("costIntelligence", vm)
+        self.assertIsInstance(vm["quotes"], list)
+        self.assertTrue(vm["quotes"], "the quote workspace must carry real rows")
+        for key in ("id", "quoteNo", "customer", "status", "allowedTransitions"):
+            self.assertIn(key, vm["quotes"][0])
+
+        source = (
+            Path(__file__).resolve().parents[1] / "component" / "src" / "pages" / "SalesQuotes.tsx"
+        ).read_text(encoding="utf-8")
+        for marker in self.INTAKE_MARKERS:
+            self.assertIn(marker, source)
+
+
 if __name__ == "__main__":
     unittest.main()

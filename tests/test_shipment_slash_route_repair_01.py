@@ -339,7 +339,8 @@ class TestBackendRouteProducers:
              "nhap", "/lo-hang/LO%2FLEGACY%2F001?tab=nhap#fld-tk"),
             ("LO/LEGACY/001",
              {"nextAction": {"code": "PROFILE_INCOMPLETE", "label": "Bổ sung hồ sơ", "detail": "d", "tone": "red"}},
-             "nhap", "/lo-hang/LO%2FLEGACY%2F001?tab=nhap#shipment-execution-profile"),
+             # Issue #188 B1 — the profile editor lives in the van-tai tab.
+             "nhap", "/lo-hang/LO%2FLEGACY%2F001?tab=van-tai#shipment-execution-profile"),
         ]
         for shipment_id, profile, status_tab, expected in cases:
             action = rd.compose_primary_action(

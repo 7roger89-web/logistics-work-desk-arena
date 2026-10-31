@@ -691,6 +691,15 @@ def _assert_build_read_budget(result: dict[str, Any]) -> None:
     contracts.find_one, every collection's find at most once (app_settings at
     most 3: one shared uploaded-template registry read, one effective-catalog
     build, one NotebookLM registry), and nothing per shipment.
+
+    Issue #247 — the bound moved 26 → 29 for the SAME reason, each addition
+    being one once-per-build read shipped by a later approved feature:
+    ``app_assets.find_one`` (policy/biểu thuế lookup, #153),
+    ``work_module_templates.find`` (Work Module Library, #162) and
+    ``contract_intl_payment_snapshots.find`` (thanh toán quốc tế, #98).  The
+    three ``quick_notes.count_documents`` are the pre-existing global inbox
+    badges.  Nothing per-shipment was added, so the guard below is re-pinned
+    instead of loosened: the per-collection caps stay exactly as strict.
     """
     ops = _build_ops_by_collection(result)
     assert ops.get("contracts.find_one", 0) == 0, ops   # was one read PER CONTRACT
@@ -701,7 +710,8 @@ def _assert_build_read_budget(result: dict[str, Any]) -> None:
                        "financial_obligations", "financial_transactions", "financial_allocations"):
         assert ops.get(f"{collection}.find", 0) <= 1, (collection, ops)
     assert ops.get("shipments.find", 0) <= 2, ops
-    assert sum(ops.values()) <= 26, ops
+    assert ops.get("quick_notes.count_documents", 0) <= 3, ops  # 3 global badges
+    assert sum(ops.values()) <= 29, ops
 
 
 # ---------------------------------------------------------------------------

@@ -1,0 +1,5 @@
+2026-10-31 08:40:18.879 Uvicorn server started on 0.0.0.0:9503
+2026-10-31 08:40:18.952 Did not auto detect external IP.
+Local URL: http://localhost:9503
+CUSTOMER_PORTAL_PRINCIPAL_DENIED reason=email_not_unique_or_not_allowed   (x3 — the ungranted
+    verified email nobody@example.test selected once per viewport set plus the reload pass)

@@ -1,0 +1,224 @@
+{
+  "observed_ns": 1793427344849101182,
+  "raw": {
+    "pid": 11774,
+    "database": "logistics_staging",
+    "client_object_id": 140019226810832,
+    "database_object_id": 140019320155408,
+    "transport": "SANDBOX_STAGING",
+    "shipment_id": "LO-0306",
+    "currency": "VND",
+    "version": 3,
+    "payments": [
+      {
+        "id": "PAY-CA1C3A81FF964319A6BB7704390D8E63",
+        "request_id": "SEED-REQ-0306-1",
+        "date": "2026-09-03",
+        "amount": 60000000,
+        "note": "Thu tạm ứng đợt 1 theo HDMB-0306",
+        "created_by": "minhtu"
+      },
+      {
+        "request_id": "PAY-REQ-MVW0BNTH-5K18K6",
+        "date": "2026-10-31",
+        "amount": 137000.0,
+        "note": "Thu tiền khách",
+        "id": "PAY-E122EA2AF3C24F51AE86C02765C884C5",
+        "created_at": "2026-10-31 06:15:29",
+        "created_by": "qa.s2.support",
+        "created_by_user_id": "14803cb60433b6b2",
+        "created_by_role": "support"
+      },
+      {
+        "request_id": "PAY-REQ-MVW0BYGC-ZXD34A",
+        "date": "2026-10-31",
+        "amount": 137000.0,
+        "note": "Thu tiền khách",
+        "id": "PAY-068016577A464420A8B5B3DC7F271FB7",
+        "created_at": "2026-10-31 06:15:43",
+        "created_by": "qa.s2.support",
+        "created_by_user_id": "14803cb60433b6b2",
+        "created_by_role": "support"
+      }
+    ],
+    "payment_count": 3,
+    "requests": [
+      {
+        "request_id": "PAY-REQ-MVW0BNTH-5K18K6",
+        "action_type": "direct_shipment_payment",
+        "fingerprint": "e3adf8ad6e5c5ce339b3f1c9444505e87d8b6f82f734f9aaab489e8e7930a90c",
+        "status": "applied",
+        "shipment_id": "LO-0306",
+        "result": {
+          "shipment_id": "LO-0306",
+          "payment_id": "PAY-E122EA2AF3C24F51AE86C02765C884C5",
+          "request_id": "PAY-REQ-MVW0BNTH-5K18K6",
+          "amount": 137000.0,
+          "date": "2026-10-31",
+          "version": 2,
+          "derived_paid": 60137000.0,
+          "derived_debt": 52723000.0
+        },
+        "created_at": "2026-10-31 06:15:29",
+        "created_by": "qa.s2.support",
+        "created_by_user_id": "14803cb60433b6b2",
+        "created_by_role": "support"
+      },
+      {
+        "request_id": "PAY-REQ-MVW0BYGC-ZXD34A",
+        "action_type": "direct_shipment_payment",
+        "fingerprint": "e3adf8ad6e5c5ce339b3f1c9444505e87d8b6f82f734f9aaab489e8e7930a90c",
+        "status": "applied",
+        "shipment_id": "LO-0306",
+        "result": {
+          "shipment_id": "LO-0306",
+          "payment_id": "PAY-068016577A464420A8B5B3DC7F271FB7",
+          "request_id": "PAY-REQ-MVW0BYGC-ZXD34A",
+          "amount": 137000.0,
+          "date": "2026-10-31",
+          "version": 3,
+          "derived_paid": 60274000.0,
+          "derived_debt": 52586000.0
+        },
+        "created_at": "2026-10-31 06:15:43",
+        "created_by": "qa.s2.support",
+        "created_by_user_id": "14803cb60433b6b2",
+        "created_by_role": "support"
+      }
+    ],
+    "request_count": 2,
+    "audits": [
+      {
+        "event_id": "a584611c-4922-45f7-92ea-f36d1fa973a1",
+        "entity_type": "shipment",
+        "entity_id": "LO-0306",
+        "action": "direct_payment_created",
+        "actor": "qa.s2.support",
+        "actor_user_id": "14803cb60433b6b2",
+        "actor_username": "qa.s2.support",
+        "actor_role": "support",
+        "before": {
+          "paid": 60000000.0
+        },
+        "after": {
+          "payment": {
+            "request_id": "PAY-REQ-MVW0BNTH-5K18K6",
+            "date": "2026-10-31",
+            "amount": 137000.0,
+            "note": "Thu tiền khách",
+            "id": "PAY-E122EA2AF3C24F51AE86C02765C884C5",
+            "created_at": "2026-10-31 06:15:29",
+            "created_by": "qa.s2.support",
+            "created_by_user_id": "14803cb60433b6b2",
+            "created_by_role": "support"
+          },
+          "paid": 60137000.0,
+          "debt": 52723000.0
+        },
+        "created_at": "2026-10-31 06:15:29"
+      },
+      {
+        "event_id": "4582b175-11a3-4434-8087-bf7d02c11d94",
+        "entity_type": "shipment",
+        "entity_id": "LO-0306",
+        "action": "direct_payment_created",
+        "actor": "qa.s2.support",
+        "actor_user_id": "14803cb60433b6b2",
+        "actor_username": "qa.s2.support",
+        "actor_role": "support",
+        "before": {
+          "paid": 60137000.0
+        },
+        "after": {
+          "payment": {
+            "request_id": "PAY-REQ-MVW0BYGC-ZXD34A",
+            "date": "2026-10-31",
+            "amount": 137000.0,
+            "note": "Thu tiền khách",
+            "id": "PAY-068016577A464420A8B5B3DC7F271FB7",
+            "created_at": "2026-10-31 06:15:43",
+            "created_by": "qa.s2.support",
+            "created_by_user_id": "14803cb60433b6b2",
+            "created_by_role": "support"
+          },
+          "paid": 60274000.0,
+          "debt": 52586000.0
+        },
+        "created_at": "2026-10-31 06:15:43"
+      }
+    ],
+    "audit_count": 2,
+    "events": [
+      {
+        "event_id": "53d51188-2a58-4e24-8318-305d04b67850",
+        "event_type": "shipment.payment_recorded",
+        "payload": {
+          "shipment_id": "LO-0306",
+          "payment_id": "PAY-E122EA2AF3C24F51AE86C02765C884C5",
+          "request_id": "PAY-REQ-MVW0BNTH-5K18K6"
+        },
+        "status": "pending",
+        "attempts": 0,
+        "created_at": "2026-10-31 06:15:29",
+        "next_retry_at": "2026-10-31 06:15:29"
+      },
+      {
+        "event_id": "448a73cf-6d09-46b9-9711-cb56eb162e2d",
+        "event_type": "shipment.payment_recorded",
+        "payload": {
+          "shipment_id": "LO-0306",
+          "payment_id": "PAY-068016577A464420A8B5B3DC7F271FB7",
+          "request_id": "PAY-REQ-MVW0BYGC-ZXD34A"
+        },
+        "status": "pending",
+        "attempts": 0,
+        "created_at": "2026-10-31 06:15:43",
+        "next_retry_at": "2026-10-31 06:15:43"
+      }
+    ],
+    "event_count": 2
+  },
+  "actor": {
+    "username": "qa.s2.support",
+    "user_id": "14803cb60433b6b2",
+    "role": "support"
+  },
+  "finance_write": true,
+  "fresh_payment_projection": [
+    {
+      "id": "PAY-CA1C3A81FF964319A6BB7704390D8E63",
+      "requestId": "SEED-REQ-0306-1",
+      "date": "03/09/2026",
+      "kind": "Thu tạm ứng đợt 1 theo HDMB-0306",
+      "amount": 60000000.0,
+      "ccy": "VND",
+      "by": "minhtu",
+      "note": "Thu tạm ứng đợt 1 theo HDMB-0306",
+      "reversed": false
+    },
+    {
+      "id": "PAY-E122EA2AF3C24F51AE86C02765C884C5",
+      "requestId": "PAY-REQ-MVW0BNTH-5K18K6",
+      "date": "31/10/2026",
+      "kind": "Thu tiền khách",
+      "amount": 137000.0,
+      "ccy": "VND",
+      "by": "qa.s2.support",
+      "note": "Thu tiền khách",
+      "reversed": false
+    },
+    {
+      "id": "PAY-068016577A464420A8B5B3DC7F271FB7",
+      "requestId": "PAY-REQ-MVW0BYGC-ZXD34A",
+      "date": "31/10/2026",
+      "kind": "Thu tiền khách",
+      "amount": 137000.0,
+      "ccy": "VND",
+      "by": "qa.s2.support",
+      "note": "Thu tiền khách",
+      "reversed": false
+    }
+  ],
+  "lastWrites": [],
+  "writer_call_count": 2
+}
