@@ -1,0 +1,83 @@
+name: LOGI PR contract shape
+
+on:
+  pull_request:
+    branches:
+      - "arena/ae5f9f47-logistics-work-desk-arena"
+    types: [opened, reopened, synchronize, edited, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  contract-shape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Check task reference, acceptance evidence and final HEAD
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import os
+          import re
+          import sys
+
+          body = os.environ.get("PR_BODY", "")
+          head = os.environ.get("PR_HEAD", "")
+          required = (
+              "Task and locked spec",
+              "Observable outcome",
+              "Source contract",
+              "Wrong PASS",
+              "Acceptance",
+              "Commands and results",
+              "Evidence on final HEAD",
+              "Boundaries and unknowns",
+          )
+          headings = list(re.finditer(r"(?m)^## ([^\r\n]+)[ \t]*$", body))
+          sections = {}
+          for index, match in enumerate(headings):
+              start = match.end()
+              end = headings[index + 1].start() if index + 1 < len(headings) else len(body)
+              sections[match.group(1).strip()] = body[start:end].strip()
+          errors = []
+          for name in required:
+              section = sections.get(name, "")
+              if len(section) < 35:
+                  errors.append(f"{name}: missing or empty")
+              if re.search(r"(?i)\bTODO\b|<fill[^>]*>|\[fill[^\]]*\]", section):
+                  errors.append(f"{name}: placeholder not completed")
+
+          task = re.search(r"(?m)^TASK_REF:\s*#([0-9]+)\s*$", sections.get("Task and locked spec", ""))
+          spec = re.search(
+              r"(?m)^SPEC_REF:\s*https://github\.com/7roger89-web/logistics-work-desk-arena/issues/([0-9]+)#issuecomment-([0-9]+)\s*$",
+              sections.get("Task and locked spec", ""),
+          )
+          if not task or not spec or task.group(1) != spec.group(1):
+              errors.append("TASK_REF / SPEC_REF: same Issue and pre-code locked comment required")
+
+          acceptance = sections.get("Acceptance", "")
+          if "- [x]" not in acceptance.lower() or "- [ ]" in acceptance:
+              errors.append("Acceptance: include completed checks; do not leave unchecked acceptance")
+          commands = sections.get("Commands and results", "").lower()
+          if "exit" not in commands or not any(term in commands for term in ("pytest", "git", "npm", "node", "python", "unknown")):
+              errors.append("Commands and results: commands + observed exit state are required")
+
+          expected = re.search(r"(?m)^FINAL_HEAD:\s*([0-9a-f]{40})\s*$", sections.get("Evidence on final HEAD", ""))
+          if not expected or expected.group(1) != head:
+              errors.append("FINAL_HEAD: must equal the exact current 40-character PR HEAD")
+          if len(sections.get("Evidence on final HEAD", "")) < 95:
+              errors.append("Evidence on final HEAD: provide inspectable evidence, not only a SHA")
+
+          if errors:
+              print("PR_CONTRACT_SHAPE=FAIL")
+              for err in errors:
+                  print(" - " + err)
+              sys.exit(1)
+          print("PR_CONTRACT_SHAPE=PASS (structure + HEAD only)")
+          print("BEHAVIOR_VERIFIED=NO; independent review + Owner release gates still apply")
+          PY
