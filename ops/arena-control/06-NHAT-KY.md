@@ -1,5 +1,4 @@
 # NHẬT KÝ (chỉ nối thêm, không sửa dòng cũ)
 | lúc | task | đã làm | lệnh đã chạy | kết quả | còn lại |
 
-BÁO CÁO
-Tạo đủ 7 file, commit, mở PR. In danh sách file đã tạo và số dòng mỗi file.
+| 2026-10-31 | OPS-FIX-1 | Sửa placeholder sang backtick; bỏ phần báo cáo cũ | grep kiểm tra placeholder và mẫu cấm; git diff --stat | Placeholder đúng định dạng; mẫu cấm không xuất hiện; 6 file đều trong ops/arena-control | Chờ review/merge PR #251 |

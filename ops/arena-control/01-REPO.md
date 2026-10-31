@@ -2,7 +2,7 @@
 7roger89-web/logistics-work-desk-arena. Python + Streamlit. main là baseline.
 AGENTS.md ở gốc là luật gốc, bắt buộc preflight.
 Test: python -m pytest tests -q. Suite đỏ có chủ ý — lấy baseline trước khi sửa.
-Bằng chứng: evidence/<task-id>/. Không nhận tự khai.
+Bằng chứng: `evidence/<task-id>/`. Không nhận tự khai.
 Không deploy production khi chưa có Owner gate.
 
 ## Ngân sách token, Arena có ~98k

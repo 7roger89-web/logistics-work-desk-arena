@@ -1,4 +1,5 @@
 # KHUNG PROMPT
+Mọi placeholder bọc trong backtick.
 [LOGISTICS WORK DESK — 5-8 chữ]
 
 DESTINATION=ARENA | MODE=NEW_CHAT | TASK_ID=[S?]
@@ -17,5 +18,5 @@ NON-GOALS
 NGHIỆM THU — checklist, mỗi dòng một phép thử
 LỆNH KIỂM TRA — lệnh có sẵn trong repo
 MUST NOT — một cái, kèm phép thử
-BÁO CÁO — evidence/<task-id>/, in lệnh + output, PROVEN|INCOMPLETE|FAILED
+BÁO CÁO — `evidence/<task-id>/`, in lệnh + output, PROVEN|INCOMPLETE|FAILED
 GHI LOG — nối vào 06-NHAT-KY.md, cập nhật 05-TRANG-THAI.md

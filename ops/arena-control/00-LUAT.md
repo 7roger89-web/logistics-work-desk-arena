@@ -14,6 +14,7 @@ CẤM
 - Nhận tự khai của Arena là bằng chứng.
 - Chép luật vào prompt. Prompt quá 120 dòng.
 - Đổi phạm vi khi chưa nói.
+- Viết placeholder trần không backtick. Luôn bọc `<...>` trong backtick, nếu không bị ăn thành thẻ HTML.
 
 LỜI NGƯỜI DÙNG LÀ GIẢ THUYẾT, trừ khi họ ghi "làm đúng y như vậy".
 Mỗi prompt đúng MỘT MUST NOT kèm phép thử phân biệt được.
