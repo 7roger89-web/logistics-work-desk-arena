@@ -1,0 +1,78 @@
+== REF
+origin/main=cd57bb804deda3f34b3e7bc93ad69efc3b32d58e gh_main=cd57bb804deda3f34b3e7bc93ad69efc3b32d58e
+PASS  READ_REF: origin/main == gh main
+== LIVE: từng tầng trên 3 file
+--- ops/arena-control/00-LUAT.md
+gh_api : SUCCESS | sha256=c749ce24a41acadd8f385ecdec41bf3df9e3759e1d6a19216bef2bfba8dde537 bytes=1700
+git    : SUCCESS | sha256=c749ce24a41acadd8f385ecdec41bf3df9e3759e1d6a19216bef2bfba8dde537 bytes=1700
+api_url: SUCCESS | sha256=c749ce24a41acadd8f385ecdec41bf3df9e3759e1d6a19216bef2bfba8dde537 bytes=1700
+raw_url: NETWORK_FAILURE | curl_rc=35
+blob   : HTML_PAGE | HTTP 200 nhưng body là trang HTML, không phải nội dung file
+PASS  LIVE gh_api 00-LUAT.md -> SUCCESS
+PASS  LIVE git 00-LUAT.md -> SUCCESS
+PASS  LIVE api_url 00-LUAT.md (decode base64) -> SUCCESS
+PASS  LIVE raw_url 00-LUAT.md (mạng sandbox) -> NETWORK_FAILURE
+PASS  LIVE blob HTML bị chặn 00-LUAT.md -> HTML_PAGE
+--- ops/arena-control/05-TRANG-THAI.md
+gh_api : SUCCESS | sha256=bb618a748731527dd043bc877e607ca77c18b850b04e901e52e22bd62d067737 bytes=514
+git    : SUCCESS | sha256=bb618a748731527dd043bc877e607ca77c18b850b04e901e52e22bd62d067737 bytes=514
+api_url: SUCCESS | sha256=bb618a748731527dd043bc877e607ca77c18b850b04e901e52e22bd62d067737 bytes=514
+raw_url: NETWORK_FAILURE | curl_rc=35
+blob   : HTML_PAGE | HTTP 200 nhưng body là trang HTML, không phải nội dung file
+PASS  LIVE gh_api 05-TRANG-THAI.md -> SUCCESS
+PASS  LIVE git 05-TRANG-THAI.md -> SUCCESS
+PASS  LIVE api_url 05-TRANG-THAI.md (decode base64) -> SUCCESS
+PASS  LIVE raw_url 05-TRANG-THAI.md (mạng sandbox) -> NETWORK_FAILURE
+PASS  LIVE blob HTML bị chặn 05-TRANG-THAI.md -> HTML_PAGE
+--- ops/arena-control/06-NHAT-KY.md
+gh_api : SUCCESS | sha256=0b6d88dc9c9d4e4ec1635535927a5a54c3e43b4e2536dd6f079c930e33865498 bytes=3442
+git    : SUCCESS | sha256=0b6d88dc9c9d4e4ec1635535927a5a54c3e43b4e2536dd6f079c930e33865498 bytes=3442
+api_url: SUCCESS | sha256=0b6d88dc9c9d4e4ec1635535927a5a54c3e43b4e2536dd6f079c930e33865498 bytes=3442
+raw_url: NETWORK_FAILURE | curl_rc=35
+blob   : HTML_PAGE | HTTP 200 nhưng body là trang HTML, không phải nội dung file
+PASS  LIVE gh_api 06-NHAT-KY.md -> SUCCESS
+PASS  LIVE git 06-NHAT-KY.md -> SUCCESS
+PASS  LIVE api_url 06-NHAT-KY.md (decode base64) -> SUCCESS
+PASS  LIVE raw_url 06-NHAT-KY.md (mạng sandbox) -> NETWORK_FAILURE
+PASS  LIVE blob HTML bị chặn 06-NHAT-KY.md -> HTML_PAGE
+== LIVE: sai ref (file 05 ở commit cũ hơn) phải bị WRONG_REF
+older_ref_with_different_05=758f6ac6b3e5c2643b694b6b5f27b27cb76bf404 cur_blob=66e59226fe5dab40d6bfa2044074404d24726811
+old_ref=758f6ac6b3e5c2643b694b6b5f27b27cb76bf404 verdict: WRONG_REF | sha256=d31b36313b82 khác expected=bb618a748731
+PASS  LIVE wrong ref 05@758f6ac6b3e5c2643b694b6b5f27b27cb76bf404 -> WRONG_REF
+== LIVE: file không tồn tại (NOT_FOUND)
+verdict: NOT_FOUND | HTTP 404 trên ref đã chỉ định
+PASS  LIVE NOT_FOUND -> NOT_FOUND
+== SIM: chặn CACHE_MISS và JSON/rỗng/sai header (body giả lập, nhãn SIM)
+SIM cache-miss: CACHE_MISS | công cụ trả Cache miss / URL not accessible
+PASS  SIM CACHE_MISS -> CACHE_MISS
+SIM empty: EMPTY | nội dung rỗng
+PASS  SIM EMPTY -> EMPTY
+SIM wrong header: HEADER_MISMATCH | dòng đầu='# SAI TIEU DE'
+PASS  SIM HEADER_MISMATCH -> HEADER_MISMATCH
+SIM json no path: WRONG_PATH | path=None
+PASS  SIM WRONG_PATH -> WRONG_PATH
+SIM bad base64: ENCODING_INVALID | Only base64 data is allowed
+PASS  SIM base64 invalid -> ENCODING_INVALID
+SIM json invalid: JSON_INVALID | Expecting value: line 1 column 1 (char 0)
+PASS  SIM JSON_INVALID -> JSON_INVALID
+== SIM: ma trận lựa chọn nguồn (kết quả cổng thật, theo thứ tự connector > gh > git > raw > api)
+SIM-A connector OK, web HTML: GITHUB_CONNECTOR SUCCESS tried=1
+PASS  SIM-A -> GITHUB_CONNECTOR SUCCESS tried=1
+SIM-B no connector, gh OK: GH_API SUCCESS tried=2
+PASS  SIM-B -> GH_API SUCCESS tried=2
+SIM-C mọi nguồn lỗi: NONE BLOCKED tried=5
+PASS  SIM-C -> NONE BLOCKED tried=5
+SIM-D chỉ api_url đọc được: URL_FALLBACK SUCCESS tried=5
+PASS  SIM-D -> URL_FALLBACK SUCCESS tried=5
+== STATE_PREFIX (động từ 05 của origin/main)
+STATE_PREFIX=[# TRẠN] len=6
+PASS  STATE_PREFIX len -> 6
+# SOURCE_RECEIPT — OPS-SOURCE-RETRIEVAL-FIX-20261101 (v2)
+READ_SOURCE=GH_API
+READ_REF=cd57bb804deda3f34b3e7bc93ad69efc3b32d58e
+READ_FILES=ops/arena-control/00-LUAT.md ops/arena-control/05-TRANG-THAI.md ops/arena-control/06-NHAT-KY.md
+STATE_PREFIX=# TRẠN
+READ_STATUS=SUCCESS
+NOTE=connector GitHub không có trong Arena (unsupported). Kịch bản connector và các kịch bản SIM ghi nhãn SIM.
+== RESULT fails=0
+exit=0
