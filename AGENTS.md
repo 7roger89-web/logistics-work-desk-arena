@@ -19,6 +19,69 @@ Never claim a law source was read when it was not. `TASK_BRANCH != LAW_AUTHORITY
 At task start report exactly one:
 `P2P_LAW_SOURCE=CANONICAL_AUTHENTICATED|LOCAL_INSTALLED|LOCAL_PORTABLE|INLINE_CAPSULE|LAW_CONTEXT_BLOCKED`.
 
+## Active product goal checkpoint (mandatory task orientation)
+
+After the Supreme Law preflight and bounded ACTIVE experience lookup, **before choosing substantive project work**:
+
+1. Confirm the actual repository origin and target ref. For this project, the target is `7roger89-web/logistics-work-desk-arena` (NOT `logistics-work-desk`). Do not use another checkout or change its origin to make a task appear valid.
+2. Read `docs/NEXT.md` **from that same target ref**, if present. It is the short, mutable `GOAL / PROGRESS / CURRENT / NEXT / BLOCKERS / SUCCESS CHECKS` checkpoint, not Supreme Law or a second GoalPlan. If missing or stale, recover from the latest Owner-approved goal, canonical GoalPlan/TaskPlan when available, and fresh relevant GitHub refs/PRs; do not stall safe progress just to create a report.
+3. Re-measure only the refs, PRs and evidence material to the next action. Never mistake a historical SHA, PR body, local checkout or Git branch HEAD for the deployed Cloud runtime. Explicit current Owner intent and authoritative goal state outrank an obsolete checkpoint.
+4. Choose **one smallest useful action** advancing the active product goal. Do not replace feature development with recursive prompt review, broad QA, research, documentation or new infrastructure unless a specific acceptance, safety or permission blocker makes that action necessary. If Cloud QA is blocked, record that blocker and continue any independent, safe development/test slice.
+5. On a **material milestone, priority change or real blocker**, update the checkpoint's CURRENT/NEXT/BLOCKERS and append one dated, evidence-bound PR/commit note in the authorized branch. No per-tool-call activity log, duplicate roadmap, new daemon or memory system. If no write access, report the state and do not claim the file was updated.
+
+This project-level routing instruction does not change Supreme Law, approved scope, RBAC, Owner production/deployment gates, independent verification requirements or the authority of the active GoalPlan/TaskPlan. Evidence-based QA remains required for the actual changed surface; it is not a substitute for shipping the requested functionality.
+
+## LOGI execution-to-acceptance lock (Owner decision 2026-10-31)
+
+This section makes the **existing GitHub Issue + PR** executable. It is not a second
+Supreme Law, new TASK.md, skills framework or acceptance authority. Follow the
+preflight, original Owner intent and permission gates above first.
+
+1. **Before coding (SPEC_LOCK):** the assigned existing Issue must identify the
+   observable outcome; actor -> exact screen/entrypoint -> action -> data/role ->
+   visible result; current source of truth (real symbol/schema/route, at measured
+   ref); known assumptions/UNKNOWN; scope/non-goals; at least one realistic
+   **WRONG_PASS**; positive and negative acceptance; exact commands/expected
+   observable outputs. Record the locked acceptance in the Issue **before code**
+   (one dated comment is enough). For an unknown technical contract, investigate
+   source before locking it. For a genuine Owner intent ambiguity, ask the Owner
+   about that decision; do not silently choose the convenient UI.
+2. **Execute one testable slice:** Arena implements one real actor-to-result flow,
+   or one traceback-grounded root-cause cluster. A cross-layer fix may edit all
+   necessary files; unrelated improvements and tooling experiments are excluded.
+   When a larger Goal has many causes (e.g. Issue #247), each repair may close
+   its own acceptance but **must not claim the Goal is DONE** before its original
+   full acceptance passes. No extra Issues/PRs just to count stages.
+3. **Before declaring done:** put on the PR at **exact final HEAD** the original
+   SPEC_REF, WRONG_PASS and item-by-item acceptance, measured base/final SHAs,
+   commands with exit codes and actual results, FAILED/ERROR/SKIP IDs (when
+   applicable), and real browser/runtime evidence for affected user paths.
+   Evidence from mocks remains labeled MOCK. `0 new failures` is **not**
+   `0 failures`; the success rule written before coding is immutable unless
+   Owner approves a scope change.
+4. **Independent review ONCE against the locked contract:** compare the Owner
+   experience, full affected invariant (including sibling roles/routes), source
+   diff and real evidence, not the executor's self-defined PASS. Report each
+   acceptance line `PASS / FAIL / UNKNOWN` with evidence and one consolidated
+   list of blockers. If a found counterexample should have been in the spec,
+   repair the spec gap explicitly *before* another implementation round. New
+   review is for changed HEAD and outstanding blockers, not a fresh speculative
+   feature hunt. No supported evidence -> UNKNOWN, never PASS.
+5. **Merge/release gate:** required scope acceptance + independent review on
+   final HEAD must be PASS; a PR-format bot or a clean diff alone cannot approve
+   a merge. While Issue #247's **full-suite 0 FAILED / 0 ERROR** goal is open,
+   hold unrelated feature merges to staging. Allow only isolated test/root-cause
+   repairs with measured progress and docs/process-only PRs; do not treat an
+   intermediate repair as completion of #247. Any priority exception needs a
+   fresh Owner decision. Never merge to `main` or write Cloud/production without
+   the existing Owner gates and verified runtime identity.
+6. **Enforcement boundary:** `.github/pull_request_template.md` and the
+   `LOGI PR contract shape` GitHub Actions check validate the PR handoff shape
+   and final SHA, **not** behavioral truth. The staging branch was unprotected
+   at adoption: until GitHub marks the check REQUIRED via branch protection,
+   it does **not** technically prevent an unauthorized manual merge. The human
+   merger must check the independent acceptance and this gate explicitly.
+
 ## Evidence-first verification (P2P)
 
 For non-trivial implementation, repair, review, testing, or any correctness/readiness claim, apply `P2P_EVIDENCE_FIRST_VERIFICATION_V1`. When canonical cross-repository access is available, read:
@@ -107,7 +170,9 @@ After law preflight and after durable P2P GoalPlan/TaskPlan state exists, but be
 
 - Internally classify supplied material as `READY_PROMPT`, `PARTIAL_DRAFT`, `CLEAR_SIMPLE_REQUEST`, or `AMBIGUOUS_HIGH_IMPACT`; narrate the classification only when useful.
 - Preserve known task/output/constraints for ready prompts; fill only material gaps in partial drafts; compose clear simple requests immediately with the smallest reasonable assumptions; ask questions for ambiguous/high-impact requests only when answers can materially change correctness, authority, acceptance, risk, or destination execution.
-- Never re-ask facts already explicit in the Owner request, durable project state, or active task contract. Group genuinely blocking questions compactly, normally 2–4 at a time. After one useful clarification round, state reasonable assumptions and proceed for non-blocking gaps instead of creating an interview loop.
+- Never re-ask facts already explicit in the Owner request, durable project state, or active task contract. If an unresolved Owner intent can materially change WHO acts, WHERE in the product the action occurs, WHAT data/permissions apply, or WHAT observable result counts as success, STOP the affected prompt/implementation and ask the Owner focused clarifying questions. Use contrasting correct/wrong interaction examples where helpful; continue targeted follow-up rounds until the correct outcome is distinguishable from an attractive wrong one. There is **no one-round cutoff** and no assumed default for outcome-changing ambiguity. For non-blocking technical gaps, consult repo/source, state reasonable assumptions and proceed without an unnecessary interview.
+- **Intent fidelity before delegation:** derive the Owner's intended `actor → exact entrypoint/location → action → data/role → visible result`, include a concrete `MUST_NOT/WRONG_PASS` counterexample and a real-path acceptance that distinguishes them. Ask the Owner where material product interpretation remains unresolved; do not substitute a convenient existing pane for an explicitly requested in-node interaction. Before sending the prompt, ask: *If the executor follows every sentence literally, can the resulting experience still be wrong?* If yes, revise first.
+- **Executor intent challenge:** Arena/Codex must compare its proposed behavior with the original Owner intent and the counterexample *before implementing*, not merely with the technical prompt. If the prompt would permit the wrong experience to PASS, surface `INTENT_CONFLICT` with the precise Owner question via Control Tower and do not guess that product choice. Safe, independent, already-clear work may continue. Report `NOT_VERIFIED` for missing real browser/runtime proof; neither self-reported PASS nor code-level tests satisfy unobserved UX.
 - Resolve the destination/model/executor from the Owner request and fresh durable routing state when already known. Ask only when the destination is truly unknown and materially changes execution.
 - Adapt structure and transport to verified/current destination capabilities or authoritative instructions. Do not hard-code model-specific prompting stereotypes as law; fresh capability evidence outranks stale prompting folklore.
 - Keep prompt complexity proportional to task complexity. Simple task -> concise executable prompt. Multi-part/high-risk task -> add only structure that materially improves acceptance or recovery. No decorative roles, duplicated constraints, or checklist inflation.

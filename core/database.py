@@ -1057,27 +1057,74 @@ def rename_shipment_id(old_id: str, new_id: str) -> bool:
 
 
 def update_shipment_customer(sid: str, new_customer_name: str, customer_id: str = "") -> bool:
+    """Update a shipment's customer without breaking its directory identity.
+
+    A supplied customer ID is authoritative: it must name an active directory
+    record and the stored display name always comes from that record.  A
+    shipment that already has an ID cannot keep that ID while accepting a
+    free-text name.  Legacy rows without an ID remain editable as legacy data;
+    this writer never guesses an ID from their name.
+    """
     if not _require_business_permission("shipment_edit", "Bạn không có quyền cập nhật khách hàng của lô hàng."):
         return False
     db = get_db()
     if db is None:
+        _set_last_error("MongoDB chưa sẵn sàng.")
         return False
+
+    sid = str(sid or "").strip()
+    requested_customer_id = str(customer_id or "").strip()
     old = db.shipments.find_one({"id": sid}, {"_id": 0})
+    if not old:
+        _set_last_error(f"Không tìm thấy lô {sid}.")
+        return False
+
+    old_customer_id = str(old.get("customer_id") or "").strip()
+    if requested_customer_id:
+        customer = db.customers.find_one(
+            {"id": requested_customer_id, "is_deleted": {"$ne": True}},
+            {"_id": 0},
+        )
+        if not isinstance(customer, Mapping):
+            _set_last_error(
+                f"Không có khách hàng {requested_customer_id} đang hoạt động trong danh bạ."
+            )
+            return False
+        canonical_name = str(customer.get("name") or "").strip()
+        if not canonical_name:
+            _set_last_error(
+                f"Khách hàng {requested_customer_id} chưa có tên trong danh bạ."
+            )
+            return False
+        canonical_customer_id = str(customer.get("id") or requested_customer_id).strip()
+    else:
+        if old_customer_id:
+            _set_last_error(
+                "Lô đã gắn mã khách; phải chọn khách hàng đang hoạt động trong danh bạ."
+            )
+            return False
+        canonical_name = str(new_customer_name or "").strip()
+        canonical_customer_id = ""
+        if not canonical_name:
+            _set_last_error("Tên khách hàng lịch sử không được để trống.")
+            return False
+
     actor_context = _actor_context()
     fields = {
-        "client": new_customer_name,
-        "customer": new_customer_name,
+        "client": canonical_name,
+        "customer": canonical_name,
         "updated_at": utc_now(),
         "updated_by": actor_context["username"],
         "updated_by_user_id": actor_context["user_id"],
         "updated_by_role": actor_context["role"],
     }
-    if customer_id:
-        fields["customer_id"] = customer_id
+    if canonical_customer_id:
+        fields["customer_id"] = canonical_customer_id
     try:
         result = db.shipments.update_one({"id": sid}, {"$set": fields, "$inc": {"version": 1}})
         if result.modified_count > 0:
             _audit(db, "shipment", sid, "customer_updated", before=old, after=fields)
+            _set_last_error("")
         return result.modified_count > 0
     except PyMongoError as exc:
         _set_last_error(str(exc))
@@ -4177,6 +4224,24 @@ def save_contract_intl_snapshot(document: Mapping[str, Any], actor: str | None =
     payload.setdefault("created_by_role", actor_ctx["role"])
     payload.setdefault("is_deleted", False)
     payload.pop("_id", None)
+    # Immutability must not depend on the unique index being present.  The
+    # index (uq_contract_intl_snapshot_id) is the atomic race guard, but a
+    # database/fixture where ensure_indexes() has not run would otherwise let a
+    # second, TAMPERED snapshot with the same id be appended silently — the
+    # exact drift the receipt path must never allow.  Read the existing row
+    # first and apply the SAME fingerprint rule as the DuplicateKey branch.
+    try:
+        existing = db.contract_intl_payment_snapshots.find_one({"id": snap_id}, {"_id": 0})
+    except Exception as exc:  # noqa: BLE001 - an unreadable guard is not an empty ledger
+        _set_last_error(f"Không thể kiểm tra snapshot hiện có: {exc}")
+        return False
+    if existing is not None:
+        if _financial_fingerprint(existing) == _financial_fingerprint(dict(payload)):
+            return True
+        if _financial_fingerprint(existing) == _financial_fingerprint(dict(document)):
+            return True
+        _set_last_error("Snapshot đã tồn tại và không thể ghi đè (immutable).")
+        return False
     try:
         db.contract_intl_payment_snapshots.insert_one(payload)
     except DuplicateKeyError:
@@ -4186,11 +4251,13 @@ def save_contract_intl_snapshot(document: Mapping[str, Any], actor: str | None =
         except Exception:
             existing = None
         if existing is not None:
-            # Compare fingerprints of persisted vs attempted payload (ignoring _id/captured server fields if needed)
-            # We compare the core content: inputs/fx/fee_rules/outputs etc via canonical fingerprint
-            if _financial_fingerprint(existing) == _financial_fingerprint(dict(payload)):
+            # insert_one adds _id to its input before a duplicate-key reply.
+            # Compare financial content only; never relax the fingerprint helper
+            # shared by other ledgers or accept any changed financial field.
+            attempted = dict(payload)
+            attempted.pop("_id", None)
+            if _financial_fingerprint(existing) == _financial_fingerprint(attempted):
                 return True
-            # Also allow if existing equals original document fingerprint (covering minor server-added fields)
             if _financial_fingerprint(existing) == _financial_fingerprint(dict(document)):
                 return True
         _set_last_error("Snapshot đã tồn tại và không thể ghi đè (immutable).")

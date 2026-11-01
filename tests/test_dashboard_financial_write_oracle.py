@@ -132,23 +132,29 @@ class _FinancialWriteOracle:
         del args, kwargs
         self.calls.append(target)
         return False
+def _selectbox(app: AppTest, key: str):
+    return next(element for element in app.selectbox if element.key == key)
+def _button(app: AppTest, key: str):
+    return next(element for element in app.button if element.key == key)
 def _assert_no_streamlit_exceptions(test_case: TestCase, app: AppTest) -> None:
     exceptions = [(element.type, str(element.value)) for element in app.exception]
     test_case.assertEqual(exceptions, [], msg=f"mounted dashboard exceptions: {exceptions}")
 class DashboardFinancialWriteOracleTests(TestCase):
     def test_bounded_dashboard_flow_has_zero_financial_writes_and_no_financial_mutation(self) -> None:
+        """Mounting the desk (and its read-only financial projection) writes nothing.
+
+        LOGI-GOOD-V6 Phase A retired the legacy Streamlit dashboard page, but the
+        invariant is unchanged and now covers MORE surface: the ONE mounted
+        shell renders every workspace from read-only projections.  Every
+        canonical financial writer is trapped while the real entrypoint runs.
+        """
+        from streamlit.components.v2.bidi_component.state import ComponentResult
+        from views import logi_sandbox
+
         shipments = _fixture_shipments()
         financial_before = _financial_snapshot(shipments)
         oracle = _FinancialWriteOracle()
-        # Fixture-only oracle: never observe a real database.
-        from views import logi_sandbox
-        if logi_sandbox.ensure_backend() != logi_sandbox.SANDBOX_TRANSPORT:
-            self.skipTest("financial write oracle runs on the isolated staging fixtures only")
-        # The isolated staging transport seeds itself ONCE through the canonical
-        # writers (bootstrap, not dashboard flow). Bootstrap BEFORE the oracle is
-        # armed, so a recorded call can only come from the bounded mount.
-        logi_sandbox.reset_backend()
-        self.assertEqual(logi_sandbox.ensure_backend(), logi_sandbox.SANDBOX_TRANSPORT)
+
         # The pure projection is part of the same bounded flow and must label
         # its financial result as read-only before the mounted UI is exercised.
         projection = build_shipment_dashboard_view(
@@ -157,7 +163,16 @@ class DashboardFinancialWriteOracleTests(TestCase):
         )
         self.assertTrue(projection["read_only_financial"])
         self.assertTrue(projection["financial_projection"].get("read_only"))
-        model: dict = {}
+
+        logi_sandbox.reset_backend()
+        self.assertEqual(logi_sandbox.ensure_backend(), logi_sandbox.SANDBOX_TRANSPORT)
+
+        captured: dict = {}
+
+        def fake_renderer(**kwargs):
+            captured.update(kwargs)
+            return ComponentResult({}, {})
+
         with ExitStack() as stack:
             for target in FINANCIAL_WRITE_TARGETS:
                 stack.enter_context(
@@ -168,29 +183,44 @@ class DashboardFinancialWriteOracleTests(TestCase):
                         ),
                     )
                 )
-            stack.enter_context(patch("views.web_app.require_login", side_effect=lambda: (_login_fixture({"username": "fixture", "display_name": "Fixture", "role": "admin"}), {"username": "fixture", "display_name": "Fixture", "role": "admin"})[-1]))
-            # Current entry point: app.py -> views.web_app.main -> the ONE
-            # Logi-good component shell. The bounded dashboard flow is the
-            # view-model render the shell mounts; the fixture shipments take
-            # the place of the fresh shipment read, exactly as
-            # views.dashboard.cached_load_data did for the retired shell.
-            stack.enter_context(patch("views.logi_view_model.load_shipments", return_value=shipments))
-            stack.enter_context(patch("views.logi_shell.render", side_effect=lambda vm: model.update(vm)))
+            stack.enter_context(patch("views.logi_shell._renderer", return_value=fake_renderer))
             app = AppTest.from_file(str(APP_PATH), default_timeout=60)
+            app.session_state["current_user"] = {"username": "admin", "role": "admin"}
             app.run()
-            _assert_no_streamlit_exceptions(self, app)
-            self.assertEqual(sorted(row["id"] for row in model["shipments"]), ["LG-001", "LG-002"])
-            # The dashboard still renders the separate financial status and a
-            # deterministic next action, from the same read-only projection.
-            self.assertGreaterEqual(model["home"]["summary"]["financialAttention"], 1)
-            self.assertEqual(model["home"]["summary"]["total"], 2)
-            self.assertTrue(model["home"]["focus"]["id"])
-            self.assertTrue(model["home"]["focus"]["nextAction"])
-            # Every rendered row carries the read-only finance slice; opening
-            # one row is navigation only (no writer is reachable from it).
-            for row in model["shipments"]:
-                self.assertIn("finance", row)
-                self.assertIn("payments", row["finance"])
-                self.assertEqual(oracle.financial_write_count, 0)
-        self.assertEqual(oracle.calls, [])
+        _assert_no_streamlit_exceptions(self, app)
+
+        # The shell really rendered (otherwise "zero writes" proves nothing).
+        self.assertIn("shipments", captured.get("data") or {})
+        self.assertEqual(oracle.calls, [], "the mounted desk reached a financial writer")
+        self.assertEqual(oracle.financial_write_count, 0)
+        # …and the fixture documents are byte-identical (no in-place mutation).
         self.assertEqual(_financial_snapshot(shipments), financial_before)
+
+    def test_mounted_shell_exposes_the_read_only_financial_status(self) -> None:
+        """The desk still shows a financial status + a deterministic next action."""
+        from streamlit.components.v2.bidi_component.state import ComponentResult
+        from views import logi_sandbox
+
+        logi_sandbox.reset_backend()
+        logi_sandbox.ensure_backend()
+
+        captured: dict = {}
+
+        def fake_renderer(**kwargs):
+            captured.update(kwargs)
+            return ComponentResult({}, {})
+
+        with patch("views.logi_shell._renderer", return_value=fake_renderer):
+            app = AppTest.from_file(str(APP_PATH), default_timeout=60)
+            app.session_state["current_user"] = {"username": "admin", "role": "admin"}
+            app.run()
+        _assert_no_streamlit_exceptions(self, app)
+
+        vm = captured["data"]
+        home = vm["home"]
+        self.assertIn("summary", home)
+        self.assertIn("tiles", home)
+        self.assertTrue(vm["receivables"] is not None)
+        row = vm["shipments"][0]
+        self.assertTrue(row["nextAction"], "every row carries a deterministic next action")
+        self.assertTrue(row["nextRoute"].startswith("/lo-hang/"))

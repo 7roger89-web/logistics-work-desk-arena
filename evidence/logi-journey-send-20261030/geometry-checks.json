@@ -1,0 +1,43 @@
+{
+  "tool": "playwright-cli 0.1.22 + @sparticuz/chromium 153.0.8010.0 (real Chromium, Arena sandbox)",
+  "flows": "evidence/logi-journey-send-20261030/flows/*.js (executed via `playwright-cli run-code`)",
+  "app": "tests/component/g15_lg_tt_discussion_runtime.py (isolated mongomock, AUTH_REQUIRED=true, fixture staff login)",
+  "customer_readback_after_staff_reply": {
+    "desktop_1440x900": {
+      "viewport": {"w": 1440, "h": 900},
+      "main_scroll_width": 1440,
+      "main_client_width": 1440,
+      "horizontalOverflow": false,
+      "bubble": {"x": 791, "y": 135, "w": 540, "h": 540},
+      "discussionInsideBubble": true,
+      "noteCount": 2,
+      "threadHeader": "💬 Trao đổi (2)",
+      "controls": {
+        "close":    {"w": 40, "h": 40, "inViewportX": true, "inViewportY": true, "hitOk": true},
+        "composer": {"w": 510, "h": 72, "inViewportX": true, "inViewportY": true, "hitOk": true},
+        "attach":   {"w": 101, "h": 40, "inViewportX": true, "inViewportY": true, "hitOk": true},
+        "send":     {"w": 50,  "h": 40, "inViewportX": true, "inViewportY": true, "hitOk": true}
+      }
+    },
+    "mobile_390x844": {
+      "viewport": {"w": 390, "h": 844},
+      "main_scroll_width": 390,
+      "main_client_width": 390,
+      "horizontalOverflow": false,
+      "bubble": {"x": 41, "y": 104, "w": 308, "h": 520},
+      "discussionInsideBubble": true,
+      "noteCount": 2,
+      "threadHeader": "💬 Trao đổi (2)",
+      "controls": {
+        "close":    {"w": 40, "h": 40, "inViewportX": true, "inViewportY": true, "hitOk": true},
+        "composer": {"w": 286, "h": 60, "inViewportX": true, "inViewportY": true, "hitOk": true},
+        "attach":   {"w": 101, "h": 40, "inViewportX": true, "inViewportY": true, "hitOk": true},
+        "send":     {"w": 50,  "h": 40, "inViewportX": true, "inViewportY": true, "hitOk": true}
+      }
+    }
+  },
+  "customer_thread_before_fix_repro": {
+    "app": "tests/component/g15_isolated_runtime.py",
+    "result": "alert 'Không gửi được trao đổi.' + server log JOURNEY_NOTE_DB_UNAVAILABLE reason=None"
+  }
+}

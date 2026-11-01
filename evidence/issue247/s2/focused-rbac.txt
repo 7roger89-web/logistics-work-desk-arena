@@ -1,0 +1,5 @@
+HEAD=3516ce702f90d5a4a8582702ab0f9e38a1bd8cc6
+COMMAND=python -m pytest tests/test_lg08_1_rbac_boundary.py -q
+...                                                                      [100%]
+3 passed in 1.01s
+PYTEST_EXIT=0

@@ -1,144 +1,76 @@
-VỊ TRÍ: main
-BASE_SHA: ee31b0f3344cd9b23c39c01a8d14b7581ffa0d23
+# NEXT — Logistics Work Desk | checkpoint mục tiêu
 
-> BASE_SHA đầu file là commit main ngay sau khi merge PR #220, trước commit cập nhật tài liệu này; không phải SHA tự tham chiếu của commit chứa file. Số liệu suite bên dưới vẫn thuộc baseline lịch sử a98884b, chưa chạy lại.
+> Cập nhật **31/10/2026**. Đây là snapshot để tiếp tục làm sản phẩm, không phải luật. Đọc `AGENTS.md` + Supreme Law trước; đo lại GitHub PR/HEAD trước khi dùng SHA lịch sử. Yêu cầu Owner mới nhất và GoalPlan/TaskPlan hiệu lực có ưu tiên cao hơn bản này.
 
-## FALLBACK ĐỌC FILE
+## GOAL
 
-Thử lần lượt khi URL raw trên main trả 404 (không kết luận file mất chỉ từ một URL):
+Hoàn thiện **Logistics Work Desk thực sự dùng được**: Trường Thành nhìn Journey của một lô biết đang ở đâu, vướng gì, cần làm gì, chứng từ nào; Lục Giác xem duy nhất tiến độ/chứng từ đã được Trường Thành duyệt và trao đổi theo **đúng công đoạn**. Đơn giản, map-first; không thay phát triển chức năng bằng vòng viết prompt, QA hình thức hay framework mới.
 
-1. Raw main: https://raw.githubusercontent.com/7roger89-web/logistics-work-desk-arena/main/docs/NEXT.md
-2. GitHub main: https://github.com/7roger89-web/logistics-work-desk-arena/blob/main/docs/NEXT.md
-3. Contents API main: `gh api 'repos/7roger89-web/logistics-work-desk-arena/contents/docs/NEXT.md?ref=main' --jq .content | base64 -d`
-4. Git main: `git fetch origin main && git show origin/main:docs/NEXT.md`
-5. Nếu main thực sự chưa có file, đọc PR #220: `gh pr view 220 --json state,headRefName,mergeCommit`; dùng headRefName trả về để đọc Contents API với `ref=<headRefName>`. Bản nhánh phải ghi `VỊ TRÍ: nhánh <tên> — CHƯA MERGE`, không coi là bản main.
-6. Nếu nhánh PR đã bị xoá, lấy mergeCommit.oid từ bước 5 và đọc Contents API với `ref=<mergeCommit.oid>` hoặc `git show <mergeCommit.oid>:docs/NEXT.md`. Phân biệt lỗi mạng/quyền truy cập với HTTP 404; ghi lại cách đọc thực sự thành công.
+## PROGRESS — mốc đã xác minh
 
----
+- Repo đúng: `7roger89-web/logistics-work-desk-arena`.
+- [PR #233](https://github.com/7roger89-web/logistics-work-desk-arena/pull/233): **MERGED** vào staging; `AGENTS.md` bắt buộc đọc checkpoint hiện tại.
+- [PR #232](https://github.com/7roger89-web/logistics-work-desk-arena/pull/232): **MERGED vào staging** ở `e75a239277573f0d470607818e40b8d11f775e44`. Có Admin duyệt công bố event/document theo ID, version và hash nội dung, customer-only reader; fix modal giữ dữ liệu khi đổi khách. Bằng chứng review độc lập 29 challenge tests và focused suite ghi tại `evidence/g15-independent-review/README.md`. **G1.5 đạt code-level staging, chưa chứng minh Google OIDC và dữ liệu nghiệp vụ Lục Giác thật**.
+- **Đã tích hợp:** [PR #234](https://github.com/7roger89-web/logistics-work-desk-arena/pull/234) **MERGED staging** ở `0e20a93c48f95b76839c093c9cb56bfcb1472e5f`. Comment + chứng từ gắn `customer_id + shipment_id + stage_id` của 7 mốc; cùng backend `quick_notes`, adapter `core/inbox_attachments` và pane Streamlit tại màn lô Trường Thành / dưới Journey Lục Giác. Tái kiểm tra quyền tải, khách đổi chủ, note INTERNAL, thu hồi file, ô nháp và rerun. GridFS/Drive chỉ theo cấu hình runtime, **không mặc định Drive**.
+- Bản gốc PR #234 là patch `7roger89-web/CHUNLI@arena/5bc30481-chunli/logi/journey-notes/` với **7/7 Git blob SHA khớp byte-exact**; `31 PASS` của bản gốc chỉ là bối cảnh lịch sử.
+- **QA trên HEAD mới (30/10):** `arena/6db41d2f-logistics-work-desk-arena` commit `2e510d50f2ec58284f4e3e8a74b1ea2bb42811e0` chạy thật: `tests/test_journey_notes.py` **48 PASS** (36 cũ + 12 mới), tập G1/G1.5 phụ thuộc **138 PASS**, full suite **34 failed / 2197 passed / 44 skipped** — trùng đúng tập FAILED nền 34 của `f80b2bd`, +12 test mới đều PASS. Ba mutation proof (stage draft, flash/rerun, recheck chủ lô) đều FAIL đúng chỗ. Bằng chứng: `evidence/journey-notes/session-qa-20261030.md`.
 
-# NEXT — Trạng thái bàn giao và việc tiếp theo
+## CURRENT
 
-Session: `LOG-NEXT-W1-BOOTSTRAP-HANDOFF`
-Nhánh làm việc: `arena/19722cb4-logistics-work-desk-arena`
+**Issue #247 / PR #248 — S1/S2/S3 reviewed on 31/10:** S1 international-payment snapshot fail-closed/idempotent (3 FAIL trước sửa; 2 full-suite sạch **2359 passed / 44 skipped / 0 FAILED** tại application-code SHA `3516ce70` theo log Arena). S2 staff Support dùng Chromium 153, Streamlit + DB TEST chung ghi khoản thu đúng requestId, đọc lại payment/request/audit/event qua desktop/mobile. S3 A/B customer có hai manifest **PUBLISHED độc lập**, đổi A→B→A + reload không lộ source/nháp khách khác; server từ chối email chưa cho phép, INTERNAL/unverified (176 browser checks, 252 focused tests PASS theo log Arena); review độc lập S1–S3 đã đối chiếu source, JSON và ảnh. PR #248 S3 commit `c0460ea` đã được đưa vào chính nhánh PR, nhưng **final-head full-suite chưa chạy**; Issue #247 chưa DONE và PR chưa merge. Tất cả kết quả nằm ở TEST cô lập, **OIDC thực và Cloud/Atlas NOT_VERIFIED**. PR #250 vẫn tham khảo, không merge chồng.
 
-Tài liệu này được tạo từ việc **đo lại** trạng thái repo, không sao chép từ các tài liệu bàn giao cũ. Mọi sha và số liệu bên dưới là kết quả đo tại thời điểm viết.
+**Cửa tích hợp cuối:** Staging sau PR #249 có quy trình SPEC_LOCK + PR gate; Ruleset `26255872` hiện Active yêu cầu PR, status `contract-shape`, chặn xóa/force push. Với PR #248, giữ toàn bộ checkpoint staging làm gốc, giải quyết xung đột `docs/NEXT.md`, chạy hai lượt full `python -m pytest tests -q` sạch trên exact HEAD cuối (0F/0E, skip set không tăng), check `contract-shape` PASS và review độc lập lần cuối. Không được merge `main` hay ghi Cloud/production. Sources: [Issue #247](https://github.com/7roger89-web/logistics-work-desk-arena/issues/247), [PR #248](https://github.com/7roger89-web/logistics-work-desk-arena/pull/248).
 
-## 1. TRẠNG THÁI
+**Ưu tiên Owner 31/10 — Issue #247:** Chấm dứt kiểu merge tính năng mới nhưng full suite đỏ mà không nói rõ. Mục tiêu hiện hành: hai lượt `python -m pytest tests -q` trên checkout sạch đạt 0 FAILED/0 ERROR, không mở thêm skip/xfail, không nới security/finance. Trước khi Arena sửa lỗi phải đo baseline/traceback, khóa hợp đồng nghiệm thu đúng nguyên nhân gốc ở [#247](https://github.com/7roger89-web/logistics-work-desk-arena/issues/247#issuecomment-6537600763); mỗi slice tự chứng minh được nhưng không được đánh dấu Goal DONE sớm. Quy trình mới nằm ở `AGENTS.md`, dùng Issue/PR hiện tại và check khuôn mẫu PR; không tạo TASK.md thứ hai.
 
-| Mục | Giá trị đo được |
-|---|---|
-| BASE_SHA (`main`, nguồn: GitHub API `commits/main`) | `a98884b1905c2470fae750d93526fe69930b1958` |
-| Ngày commit BASE_SHA | 2026-10-26T07:13:41Z |
-| Thông điệp commit | `Merge pull request #219 from 7roger89-web/arena/9ef9189e-logistics-work-desk-arena` |
-| PR merge cuối cùng | #219 — "Fix 12 known red tests (A1/A2/B1/B2/B3) + README tidy (D); C reported" |
-| `mergeCommit.oid` của PR #219 | `a98884b1905c2470fae750d93526fe69930b1958` (khớp BASE_SHA) |
-| `mergedAt` PR #219 | 2026-10-26T07:13:42Z |
-| PR merge gần kế trước | #218 (merge commit `342b4ffe088996be36caba0b5f79a4a4955f4ba9`) |
-| Nhánh làm việc khi bắt đầu | tạo từ BASE_SHA, không có thay đổi chưa commit |
+**Đã merge staging tại `1144af55` (PR #245, 30/10): Issue #244 — Node 00 “KẾ HOẠCH” trong Journey Map (nhánh `arena/17d7196b-…`, PR vào staging):** một projection read-only `core/shipment_plan.py` dựng 3 mục (báo giá → hợp đồng khách → tạm ứng tiền hàng cho TT) từ đúng dữ liệu đã có, không tạo writer/DB/số tiền thứ hai. Staff `/lo-hang/:id`: node 00 đứng đầu journey, mở panel **trong** Journey với 3 mục gọn + CTA sang màn hình đang có (`/kinh-doanh-bao-gia`, `/hop-dong`, tab `Tài chính`); báo giá/hợp đồng chỉ tới mức `LINKED` (≠ đã ký), “Đã ký” cần bằng chứng chữ ký ghi nhận, tạm ứng giữ `Chưa xác minh đã nhận` và khoản thu chưa phân loại chỉ hiện “cần đối soát” (không hiện số tiền). Khách (Lục Giác): node 00 hiện “Hồ sơ Kế hoạch đã công bố”, chỉ 3 kind đã công bố `CUSTOMER_QUOTE`/`CUSTOMER_CONTRACT`/`PAYMENT_REQUEST` kèm id+version (metadata, không tải byte); lô đã công bố nhưng không có hồ sơ kế hoạch hiện đúng câu “Chưa có hồ sơ Kế hoạch được công bố”; `_stage_documents` vẫn cố ý rỗng và công bố hồ sơ **không** làm công đoạn COMPLETED. Independent review requested three repairs, all closed at `d9b5c91`: (1) `LINKED ≠ ACCEPTED` — node chỉ COMPLETED khi chính báo giá có trạng thái `ACCEPTED`; (2) `customer_confirmation` **không** còn bị coi là chữ ký — chỉ bằng chứng gắn đúng hợp đồng mới được `ATTESTED`, còn lại hiện “Chưa xác minh chữ ký”; (3) lô mới **Journey rỗng** vẫn mở được Node 00 ngay trong cockpit mới (không bịa node vận chuyển). Full suite ở worktree sạch: nền `2fcb74e` 41F/2262P/45S → `d9b5c91` **40F/2302P/45S, 0 regression**; 39 test Node 00 + jsdom 9 check PASS; **trình duyệt thật** Streamlit + Chromium 153 ở 1440×900 và 390×844: `ISSUE244_STAFF_BROWSER=PASS` (26 check, có lô Journey rỗng) và `ISSUE244_CUSTOMER_BROWSER=PASS` (15 check). Bằng chứng: `evidence/issue244-plan/EVIDENCE.md`. Vòng review thứ hai mở thêm **F3/F4/F5**, đã đóng ở `f669289`: báo giá phải đúng **chủ sở hữu** (quote của khách B cho lô khách A → `UNRESOLVED`, không bao giờ “Khách đã chấp nhận”), CTA hợp đồng encode **một lần** theo `contractPath` (`HDMB/2026/01` → `/hop-dong/HDMB%2F2026%2F01`, Chromium mở đúng workdesk rồi quay lại đúng lô/Node 00), và `ACCEPTED → READY_TO_CREATE_SHIPMENT` giữ bằng chứng chấp nhận theo `status_history` (chuỗi trạng thái không bằng chứng vẫn UNKNOWN). Suite cuối: 45 test Node 00, staff browser 30 check desktop+mobile, full suite nền 40F/2263P → **40F/2308P, tập FAILED trùng khít**. **Còn thiếu riêng:** UAT Cloud (SHA/DB/OIDC thật chưa xác minh); independent review PR #245 đã PASS đúng scope code/browser test cô lập, đã merge staging, không có nghĩa full suite 0 lỗi.
 
-Kết luận: PR #219 là PR merge cuối cùng và chính là commit đứng đầu `main`.
+**Trước đó — Issue #236 — trao đổi NGAY TRONG Journey Map (nhánh `arena/385e4a4d-…`, PR vào staging):** bình luận + trả lời (một cấp) + đính kèm + tải chứng từ nằm trong bubble node (cổng khách) và panel gắn node (shell React), KHÔNG còn expander Streamlit phía trên bản đồ. Server `views/journey_inline.py` chỉ đọc/ghi đúng lô + công đoạn đã mở, chống replay, khách không bao giờ thấy INTERNAL; payload component không mang `customer_id`/quyền/byte ngoài một tệp vừa yêu cầu. Full suite `34F/2255P` trùng tập FAILED nền 34 của `a570383`; jsdom 3 lane PASS. **Còn thiếu:** `VISUAL_PASS=NOT_VERIFIED` (không có trình duyệt thật), transport byte component v2 chưa chạy end-to-end trên runtime Streamlit, UAT Cloud. Bằng chứng: `evidence/journey-inline-236/README.md`.
 
-## 2. ĐO LẠI
+**Trước đó (PR #235) — đã nối Journey Map với pane trao đổi/chứng từ đang có** (nhánh `arena/d46744d8-…`, PR vào staging): bấm node 00–06 ở cả cổng khách (`hexa-portal.js`) và shell nội bộ (React `JourneyMap`) → một trigger `journey_focus` read-only → server tái xác minh lô theo projection của chính danh tính (khách: `cards`; nội bộ: `vm["shipments"]` + `customer_id` lấy từ row) và công đoạn theo `STAGE_IDS` → mở **đúng pane hiện có** (`views/journey_discussion.py`) trên đúng công đoạn, phía trên bản đồ. Không tạo backend/DB/upload thứ hai. Pane nội bộ vẫn là Streamlit đặt phía trên shell, **không** nằm trong React; Cloud SHA/DB identity/Google OIDC thật vẫn chưa xác minh.
 
-### 2.1 Kiểm tra tồn tại `docs/NEXT.md`
+## NEXT — công việc kế tiếp có giá trị
 
-Kết quả: **KHÔNG TỒN TẠI** trên `main` (BASE_SHA) và trên nhánh làm việc.
+1. **Issue #247 / PR #248:** reconcile docs với staging (không xóa quy trình #249), chốt HEAD cuối, chạy **2 full suite sạch 0 FAILED/0 ERROR**, bảo toàn skip IDs; required `contract-shape` PASS và independent exact-HEAD review. S1/S2/S3 chỉ chứng minh TEST cô lập, chưa chứng minh Cloud/OIDC.
+2. **Gate PR:** mọi PR mới vào staging có template Task/Spec, Wrong PASS, acceptance, lệnh/exit code, evidence exact FINAL_HEAD. GitHub Actions chỉ kiểm **shape**; staging đã có Ruleset `26255872` Active, yêu cầu PR và check `contract-shape`. Check xanh vẫn chưa chứng minh phần mềm đúng, cần review độc lập. Giữ các feature PR khác chờ #247 trừ khi Owner đổi ưu tiên.
+3. **Cloud UAT vẫn tách biệt:** cần xác minh deployed SHA/ENV/DB/blob/OIDC trước mọi ghi; không dùng dữ liệu thật để làm sạch pytest, không merge main/production thiếu Owner gate.
 
-| Cách kiểm tra | Kết quả |
-|---|---|
-| `contents/docs?ref=main` (GitHub API) | Không có file nào có tên chứa `NEXT` |
-| `contents/docs/NEXT.md?ref=main` (GitHub API) | HTTP 404 |
-| `contents/?ref=main` (thư mục gốc) | Không có file nào có tên chứa `NEXT` |
-| `git ls-tree -r a98884b` | Không có `docs/NEXT.md` (chỉ có `.agents/.../nextjs-app-router.md` và `core/next_action_card.py`, không liên quan) |
-| Thư mục local `docs/` | Không có `NEXT.md` |
-| `raw.githubusercontent.com/.../docs/NEXT.md` | Không kiểm tra được: sandbox không truy cập được host này (lỗi SSL/chặn mạng). Không dùng kết quả này làm bằng chứng. |
+## BLOCKERS / GATES
 
-### 2.2 Baseline test suite tại BASE_SHA
+- **40 FAILED trước PR #248 là mốc lịch sử.** Hai full-suite tại code SHA `3516ce70` được Arena ghi 2359 PASS/44 SKIP/0 FAILED, nhưng HEAD cuối sau S2/S3 có thay đổi fixture/evidence; `FULL_SUITE_FINAL_HEAD=NOT_VERIFIED` tới khi đo lại.
+- **Staging branch được Ruleset `26255872` bảo vệ:** PR required, `contract-shape` required (GitHub Actions), cấm xóa/force push, không bypass. `MANDATORY_BRANCH_GATE=ENFORCED`; bot chỉ xét khuôn mẫu.
+- PR #234 đã **MERGED staging**. Bằng chứng code: QA Arena `48 PASS` stage notes, `138 PASS` tests phụ thuộc; full suite còn **34 lỗi nền** theo cùng máy/baseline. Control Tower đọc lại code/test trên HEAD QA và không thấy blocker mới; các test không được chạy lại trong container hiện tại (thiếu Streamlit/mongomock).
+- **Blocker review #237 (đã sửa):** tải chứng từ trong Journey Map từng không buộc note vào đúng lô + công đoạn đang mở. Nay `read_note_attachment(..., expected_scope=…)` kiểm tra `customer_id + shipment_id + stage_id` của chính note **trước khi** đọc byte; `views/journey_inline.py` luôn truyền phạm vi server đã resolve. 5 test mới (đúng phạm vi, lô khác, công đoạn khác, lô ngoài projection, fail-closed) + mutation proof (bỏ binding → 3 test FAIL). Full suite `34F/2262P` trùng tập FAILED nền 34.
+- **Browser blocker (đã gỡ cho #244):** trước đây sandbox không có trình duyệt và CDN tải browser bị chặn (`cdn.playwright.dev`, `storage.googleapis.com`), nên `VISUAL_PASS=NOT_VERIFIED` và transport byte component v2 chưa được chạy end-to-end trên trình duyệt thật. Cần môi trường có Chromium để đóng mục này.
+- `thu-log-g1-test.streamlit.app`: deployed SHA và danh tính DB runtime chưa được chứng minh; **không ghi Cloud/production** chỉ để test.
+- Nguồn chứng từ/sự kiện Lục Giác thật chưa được nghiệp vụ xác nhận; hash/fixture chỉ chứng minh contract phần mềm. Thông tin chi phí, margin, báo giá nội bộ và công nợ thiếu đối soát tuyệt đối không công bố.
+- `main` trước công việc này: `9e4190b278dd2ced8771c5249582753d34e561db`; không merge `main` hoặc deploy production nếu thiếu Owner Gate. PR #226 lịch sử Draft, không phải workstream tiếp theo.
 
-Lệnh chạy (venv riêng, cài `requirements.txt` + `pytest 9.1.1`, Python 3.11.2, trên commit `a98884b`):
+## SUCCESS CHECKS
 
-```
-python -m pytest tests -q --continue-on-collection-errors
-```
+- **#247:** cùng full-suite trên final HEAD chạy độc lập hai lần `0F / 0E`, không tăng skip; có regression âm bảo vệ tenant/RBAC/payment, bằng chứng UI thật cho các luồng bị ảnh hưởng. `0 new failures` không đạt Goal này.
+- **Đầu vào PR:** Issue có SPEC_LOCK trước code, source paths hiện hành, Wrong PASS và lệnh kiểm; PR có evidence final HEAD, review đối chiếu đúng cùng spec. Bot chỉ xác nhận khuôn mẫu, không thay người nghiệm thu.
+- Staff có `shipment_edit` ghi/xem INTERNAL và CUSTOMER; khách chỉ ghi/xem CUSTOMER đúng lô và công đoạn.
+- Upload file qua kho đang có; download xác minh lại note, khách, quyền, lô **hiện tại**, tệp và trạng thái AVAILABLE. Không lộ GridFS ID/hash/link nội bộ.
+- Sau reload/đổi khách, không còn dữ liệu hay bản nháp của khách trước; test trên code commit `2e510d5` được QA báo PASS và cùng code blob đã merge staging. Cần UAT Cloud riêng trước phát hành.
+- Mọi phát hành/live UAT tách biệt việc merge code; không tự nhận app production đã có chức năng.
 
-| Chỉ số | Số đo |
-|---|---|
-| passed | **1948** |
-| failed | **18** |
-| skipped | **45** |
-| error (collection) | **0** |
-| subtests passed | 10 |
-| Thời gian | 115.46 s |
+## Nhật ký mốc quan trọng
 
-Danh sách test FAILED (18, không có ERROR):
+- **31/10 (S1–S3):** Review độc lập source/JSON/ảnh Chromium trên ba lát Issue #247; chuyển commit S3 vào chính PR #248 qua fast-forward; không merge staging/main hay ghi Cloud. Lấy docs/NEXT từ staging PR #249 làm gốc để giữ quy trình và Ruleset hiện hành; pending hai full suite sạch + exact-head review + gate trước merge.
+- **31/10 (quy trình):** Owner yêu cầu thay đổi cách thực thi thay vì thêm luật. Chốt Issue #247 làm Goal (0 FAILED/ERROR), comment SPEC_LOCK trước sửa; bổ sung AGENTS project-level execution-to-acceptance lock, PR template và workflow shape check vào nhánh staging qua PR process-only, không thay code nghiệp vụ. Thời điểm ghi nhật ký PR #249 chưa có required check; sau đó Owner bật và đã xác minh Ruleset `26255872` Active.
+- **30/10:** PR #233 merged staging; PR #232 có independent challenge và merged staging tại `e75a239`.
+- **30/10:** Patch comment/chứng từ từ CHUNLI áp dụng byte-exact lên nhánh cô lập; thêm bảo vệ đọc/tải lô đã chuyển chủ, tệp thu hồi và bản nháp đổi khách; PR #234 Draft chờ chạy test sau sửa.
+- **30/10 (QA thực chạy):** 48 PASS `test_journey_notes.py`, 138 PASS tập G1.5 phụ thuộc, full suite 34F/2197P/44S trùng baseline; sửa 3 lỗi UI (nháp lẫn công đoạn, gửi xong chưa thấy note, nhãn tệp chưa escape) tại `2e510d5`; Cloud QA vẫn `BLOCKED`.
 
-1. `tests/test_agreements_api.py::LoadAgreementsTests::test_load_agreements_returns_dict_from_load_dict`
-2. `tests/test_all_tabs_smoke.py::AllTabsSmokeTest::test_all_routes_render`
-3. `tests/test_inbox_snippets.py::test_dom_acceptance_inbox_desktop_and_mobile`
-4. `tests/test_intl_payment_comparator.py::ProvenanceImmutabilityTest::test_snapshot_immutability_via_mongomock_if_available`
-5. `tests/test_lg08_1_safety.py::test_identity_gate_enforcement`
-6. `tests/test_lg08_1_safety.py::test_production_identity_pass`
-7. `tests/test_logc15_auth_rbac.py::TestRoleMatrix::test_unknown_role_falls_back_to_viewer`
-8. `tests/test_logi_cn_truck_type_persist_01.py::test_whitelist_gained_exactly_the_one_approved_key`
-9. `tests/test_logi_finance_actual_entry_parity_01.py::test_service_catalog_is_projected_from_core_config`
-10. `tests/test_logi_finance_actual_entry_parity_01.py::test_service_catalog_is_not_hardcoded_in_react`
-11. `tests/test_logi_interaction_latency_repair_01.py::InteractionLatencyRepairTests::test_adversarial_reverting_to_baseline_produces_double_build_and_rerun`
-12. `tests/test_logi_interaction_latency_repair_01.py::InteractionLatencyRepairTests::test_duplicate_trigger_in_same_prefix_batch_does_not_double_dispatch`
-13. `tests/test_logi_shipment_operational_data_v1.py::test_lightweight_create_starts_one_canonical_leg_and_navigable_detail_data`
-14. `tests/test_login_visual_compact.py::test_bootstrap_path_still_reachable_with_hero`
-15. `tests/test_phase_a_component.py::test_view_model_shape_via_app`
-16. `tests/test_phase_b_real_data.py::test_pxk_operator_identity_generates_persisted_office_file`
-17. `tests/test_session_truth_repair.py::test_bootstrap_first_admin_flow_still_runs_with_no_session_and_no_users`
-18. `tests/test_shipment_slash_route_repair_01.py::TestBackendRouteProducers::test_primary_action_composes_encoded_segment_then_query_then_anchor`
+- **30/10 (staging integration):** Control Tower fast-forward patch QA Arena vào PR #234 HEAD `cc9f9a7ae50abe9244ae2a457e5e3dbcb31bcc5a`, kiểm tra nguồn/test/20 điều kiện an toàn, merge **staging** ở `0e20a93c48f95b76839c093c9cb56bfcb1472e5f`; `main` giữ nguyên. Cloud UAT vẫn BLOCKED vì runtime SHA/DB chưa xác minh.
 
-Lưu ý: tiêu đề PR #219 ghi "Fix 12 known red tests", nhưng lần đo này vẫn còn 18 test đỏ trên đúng commit đó. Chưa xác định nguyên nhân (có thể do môi trường cài đặt khác, ví dụ phiên bản streamlit/pymongo/mongomock, hoặc do PR chưa sửa hết). Chưa điều tra sâu vì phạm vi phiên này không cho sửa code/test.
+- **30/10 (Journey Map dùng được):** thêm nút “💬 Trao đổi / Chứng từ” tại node Journey Map ở cả hai cổng; một trigger `journey_focus` read-only, server tái xác minh danh tính/lô/công đoạn, mở đúng pane đang có; sửa luôn phát hiện `views/shipment.py` (pane nội bộ PR #234) không được route. Đo tại `7ac441b`: baseline 35F/2196P → sau sửa 35F/2216P (không failure mới); `tests/test_journey_notes.py` 48 PASS. Cloud UAT vẫn BLOCKED; không browser thật trong sandbox. **Sửa blocker review:** node nội bộ thật (`MAIN_CARRIAGE`, `si-vgm`, `gate-in`, …) được ánh xạ tường minh sang 7 nhóm trao đổi ở `views/journey_focus.STAFF_NODE_STAGES` (id lạ vẫn fail closed; cổng khách giữ 7 stage canonical); fixture `LO-0307 / MAIN_CARRIAGE` → pane `Vận chuyển` đã PASS, full suite 34F/2247P trùng tập FAILED nền.
 
-### 2.3 Số chuẩn
+- **30/10 (Node 00 — vòng sửa thứ hai F3/F4/F5):** `f669289` chặn báo giá khác chủ, encode id hợp đồng có dấu `/` đúng một lần (có bằng chứng Chromium bấm CTA → workdesk hợp đồng → quay lại lô/Node 00), và giữ trạng thái chấp nhận qua bước chuyển hợp lệ sang `READY_TO_CREATE_SHIPMENT`; thêm lô cô lập `LO-0310`.
 
-Số chuẩn cho các lần bàn giao sau là số đo ở mục 2.2 tại BASE_SHA: **1948 passed / 18 failed / 45 skipped / 0 error**. Không dùng số hard-code từ tài liệu cũ.
+- **30/10 (Node 00 — sửa 3 blocker nghiệm thu):** `d9b5c91` tách “đã có trạng thái chấp nhận” khỏi “đã gắn báo giá”, tách `signed_contract` khỏi `customer_confirmation`, và đưa Node 00 vào cockpit lô mới (Journey rỗng); thêm lô cô lập `LO-0309` + Chromium desktop/mobile cho cả ba phản ví dụ.
 
-## 3. VIỆC TIẾP THEO
+- **30/10 (Node 00 Kế hoạch):** `core/shipment_plan.py` + panel `PlanQuickPanel` trong Journey (staff) và khối “Hồ sơ Kế hoạch đã công bố” ở node 00 cổng khách (#244); lần đầu chạy được **trình duyệt thật** trong sandbox (`@sparticuz/chromium` + puppeteer-core) nên `VISUAL_PASS` của luồng này là PASS thật, có screenshot desktop/mobile: `evidence/issue244-plan/`.
 
-1. Điều tra 18 test FAILED ở mục 2.2 và phân loại: lỗi môi trường (phiên bản thư viện) hay lỗi thật trong code/test. Đây là việc thuộc phiên khác, không làm trong phiên này.
-2. Đối chiếu với PR #219 để làm rõ vì sao tiêu đề ghi "Fix 12 known red tests" nhưng vẫn còn 18 test đỏ.
-3. Khi có thay đổi code/test ở phiên sau, chạy lại đúng lệnh ở mục 2.2 và cập nhật bảng số ở mục 2.2 và mục 2.3, đồng thời thêm entry vào mục 4.
-4. Nếu cần chạy lại trên môi trường sạch, cài đúng `requirements.txt` trong venv (PEP 668 chặn cài pip toàn cục trên sandbox).
-
-Ràng buộc phiên này: không merge `main`, không deploy, không sửa app code, không sửa test.
-
-## 4. LỊCH SỬ
-
-Mỗi phiên append một entry mới ở cuối mục này. Không có entry = phiên coi như chưa xảy ra.
-
-### Entry template
-
-```
-- [YYYY-MM-DD] SESSION <session-id> — <tên phiên>
-  - BASE_SHA: <sha>
-  - Làm: <việc đã làm>
-  - Đo được: passed=<n> failed=<n> skipped=<n> error=<n>
-  - Bị bác bỏ: <giả định/khẳng định đã kiểm tra và bác bỏ, hoặc "không có">
-  - Còn lại: <việc chưa làm>
-  - Head sha: <sha>
-```
-
-### Entries
-
-- [2026-10-26] SESSION LOG-NEXT-W1-BOOTSTRAP-HANDOFF — Bootstrap và đo lại trạng thái
-  - BASE_SHA: a98884b1905c2470fae750d93526fe69930b1958 (PR #219 merge, 2026-10-26T07:13:41Z)
-  - Làm: đo BASE_SHA từ GitHub API; kiểm tra tồn tại `docs/NEXT.md` (contents API + thư mục gốc + local + git ls-tree); xác nhận PR #219 là PR merge cuối; chạy full suite trên BASE_SHA; tạo `docs/NEXT.md` này.
-  - Đo được: passed=1948 failed=18 skipped=45 error=0 (xem danh sách 18 test ở mục 2.2)
-  - Bị bác bỏ:
-    - "docs/NEXT.md tồn tại" — BÁC BỎ: contents API trả 404, không có trong `git ls-tree` của BASE_SHA. Chưa thể kiểm tra qua raw.githubusercontent.com vì sandbox không truy cập được host này.
-    - "PR #219 đã sửa 12 test đỏ nên suite xanh" — BÁC BỎ một phần: đo lại thấy 18 test FAILED trên đúng commit đó.
-    - "Tài liệu bàn giao có sẵn số suite" — không dùng: mọi số liệu lấy từ lần đo này, không hard-code từ tài liệu cũ.
-  - Còn lại: điều tra 18 test FAILED; xác minh raw URL khi có mạng.
-  - Head sha: xem commit tương ứng trên nhánh `arena/19722cb4-logistics-work-desk-arena` (sha ghi trong PR).
-
-- [2026-10-26] SESSION LOG-NEXT-MAIN-RECOVERY — Đưa bàn giao lên main
-  - BASE_SHA: ee31b0f3344cd9b23c39c01a8d14b7581ffa0d23 (main ngay sau merge PR #220).
-  - Làm: xác nhận đủ TRẠNG THÁI / ĐO LẠI / VIỆC TIẾP THEO / LỊCH SỬ và template; undraft và merge PR #220; thêm VỊ TRÍ, BASE_SHA đầu file và chuỗi fallback; giữ nguyên mọi entry cũ.
-  - Đo được: không chạy lại suite (chỉ sửa docs); số liệu cũ không phải kết quả đo phiên này.
-  - Bị bác bỏ: không có; thông tin 404 và ràng buộc không merge trong entry bootstrap là lịch sử, không mô tả phiên này.
-  - Còn lại: điều tra 18 test FAILED theo baseline lịch sử; xác minh HTTP raw sau merge bản cập nhật.
-  - Head sha: xem commit cập nhật docs/NEXT.md và merge commit của PR kế tiếp #220 trên main.
+**Duy trì:** chỉ cập nhật CURRENT/NEXT/BLOCKERS và một mốc PR/SHA khi việc thực sự đổi. Không log từng thao tác, không dựng bảng roadmap khác.

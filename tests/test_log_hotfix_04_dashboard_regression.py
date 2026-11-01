@@ -11,7 +11,6 @@ import json
 from copy import deepcopy
 from datetime import date
 from inspect import signature
-from pathlib import Path
 from unittest.mock import patch
 
 from streamlit.testing.v1 import AppTest
@@ -22,11 +21,7 @@ from core.shipment_dashboard import (
     build_shipment_dashboard_view,
     build_shipment_summary,
 )
-from tests.test_all_tabs_smoke import _customers, _login_fixture, _shipments
-
-#: Current entry point: ``app.py`` → ``views.web_app.main`` → the Logi-good
-#: single-component shell (``views.logi_shell.render`` over the view-model).
-APP_PATH = Path(__file__).resolve().parents[1] / "app.py"
+from tests.test_all_tabs_smoke import APP_PATH, _customers, _login_fixture, _shipments
 
 
 def _assert_no_streamlit_exceptions(app: AppTest) -> None:
@@ -49,36 +44,53 @@ def test_summary_alias_contract_is_exact_and_read_only() -> None:
 
 
 def test_dashboard_lazy_workdesk_rows_call_summary_alias_and_render() -> None:
-    """The mounted worklist builds every row through the dashboard alias.
+    """The LIVE workdesk builds rows from real evidence and every row routes.
 
-    Re-pointed from the retired Streamlit dashboard (``views.dashboard``) to the
-    current entry point: the rows the component shell renders are the
-    ``views.logi_view_model`` payload, and the per-row summary alias that feeds
-    them is ``core.shipment_dashboard.build_shipment_dashboard_view``.
+    The legacy Streamlit dashboard (and its ``refresh_core_data`` mount) was
+    retired by LOGI-GOOD-V6 Phase A; the workdesk the operator now sees is
+    ``vm._task_projection`` + ``vm._home_projection`` over the SAME
+    readiness/dashboard evidence.  This keeps the original guard — rows are
+    derived from real shipment facts, cost no write and carry a real route —
+    on the surface that actually renders.
     """
-    shipments = _shipments()
-    customers = _customers()
-    rendered: dict = {}
+    from views import logi_sandbox
+    from views import logi_view_model as vm_mod
 
-    with patch("views.logi_view_model.load_shipments", return_value=shipments):
-        with patch("core.database._load_customers_impl", return_value=customers):
-            with patch("views.web_app.require_login", return_value=_login_fixture()):
-                with patch("views.logi_shell.render", side_effect=lambda vm: rendered.update(vm)):
-                    with patch(
-                        "core.shipment_dashboard.build_shipment_dashboard_view",
-                        wraps=build_shipment_dashboard_view,
-                    ) as summary_alias:
-                        app = AppTest.from_file(str(APP_PATH), default_timeout=120)
-                        app.run()
+    logi_sandbox.reset_backend()
+    assert logi_sandbox.ensure_backend() == logi_sandbox.SANDBOX_TRANSPORT
 
-    _assert_no_streamlit_exceptions(app)
-    assert summary_alias.call_count >= 1
-    rows = {row["id"]: row for row in rendered["shipments"]}
-    assert "S-001" in rows
-    assert rows["S-001"]["nextAction"]
-    assert rows["S-001"]["nextRoute"].startswith("/lo-hang/S-001")
-    assert rendered["home"]["focus"]["id"] == "S-001"
-    assert rendered["home"]["focus"]["nextAction"] == rows["S-001"]["nextAction"]
+    # The render derives ONE dashboard view per shipment through the canonical
+    # projection (the alias above stays the thin, still-covered wrapper).
+    with patch(
+        "core.shipment_dashboard.build_shipment_dashboard_view",
+        wraps=build_shipment_dashboard_view,
+    ) as dashboard_view:
+        model = vm_mod.build_view_model()
+
+    assert dashboard_view.call_count >= len(model["shipments"])
+    rows = model["shipments"]
+    assert rows, "the fixture worklist must produce real rows"
+
+    tasks = model["tasks"]
+    assert tasks, "the workdesk must derive operational rows"
+    by_id = {row["id"]: row for row in rows}
+    for task in tasks:
+        lot = task.get("lot")
+        if task["id"].startswith("OPS-"):
+            # Derived from the shipment itself: the ONE composed primary action.
+            assert task["route"] == by_id[lot]["nextRoute"]
+            assert task["job"] == by_id[lot]["nextAction"]
+        elif lot in by_id:
+            # A real tasks-collection document keeps its own assigned route.
+            assert task["route"].startswith(f"/lo-hang/{lot}?tab=")
+
+    home = model["home"]
+    assert home["tiles"]
+    assert home["summary"]
+    if home["focus"] is not None:
+        # The focus row must point at a REAL shipment (the Home CTA opens it).
+        assert home["focus"]["id"] in by_id
+        assert home["focus"]["to"].startswith(f"/lo-hang/{home['focus']['id']}")
 
 
 def test_shipment_workspace_lazy_path_renders_readiness_without_exception() -> None:

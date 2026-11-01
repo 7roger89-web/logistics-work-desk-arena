@@ -910,6 +910,48 @@ export interface DocumentWorkflow {
   };
 }
 
+/**
+ * Issue #244 — Node 00 KẾ HOẠCH (báo giá → hợp đồng với khách → tạm ứng).
+ *
+ * ONE read-only projection built by `core.shipment_plan`. Every field is
+ * already-decided server truth: the quote is the lot's exact `quote_id`, the
+ * contract is the customer-facing one linked to this lot, and the advance is
+ * `NOT_APPLICABLE` / `MODE_UNKNOWN` / `UNVERIFIED` — `RECEIVED` is deliberately
+ * unreachable because this repository has no receipt-classification authority.
+ * Nothing here may be re-derived in the browser.
+ */
+export interface PlanItem {
+  id: "quotation" | "customer_contract" | "customer_advance" | string;
+  label: string;
+  state: string;
+  stateLabel: string;
+  detail: string;
+  quoteId?: string;
+  quoteNo?: string;
+  quoteStatus?: string;
+  accepted?: boolean;
+  contractId?: string;
+  contractNo?: string;
+  signature?: "ATTESTED" | "UNVERIFIED" | string;
+  signatureLabel?: string;
+  applicable?: boolean | null;
+  received?: boolean;
+  reconcileCount?: number;
+  targetRoute?: string;
+  targetTab?: string;
+  actionLabel?: string;
+}
+
+export interface PlanNode {
+  id: string;
+  label: string;
+  state: "COMPLETED" | "WAITING" | "PROBLEM";
+  evidence: string;
+  items: PlanItem[];
+  nextActions: string[];
+  summary: { problem: number; waiting: number };
+}
+
 export interface JourneyNode {
   id: string; label: string; family: string; targetTab: string;
   /** Derived occurrence fact; CURRENT/PROBLEM are independent visual overlays. */
@@ -1023,6 +1065,8 @@ export interface Shipment {
   commercialFlow?: CommercialFlow;
   /** Conditional shipment lifecycle derived from existing document/finance facts. */
   documentWorkflow?: DocumentWorkflow;
+  /** Issue #244 — Node 00 Kế hoạch; absent only on older payloads. */
+  plan?: PlanNode;
   /** Real attachments of the lot (metadata only; bytes live server-side). */
   attachments: ShipmentAttachment[];
   /** Durable IDs from the bounded shipment document-picker catalog. */
@@ -2489,6 +2533,61 @@ export interface ViewModel {
   unknownLabel?: string;
   /** Issue #212 — Bể thông tin / ghi nhanh. Unverified source snippets. */
   inbox?: InboxSlice;
+  /**
+   * Issue #236 — the ONE Journey Map node conversation the operator opened:
+   * exactly one lot + one stage, bounded by the backend. `null` means no node
+   * panel is open. No other lot's comments are ever embedded.
+   */
+  journeyDiscussion?: JourneyDiscussion | null;
+}
+
+export interface JourneyNoteAttachment {
+  id: string;
+  name: string;
+  mime: string;
+  sizeLabel: string;
+}
+
+export interface JourneyNote {
+  id: string;
+  /** Root comment id, or "" for a root comment. One level of replies only. */
+  reply_to_id?: string;
+  body: string;
+  visibility: "CUSTOMER" | "INTERNAL";
+  author_kind: string;
+  author_name: string;
+  author_role: string;
+  created_at: string;
+  attachments: JourneyNoteAttachment[];
+  replies?: JourneyNote[];
+}
+
+export interface JourneyDiscussionDownload {
+  noteId: string;
+  attachmentId: string;
+  name: string;
+  mime: string;
+  base64: string;
+  seq: number;
+}
+
+export interface JourneyDiscussion {
+  shipmentId: string;
+  /** One of the seven canonical discussion stages. */
+  stageId: string;
+  /** The raw Journey Map node id the operator clicked (display only). */
+  nodeId: string;
+  nodeLabel: string;
+  stageLabel: string;
+  canWrite: boolean;
+  canAttach: boolean;
+  canSeeInternal: boolean;
+  maxFiles: number;
+  maxBytes: number;
+  notes: JourneyNote[];
+  count: number;
+  download?: JourneyDiscussionDownload | null;
+  error?: string;
 }
 
 export interface InboxAttachment {

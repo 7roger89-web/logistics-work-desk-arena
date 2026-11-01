@@ -152,6 +152,28 @@ def _render_customer(view: Mapping[str, Any]) -> None:
         _render_customer_quotation_rows(list(view.get("active_quotations") or []), "customer_quote")
     with st.expander(f"Thỏa thuận thương mại ({len(view.get('active_agreements') or [])})", expanded=bool(view.get("active_agreements"))):
         _render_customer_agreement_rows(list(view.get("active_agreements") or []), "customer_agr")
+    reconciliation = list(view.get("reconciliation_candidates") or [])
+    with st.expander(f"Diện cần đối chiếu mã khách ({len(reconciliation)})", expanded=bool(reconciliation)):
+        if not reconciliation:
+            st.caption("Không có lô, báo giá hoặc hợp đồng thiếu customer_id trùng tên cần đối chiếu.")
+        else:
+            st.caption(
+                "Các bản ghi thiếu customer_id chỉ nằm trong diện cần đối chiếu nội bộ; "
+                "không tự động gắn vào hồ sơ khách và không cấp quyền truy cập."
+            )
+            st.dataframe(
+                [
+                    {
+                        "Loại": _value(row.get("record_type")),
+                        "Mã tham chiếu": _value(row.get("reference")),
+                        "Phân loại": _value(row.get("bucket")),
+                        "Lý do": _value(row.get("reason_code")),
+                    }
+                    for row in reconciliation
+                ],
+                hide_index=True,
+                use_container_width=True,
+            )
 
 
 def _render_customer_quotation_rows(rows: list[Mapping[str, Any]], key_prefix: str) -> None:
@@ -383,6 +405,7 @@ def ui_entity_context() -> None:
 
     quotes = st.session_state.get("db_quotes") or {}
     agreements = st.session_state.get("db_agreements") or {}
+    contracts = st.session_state.get("db_contracts") or {}
     try:
         view = build_entity_context(
             request["entity_type"],
@@ -391,6 +414,7 @@ def ui_entity_context() -> None:
             shipments=shipments,
             quotes=quotes,
             agreements=agreements,
+            contracts=contracts,
         )
     except ValueError:
         st.error("Entity type không được hỗ trợ.")

@@ -1,0 +1,402 @@
+{
+  "staging_head_sha": "aa5df4bc13fb92f36f39f6ec40d8df5f479f08a1",
+  "browser_binary": "Chromium 153.0.8010.0 (@sparticuz/chromium@153.0.0)",
+  "playwright_cli_version": "0.1.22",
+  "streamlit_version": "1.66.1",
+  "data_transport": "mongomock-4.3.0 (isolated in-memory, ENV_IDENTITY=PREVIEW, MONGO_URI unset)",
+  "staff_desktop_1440x900": {
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "docScrollWidth": 1440,
+    "horizontalOverflow": false,
+    "dialogRect": {
+      "left": 327,
+      "top": 146,
+      "width": 540,
+      "height": 540,
+      "right": 867,
+      "bottom": 686
+    },
+    "controls": [
+      {
+        "tag": "button",
+        "label": "Đóng trao đổi",
+        "disabled": false,
+        "rect": {
+          "left": 811,
+          "top": 154,
+          "width": 44,
+          "height": 44,
+          "right": 855,
+          "bottom": 198
+        },
+        "inViewportX": true,
+        "inDialog": true,
+        "hitOk": true,
+        "topTag": "button"
+      },
+      {
+        "tag": "button",
+        "label": "Trả lời",
+        "disabled": false,
+        "rect": {
+          "left": 347,
+          "top": 264,
+          "width": 62,
+          "height": 44,
+          "right": 409,
+          "bottom": 308
+        },
+        "inViewportX": true,
+        "inDialog": true,
+        "hitOk": true,
+        "topTag": "button"
+      },
+      {
+        "tag": "textarea",
+        "label": "Viết bình luận…",
+        "disabled": false,
+        "rect": {
+          "left": 337,
+          "top": 548,
+          "width": 520,
+          "height": 76,
+          "right": 857,
+          "bottom": 624
+        },
+        "inViewportX": true,
+        "inDialog": true,
+        "hitOk": true,
+        "topTag": "textarea"
+      },
+      {
+        "tag": "button",
+        "label": "Đính kèm",
+        "disabled": false,
+        "rect": {
+          "left": 337,
+          "top": 634,
+          "width": 90,
+          "height": 44,
+          "right": 427,
+          "bottom": 678
+        },
+        "inViewportX": true,
+        "inDialog": true,
+        "hitOk": true,
+        "topTag": "button"
+      },
+      {
+        "tag": "select",
+        "label": "🔒 Nội bộ\n👁 Khách xem",
+        "disabled": false,
+        "rect": {
+          "left": 477,
+          "top": 645,
+          "width": 95,
+          "height": 21,
+          "right": 572,
+          "bottom": 666
+        },
+        "inViewportX": true,
+        "inDialog": true,
+        "hitOk": true,
+        "topTag": "select"
+      },
+      {
+        "tag": "button",
+        "label": "Gửi",
+        "disabled": false,
+        "rect": {
+          "left": 795,
+          "top": 634,
+          "width": 62,
+          "height": 44,
+          "right": 857,
+          "bottom": 678
+        },
+        "inViewportX": true,
+        "inDialog": true,
+        "hitOk": true,
+        "topTag": "button"
+      }
+    ]
+  },
+  "staff_mobile_390x844": {
+    "outerViewport": {
+      "width": 390,
+      "height": 844
+    },
+    "outerDocScrollWidth": 390,
+    "outerHorizontalOverflow": false,
+    "innerViewport": {
+      "width": 390,
+      "height": 844
+    },
+    "innerDocScrollWidth": 390,
+    "dialogRect": {
+      "left": 37,
+      "top": 121,
+      "width": 316,
+      "height": 602,
+      "right": 353,
+      "bottom": 723
+    },
+    "controls": [
+      {
+        "tag": "button",
+        "label": "Đóng trao đổi",
+        "disabled": false,
+        "rect": {
+          "left": 297,
+          "top": 129,
+          "width": 44,
+          "height": 44,
+          "right": 341,
+          "bottom": 173
+        },
+        "inViewportX": true,
+        "inViewportY": true,
+        "inDialog": true,
+        "hitOk": true,
+        "topTag": "button"
+      },
+      {
+        "tag": "button",
+        "label": "Trả lời",
+        "disabled": false,
+        "rect": {
+          "left": 57,
+          "top": 271,
+          "width": 62,
+          "height": 44,
+          "right": 119,
+          "bottom": 315
+        },
+        "inViewportX": true,
+        "inViewportY": true,
+        "inDialog": true,
+        "hitOk": true,
+        "topTag": "button"
+      },
+      {
+        "tag": "textarea",
+        "label": "Viết bình luận…",
+        "disabled": false,
+        "rect": {
+          "left": 47,
+          "top": 549,
+          "width": 296,
+          "height": 62,
+          "right": 343,
+          "bottom": 611
+        },
+        "inViewportX": true,
+        "inViewportY": true,
+        "inDialog": true,
+        "hitOk": true,
+        "topTag": "textarea"
+      },
+      {
+        "tag": "button",
+        "label": "Đính kèm",
+        "disabled": false,
+        "rect": {
+          "left": 47,
+          "top": 621,
+          "width": 90,
+          "height": 44,
+          "right": 137,
+          "bottom": 665
+        },
+        "inViewportX": true,
+        "inViewportY": true,
+        "inDialog": true,
+        "hitOk": true,
+        "topTag": "button"
+      },
+      {
+        "tag": "select",
+        "label": "🔒 Nội bộ\n👁 Khách xem",
+        "disabled": false,
+        "rect": {
+          "left": 187,
+          "top": 632,
+          "width": 95,
+          "height": 21,
+          "right": 282,
+          "bottom": 653
+        },
+        "inViewportX": true,
+        "inViewportY": true,
+        "inDialog": true,
+        "hitOk": true,
+        "topTag": "select"
+      },
+      {
+        "tag": "button",
+        "label": "Gửi",
+        "disabled": false,
+        "rect": {
+          "left": 281,
+          "top": 671,
+          "width": 62,
+          "height": 44,
+          "right": 343,
+          "bottom": 715
+        },
+        "inViewportX": true,
+        "inViewportY": true,
+        "inDialog": true,
+        "hitOk": true,
+        "topTag": "button"
+      }
+    ]
+  },
+  "customer_desktop_1440x900": {
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "docScrollWidth": 1440,
+    "horizontalOverflow": false,
+    "dockRect": {
+      "left": 792,
+      "top": 487,
+      "width": 538,
+      "height": 187,
+      "right": 1330,
+      "bottom": 674
+    },
+    "controls": [
+      {
+        "tag": "button",
+        "label": "Xem chi tiết chỉ-đọc →",
+        "rect": {
+          "left": 806,
+          "top": 498,
+          "width": 510,
+          "height": 17,
+          "right": 1316,
+          "bottom": 515
+        },
+        "inViewportX": true,
+        "hitOk": true
+      },
+      {
+        "tag": "textarea",
+        "label": "Viết bình luận…",
+        "rect": {
+          "left": 806,
+          "top": 527,
+          "width": 510,
+          "height": 72,
+          "right": 1316,
+          "bottom": 599
+        },
+        "inViewportX": true,
+        "hitOk": true
+      },
+      {
+        "tag": "button",
+        "label": "📎 Đính kèm",
+        "rect": {
+          "left": 806,
+          "top": 603,
+          "width": 93,
+          "height": 40,
+          "right": 899,
+          "bottom": 643
+        },
+        "inViewportX": true,
+        "hitOk": true
+      },
+      {
+        "tag": "button",
+        "label": "Gửi",
+        "rect": {
+          "left": 1267,
+          "top": 603,
+          "width": 49,
+          "height": 40,
+          "right": 1316,
+          "bottom": 643
+        },
+        "inViewportX": true,
+        "hitOk": true
+      }
+    ]
+  },
+  "customer_mobile_390x844": {
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "docScrollWidth": 390,
+    "horizontalOverflow": false,
+    "controls": [
+      {
+        "tag": "button",
+        "label": "Xem chi tiết chỉ-đọc →",
+        "rect": {
+          "left": 52,
+          "top": 590,
+          "width": 286,
+          "height": 17,
+          "right": 338,
+          "bottom": 607
+        },
+        "inViewportX": true,
+        "inViewportY": true,
+        "hitOk": true
+      },
+      {
+        "tag": "textarea",
+        "label": "Viết bình luận…",
+        "rect": {
+          "left": 52,
+          "top": 619,
+          "width": 286,
+          "height": 60,
+          "right": 338,
+          "bottom": 679
+        },
+        "inViewportX": true,
+        "inViewportY": true,
+        "hitOk": true
+      },
+      {
+        "tag": "button",
+        "label": "📎 Đính kèm",
+        "rect": {
+          "left": 52,
+          "top": 683,
+          "width": 93,
+          "height": 40,
+          "right": 145,
+          "bottom": 723
+        },
+        "inViewportX": true,
+        "inViewportY": true,
+        "hitOk": true
+      },
+      {
+        "tag": "button",
+        "label": "Gửi",
+        "rect": {
+          "left": 289,
+          "top": 683,
+          "width": 49,
+          "height": 40,
+          "right": 338,
+          "bottom": 723
+        },
+        "inViewportX": true,
+        "inViewportY": true,
+        "hitOk": true
+      }
+    ]
+  }
+}

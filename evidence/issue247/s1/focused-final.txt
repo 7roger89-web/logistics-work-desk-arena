@@ -1,0 +1,9 @@
+HEAD_BEFORE_S1_COMMIT=2941181d0f17701a7039d431262a0f35e27a848b
+SOURCE_SHA256=cfe9edc4f2cbce0643cb8ea74de5e731f7d3e53fb4dd51df8ee13881ff770d56
+FROZEN_TEST_SHA256=a7ed0e8fc59251b0823359ea021188678b2a6bf1dfd85b2224e908eb565c2d1a
+COMMAND=python -m pytest tests/test_intl_payment_comparator.py -q
+...................................................                      [100%]
+51 passed in 0.81s
+
+PYTEST_EXIT=0
+TEST_BYTES_UNCHANGED_EXIT=0

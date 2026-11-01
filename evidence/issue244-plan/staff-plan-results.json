@@ -1,0 +1,226 @@
+{
+ "url": "http://127.0.0.1:9501/",
+ "lot": "LO-0306",
+ "chrome": "/tmp/chromium",
+ "viewports": {
+  "desktop": {
+   "found": true,
+   "rect": {
+    "w": 1244,
+    "h": 748
+   },
+   "scrollWidth": 1440,
+   "innerWidth": 1440,
+   "horizontalOverflow": false,
+   "controls": [
+    {
+     "id": "plan-panel-close",
+     "present": true,
+     "w": 44,
+     "h": 44,
+     "inViewportX": true,
+     "inViewportY": true,
+     "hitOk": true
+    },
+    {
+     "id": "plan-item-cta-quotation",
+     "present": true,
+     "w": 124,
+     "h": 44,
+     "inViewportX": true,
+     "inViewportY": true,
+     "hitOk": true
+    },
+    {
+     "id": "plan-item-cta-customer_contract",
+     "present": true,
+     "w": 139,
+     "h": 44,
+     "inViewportX": true,
+     "inViewportY": true,
+     "hitOk": true
+    },
+    {
+     "id": "plan-item-cta-customer_advance",
+     "present": true,
+     "w": 134,
+     "h": 44,
+     "inViewportX": true,
+     "inViewportY": true,
+     "hitOk": true
+    }
+   ]
+  },
+  "mobile": {
+   "found": true,
+   "rect": {
+    "w": 332,
+    "h": 1126
+   },
+   "scrollWidth": 390,
+   "innerWidth": 390,
+   "horizontalOverflow": false,
+   "controls": [
+    {
+     "id": "plan-panel-close",
+     "present": true,
+     "w": 44,
+     "h": 44,
+     "inViewportX": true,
+     "inViewportY": true,
+     "hitOk": true
+    },
+    {
+     "id": "plan-item-cta-quotation",
+     "present": true,
+     "w": 124,
+     "h": 44,
+     "inViewportX": true,
+     "inViewportY": true,
+     "hitOk": true
+    },
+    {
+     "id": "plan-item-cta-customer_contract",
+     "present": true,
+     "w": 139,
+     "h": 44,
+     "inViewportX": true,
+     "inViewportY": true,
+     "hitOk": true
+    },
+    {
+     "id": "plan-item-cta-customer_advance",
+     "present": true,
+     "w": 134,
+     "h": 44,
+     "inViewportX": true,
+     "inViewportY": true,
+     "hitOk": true
+    }
+   ]
+  }
+ },
+ "checks": [
+  {
+   "name": "desktop: Node 00 KẾ HOẠCH renders first (journey-step-plan → journey-step-MAIN_CARRIAGE → journey-step-delivery)",
+   "ok": true
+  },
+  {
+   "name": "desktop: plan panel opened inside the Journey",
+   "ok": true
+  },
+  {
+   "name": "desktop: quote = exact quote_id BG-0306 (state LINKED), CTA /kinh-doanh-bao-gia?q=BG-0306",
+   "ok": true
+  },
+  {
+   "name": "desktop: customer contract HDMB-0306 unsigned (CTA /hop-dong/HDMB-0306)",
+   "ok": true
+  },
+  {
+   "name": "desktop: advance \"Chưa xác minh đã nhận\" + \"cần đối soát\", no amount",
+   "ok": true
+  },
+  {
+   "name": "desktop: next actions answered from the same facts",
+   "ok": true
+  },
+  {
+   "name": "desktop: no horizontal overflow; 4/4 controls hittable in viewport",
+   "ok": true
+  },
+  {
+   "name": "desktop: closed and re-opened Node 00 on the same lot",
+   "ok": true
+  },
+  {
+   "name": "desktop: map keeps Node 00 above journey-node-MAIN_CARRIAGE, badge 00, conversations intact",
+   "ok": true
+  },
+  {
+   "name": "desktop: fresh lot with 0 operational nodes still exposes a hittable Node 00",
+   "ok": true
+  },
+  {
+   "name": "desktop: fresh Node 00 — linked≠accepted (WAITING), confirmation≠signature",
+   "ok": true
+  },
+  {
+   "name": "desktop: fresh lot closed and re-opened Node 00 on the same lot",
+   "ok": true
+  },
+  {
+   "name": "desktop: Node 00 CTA /hop-dong/HDMB%2F2026%2F01 opens the real contract workdesk",
+   "ok": true
+  },
+  {
+   "name": "desktop: returned to LO-0310 and reopened the same Node 00",
+   "ok": true
+  },
+  {
+   "name": "LO-0307 (CUSTOMER_SELF, no quote): 'Chưa gắn báo giá' + 'Không áp dụng'",
+   "ok": true
+  },
+  {
+   "name": "LO-0308 (import form not confirmed): advance stays undetermined",
+   "ok": true
+  },
+  {
+   "name": "mobile: Node 00 KẾ HOẠCH renders first (journey-step-plan → journey-step-MAIN_CARRIAGE → journey-step-delivery)",
+   "ok": true
+  },
+  {
+   "name": "mobile: plan panel opened inside the Journey",
+   "ok": true
+  },
+  {
+   "name": "mobile: quote = exact quote_id BG-0306 (state LINKED), CTA /kinh-doanh-bao-gia?q=BG-0306",
+   "ok": true
+  },
+  {
+   "name": "mobile: customer contract HDMB-0306 unsigned (CTA /hop-dong/HDMB-0306)",
+   "ok": true
+  },
+  {
+   "name": "mobile: advance \"Chưa xác minh đã nhận\" + \"cần đối soát\", no amount",
+   "ok": true
+  },
+  {
+   "name": "mobile: next actions answered from the same facts",
+   "ok": true
+  },
+  {
+   "name": "mobile: no horizontal overflow; 4/4 controls hittable in viewport",
+   "ok": true
+  },
+  {
+   "name": "mobile: closed and re-opened Node 00 on the same lot",
+   "ok": true
+  },
+  {
+   "name": "mobile: map keeps Node 00 above journey-node-MAIN_CARRIAGE, badge 00, conversations intact",
+   "ok": true
+  },
+  {
+   "name": "mobile: fresh lot with 0 operational nodes still exposes a hittable Node 00",
+   "ok": true
+  },
+  {
+   "name": "mobile: fresh Node 00 — linked≠accepted (WAITING), confirmation≠signature",
+   "ok": true
+  },
+  {
+   "name": "mobile: fresh lot closed and re-opened Node 00 on the same lot",
+   "ok": true
+  },
+  {
+   "name": "mobile: Node 00 CTA /hop-dong/HDMB%2F2026%2F01 opens the real contract workdesk",
+   "ok": true
+  },
+  {
+   "name": "mobile: returned to LO-0310 and reopened the same Node 00",
+   "ok": true
+  }
+ ],
+ "errors": []
+}

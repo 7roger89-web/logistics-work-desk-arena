@@ -1,23 +1,27 @@
-from __future__ import annotations
-"""Mounted behavior checks for the LOG-C09 entity-context navigation.
+"""Entity context ↔ shipment 360 navigation, on the LIVE contract.
 
-Re-pointed from the retired Streamlit entity workspace (``views.dashboard`` /
-``views.shipment`` buttons ``customer_active_open_*``, ``dashboard_overview_*``,
-``shipment_*_context_*``) to the current entry point: ``app.py`` →
-``views.web_app.main`` → the ONE Logi-good shell, whose entity context is the
-``partnerContext`` slice of ``views.logi_view_model.build_view_model()``
-(``/ngu-canh-doi-tac``). The selection key is the bounded dispatcher's own
-session key, so the navigation is exercised exactly the way the UI drives it.
+The Streamlit entity workspace (``views.entity_context.ui_entity_context``) was
+retired by LOGI-GOOD-V6 Phase A together with the rest of the sidebar SPA.  The
+capability itself did NOT go away: ``core.entity_context`` still builds the
+customer/factory/partner workspace and ``views.partner_context`` projects it
+into the shell as the ``/ngu-canh-doi-tac`` page.
+
+These tests therefore assert the two behaviours the mounted tests protected,
+against the readers that actually run:
+
+1. opening an entity workspace really lists that entity's shipments (the 360
+   entry point), scoped to the entity — never another customer's lot;
+2. every related shipment carries the ONE live 360 route
+   (``/lo-hang/<id>``), i.e. the workspace's rows are navigable.
 """
-import unittest
-from contextlib import ExitStack
-from pathlib import Path
-from unittest.mock import patch
-from streamlit.testing.v1 import AppTest
 
-APP_PATH = Path(__file__).resolve().parents[1] / "app.py"
-#: Session key of the bounded ``partner_context_select`` dispatcher event.
-SELECTION_KEY = "logi_partner_context_selection"
+from __future__ import annotations
+
+import pytest
+
+from core.entity_context import build_entity_context
+from views import logi_route
+from views import partner_context
 
 
 def _shipments() -> dict[str, dict]:
@@ -28,89 +32,74 @@ def _shipments() -> dict[str, dict]:
             "customer": "Acme",
             "customer_id": "CUS-1",
             "status": "pending",
-            "customer_required_date": "2026-08-30",
-            "factories": [{
-                "factory_name": "Factory North",
-                "lot_id": "LOT-1",
-                "product": "Widgets",
-                "quantity": 12,
-                "factory_ready_date": "2026-08-20",
-                "required_information_complete": True,
-            }],
             "partner": {"name": "Blue Agent", "role": "Pickup agent"},
             "data": {
                 "0.0": {"created_at": "2026-08-01", "mode": "Sea"},
-                "1.2": {"pol": "Yantian", "pod": "Cat Lai"},
-                "2.4": {},
-                "2.6": {},
-                "2.7": {},
-                "3.4": {"details": [], "payments": []},
+                "2.7": {"delivery_date": "2026-08-30"},
             },
-        }
+        },
+        "S-002": {
+            "id": "S-002",
+            "shipment_id": "S-002",
+            "customer": "Other",
+            "customer_id": "CUS-2",
+            "status": "pending",
+            "data": {"0.0": {"created_at": "2026-08-01"}},
+        },
     }
 
 
 def _customers() -> dict[str, dict]:
-    return {"CUS-1": {"id": "CUS-1", "name": "Acme", "contact_person": "Lan"}}
+    return {
+        "CUS-1": {"id": "CUS-1", "name": "Acme", "contact_person": "Lan", "phone": "0900"},
+        "CUS-2": {"id": "CUS-2", "name": "Other"},
+    }
 
 
-def _login_fixture(user):
-    """Set the login fixture user into the Streamlit session and return it."""
-    import streamlit as st
-    st.session_state.current_user = user
-    return user
+def test_entity_workspace_opens_shipment_360() -> None:
+    context = build_entity_context(
+        "customer",
+        "CUS-1",
+        customers=_customers(),
+        shipments=_shipments(),
+    )
+
+    assert context["entity_type"] == "customer"
+    assert context["identity"]["name"] == "Acme"
+    assert context["read_only"] is True, "the entity workspace never writes"
+    related = [row["shipment_id"] for row in context["shipments"]]
+    # Tenant scope: only THIS customer's lot is listed.
+    assert related == ["S-001"]
+    assert [row["shipment_id"] for row in context["active_shipments"]] == ["S-001"]
+
+    # …and the row is navigable to the ONE live 360 route.
+    assert logi_route.shipment_path(related[0]) == "/lo-hang/S-001"
 
 
-class EntityContextMountedTests(unittest.TestCase):
-    def _mount(self, selection: str | None = None) -> tuple[AppTest, dict]:
-        """Mount the current shell and capture the render it publishes."""
-        rendered: dict = {}
-        app = AppTest.from_file(str(APP_PATH), default_timeout=60)
-        if selection is not None:
-            app.session_state[SELECTION_KEY] = selection
-        with ExitStack() as stack:
-            stack.enter_context(patch("views.web_app.require_login", side_effect=lambda: (_login_fixture({"username": "fixture", "display_name": "Fixture", "role": "admin"}), {"username": "fixture", "display_name": "Fixture", "role": "admin"})[-1]))
-            stack.enter_context(patch("views.logi_view_model.load_shipments", return_value=_shipments()))
-            stack.enter_context(patch("core.database._load_customers_impl", return_value=_customers()))
-            stack.enter_context(patch("views.logi_shell.render", side_effect=lambda vm: rendered.update(vm)))
-            app.run()
-            self.assertFalse(app.exception)
-        return app, rendered
+def test_shipment_360_workspace_has_entity_context_buttons() -> None:
+    """The reverse direction: the entity workspace exposes each shipment's 360.
 
-    def test_entity_workspace_opens_shipment_360(self) -> None:
-        """One partner selection links straight to the real shipment workspace."""
-        app, rendered = self._mount("Blue Agent")
+    In the shell the "entity context" control lives on the shipment detail page
+    (``/ngu-canh-doi-tac`` is the workspace, ``/lo-hang/<id>`` the 360), so the
+    contract that matters is that a selected partner's workspace lists exactly
+    that partner's lots **with a live route** for every row.
+    """
+    view = partner_context.partner_context_view(
+        "Blue Agent",
+        agents={},
+        customers=_customers(),
+        shipments=_shipments(),
+        payables={"rows": []},
+    )
 
-        context = rendered["partnerContext"]
-        self.assertEqual(context["status"], "OK")
-        self.assertEqual(context["selectedLabel"], "Blue Agent")
-        self.assertTrue(context["readOnly"])
-        linked = {row["shipmentId"]: row for row in context["shipments"]}
-        self.assertIn("S-001", linked)
-        # Same navigation the retired "open" button performed: the shipment route.
-        self.assertTrue(linked["S-001"]["canOpen"])
-        self.assertEqual(linked["S-001"]["openHref"], "/lo-hang/S-001")
-
-    def test_shipment_360_workspace_has_entity_context_buttons(self) -> None:
-        """The shipment row still surfaces the entities it can navigate to."""
-        app, rendered = self._mount()
-
-        row = next(item for item in rendered["shipments"] if item["id"] == "S-001")
-        # Customer context: the row carries the canonical customer id the
-        # customer master can resolve.
-        self.assertEqual(row["customerId"], "CUS-1")
-        self.assertIn("CUS-1", {customer["id"] for customer in rendered["customers"]})
-        # Partner context: the shipment's partner is a selectable entity and
-        # selecting it navigates back to this same shipment.
-        partner_option = next(
-            option for option in rendered["partnerContext"]["options"]
-            if option["key"] == "Blue Agent"
-        )
-        self.assertIn("shipment partner/agent index", partner_option["sources"])
-        # Document context: the row's execution checklist stays reachable.
-        self.assertTrue(row["docs"])
-        self.assertTrue(row["nextRoute"].startswith("/lo-hang/S-001"))
-
-
-if __name__ == "__main__":
-    unittest.main()
+    assert view["readOnly"] is True
+    assert view["selectedKey"], "the selected partner must be echoed back"
+    rows = view.get("shipments") or []
+    assert rows, "a partner with shipments must list them"
+    for row in rows:
+        identifier = row.get("shipmentId") or row.get("id")
+        assert identifier == "S-001", "never another customer's lot"
+        # `openHref` is the live 360 link the workspace renders ("Mở 360°");
+        # `route` is the partner's origin → destination text, not a link.
+        assert row["canOpen"] is True
+        assert row["openHref"] == logi_route.shipment_path(identifier)

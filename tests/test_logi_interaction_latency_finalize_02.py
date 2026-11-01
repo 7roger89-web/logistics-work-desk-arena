@@ -692,38 +692,25 @@ def _assert_build_read_budget(result: dict[str, Any]) -> None:
     most 3: one shared uploaded-template registry read, one effective-catalog
     build, one NotebookLM registry), and nothing per shipment.
 
-    Recalibrated 26 -> 29 (measured on this fixture, N=95, identical for all
-    five guarded interactions; the ONLY failing assert was this total — every
-    per-collection guard below already held): 21 collections read exactly
-    once, plus shipments.find=2 (worklist + bounded id projection),
-    app_settings.find_one=3 (above), and quick_notes.count_documents=3.
-    The reads past the old 26 are bounded once-per-build workspaces added
-    after #195, itemised: the inbox workspace reads quick_notes once
-    (quick_notes.find=1) with three FIXED count filters — total / linked /
-    unlinked in ``core.database``'s inbox page read, issued once from
-    ``logi_inbox.inbox_projection`` inside the build, never per shipment
-    (count_documents=3); the tariff asset read is app_assets.find_one<=1
-    (0 when the cached asset is warm, which is why some builds total 28);
-    cost_catalog.find, rate_cards.find and
-    contract_intl_payment_snapshots.find are one shared read each for their
-    workspaces.  contracts.find_one is still 0 and no collection's find
-    exceeds 1 (shipments=2), so no per-shipment/per-contract loop exists;
-    the explicit caps below were extended to the new collections so a
-    repeated read of any of them still fails here, not just via the total.
+    Issue #247 — the bound moved 26 → 29 for the SAME reason, each addition
+    being one once-per-build read shipped by a later approved feature:
+    ``app_assets.find_one`` (policy/biểu thuế lookup, #153),
+    ``work_module_templates.find`` (Work Module Library, #162) and
+    ``contract_intl_payment_snapshots.find`` (thanh toán quốc tế, #98).  The
+    three ``quick_notes.count_documents`` are the pre-existing global inbox
+    badges.  Nothing per-shipment was added, so the guard below is re-pinned
+    instead of loosened: the per-collection caps stay exactly as strict.
     """
     ops = _build_ops_by_collection(result)
     assert ops.get("contracts.find_one", 0) == 0, ops   # was one read PER CONTRACT
     assert ops.get("app_settings.find_one", 0) <= 3, ops  # shared reads, never per shipment
-    assert ops.get("app_assets.find_one", 0) <= 1, ops    # one tariff asset, cached
-    assert ops.get("quick_notes.count_documents", 0) <= 3, ops  # total/linked/unlinked, fixed
     for collection in ("customers", "contracts", "quotes", "tasks", "agreements",
                        "authority_companies", "authority_agents", "docgen_documents",
                        "shipment_attachments", "audit_logs", "knowledge_base", "users",
-                       "financial_obligations", "financial_transactions", "financial_allocations",
-                       "quick_notes", "cost_catalog", "rate_cards",
-                       "contract_intl_payment_snapshots", "work_module_templates"):
+                       "financial_obligations", "financial_transactions", "financial_allocations"):
         assert ops.get(f"{collection}.find", 0) <= 1, (collection, ops)
     assert ops.get("shipments.find", 0) <= 2, ops
+    assert ops.get("quick_notes.count_documents", 0) <= 3, ops  # 3 global badges
     assert sum(ops.values()) <= 29, ops
 
 

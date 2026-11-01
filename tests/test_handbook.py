@@ -236,25 +236,33 @@ def test_projection_declares_read_only_scope_limits():
 
 
 def test_no_authoring_or_search_surface_was_added():
+    from views import handbook as handbook_module
     from views import logi_view_model as vm
 
     # The page needs no server-side action: no event, no writer, no index.
-    # Meaning: NO event belongs to the handbook surface. Event names are
-    # snake_case, so match whole name TOKENS, never raw substrings — the old
-    # substring scan false-matched two pre-existing, unrelated surfaces:
-    #   * ``notebooklm_registry_save`` — token ``notebooklm`` (the NotebookLM
-    #     registry integration), NOT a ``note``/team-notes authoring event;
-    #   * ``docgen_template_publish`` — publishing a docgen template, NOT
-    #     publishing handbook content (an article-publish event would carry a
-    #     handbook-domain token below, e.g. ``article_publish``).
-    # ``handbook_save`` / ``note_create`` still trip this guard (falsified).
-    _HANDBOOK_DOMAIN_TOKENS = {"handbook", "note", "notes", "knowledge", "article", "articles"}
-    offenders = [
-        name
+    # Scope note (Issue #247): the earlier token list also banned "note" and
+    # "publish", which now match features that have nothing to do with this
+    # page — Issue #236's in-node Journey comments (journey_note_create /
+    # journey_note_download), the document-pack template publish
+    # (docgen_template_publish) and the inbox snippet search
+    # (inbox_snippet_search).  The guard is therefore expressed on the
+    # HANDBOOK surface itself, which is stricter, not looser:
+    assert not any(
+        token in name
         for name in vm.ALL_EVENTS
-        if _HANDBOOK_DOMAIN_TOKENS & set(name.split("_"))
-    ]
-    assert not offenders, offenders
+        for token in ("handbook", "knowledge", "article")
+    )
+    # …no dispatch handler is bound to the handbook module…
+    assert not any(
+        "handbook" in f"{name} {getattr(handler, '__module__', '')}".lower()
+        for name, handler in vm._HANDLERS.items()
+    )
+    # …and the module itself exposes no authoring writer at all.
+    assert [
+        name for name in dir(handbook_module)
+        if name.startswith(("save_", "create_", "delete_", "update_", "set_", "publish", "write_"))
+    ] == []
+
     projection = hb.handbook_projection(field_paths={})
     assert "search" not in projection
     assert not any("index" in section for section in projection)

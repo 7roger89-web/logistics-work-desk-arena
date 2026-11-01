@@ -1,0 +1,1020 @@
+{
+  "url": "http://127.0.0.1:9503/",
+  "started_at": "2026-10-31T08:40:26.581Z",
+  "chrome": "HeadlessChrome/153.0.8010.0",
+  "checks": [
+    {
+      "name": "desktop A account label",
+      "pass": true,
+      "detail": "l***@example.test"
+    },
+    {
+      "name": "desktop A · own lot rendered",
+      "pass": true,
+      "detail": "QA-LOT"
+    },
+    {
+      "name": "desktop A · own approved event rendered",
+      "pass": true,
+      "detail": "QA-A Đã lấy hàng tại kho Lục Giác"
+    },
+    {
+      "name": "desktop A · foreign lot absent",
+      "pass": true,
+      "detail": "QA-FOREIGN"
+    },
+    {
+      "name": "desktop A · foreign event absent",
+      "pass": true,
+      "detail": "QA-B Đã lấy hàng tại kho khác"
+    },
+    {
+      "name": "desktop A · foreign document absent",
+      "pass": true,
+      "detail": "QA-B Bill of lading"
+    },
+    {
+      "name": "desktop A · foreign document id absent",
+      "pass": true,
+      "detail": "QA-OTHER-DOC-BL"
+    },
+    {
+      "name": "desktop A · foreign publication version absent",
+      "pass": true,
+      "detail": "g15-533342de7c9b455a"
+    },
+    {
+      "name": "desktop A · foreign approved hash absent",
+      "pass": true,
+      "detail": "sha256"
+    },
+    {
+      "name": "desktop A · no leftover form value",
+      "pass": true,
+      "detail": "[]"
+    },
+    {
+      "name": "desktop A · internal markers absent",
+      "pass": true,
+      "detail": "SECRET_/cost"
+    },
+    {
+      "name": "desktop A · own dashboard reference present",
+      "pass": true,
+      "detail": "{\"rows\":[\"shipment-row-QA-LOT\"],\"cards\":[\"shipment-card-QA-LOT\"]}"
+    },
+    {
+      "name": "desktop A · foreign dashboard reference absent",
+      "pass": true,
+      "detail": "{\"rows\":[\"shipment-row-QA-LOT\"],\"cards\":[\"shipment-card-QA-LOT\"]}"
+    },
+    {
+      "name": "desktop A pickup completed",
+      "pass": true,
+      "detail": "[{\"id\":\"journey-node-plan\",\"state\":\"UNKNOWN\"},{\"id\":\"journey-node-pickup\",\"state\":\"COMPLETED\"},{\"id\":\"journey-node-consolidate\",\"state\":\"UNKNOWN\"},{\"id\":\"journey-node-transit\",\"state\":\"UNKNOWN\"},{\"id\":\"journey-node-customs\",\"state\":\"UNKNOWN\"},{\"id\":\"journey-node-delivery\",\"state\":\"UNKNOWN\"},{\"id\":\"journey-node-finance\",\"state\":\"UNKNOWN\"}]"
+    },
+    {
+      "name": "desktop A own document count",
+      "pass": true,
+      "detail": "1 tệp"
+    },
+    {
+      "name": "desktop A no horizontal overflow",
+      "pass": true,
+      "detail": "{\"viewport\":[1440,900],\"documentHorizontalOverflow\":false,\"documentScrollWidth\":1440,\"shadowHorizontalOverflow\":false,\"shadowScrollWidth\":1280,\"shadowClientWidth\":1280}"
+    },
+    {
+      "name": "desktop A pickup node is a real hit target",
+      "pass": true,
+      "detail": "{\"ok\":true,\"w\":131,\"h\":84}"
+    },
+    {
+      "name": "desktop A composer is the node conversation",
+      "pass": true,
+      "detail": "Viết bình luận…"
+    },
+    {
+      "name": "desktop A draft typed locally",
+      "pass": true,
+      "detail": "S3-DRAFT-A-DO-NOT-LEAK"
+    },
+    {
+      "name": "desktop A modal shows own document",
+      "pass": true,
+      "detail": "QA-A Packing list"
+    },
+    {
+      "name": "desktop A modal shows own publication version",
+      "pass": true,
+      "detail": "g15-58054dc98b044c3f"
+    },
+    {
+      "name": "desktop A modal hides foreign document",
+      "pass": true,
+      "detail": "QA-B Bill of lading"
+    },
+    {
+      "name": "desktop A modal hit target",
+      "pass": true,
+      "detail": "{\"ok\":true,\"w\":510,\"h\":15}"
+    },
+    {
+      "name": "desktop B account label",
+      "pass": true,
+      "detail": "ot***@example.test"
+    },
+    {
+      "name": "desktop B is a positive control (own publication)",
+      "pass": true,
+      "detail": "QA-FOREIGN/QA-B Đã lấy hàng tại kho khác"
+    },
+    {
+      "name": "desktop B · own lot rendered",
+      "pass": true,
+      "detail": "QA-FOREIGN"
+    },
+    {
+      "name": "desktop B · own approved event rendered",
+      "pass": true,
+      "detail": "QA-B Đã lấy hàng tại kho khác"
+    },
+    {
+      "name": "desktop B · foreign lot absent",
+      "pass": true,
+      "detail": "QA-LOT"
+    },
+    {
+      "name": "desktop B · foreign event absent",
+      "pass": true,
+      "detail": "QA-A Đã lấy hàng tại kho Lục Giác"
+    },
+    {
+      "name": "desktop B · foreign document absent",
+      "pass": true,
+      "detail": "QA-A Packing list"
+    },
+    {
+      "name": "desktop B · foreign document id absent",
+      "pass": true,
+      "detail": "QA-DOC-PL-A"
+    },
+    {
+      "name": "desktop B · foreign publication version absent",
+      "pass": true,
+      "detail": "g15-58054dc98b044c3f"
+    },
+    {
+      "name": "desktop B · foreign approved hash absent",
+      "pass": true,
+      "detail": "sha256"
+    },
+    {
+      "name": "desktop B · no leftover form value",
+      "pass": true,
+      "detail": "[]"
+    },
+    {
+      "name": "desktop B · internal markers absent",
+      "pass": true,
+      "detail": "SECRET_/cost"
+    },
+    {
+      "name": "desktop B · own dashboard reference present",
+      "pass": true,
+      "detail": "{\"rows\":[\"shipment-row-QA-FOREIGN\"],\"cards\":[\"shipment-card-QA-FOREIGN\"]}"
+    },
+    {
+      "name": "desktop B · foreign dashboard reference absent",
+      "pass": true,
+      "detail": "{\"rows\":[\"shipment-row-QA-FOREIGN\"],\"cards\":[\"shipment-card-QA-FOREIGN\"]}"
+    },
+    {
+      "name": "desktop B carry-over bubble closed",
+      "pass": true,
+      "detail": "false"
+    },
+    {
+      "name": "desktop B carry-over modal closed",
+      "pass": true,
+      "detail": "{\"modalClass\":\"journey-modal-layer hidden\",\"modalText\":\"\"}"
+    },
+    {
+      "name": "desktop B toolbar is B's own lot",
+      "pass": true,
+      "detail": "QA-FOREIGN"
+    },
+    {
+      "name": "desktop B own document count",
+      "pass": true,
+      "detail": "2 tệp"
+    },
+    {
+      "name": "desktop B pickup completed from B's own event",
+      "pass": true,
+      "detail": "[{\"id\":\"journey-node-plan\",\"state\":\"UNKNOWN\"},{\"id\":\"journey-node-pickup\",\"state\":\"COMPLETED\"},{\"id\":\"journey-node-consolidate\",\"state\":\"UNKNOWN\"},{\"id\":\"journey-node-transit\",\"state\":\"UNKNOWN\"},{\"id\":\"journey-node-customs\",\"state\":\"UNKNOWN\"},{\"id\":\"journey-node-delivery\",\"state\":\"UNKNOWN\"},{\"id\":\"journey-node-finance\",\"state\":\"UNKNOWN\"}]"
+    },
+    {
+      "name": "desktop B no horizontal overflow",
+      "pass": true,
+      "detail": "{\"viewport\":[1440,900],\"documentHorizontalOverflow\":false,\"documentScrollWidth\":1440,\"shadowHorizontalOverflow\":false,\"shadowScrollWidth\":1280,\"shadowClientWidth\":1280}"
+    },
+    {
+      "name": "desktop B bubble carries B's approved event",
+      "pass": true,
+      "detail": "QA-B Đã lấy hàng tại"
+    },
+    {
+      "name": "desktop B bubble hides A's event",
+      "pass": true,
+      "detail": "QA-A Đã lấy hàng tại kho Lục Giác"
+    },
+    {
+      "name": "desktop B modal shows own documents",
+      "pass": true,
+      "detail": "B documents"
+    },
+    {
+      "name": "desktop B modal shows own publication version",
+      "pass": true,
+      "detail": "g15-533342de7c9b455a"
+    },
+    {
+      "name": "desktop B modal hides A's document and version",
+      "pass": true,
+      "detail": "A metadata"
+    },
+    {
+      "name": "desktop A-again · own lot rendered",
+      "pass": true,
+      "detail": "QA-LOT"
+    },
+    {
+      "name": "desktop A-again · own approved event rendered",
+      "pass": true,
+      "detail": "QA-A Đã lấy hàng tại kho Lục Giác"
+    },
+    {
+      "name": "desktop A-again · foreign lot absent",
+      "pass": true,
+      "detail": "QA-FOREIGN"
+    },
+    {
+      "name": "desktop A-again · foreign event absent",
+      "pass": true,
+      "detail": "QA-B Đã lấy hàng tại kho khác"
+    },
+    {
+      "name": "desktop A-again · foreign document absent",
+      "pass": true,
+      "detail": "QA-B Bill of lading"
+    },
+    {
+      "name": "desktop A-again · foreign document id absent",
+      "pass": true,
+      "detail": "QA-OTHER-DOC-BL"
+    },
+    {
+      "name": "desktop A-again · foreign publication version absent",
+      "pass": true,
+      "detail": "g15-533342de7c9b455a"
+    },
+    {
+      "name": "desktop A-again · foreign approved hash absent",
+      "pass": true,
+      "detail": "sha256"
+    },
+    {
+      "name": "desktop A-again · no leftover form value",
+      "pass": true,
+      "detail": "[]"
+    },
+    {
+      "name": "desktop A-again · internal markers absent",
+      "pass": true,
+      "detail": "SECRET_/cost"
+    },
+    {
+      "name": "desktop A-again · own dashboard reference present",
+      "pass": true,
+      "detail": "{\"rows\":[\"shipment-row-QA-LOT\"],\"cards\":[\"shipment-card-QA-LOT\"]}"
+    },
+    {
+      "name": "desktop A-again · foreign dashboard reference absent",
+      "pass": true,
+      "detail": "{\"rows\":[\"shipment-row-QA-LOT\"],\"cards\":[\"shipment-card-QA-LOT\"]}"
+    },
+    {
+      "name": "desktop A-again bubble shows A's own event",
+      "pass": true,
+      "detail": "QA-A Đã lấy hàng tại"
+    },
+    {
+      "name": "desktop A-again bubble hides B's event",
+      "pass": true,
+      "detail": "QA-B Đã lấy hàng tại kho khác"
+    },
+    {
+      "name": "desktop reload starts at granted A",
+      "pass": true,
+      "detail": "QA-LOT"
+    },
+    {
+      "name": "desktop B-after-reload · own lot rendered",
+      "pass": true,
+      "detail": "QA-FOREIGN"
+    },
+    {
+      "name": "desktop B-after-reload · own approved event rendered",
+      "pass": true,
+      "detail": "QA-B Đã lấy hàng tại kho khác"
+    },
+    {
+      "name": "desktop B-after-reload · foreign lot absent",
+      "pass": true,
+      "detail": "QA-LOT"
+    },
+    {
+      "name": "desktop B-after-reload · foreign event absent",
+      "pass": true,
+      "detail": "QA-A Đã lấy hàng tại kho Lục Giác"
+    },
+    {
+      "name": "desktop B-after-reload · foreign document absent",
+      "pass": true,
+      "detail": "QA-A Packing list"
+    },
+    {
+      "name": "desktop B-after-reload · foreign document id absent",
+      "pass": true,
+      "detail": "QA-DOC-PL-A"
+    },
+    {
+      "name": "desktop B-after-reload · foreign publication version absent",
+      "pass": true,
+      "detail": "g15-58054dc98b044c3f"
+    },
+    {
+      "name": "desktop B-after-reload · foreign approved hash absent",
+      "pass": true,
+      "detail": "sha256"
+    },
+    {
+      "name": "desktop B-after-reload · no leftover form value",
+      "pass": true,
+      "detail": "[]"
+    },
+    {
+      "name": "desktop B-after-reload · internal markers absent",
+      "pass": true,
+      "detail": "SECRET_/cost"
+    },
+    {
+      "name": "desktop B-after-reload · own dashboard reference present",
+      "pass": true,
+      "detail": "{\"rows\":[\"shipment-row-QA-FOREIGN\"],\"cards\":[\"shipment-card-QA-FOREIGN\"]}"
+    },
+    {
+      "name": "desktop B-after-reload · foreign dashboard reference absent",
+      "pass": true,
+      "detail": "{\"rows\":[\"shipment-row-QA-FOREIGN\"],\"cards\":[\"shipment-card-QA-FOREIGN\"]}"
+    },
+    {
+      "name": "desktop reload B has B's own document count",
+      "pass": true,
+      "detail": "2 tệp"
+    },
+    {
+      "name": "desktop denied identity message",
+      "pass": true,
+      "detail": "Tài khoản này chưa được cấp quyền xem dữ liệu"
+    },
+    {
+      "name": "desktop denied screen exposes no lot",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop denied screen has no portal account label",
+      "pass": true,
+      "detail": "account label"
+    },
+    {
+      "name": "desktop no page errors",
+      "pass": true,
+      "detail": "[]"
+    },
+    {
+      "name": "mobile A account label",
+      "pass": true,
+      "detail": "l***@example.test"
+    },
+    {
+      "name": "mobile A · own lot rendered",
+      "pass": true,
+      "detail": "QA-LOT"
+    },
+    {
+      "name": "mobile A · own approved event rendered",
+      "pass": true,
+      "detail": "QA-A Đã lấy hàng tại kho Lục Giác"
+    },
+    {
+      "name": "mobile A · foreign lot absent",
+      "pass": true,
+      "detail": "QA-FOREIGN"
+    },
+    {
+      "name": "mobile A · foreign event absent",
+      "pass": true,
+      "detail": "QA-B Đã lấy hàng tại kho khác"
+    },
+    {
+      "name": "mobile A · foreign document absent",
+      "pass": true,
+      "detail": "QA-B Bill of lading"
+    },
+    {
+      "name": "mobile A · foreign document id absent",
+      "pass": true,
+      "detail": "QA-OTHER-DOC-BL"
+    },
+    {
+      "name": "mobile A · foreign publication version absent",
+      "pass": true,
+      "detail": "g15-533342de7c9b455a"
+    },
+    {
+      "name": "mobile A · foreign approved hash absent",
+      "pass": true,
+      "detail": "sha256"
+    },
+    {
+      "name": "mobile A · no leftover form value",
+      "pass": true,
+      "detail": "[]"
+    },
+    {
+      "name": "mobile A · internal markers absent",
+      "pass": true,
+      "detail": "SECRET_/cost"
+    },
+    {
+      "name": "mobile A · own dashboard reference present",
+      "pass": true,
+      "detail": "{\"rows\":[\"shipment-row-QA-LOT\"],\"cards\":[\"shipment-card-QA-LOT\"]}"
+    },
+    {
+      "name": "mobile A · foreign dashboard reference absent",
+      "pass": true,
+      "detail": "{\"rows\":[\"shipment-row-QA-LOT\"],\"cards\":[\"shipment-card-QA-LOT\"]}"
+    },
+    {
+      "name": "mobile A pickup completed",
+      "pass": true,
+      "detail": "[{\"id\":\"journey-node-plan\",\"state\":\"UNKNOWN\"},{\"id\":\"journey-node-pickup\",\"state\":\"COMPLETED\"},{\"id\":\"journey-node-consolidate\",\"state\":\"UNKNOWN\"},{\"id\":\"journey-node-transit\",\"state\":\"UNKNOWN\"},{\"id\":\"journey-node-customs\",\"state\":\"UNKNOWN\"},{\"id\":\"journey-node-delivery\",\"state\":\"UNKNOWN\"},{\"id\":\"journey-node-finance\",\"state\":\"UNKNOWN\"}]"
+    },
+    {
+      "name": "mobile A own document count",
+      "pass": true,
+      "detail": "1 tệp"
+    },
+    {
+      "name": "mobile A no horizontal overflow",
+      "pass": true,
+      "detail": "{\"viewport\":[390,844],\"documentHorizontalOverflow\":false,\"documentScrollWidth\":390,\"shadowHorizontalOverflow\":false,\"shadowScrollWidth\":358,\"shadowClientWidth\":358}"
+    },
+    {
+      "name": "mobile A pickup node is a real hit target",
+      "pass": true,
+      "detail": "{\"ok\":true,\"w\":100,\"h\":67}"
+    },
+    {
+      "name": "mobile A composer is the node conversation",
+      "pass": true,
+      "detail": "Viết bình luận…"
+    },
+    {
+      "name": "mobile A draft typed locally",
+      "pass": true,
+      "detail": "S3-DRAFT-A-DO-NOT-LEAK"
+    },
+    {
+      "name": "mobile A modal shows own document",
+      "pass": true,
+      "detail": "QA-A Packing list"
+    },
+    {
+      "name": "mobile A modal shows own publication version",
+      "pass": true,
+      "detail": "g15-58054dc98b044c3f"
+    },
+    {
+      "name": "mobile A modal hides foreign document",
+      "pass": true,
+      "detail": "QA-B Bill of lading"
+    },
+    {
+      "name": "mobile A modal hit target",
+      "pass": true,
+      "detail": "{\"ok\":true,\"w\":286,\"h\":15}"
+    },
+    {
+      "name": "mobile B account label",
+      "pass": true,
+      "detail": "ot***@example.test"
+    },
+    {
+      "name": "mobile B is a positive control (own publication)",
+      "pass": true,
+      "detail": "QA-FOREIGN/QA-B Đã lấy hàng tại kho khác"
+    },
+    {
+      "name": "mobile B · own lot rendered",
+      "pass": true,
+      "detail": "QA-FOREIGN"
+    },
+    {
+      "name": "mobile B · own approved event rendered",
+      "pass": true,
+      "detail": "QA-B Đã lấy hàng tại kho khác"
+    },
+    {
+      "name": "mobile B · foreign lot absent",
+      "pass": true,
+      "detail": "QA-LOT"
+    },
+    {
+      "name": "mobile B · foreign event absent",
+      "pass": true,
+      "detail": "QA-A Đã lấy hàng tại kho Lục Giác"
+    },
+    {
+      "name": "mobile B · foreign document absent",
+      "pass": true,
+      "detail": "QA-A Packing list"
+    },
+    {
+      "name": "mobile B · foreign document id absent",
+      "pass": true,
+      "detail": "QA-DOC-PL-A"
+    },
+    {
+      "name": "mobile B · foreign publication version absent",
+      "pass": true,
+      "detail": "g15-58054dc98b044c3f"
+    },
+    {
+      "name": "mobile B · foreign approved hash absent",
+      "pass": true,
+      "detail": "sha256"
+    },
+    {
+      "name": "mobile B · no leftover form value",
+      "pass": true,
+      "detail": "[]"
+    },
+    {
+      "name": "mobile B · internal markers absent",
+      "pass": true,
+      "detail": "SECRET_/cost"
+    },
+    {
+      "name": "mobile B · own dashboard reference present",
+      "pass": true,
+      "detail": "{\"rows\":[\"shipment-row-QA-FOREIGN\"],\"cards\":[\"shipment-card-QA-FOREIGN\"]}"
+    },
+    {
+      "name": "mobile B · foreign dashboard reference absent",
+      "pass": true,
+      "detail": "{\"rows\":[\"shipment-row-QA-FOREIGN\"],\"cards\":[\"shipment-card-QA-FOREIGN\"]}"
+    },
+    {
+      "name": "mobile B carry-over bubble closed",
+      "pass": true,
+      "detail": "false"
+    },
+    {
+      "name": "mobile B carry-over modal closed",
+      "pass": true,
+      "detail": "{\"modalClass\":\"journey-modal-layer hidden\",\"modalText\":\"\"}"
+    },
+    {
+      "name": "mobile B toolbar is B's own lot",
+      "pass": true,
+      "detail": "QA-FOREIGN"
+    },
+    {
+      "name": "mobile B own document count",
+      "pass": true,
+      "detail": "2 tệp"
+    },
+    {
+      "name": "mobile B pickup completed from B's own event",
+      "pass": true,
+      "detail": "[{\"id\":\"journey-node-plan\",\"state\":\"UNKNOWN\"},{\"id\":\"journey-node-pickup\",\"state\":\"COMPLETED\"},{\"id\":\"journey-node-consolidate\",\"state\":\"UNKNOWN\"},{\"id\":\"journey-node-transit\",\"state\":\"UNKNOWN\"},{\"id\":\"journey-node-customs\",\"state\":\"UNKNOWN\"},{\"id\":\"journey-node-delivery\",\"state\":\"UNKNOWN\"},{\"id\":\"journey-node-finance\",\"state\":\"UNKNOWN\"}]"
+    },
+    {
+      "name": "mobile B no horizontal overflow",
+      "pass": true,
+      "detail": "{\"viewport\":[390,844],\"documentHorizontalOverflow\":false,\"documentScrollWidth\":390,\"shadowHorizontalOverflow\":false,\"shadowScrollWidth\":358,\"shadowClientWidth\":358}"
+    },
+    {
+      "name": "mobile B bubble carries B's approved event",
+      "pass": true,
+      "detail": "QA-B Đã lấy hàng tại"
+    },
+    {
+      "name": "mobile B bubble hides A's event",
+      "pass": true,
+      "detail": "QA-A Đã lấy hàng tại kho Lục Giác"
+    },
+    {
+      "name": "mobile B modal shows own documents",
+      "pass": true,
+      "detail": "B documents"
+    },
+    {
+      "name": "mobile B modal shows own publication version",
+      "pass": true,
+      "detail": "g15-533342de7c9b455a"
+    },
+    {
+      "name": "mobile B modal hides A's document and version",
+      "pass": true,
+      "detail": "A metadata"
+    },
+    {
+      "name": "mobile A-again · own lot rendered",
+      "pass": true,
+      "detail": "QA-LOT"
+    },
+    {
+      "name": "mobile A-again · own approved event rendered",
+      "pass": true,
+      "detail": "QA-A Đã lấy hàng tại kho Lục Giác"
+    },
+    {
+      "name": "mobile A-again · foreign lot absent",
+      "pass": true,
+      "detail": "QA-FOREIGN"
+    },
+    {
+      "name": "mobile A-again · foreign event absent",
+      "pass": true,
+      "detail": "QA-B Đã lấy hàng tại kho khác"
+    },
+    {
+      "name": "mobile A-again · foreign document absent",
+      "pass": true,
+      "detail": "QA-B Bill of lading"
+    },
+    {
+      "name": "mobile A-again · foreign document id absent",
+      "pass": true,
+      "detail": "QA-OTHER-DOC-BL"
+    },
+    {
+      "name": "mobile A-again · foreign publication version absent",
+      "pass": true,
+      "detail": "g15-533342de7c9b455a"
+    },
+    {
+      "name": "mobile A-again · foreign approved hash absent",
+      "pass": true,
+      "detail": "sha256"
+    },
+    {
+      "name": "mobile A-again · no leftover form value",
+      "pass": true,
+      "detail": "[]"
+    },
+    {
+      "name": "mobile A-again · internal markers absent",
+      "pass": true,
+      "detail": "SECRET_/cost"
+    },
+    {
+      "name": "mobile A-again · own dashboard reference present",
+      "pass": true,
+      "detail": "{\"rows\":[\"shipment-row-QA-LOT\"],\"cards\":[\"shipment-card-QA-LOT\"]}"
+    },
+    {
+      "name": "mobile A-again · foreign dashboard reference absent",
+      "pass": true,
+      "detail": "{\"rows\":[\"shipment-row-QA-LOT\"],\"cards\":[\"shipment-card-QA-LOT\"]}"
+    },
+    {
+      "name": "mobile A-again bubble shows A's own event",
+      "pass": true,
+      "detail": "QA-A Đã lấy hàng tại"
+    },
+    {
+      "name": "mobile A-again bubble hides B's event",
+      "pass": true,
+      "detail": "QA-B Đã lấy hàng tại kho khác"
+    },
+    {
+      "name": "mobile reload starts at granted A",
+      "pass": true,
+      "detail": "QA-LOT"
+    },
+    {
+      "name": "mobile B-after-reload · own lot rendered",
+      "pass": true,
+      "detail": "QA-FOREIGN"
+    },
+    {
+      "name": "mobile B-after-reload · own approved event rendered",
+      "pass": true,
+      "detail": "QA-B Đã lấy hàng tại kho khác"
+    },
+    {
+      "name": "mobile B-after-reload · foreign lot absent",
+      "pass": true,
+      "detail": "QA-LOT"
+    },
+    {
+      "name": "mobile B-after-reload · foreign event absent",
+      "pass": true,
+      "detail": "QA-A Đã lấy hàng tại kho Lục Giác"
+    },
+    {
+      "name": "mobile B-after-reload · foreign document absent",
+      "pass": true,
+      "detail": "QA-A Packing list"
+    },
+    {
+      "name": "mobile B-after-reload · foreign document id absent",
+      "pass": true,
+      "detail": "QA-DOC-PL-A"
+    },
+    {
+      "name": "mobile B-after-reload · foreign publication version absent",
+      "pass": true,
+      "detail": "g15-58054dc98b044c3f"
+    },
+    {
+      "name": "mobile B-after-reload · foreign approved hash absent",
+      "pass": true,
+      "detail": "sha256"
+    },
+    {
+      "name": "mobile B-after-reload · no leftover form value",
+      "pass": true,
+      "detail": "[]"
+    },
+    {
+      "name": "mobile B-after-reload · internal markers absent",
+      "pass": true,
+      "detail": "SECRET_/cost"
+    },
+    {
+      "name": "mobile B-after-reload · own dashboard reference present",
+      "pass": true,
+      "detail": "{\"rows\":[\"shipment-row-QA-FOREIGN\"],\"cards\":[\"shipment-card-QA-FOREIGN\"]}"
+    },
+    {
+      "name": "mobile B-after-reload · foreign dashboard reference absent",
+      "pass": true,
+      "detail": "{\"rows\":[\"shipment-row-QA-FOREIGN\"],\"cards\":[\"shipment-card-QA-FOREIGN\"]}"
+    },
+    {
+      "name": "mobile reload B has B's own document count",
+      "pass": true,
+      "detail": "2 tệp"
+    },
+    {
+      "name": "mobile denied identity message",
+      "pass": true,
+      "detail": "Tài khoản này chưa được cấp quyền xem dữ liệu"
+    },
+    {
+      "name": "mobile denied screen exposes no lot",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile denied screen has no portal account label",
+      "pass": true,
+      "detail": "account label"
+    },
+    {
+      "name": "mobile no page errors",
+      "pass": true,
+      "detail": "[]"
+    },
+    {
+      "name": "server: one in-process mongomock TEST database",
+      "pass": true,
+      "detail": "{\"database\":\"logistics_staging\",\"module\":\"mongomock.mongo_client\",\"uri\":\"\"}"
+    },
+    {
+      "name": "server: same process for DB, publications and both readbacks",
+      "pass": true,
+      "detail": "{\"pid\":3977,\"pids\":[3977,3977,3977,3977]}"
+    },
+    {
+      "name": "server: A and B have independent PUBLISHED manifests",
+      "pass": true,
+      "detail": "{\"a\":\"g15-58054dc98b044c3f822f728e405cdfa5\",\"b\":\"g15-533342de7c9b455a8aef95e93bc65512\"}"
+    },
+    {
+      "name": "server: A and B publish different sources",
+      "pass": true,
+      "detail": "{\"a\":{\"QA-DOC-PL-A\":\"v1\"},\"b\":{\"QA-OTHER-DOC-BL\":\"v1\",\"QA-OTHER-DOC-POD\":\"v1\"}}"
+    },
+    {
+      "name": "server: A view cards are exactly A's own lot",
+      "pass": true,
+      "detail": "[\"QA-LOT\"]"
+    },
+    {
+      "name": "server: B view cards are exactly B's own lot",
+      "pass": true,
+      "detail": "[\"QA-FOREIGN\"]"
+    },
+    {
+      "name": "server: A payload has no foreign/internal marker",
+      "pass": true,
+      "detail": "[]"
+    },
+    {
+      "name": "server: B payload has no foreign/internal marker",
+      "pass": true,
+      "detail": "[]"
+    },
+    {
+      "name": "server: A payload ids are A's own",
+      "pass": true,
+      "detail": "[\"QA-LOT\"]"
+    },
+    {
+      "name": "server: B payload ids are B's own",
+      "pass": true,
+      "detail": "[\"QA-FOREIGN\"]"
+    },
+    {
+      "name": "server: ungranted verified email raises PortalAccessDenied",
+      "pass": true,
+      "detail": "{\"denied\":true,\"exception\":\"PortalAccessDenied\",\"email_masked\":\"no***@example.test\"}"
+    },
+    {
+      "name": "server: tenant split has no overlap",
+      "pass": true,
+      "detail": "{\"a\":{\"customer_id\":\"QA-LG\",\"cards\":[\"QA-LOT\"],\"documents\":[\"QA-DOC-PL-A\"]},\"b\":{\"customer_id\":\"QA-OTHER\",\"cards\":[\"QA-FOREIGN\"],\"documents\":[\"QA-OTHER-DOC-BL\",\"QA-OTHER-DOC-POD\"]}}"
+    },
+    {
+      "name": "server: cross-tenant manifest denied",
+      "pass": true,
+      "detail": "{\"own\":\"ALLOWED\",\"cross\":\"PublicationDenied\",\"foreign\":\"PublicationDenied\"}"
+    },
+    {
+      "name": "server: cross-tenant source read returns zero rows",
+      "pass": true,
+      "detail": "{\"events\":0,\"documents\":0}"
+    },
+    {
+      "name": "server: INTERNAL and unverified sources cannot be published",
+      "pass": true,
+      "detail": "{\"private\":\"PublicationWriteDenied\",\"unverified\":\"PublicationWriteDenied\",\"pointer\":\"g15-58054dc98b044c3f822f728e405cdfa5\",\"counts\":[1,1]}"
+    },
+    {
+      "name": "server: denied browser identity never got a principal",
+      "pass": true,
+      "detail": "{\"email_masked\":\"no***@example.test\",\"exception\":\"PortalAccessDenied\",\"principal_created\":false}"
+    }
+  ],
+  "page_errors": [],
+  "console_errors": [],
+  "exit": 0,
+  "server": {
+    "db": {
+      "pid": 3977,
+      "database": "logistics_staging",
+      "client_module": "mongomock.mongo_client",
+      "client_object_id": 139815635353232,
+      "database_object_id": 139815654589520,
+      "transport": "SANDBOX_STAGING",
+      "mongo_uri_env": "",
+      "config_mongo_uri": "mongodb://mongomock.local/logistics_staging",
+      "env_identity": "PREVIEW",
+      "auth_required": true,
+      "streamlit_version": "1.66.1"
+    },
+    "a": {
+      "version": "g15-58054dc98b044c3f822f728e405cdfa5",
+      "displayVersion": "g15-58054dc98b044c3f",
+      "sha256": "dcd66ce22f376ce8a31a34353956378d0ae426737d6b52c21086eb94954d7303",
+      "pointer": "g15-58054dc98b044c3f822f728e405cdfa5"
+    },
+    "b": {
+      "version": "g15-533342de7c9b455a8aef95e93bc65512",
+      "displayVersion": "g15-533342de7c9b455a",
+      "sha256": "e24d37b3cf9694c82645b74e8736a26e7ce93bf895d9731340f788b2c5fc7f98",
+      "pointer": "g15-533342de7c9b455a8aef95e93bc65512"
+    },
+    "publications": {
+      "database": "logistics_staging",
+      "pid": 3977,
+      "a": {
+        "customer_id": "QA-LG",
+        "shipment_id": "QA-LOT",
+        "pointer_version": "g15-58054dc98b044c3f822f728e405cdfa5",
+        "manifest_version": "g15-58054dc98b044c3f822f728e405cdfa5",
+        "state": "PUBLISHED",
+        "schema": "hexa-customer-publication/v0",
+        "approved_by": "qa-fixture-admin",
+        "approved_at": "2026-10-31T08:40:28.189589+00:00",
+        "event_versions": {
+          "QA-EVENT-PICKUP": "v1"
+        },
+        "document_versions": {
+          "QA-DOC-PL-A": "v1"
+        },
+        "approved_content_sha256": "dcd66ce22f376ce8a31a34353956378d0ae426737d6b52c21086eb94954d7303"
+      },
+      "b": {
+        "customer_id": "QA-OTHER",
+        "shipment_id": "QA-FOREIGN",
+        "pointer_version": "g15-533342de7c9b455a8aef95e93bc65512",
+        "manifest_version": "g15-533342de7c9b455a8aef95e93bc65512",
+        "state": "PUBLISHED",
+        "schema": "hexa-customer-publication/v0",
+        "approved_by": "qa-fixture-admin",
+        "approved_at": "2026-10-31T08:40:28.190729+00:00",
+        "event_versions": {
+          "QA-OTHER-EVENT-PICKUP": "v1"
+        },
+        "document_versions": {
+          "QA-OTHER-DOC-BL": "v1",
+          "QA-OTHER-DOC-POD": "v1"
+        },
+        "approved_content_sha256": "e24d37b3cf9694c82645b74e8736a26e7ce93bf895d9731340f788b2c5fc7f98"
+      },
+      "internal_markers_present_in_db": {
+        "lot_notes": [
+          "SECRET_INTERNAL_QA_LOT",
+          "SECRET_INTERNAL_QA_OTHER_LOT"
+        ],
+        "event_notes": [
+          "SECRET_EVENT_A",
+          "SECRET_EVENT_B"
+        ],
+        "costs": [
+          987654321,
+          123456789
+        ],
+        "private_document": "QA-PRIVATE-DOC-A",
+        "unverified_document": "QA-UNVERIFIED-DOC-A"
+      }
+    },
+    "negative": {
+      "ungranted_email": {
+        "denied": true,
+        "exception": "PortalAccessDenied",
+        "email_masked": "no***@example.test"
+      },
+      "tenant_split": {
+        "a": {
+          "customer_id": "QA-LG",
+          "cards": [
+            "QA-LOT"
+          ],
+          "documents": [
+            "QA-DOC-PL-A"
+          ]
+        },
+        "b": {
+          "customer_id": "QA-OTHER",
+          "cards": [
+            "QA-FOREIGN"
+          ],
+          "documents": [
+            "QA-OTHER-DOC-BL",
+            "QA-OTHER-DOC-POD"
+          ]
+        }
+      },
+      "own_manifest_allowed": "ALLOWED",
+      "cross_tenant_manifest": "PublicationDenied",
+      "foreign_shipment_manifest": "PublicationDenied",
+      "cross_tenant_source_rows": {
+        "events": 0,
+        "documents": 0
+      },
+      "private_document": "PublicationWriteDenied",
+      "unverified_document": "PublicationWriteDenied",
+      "pointer_after_denials": "g15-58054dc98b044c3f822f728e405cdfa5",
+      "manifests_before_after": [
+        1,
+        1
+      ]
+    },
+    "denied_view": {
+      "email_masked": "no***@example.test",
+      "exception": "PortalAccessDenied",
+      "principal_created": false
+    }
+  },
+  "finished_at": "2026-10-31T08:41:06.887Z"
+}

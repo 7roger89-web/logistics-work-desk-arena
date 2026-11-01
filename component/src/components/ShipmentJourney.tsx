@@ -5,8 +5,9 @@ import { getViewModel, subscribeViewModel } from '../lib/viewmodel';
 import { useStore } from '../lib/store';
 import { cx, fmtCcy } from '../lib/format';
 import { Field, inputCls } from './ui';
-import JourneyMap, { JOURNEY_META as META, JourneyStatus } from './JourneyMap';
+import JourneyMap, { JOURNEY_META as META, JourneyStatus, journeyNodeNumber, planJourneyNode } from './JourneyMap';
 import JourneyQuickPanel, { stageAction } from './JourneyQuickPanel';
+import PlanQuickPanel from './PlanQuickPanel';
 
 export const JOURNEY_WORK = [
   { id: 'overview', label: 'Tổng quan' }, { id: 'info', label: 'Thông tin' },
@@ -307,6 +308,11 @@ function FreshShipmentCockpit({ shipment: s, onGlobal, runPrimary, children, glo
   const profile = s.executionProfile;
   const issues = profile?.issues ?? [];
   const next = profile?.nextAction;
+  // Issue #244 BLOCKER 3 — a brand-new lot has no operational node yet, but it is
+  // exactly the lot that must settle báo giá → hợp đồng → tạm ứng first. Node 00
+  // therefore lives INSIDE this fresh surface: same `s.plan` payload, same panel
+  // as the populated Journey. No BOOKING/SI/VGM/transport node is invented here.
+  const [planOpen, setPlanOpen] = useState(false);
   const tabs = [
     { id: 'van-tai', label: 'Thông tin' },
     { id: 'lay-hang', label: 'Xuất khẩu' },
@@ -367,6 +373,15 @@ function FreshShipmentCockpit({ shipment: s, onGlobal, runPrimary, children, glo
               {issues.slice(0, 4).map(issue => <li key={issue.code}>• {issue.message}</li>)}
             </ul>}
           </div>
+          {s.plan && <div className="mt-5 w-full max-w-[420px] rounded-2xl border-2 border-slate-800 bg-white p-3 text-left" data-testid="journey-empty-plan-card">
+            <div className="flex items-center gap-2">
+              <span className="rounded bg-slate-900 px-1.5 py-0.5 text-[10px] font-black tracking-widest text-white">00</span>
+              <p className="text-sm font-extrabold text-slate-900">KẾ HOẠCH — báo giá → hợp đồng → tạm ứng</p>
+            </div>
+            <p className="mt-1 text-xs text-slate-600">Lô mới vẫn phải chốt kế hoạch trước khi có công đoạn vận chuyển. Mở Node 00 để xem đang thiếu gì.</p>
+            <button type="button" onClick={() => setPlanOpen(true)} data-testid="journey-empty-plan-open"
+              className="touch-target mt-2 w-full rounded-lg border-2 border-slate-800 px-3 py-2 text-sm font-extrabold text-[#0f2a4a]">MỞ NODE 00 KẾ HOẠCH →</button>
+          </div>}
           <div className="mt-5 grid w-full grid-cols-2 gap-2 sm:grid-cols-5" aria-label="Các giai đoạn chưa xác định">
             {EMPTY_PHASES.slice(1).map(phase => <div key={phase.id} className="rounded-lg border-2 border-dashed border-slate-300 bg-white/80 px-2 py-3 text-center text-xs font-bold text-slate-500">{phase.label}<span className="mt-1 block text-[10px] font-medium">Chưa xác định</span></div>)}
           </div>
@@ -374,7 +389,9 @@ function FreshShipmentCockpit({ shipment: s, onGlobal, runPrimary, children, glo
       </div>
 
       <aside className="journey-side" data-testid="journey-side-panel">
-        {globalActive ? <div className="flex h-full min-h-0 flex-col" data-testid="journey-global-workspace">
+        {planOpen && s.plan ? <div className="h-full min-h-0" data-testid="journey-empty-plan-panel">
+          <PlanQuickPanel key={`plan-empty-${s.id}`} shipment={s} plan={s.plan} onOpenFinance={() => onGlobal('tai-chinh')} onClose={() => setPlanOpen(false)} />
+        </div> : globalActive ? <div className="flex h-full min-h-0 flex-col" data-testid="journey-global-workspace">
           <div className="border-b bg-slate-100 px-4 py-3">
             <h3 className="text-xl font-black">Toàn bộ lô hàng · {s.id}</h3>
             <p className="text-xs text-slate-500">Dữ liệu hiện có vẫn dùng writer/authority cũ; Journey không tự sinh fact.</p>
@@ -445,16 +462,25 @@ export default function ShipmentJourney({ shipment: s, activeStage, work, onOpen
     if (attachOutcome.ok) { setAttachOpen(false); setChosen(''); setAttachPending(''); setAttachError(''); }
     else { setAttachError(String(attachOutcome.error || 'Backend từ chối gắn quy trình.')); setAttachPending(''); }
   }, [attachOutcome]);
-  if (!journey?.nodes.length) return <FreshShipmentCockpit shipment={s} onGlobal={onGlobal} runPrimary={runPrimary} globalActive={globalActive} globalTab={globalTab}>{children}</FreshShipmentCockpit>;
-  const nodes = journey.nodes;
+  // Issue #244 — Node 00 KẾ HOẠCH is the FIRST node of the SAME journey: the
+  // same map, the same rail, the same pick/panel state. It is prepended (not a
+  // second map) and carries only server-decided facts (`s.plan`).
+  const planNode = useMemo(() => planJourneyNode(s), [s]);
+  const nodes = useMemo(() => {
+    const journeyNodes = journey?.nodes ?? [];
+    return planNode ? [planNode, ...journeyNodes] : journeyNodes;
+  }, [journey, planNode]);
   // Issue #162 — the base map stays the base map. Module steps are NOT drawn as
   // extra branches by default; they live inside the rollup card and are
   // revealed on demand (the graph is still fully present in the payload).
   const baseNodes = nodes.filter(n => !n.moduleId);
   // Issue #190 — Quick Panel opens the CURRENT / PROBLEM factual node by
   // default: an explicit problem beats the positional current marker.
-  const problemNode = baseNodes.find(n => n.state === 'PROBLEM' || n.blockers.length);
-  const selected = nodes.find(n => n.id === picked) ?? nodes.find(n => n.id === activeStage) ?? problemNode ?? baseNodes.find(n => n.current) ?? baseNodes[0] ?? nodes[0];
+  // Node 00 never hijacks the default panel: the existing problem/current rules
+  // keep choosing among the operational nodes exactly as before #244.
+  const operationalNodes = baseNodes.filter(n => n.id !== 'plan');
+  const problemNode = operationalNodes.find(n => n.state === 'PROBLEM' || n.blockers.length);
+  const selected = nodes.find(n => n.id === picked) ?? nodes.find(n => n.id === activeStage) ?? problemNode ?? operationalNodes.find(n => n.current) ?? operationalNodes[0] ?? nodes[0];
   const stage = nodes.find(n => n.id === activeStage);
   const library = vm?.workModules;
   const choices = library?.templates ?? [];
@@ -504,6 +530,8 @@ export default function ShipmentJourney({ shipment: s, activeStage, work, onOpen
     if (modules.length > prevModuleCount.current) setModulesOpen(true);
     prevModuleCount.current = modules.length;
   }, [modules]);
+  // Keep every Hook above the fresh/ready split: Journey nodes can arrive or disappear on a rerun.
+  if (!journey?.nodes.length) return <FreshShipmentCockpit shipment={s} onGlobal={onGlobal} runPrimary={runPrimary} globalActive={globalActive} globalTab={globalTab}>{children}</FreshShipmentCockpit>;
   // Issue #195 — ONE shared side-panel render: the detail map hosts it in
   // the 451px right rail, the compact overview stacks it below the step
   // strip. Same nodes, same pick, same panels — no duplicated journey
@@ -512,7 +540,9 @@ export default function ShipmentJourney({ shipment: s, activeStage, work, onOpen
   const currentLabel = baseNodes.find(n => n.current)?.label || 'Chưa xác định';
   const renderSidePanel = (extraClass: string) => (
     <aside className={cx('journey-side border-l-2 border-slate-400 bg-white shadow-[-6px_0_16px_-8px_rgba(15,23,42,0.25)]', extraClass)} data-testid="journey-side-panel">
-        {panelMode === 'quick' && (selected.id === 'customs-import'
+        {panelMode === 'quick' && (selected.id === 'plan' && s.plan
+          ? <PlanQuickPanel key={`plan-${s.id}`} shipment={s} plan={s.plan} onOpenFinance={() => openGlobal('tai-chinh')} onClose={() => setPanelMode('overview')} />
+          : selected.id === 'customs-import'
           ? <div className="h-full min-h-0" data-testid="journey-customs-import-panel"><CustomsImportQuickPanel s={s} selected={selected} onOpen={open} runPrimary={runPrimary} onClose={() => setPanelMode('overview')} /></div>
           : <JourneyQuickPanel key={selected.id} shipment={s} selected={selected} onOpen={open} runPrimary={runPrimary} onClose={() => setPanelMode('overview')} />)}
         {panelMode === 'overview' && <div className="flex h-full flex-col bg-slate-50" data-testid="journey-overview-panel">
@@ -571,7 +601,7 @@ export default function ShipmentJourney({ shipment: s, activeStage, work, onOpen
             const m = META[n.state]; const Icon = m.icon;
             return <button key={n.id} type="button" data-testid={`journey-step-${n.id}`} data-state={n.state} aria-pressed={selected.id === n.id} onClick={() => pick(n.id)}
               className={cx('touch-target flex min-w-0 items-center gap-2 rounded-lg border-2 px-2.5 py-2 text-left text-xs font-bold', m.cls, selected.id === n.id && 'ring-2 ring-[#0f2a4a] ring-offset-1')}>
-              <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-slate-900/10 text-[10px] font-black">{idx + 1}</span>
+              <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-slate-900/10 text-[10px] font-black">{journeyNodeNumber(n, idx, baseNodes)}</span>
               <Icon size={13} className="shrink-0" aria-hidden="true" />
               <span className="min-w-0"><span className="block truncate text-[12.5px] font-extrabold">{n.label}</span><span className="block truncate text-[10.5px] font-semibold opacity-80">{n.current ? '📍 Đang ở đây' : m.label}{n.blockers.length > 0 ? ` · ⚠ ${n.blockers.length}` : ''}</span></span>
             </button>;

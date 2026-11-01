@@ -54,6 +54,8 @@ from views import user_management as logi_user_management
 from views import notebooklm_registry as logi_notebooklm
 from views import logi_docgen_upload as logi_templates
 from views import logi_inbox
+from views import journey_focus
+from views import journey_inline
 
 STATE_KEY = "logi_state"
 SEQ_KEY = "logi_seq"
@@ -907,6 +909,9 @@ def build_view_model() -> dict:
             attachment_download=sources["attachmentDownload"],
             work_module_templates=sources["workModuleTemplates"],
             document_catalog=document_catalog,
+            # Issue #244 — Node 00 Kế hoạch signature evidence, from the SAME
+            # render-local agreements read C1 already performs.
+            agreements=sources["agreements"],
         )
         for sid, ship in shipments.items()
     ]
@@ -1170,6 +1175,12 @@ def build_view_model() -> dict:
         # "write succeeded": success, duplicate/RBAC/validation refusals and the
         # fresh readback all arrive HERE, after the canonical writer ran.
         "lastWrites": _last_writes_readback(),
+        # Issue #236 — the ONE conversation the operator opened from the Journey
+        # Map: exactly one lot + one stage, bounded, read through the existing
+        # note backend. ``None`` means no node panel is open. No other lot's
+        # comments are ever embedded, and no attachment bytes are included
+        # except the ONE file the operator just asked to download.
+        "journeyDiscussion": journey_inline.build_staff_discussion(user, rows, db=db),
         "unknownLabel": rd.UNKNOWN_LABEL,
     }
     _remember(model)
@@ -1307,6 +1318,22 @@ PARTNER_CONTEXT_EVENTS = {"partner_context_select"}
 # existing canonical C2B/C2D and C2C surfaces the desk links to.
 RECONCILIATION_EVENTS = {"reconciliation_filter"}
 
+# JOURNEY MAP → the EXISTING stage-discussion pane. ONE bounded READ-ONLY
+# intent event: it writes no shipment field, no note, no attachment and no
+# audit entry. The payload carries ONLY {shipment_id, stage_id}; the handler
+# re-validates the lot against this operator's RBAC-filtered projection and the
+# stage against the canonical STAGE_IDS tuple (views.journey_focus) before the
+# pane opens. There is deliberately no second comment/upload system.
+JOURNEY_FOCUS_EVENTS = {"journey_focus"}
+
+# JOURNEY MAP → inline comment/reply + chứng từ (Issue #236). Same existing
+# backend (``core.journey_notes`` + ``core.inbox_attachments``), same bounded
+# dispatcher; the difference from PR #235 is that the thread is rendered INSIDE
+# the Journey Map node panel instead of a Streamlit form above the map. The
+# browser sends lot/node/text/one bounded file; tenant, stage, visibility and
+# permission are re-derived by ``views.journey_inline``.
+JOURNEY_THREAD_EVENTS = journey_inline.STAFF_EVENTS
+
 # LOGI_USER_MANAGEMENT_01 — the four Admin-only account-management events for
 # /nguoi-dung (see views.user_management for the bounded dispatcher). Every
 # handler re-checks the Admin RBAC boundary itself; this set only decides
@@ -1323,7 +1350,8 @@ ALL_EVENTS = (ALLOWED_EVENTS | PHASE_B_EVENTS | logi_c1.C1_EVENTS
               | TARIFF_EVENTS | TRANSLATION_EVENTS | PARTNER_CONTEXT_EVENTS
               | RECONCILIATION_EVENTS | USER_MANAGEMENT_EVENTS
               | NOTEBOOKLM_EVENTS | DOCUMENT_REVIEW_EVENTS
-              | DOCGEN_TEMPLATE_EVENTS | logi_inbox.INBOX_EVENTS)
+              | DOCGEN_TEMPLATE_EVENTS | logi_inbox.INBOX_EVENTS
+              | JOURNEY_FOCUS_EVENTS | JOURNEY_THREAD_EVENTS)
 
 #: LOGI_TRADE_DOCUMENT_SHIPMENT_REVIEW_RUN3_01 — the ONE ephemeral session slot
 #: holding the last read-only shipment document review. It is presentation/read
@@ -2341,6 +2369,7 @@ def _projection_for(shipment: Mapping[str, Any], *, db: Any = _UNSET_DB) -> dict
     from core.database import (
         _load_contracts_impl,
         _load_customers_impl,
+        load_agreements,
         load_authority_agents,
         load_authority_companies,
         load_quotes,
@@ -2367,6 +2396,10 @@ def _projection_for(shipment: Mapping[str, Any], *, db: Any = _UNSET_DB) -> dict
         "quotes": lambda: load_quotes(db=db),
         "agents": lambda: load_authority_agents(db=db),
         "companies": lambda: load_authority_companies(db=db),
+        # Issue #244 — the readback's Node 00 needs the SAME recorded signature
+        # evidence the build uses; it joins this existing concurrent batch
+        # instead of adding a sequential read.
+        "agreements": lambda: load_agreements(db=db) or {},
         "history": lambda: rd.timeline_projection(sid, db=db),
         # A fresh, shipment-scoped attachment read: the readback proves the
         # metadata write landed instead of echoing what the browser sent.
@@ -2384,6 +2417,9 @@ def _projection_for(shipment: Mapping[str, Any], *, db: Any = _UNSET_DB) -> dict
         companies=loaded["companies"] or {},
         attachments={sid: loaded["attachments"]} if sid else None,
         attachment_download=_attachment_download_state(),
+        # Issue #244 — Node 00 reads recorded signature evidence from the SAME
+        # render-local agreements snapshot C1 already consumes.
+        agreements=loaded["agreements"],
     )
 
 
@@ -2822,14 +2858,20 @@ def _handle_field_save(payload: Mapping[str, Any]) -> dict[str, Any]:
 
     sid = rd.text(payload.get("shipmentId"))
     fields = payload.get("fields") if isinstance(payload.get("fields"), Mapping) else {}
+    request_id = rd.text(payload.get("requestId"))
+
+    def out(ok: bool, error: str = "", **extra: Any) -> dict:
+        return _result("shipment_field_save", sid, ok, error,
+                       **({"requestId": request_id} if request_id else {}), **extra)
+
     if not sid or not fields:
-        return _result("shipment_field_save", sid, False, "Thiếu shipmentId hoặc fields.")
+        return out(False, "Thiếu shipmentId hoặc fields.")
     if not can_operate_business("shipment_edit"):
-        return _result("shipment_field_save", sid, False, "RBAC: không có quyền shipment_edit.")
+        return out(False, "RBAC: không có quyền shipment_edit.")
 
     shipment = read_shipment(sid)
     if shipment is None:
-        return _result("shipment_field_save", sid, False, f"Không tìm thấy lô {sid}.")
+        return out(False, f"Không tìm thấy lô {sid}.")
 
     applied: dict[str, Any] = {}
     rejected: list[str] = []
@@ -2842,15 +2884,14 @@ def _handle_field_save(payload: Mapping[str, Any]) -> dict[str, Any]:
         _set_path(shipment, path, applied[str(key)])
 
     if not applied:
-        return _result("shipment_field_save", sid, False,
-                       "Không có trường nào được phép ghi.", rejected=rejected)
+        return out(False, "Không có trường nào được phép ghi.", rejected=rejected)
 
     apply_financial_snapshot(shipment)
     if not save_shipment_atomic(shipment, expected_version=shipment.get("version"), actor=_actor()):
-        return _result("shipment_field_save", sid, False, get_last_db_error() or "Không lưu được.")
+        return out(False, get_last_db_error() or "Không lưu được.")
 
     fresh = read_shipment(sid)
-    return _result("shipment_field_save", sid, True, readback=_projection_for(fresh or {}),
+    return out(True, readback=_projection_for(fresh or {}),
                    applied=applied, rejected=rejected,
                    version=int((fresh or {}).get("version") or 0),
                    persisted={k: _get_path(fresh or {}, FIELD_PATHS[k]) for k in applied},
@@ -2870,12 +2911,12 @@ def _handle_shipment_customer_save(payload: Mapping[str, Any]) -> dict[str, Any]
     it adds no field, no collection and no fallback name.
 
     Resolution mirrors ``_handle_shipment_create``: a known ``customerId`` wins
-    and its master name is what gets stored; a raw ``customer`` string is
-    accepted only when the operator typed it. Nothing is invented and a
-    mismatched picker never blanks the master data.
+    and its master name is what gets stored.  The canonical writer refuses a
+    free-text rename when the lot already has an ID; only legacy ID-less rows
+    may keep a typed historical name, and no ID is inferred from that name.
     """
     from core.auth import can_operate_business
-    from core.database import get_last_db_error, load_customers, update_shipment_customer
+    from core.database import get_db, get_last_db_error, update_shipment_customer
 
     sid = rd.text(payload.get("shipmentId"))
     # Issue #195 follow-up: echo the caller's requestId on every success and
@@ -2893,18 +2934,23 @@ def _handle_shipment_customer_save(payload: Mapping[str, Any]) -> dict[str, Any]
     if shipment is None:
         return out(False, f"Không tìm thấy lô {sid}.")
 
-    customer_id = rd.text(payload.get("customerId")).upper()
+    customer_id = rd.text(payload.get("customerId"))
     typed_name = rd.text(payload.get("customer"))
-    customers = load_customers() or {}
     if customer_id:
-        document = customers.get(customer_id)
-        if not isinstance(document, Mapping):
+        db = get_db()
+        document = (
+            db.customers.find_one({"id": customer_id}, {"_id": 0})
+            if db is not None
+            else None
+        )
+        if not isinstance(document, Mapping) or bool(document.get("is_deleted")):
             return out(False,
-                       f"Không có khách hàng {customer_id} trong danh bạ.")
+                       f"Không có khách hàng {customer_id} đang hoạt động trong danh bạ.")
         name = rd.text(document.get("name"))
         if not name:
             return out(False,
                        f"Khách hàng {customer_id} chưa có tên trong danh bạ.")
+        customer_id = rd.text(document.get("id")) or customer_id
     else:
         # No invented identity: an empty picker with no typed name is a
         # mistake, not a business fact, and is refused rather than written.
@@ -2915,12 +2961,13 @@ def _handle_shipment_customer_save(payload: Mapping[str, Any]) -> dict[str, Any]
         customer_id = ""
 
     previous = rd.text(shipment.get("customer") or shipment.get("client"))
-    if name == previous and (not customer_id or customer_id == rd.text(shipment.get("customer_id"))):
+    existing_customer_id = rd.text(shipment.get("customer_id"))
+    if name == previous and customer_id == existing_customer_id:
         # Nothing to write: report the unchanged truth instead of a no-op
         # version bump that would look like a change in the audit trail.
         return out(True, "Không có thay đổi để lưu.",
                    readback=_projection_for(shipment), noop=True,
-                   persisted={"customer": previous})
+                   persisted={"customer": previous, "customerId": existing_customer_id})
 
     if not update_shipment_customer(sid, name, customer_id):
         return out(False,
@@ -4182,7 +4229,7 @@ def _handle_partner_payment_record(payload: Mapping[str, Any]) -> dict[str, Any]
 def _handle_shipment_create(payload: Mapping[str, Any]) -> dict[str, Any]:
     """Create Shipment via the existing creation logic; duplicate codes rejected."""
     from core.auth import can_operate_business
-    from core.database import get_last_db_error, load_customers, save_shipment_atomic
+    from core.database import get_last_db_error, save_shipment_atomic
     from core.database import get_db
     from core.logic import apply_financial_snapshot
     from core.validators import validate_shipment
@@ -4206,11 +4253,21 @@ def _handle_shipment_create(payload: Mapping[str, Any]) -> dict[str, Any]:
     if db is not None and db.shipments.find_one({"id": sid, "is_deleted": {"$ne": True}}):
         return _res(False, f"Mã lô {sid} đã tồn tại.")
 
-    customers = load_customers() or {}
-    customer_doc = customers.get(customer_id) if isinstance(customers.get(customer_id), Mapping) else {}
-    customer_name = rd.text(payload.get("customer")) or rd.text(customer_doc.get("name"))
+    if not customer_id:
+        return _res(False, "Vui lòng chọn khách hàng đang hoạt động trong danh bạ.")
+    # Validate against a fresh database read, not the 30-second render cache: a
+    # just-archived or deleted customer must never authorize this write.
+    customer_doc = db.customers.find_one(
+        {"id": customer_id, "is_deleted": {"$ne": True}}, {"_id": 0}
+    ) if db is not None else None
+    if not isinstance(customer_doc, Mapping):
+        return _res(False, f"Không có khách hàng {customer_id} đang hoạt động trong danh bạ.")
+    customer_name = rd.text(customer_doc.get("name"))
     if not customer_name:
-        return _res(False, "Vui lòng chọn khách hàng.")
+        return _res(False, f"Khách hàng {customer_id} chưa có tên trong danh bạ.")
+    # Directory identity is authoritative. Never persist a browser-supplied
+    # name beside this ID because that would create a contradictory link.
+    customer_id = rd.text(customer_doc.get("id")) or customer_id
 
     created_on = _normalize_date(payload.get("createdAt")) or __import__("datetime").date.today().strftime("%Y-%m-%d")
     transport = payload.get("transport") if isinstance(payload.get("transport"), Mapping) else {}
@@ -5407,7 +5464,7 @@ def _resolve_uploaded_template_customer(
     on a customer document.  Zero or several matches resolve to NO customer,
     which readiness then reports as missing information.
     """
-    customer_id = rd.text(shipment.get("customer_id")).upper()
+    customer_id = rd.text(shipment.get("customer_id"))
     linked = customers.get(customer_id)
     if isinstance(linked, Mapping):
         return dict(linked)
@@ -6110,6 +6167,79 @@ def consume_reconciliation_triggers(session: dict, result: Any) -> list[dict[str
     return outcomes
 
 
+def consume_journey_focus_triggers(session: dict, result: Any) -> list[dict[str, Any]]:
+    """The ONE bounded READ-ONLY Journey Map → discussion-pane dispatcher.
+
+    Same one-shot ``seq`` protection as every other v2 trigger. It mutates no
+    business data: it records WHICH node the operator clicked so the existing
+    ``views.journey_discussion`` pane can open on that lot + stage. The lot id
+    and stage id are lookup inputs only — :func:`views.journey_focus.for_staff`
+    re-resolves both against the RBAC-filtered projection right before the pane
+    reads, so a forged pair simply opens nothing.
+    """
+    outcomes: list[dict[str, Any]] = []
+    for event_name in sorted(JOURNEY_FOCUS_EVENTS):
+        payload = result.get(event_name) if hasattr(result, "get") else None
+        if not isinstance(payload, dict):
+            continue
+        seq = payload.get("seq")
+        if isinstance(seq, bool) or not isinstance(seq, int):
+            continue
+        if seq <= session.get("seq", 0):
+            continue
+        session["seq"] = seq
+        data = payload.get("payload") if isinstance(payload.get("payload"), dict) else {}
+        lot = str(data.get("shipment_id") or "").strip()[:120]
+        # Keep the node id AS SENT (the shell's ids are case-sensitive, e.g.
+        # MAIN_CARRIAGE); only the lookup/mapping lower-cases it.
+        raw_stage = str(data.get("stage_id") or "").strip()[:40]
+        stage = raw_stage.lower()
+        username = str((st.session_state.get("current_user") or {}).get("username") or "")[:120]
+        recorded = journey_focus.capture(
+            st.session_state,
+            {"seq": seq, "shipment_id": lot, "stage_id": raw_stage},
+            scope={"username": username},
+            # The shell's map renders richer ids (MAIN_CARRIAGE, si-vgm…); the
+            # explicit map keeps the SEVEN-stage discussion contract.
+            node_stages=journey_focus.STAFF_NODE_STAGES,
+        )
+        outcomes.append(_result(
+            event_name, lot, recorded,
+            "" if recorded else "Không mở được trao đổi cho công đoạn này.",
+            readback={"shipmentId": lot, "stageId": stage},
+        ))
+    return outcomes
+
+
+def journey_focus_pane(user: Mapping[str, Any], shipments: Any) -> dict[str, Any] | None:
+    """Resolve the stored Journey Map intent against the operator's own lots.
+
+    Also returns the CLICKED node's own label (read from the same projection) so
+    the pane can say which rich node was mapped onto which of the seven stages.
+    """
+    focus = journey_focus.for_staff(
+        journey_focus.current(st.session_state),
+        str((user or {}).get("username") or ""),
+        shipments or (),
+    )
+    if not focus:
+        return None
+    node_id = str(focus.get("node_id") or "")
+    if node_id:
+        for row in shipments or ():
+            if not isinstance(row, Mapping):
+                continue
+            if str(row.get("id") or "") != focus["shipment_id"]:
+                continue
+            journey = row.get("journey") if isinstance(row.get("journey"), Mapping) else {}
+            for node in journey.get("nodes") or ():
+                if isinstance(node, Mapping) and str(node.get("id") or "") == node_id:
+                    focus["node_label"] = str(node.get("label") or "")
+                    break
+            break
+    return focus
+
+
 def dispatch(
     result: Any,
     *,
@@ -6206,6 +6336,34 @@ def dispatch(
                                     review_session["seq"])
     outcomes.extend(review_outcomes)
 
+    # Journey Map → the EXISTING stage-discussion pane. A READ-ONLY intent: the
+    # handler only records which lot + stage the operator clicked; the pane
+    # re-validates both against this operator's own projection when it renders.
+    focus_session = {"seq": st.session_state.get(SEQ_KEY, 0)}
+    focus_outcomes = consume_journey_focus_triggers(focus_session, result)
+    st.session_state[SEQ_KEY] = max(st.session_state.get(SEQ_KEY, 0),
+                                    focus_session["seq"])
+    outcomes.extend(focus_outcomes)
+
+    # Issue #236 — comment/reply and one-file download for the node panel that
+    # is open INSIDE the Journey Map. Writes go through the SAME canonical note
+    # backend as every other discussion surface; the browser's intent is
+    # re-verified against this operator's RBAC projection before any read/write.
+    thread_session = {"seq": st.session_state.get(SEQ_KEY, 0)}
+    thread_outcomes = journey_inline.consume_staff_triggers(
+        thread_session,
+        result,
+        user=st.session_state.get("current_user") or {},
+        shipments=list((_state().get("shipments") or {}).values()),
+    )
+    st.session_state[SEQ_KEY] = max(st.session_state.get(SEQ_KEY, 0),
+                                    thread_session["seq"])
+    outcomes.extend(thread_outcomes)
+    write_outcomes.extend(
+        outcome for outcome in thread_outcomes
+        if outcome.get("event") == "journey_note_create"
+    )
+
     # LOGI_USER_MANAGEMENT_01 — Admin-only account-management writes for
     # /nguoi-dung. Shares the same seq counter so a replayed trigger can never
     # double-write; every outcome (success or Admin/lockout/duplicate refusal)
@@ -6262,6 +6420,12 @@ def dispatch(
         # A read-only review outcome (bounded review OR honest refusal) also
         # needs ONE rerun so the settled requestId + result reach the component.
         or bool(review_outcomes)
+        # A Journey Map node click is consumed AFTER the page header, so ONE
+        # rerun delivers the bounded thread for that node's panel.
+        or bool(focus_outcomes)
+        # Issue #236 — a saved comment/reply or a just-read attachment also
+        # needs ONE rerun so the payload carries the fresh thread / bytes.
+        or bool(thread_outcomes)
     )
     if needs_rerun and allow_rerun:
         st.rerun()
