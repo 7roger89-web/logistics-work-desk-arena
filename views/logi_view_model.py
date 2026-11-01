@@ -702,6 +702,34 @@ def _last_writes_readback() -> list[dict[str, Any]]:
     return [dict(row) for row in rows if isinstance(row, Mapping)]
 
 
+#: Write events whose outcome carries money (amount, da thu, cong no) plus the
+#: full shipment readback / audit. Chi duoc nhung vao payload cua actor co
+#: quyen ``finance_view``; cac actor khong co quyen (Sale, Operations, role
+#: lai...) khong nhan duoc su kien ghi tien cu, ngay ca cung session sau khi
+#: doi role / dang nhap lai. requestId, idempotency va thong bao thanh cong/
+#: that thay duoc giu nguyen cho actor hop le.
+FINANCE_WRITE_EVENTS = {
+    "payment_record",
+    "payment_correction",
+    "finance_actual_save",
+    "partner_payable_record",
+    "partner_payment_record",
+}
+
+
+def _last_writes_for_actor(can_view_finance: bool) -> list[dict[str, Any]]:
+    """Tra lastWrites duoc phep xem cua actor hien tai.
+
+    Actor co finance_view nhan duoc toan bo ket qua ghi (giai quyet duoc tai
+    server authority boundary). Actor khong co quyen bi bo loc het cac su
+    kien ghi tien — khong bao gio duoc so tien ngoai quyen qua lastWrites.
+    """
+    rows = _last_writes_readback()
+    if can_view_finance:
+        return rows
+    return [row for row in rows if row.get("event") not in FINANCE_WRITE_EVENTS]
+
+
 def _read_sources(shipments: Mapping[str, Any], references: Mapping[str, Any], *, db: Any = _UNSET_DB) -> dict[str, Any]:
     """ONE fresh request/render-local snapshot of the shared read sources.
 
@@ -1202,7 +1230,9 @@ def build_view_model() -> dict:
         # the previous run. The UI must never treat "event transported" as
         # "write succeeded": success, duplicate/RBAC/validation refusals and the
         # fresh readback all arrive HERE, after the canonical writer ran.
-        "lastWrites": _last_writes_readback(),
+        # LOGI-255 — finance boundary: ket qua ghi tien chi duoc nhung vao
+        # payload cua actor co quyen finance_view.
+        "lastWrites": _last_writes_for_actor(can_view_finance),
         # Issue #236 — the ONE conversation the operator opened from the Journey
         # Map: exactly one lot + one stage, bounded, read through the existing
         # note backend. ``None`` means no node panel is open. No other lot's

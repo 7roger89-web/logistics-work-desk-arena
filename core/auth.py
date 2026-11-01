@@ -716,11 +716,15 @@ def _complete_bootstrap(
 
 
 def logout() -> None:
-    for key in ("current_user",):
+    for key in ("current_user", "logi_last_writes"):
         try:
             st.session_state.pop(key, None)  # type: ignore[attr-defined]
         except Exception:
             pass
+    # LOGI-255 — ket qua ghi tien cu cua actor khong duoc ke thua boi actor
+    # moi (dang nhap lai / doi role) cung session: xoa LAST_WRITES_KEY cung
+    # voi current_user. (Key cung duoc bo loc tai build_view_model theo
+    # finance_view; xoa o day la tien che trung lap.)
     # Rotation for logout in same session: next login visit prefers a
     # different image from the one just shown.
     try:
