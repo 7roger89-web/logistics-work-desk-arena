@@ -14686,8 +14686,72 @@ function mc({ shipment: e, dense: t, className: n }) {
 	});
 }
 //#endregion
+//#region src/components/ShipmentFinanceSummary.tsx
+function hc({ shipment: e, variant: t = "desktop" }) {
+	let n = e.finance;
+	if (!n || n.canView === !1) return null;
+	let r = (n.currency ?? "").trim().toUpperCase() || "VND", i = !!n.hasActualLines, a = i ? n.receivable : null, o = n.received, s = i ? n.outstanding : null, c = (e) => ts(e) ? "—" : is(e, r), l = i && !ts(s) && Number(s) > 0, u = i && !ts(s) && Number(s) <= 0, d = i ? l ? "border-red-200/80 bg-red-50/30 hover:border-red-300" : u ? "border-emerald-200/80 bg-emerald-50/30 hover:border-emerald-300" : "border-slate-200 bg-slate-50/60 hover:border-slate-300" : "border-dashed border-slate-200 bg-slate-50/60 hover:border-slate-300", f = !i || ts(a) ? "text-slate-400 font-semibold" : "text-[#0f2a4a] font-bold", p = !ts(o) && Number(o) > 0 ? "text-emerald-700 font-bold" : "text-slate-600 font-semibold", m = !i || ts(s) ? "text-slate-400 font-semibold" : l ? "text-red-700 font-extrabold" : "text-emerald-700 font-extrabold", h = `${Gn(e.id)}?tab=tai-chinh`, g = i ? `Mở Tài chính / Công nợ lô ${e.id} (${r})` : `Chưa chốt dòng dịch vụ thực tế — mở Tài chính / Công nợ lô ${e.id}`;
+	return /* @__PURE__ */ (0, W.jsxs)(U, {
+		to: h,
+		"data-testid": "shipment-finance-summary",
+		"data-shipment-id": e.id,
+		"data-currency": r,
+		"data-has-actual": i ? "true" : "false",
+		title: g,
+		"aria-label": `Công nợ dịch vụ lô ${e.id}`,
+		className: q("block rounded-xl border transition-colors focus-visible:outline-2 focus-visible:outline-[#1e5aa8]", t === "mobile" ? "mt-2.5 px-3 py-2" : "px-2 py-1.5", d),
+		children: [t === "mobile" && /* @__PURE__ */ (0, W.jsxs)("div", {
+			className: "flex items-center justify-between gap-2 mb-1",
+			children: [/* @__PURE__ */ (0, W.jsx)("span", {
+				className: "text-[11px] font-bold uppercase tracking-wide text-slate-500",
+				children: "Công nợ dịch vụ"
+			}), /* @__PURE__ */ (0, W.jsx)("span", {
+				className: "text-[11px] font-semibold text-[#1e5aa8]",
+				children: i ? `Tài chính · ${r} →` : "Chưa chốt thực tế →"
+			})]
+		}), /* @__PURE__ */ (0, W.jsxs)("div", {
+			className: q("tnum space-y-0.5", t === "mobile" ? "text-[12.5px] leading-snug" : "text-[11.5px] leading-[1.35]"),
+			children: [
+				/* @__PURE__ */ (0, W.jsxs)("div", {
+					className: "flex items-baseline justify-between gap-1.5",
+					children: [/* @__PURE__ */ (0, W.jsx)("span", {
+						className: "text-slate-500 font-medium whitespace-nowrap",
+						children: "Phải thu"
+					}), /* @__PURE__ */ (0, W.jsx)("span", {
+						"data-testid": "debt-receivable",
+						className: q("tnum whitespace-nowrap text-right", f),
+						children: c(a)
+					})]
+				}),
+				/* @__PURE__ */ (0, W.jsxs)("div", {
+					className: "flex items-baseline justify-between gap-1.5",
+					children: [/* @__PURE__ */ (0, W.jsx)("span", {
+						className: "text-slate-500 font-medium whitespace-nowrap",
+						children: "Đã thu"
+					}), /* @__PURE__ */ (0, W.jsx)("span", {
+						"data-testid": "debt-received",
+						className: q("tnum whitespace-nowrap text-right", p),
+						children: c(o)
+					})]
+				}),
+				/* @__PURE__ */ (0, W.jsxs)("div", {
+					className: "flex items-baseline justify-between gap-1.5 pt-0.5 border-t border-slate-200/70",
+					children: [/* @__PURE__ */ (0, W.jsx)("span", {
+						className: "text-slate-600 font-semibold whitespace-nowrap",
+						children: "Còn phải thu"
+					}), /* @__PURE__ */ (0, W.jsx)("span", {
+						"data-testid": "debt-outstanding",
+						className: q("tnum whitespace-nowrap text-right", m),
+						children: c(s)
+					})]
+				})
+			]
+		})]
+	});
+}
+//#endregion
 //#region src/lib/costHistory.ts
-function hc(e, t) {
+function gc(e, t) {
 	if (e.source === "QUOTE" || t.priceBasis === "HISTORICAL_SELL") return "Giá đã báo/dự kiến — không phải giá vốn";
 	let n = e.source === "ACTUAL" ? "ACTUAL_COST" : "SUPPLIER_RATE";
 	return t.priceBasis !== n || !t.priceProvenance?.trim() ? "Chưa có căn cứ nguồn giá vốn — chỉ xem tham khảo" : t.price == null || !Number.isFinite(t.price) || t.price < 0 ? e.source === "ACTUAL" ? "Chưa biết giá vốn thực tế — không dùng giá bán thay thế" : "Chưa có giá đầu vào hợp lệ" : t.unit.trim() ? [
@@ -14696,25 +14760,25 @@ function hc(e, t) {
 		"CNY"
 	].includes(t.ccy) ? e.source === "INPUT_RATE" && (!t.rateSnapshotId || !t.rateRowId) ? "Thiếu snapshot/dòng nguồn giá đầu vào" : "" : "Chưa có loại tiền giá vốn được hỗ trợ (VND/USD/CNY)" : "Chưa rõ đơn vị giá vốn — cần xác nhận nguồn";
 }
-function gc(e) {
+function _c(e) {
 	return String(e ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/gi, "d").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 }
-function _c(e, t) {
-	let n = gc(e), r = gc(t);
+function vc(e, t) {
+	let n = _c(e), r = _c(t);
 	return !n || !r ? !1 : n.includes(r) || r.includes(n);
 }
-function vc(e) {
+function yc(e) {
 	let t = String(e || "").trim(), n = t.match(/^(\d{4})-(\d{2})-(\d{2})/);
 	return n ? `${n[2]}/${n[1]}` : (n = t.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/), n ? `${n[2].padStart(2, "0")}/${n[3]}` : "");
 }
-function yc(e) {
+function bc(e) {
 	let t = String(e || "").trim(), n = t.match(/^(\d{4})-(\d{2})-(\d{2})/);
 	if (n) return Date.UTC(Number(n[1]), Number(n[2]) - 1, Number(n[3]));
 	if (n = t.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/), n) return Date.UTC(Number(n[3]), Number(n[2]) - 1, Number(n[1]));
 	let r = Date.parse(t);
 	return Number.isFinite(r) ? r : 0;
 }
-function bc(e) {
+function xc(e) {
 	return (e.finance?.actual ?? []).map((t, n) => ({
 		label: t.label || t.name || "Dịch vụ",
 		unit: (t.unit || "").trim(),
@@ -14727,7 +14791,7 @@ function bc(e) {
 		note: t.note || ""
 	}));
 }
-function xc(e) {
+function Sc(e) {
 	return (e.finance?.quote ?? []).map((t, n) => ({
 		label: t.label || "Dịch vụ (báo giá)",
 		unit: "",
@@ -14740,7 +14804,7 @@ function xc(e) {
 		note: ""
 	}));
 }
-function Sc(e) {
+function Cc(e) {
 	let t = /* @__PURE__ */ new Map();
 	for (let n of e) {
 		if (n.price == null || !n.ccy) continue;
@@ -14752,20 +14816,20 @@ function Sc(e) {
 		amount: t
 	}));
 }
-var Cc = .5;
-function wc(e, t) {
+var wc = .5;
+function Tc(e, t) {
 	if (e == null || !Number.isFinite(e) || e <= 0) return null;
 	let n = Math.abs(e - t) / Math.max(t, 1);
-	return n <= Cc ? n : null;
+	return n <= wc ? n : null;
 }
-function Tc(e) {
-	return yc(e.targetDate) || Date.now();
+function Ec(e) {
+	return bc(e.targetDate) || Date.now();
 }
-function Ec(e, t) {
-	let n = yc(e);
+function Dc(e, t) {
+	let n = bc(e);
 	return n ? Math.max(0, Math.round((t - n) / 864e5)) : null;
 }
-function Dc(e) {
+function Oc(e) {
 	return e == null ? {
 		score: 0,
 		reason: ""
@@ -14789,28 +14853,28 @@ function Dc(e) {
 		reason: ""
 	};
 }
-function Oc(e, t) {
-	let n = gc(e);
+function kc(e, t) {
+	let n = _c(e);
 	return n ? t.find((e) => e.kind !== "PLACE" || e.active === !1 ? !1 : [
 		e.name,
 		e.code,
 		e.unlocode,
 		...e.aliases || []
-	].some((e) => gc(e) === n)) ?? null : null;
+	].some((e) => _c(e) === n)) ?? null : null;
 }
-function kc(e, t) {
+function Ac(e, t) {
 	if (!e.length || !t.length) return !1;
 	let n = new Set(t);
 	return e.some((e) => n.has(e));
 }
-function Ac(e, t, n, r, i) {
+function jc(e, t, n, r, i) {
 	if (!n.trim()) return { score: 0 };
-	if (_c(e, n)) return {
+	if (vc(e, n)) return {
 		score: 25,
 		reason: i
 	};
-	let a = Oc(n, r), o = Oc(e, r), s = a?.zone_ids || [];
-	return kc(t.length ? t : o?.zone_ids || [], s) ? {
+	let a = kc(n, r), o = kc(e, r), s = a?.zone_ids || [];
+	return Ac(t.length ? t : o?.zone_ids || [], s) ? {
 		score: 12,
 		reason: `${i} cùng vùng logistics`,
 		difference: `${i}: ${e || "—"} thay vì ${n}`
@@ -14819,10 +14883,10 @@ function Ac(e, t, n, r, i) {
 		difference: e ? `${i} khác: ${e}` : void 0
 	};
 }
-function jc(e, t, n, r) {
+function Mc(e, t, n, r) {
 	let i = (t.incoterm || "").trim().toUpperCase(), a = (t.pol || t.origin || "").trim(), o = (t.pod || t.destination || "").trim(), s = (t.factory || "").trim(), c = (t.delivery || "").trim(), l = t.cbm, u = t.weightKg, d = (t.mode || "").trim(), f = (t.equipment || "").trim().toUpperCase(), p = [], m = [], h = 0, g = !1, _ = (e.incoterm || e.executionProfile?.incoterm || "").toUpperCase();
 	i && (_ === i ? (h += 35, p.push("Incoterm")) : _ && (g = !0));
-	let v = e.transport?.pol || "", y = e.transport?.pod || "", b = e.route || "", x = e.pickup?.factory || "", S = e.importInfo?.deliveryAddr || "", C = Ac(v || x || b, [], a, n, "POL/nơi đi"), w = Ac(y || S || b, [], o, n, "POD/nơi đến"), T = Ac(x, [], s, n, "nhà máy"), E = Ac(S, [], c, n, "giao cuối");
+	let v = e.transport?.pol || "", y = e.transport?.pod || "", b = e.route || "", x = e.pickup?.factory || "", S = e.importInfo?.deliveryAddr || "", C = jc(v || x || b, [], a, n, "POL/nơi đi"), w = jc(y || S || b, [], o, n, "POD/nơi đến"), T = jc(x, [], s, n, "nhà máy"), E = jc(S, [], c, n, "giao cuối");
 	for (let e of [
 		C,
 		w,
@@ -14831,28 +14895,28 @@ function jc(e, t, n, r) {
 	]) h += e.score, e.reason && p.push(e.reason), e.difference && m.push(e.difference);
 	let D = e.cargo?.cbm ?? null;
 	if (l != null) {
-		let e = wc(D, l);
+		let e = Tc(D, l);
 		e != null && (h += Math.round(20 * (1 - e)), p.push("CBM gần nhất"));
 	}
 	let O = e.cargo?.weight ?? null;
 	if (u != null) {
-		let e = wc(O, u);
+		let e = Tc(O, u);
 		e != null && (h += Math.round(20 * (1 - e)), p.push("cân nặng gần nhất"));
 	}
 	if (d) {
 		let t = e.mode || e.executionProfile?.mode || "";
-		t && gc(t) === gc(d) && (h += 8, p.push("phương thức"));
+		t && _c(t) === _c(d) && (h += 8, p.push("phương thức"));
 	}
 	if (f && m.push("lô cũ không có equipment chuẩn để đối chiếu"), g || h <= 0 || p.length === 0) return null;
-	let k = bc(e), A = k.length > 0, j = A ? k : xc(e);
+	let k = xc(e), A = k.length > 0, j = A ? k : Sc(e);
 	if (!j.length) return null;
-	let M = Ec(e.createdAt || "", r), N = Dc(M);
+	let M = Dc(e.createdAt || "", r), N = Oc(M);
 	return h += N.score, N.reason && p.push(N.reason), h += A ? 18 : 0, {
 		referenceId: e.id,
 		shipmentId: e.id,
 		customer: e.customer || "",
 		createdAt: e.createdAt || "",
-		period: vc(e.createdAt),
+		period: yc(e.createdAt),
 		source: A ? "ACTUAL" : "QUOTE",
 		sourceLabel: A ? "THỰC TẾ" : "BÁO GIÁ / DỰ KIẾN",
 		incoterm: _,
@@ -14866,10 +14930,10 @@ function jc(e, t, n, r) {
 		score: h,
 		ageDays: M,
 		lines: j,
-		totalsByCurrency: Sc(j)
+		totalsByCurrency: Cc(j)
 	};
 }
-function Mc(e) {
+function Nc(e) {
 	let t = /* @__PURE__ */ new Map();
 	for (let n of e.rows || []) {
 		if (n.status !== "AVAILABLE" || n.amount == null) continue;
@@ -14898,15 +14962,15 @@ function Mc(e) {
 	}
 	return [...t.values()];
 }
-function Nc(e, t, n, r) {
+function Pc(e, t, n, r) {
 	let i = (t.pol || t.origin || "").trim(), a = (t.pod || t.destination || "").trim(), o = (t.equipment || "").trim().toUpperCase(), s = (t.loadModel || "").trim().toUpperCase(), c = (t.mode || "").trim(), l = [];
 	for (let u of e) if ([
 		"ACTIVE",
 		"SUPERSEDED",
 		"EXPIRED"
-	].includes((u.status || "ACTIVE").toUpperCase())) for (let e of Mc(u)) {
+	].includes((u.status || "ACTIVE").toUpperCase())) for (let e of Nc(u)) {
 		let d = [], f = [], p = 10;
-		if (c && !["sea", "ocean"].includes(gc(c))) continue;
+		if (c && !["sea", "ocean"].includes(_c(c))) continue;
 		if (c && (p += 8, d.push("phương thức biển")), s) {
 			if (e.loadModel && e.loadModel !== s) continue;
 			e.loadModel === s ? (p += 16, d.push(s === "FCL" ? "đúng FCL" : "đúng LCL")) : f.push("giá đầu vào chưa ghi rõ FCL/LCL");
@@ -14917,14 +14981,14 @@ function Nc(e, t, n, r) {
 				p += 24, d.push("đúng container");
 			} else f.push("giá đầu vào chưa ghi loại container");
 		}
-		let m = Ac(e.origin, e.originZones, i, n, "POL/nơi đi"), h = Ac(e.destination, e.destinationZones, a, n, "POD/nơi đến");
+		let m = jc(e.origin, e.originZones, i, n, "POL/nơi đi"), h = jc(e.destination, e.destinationZones, a, n, "POD/nơi đến");
 		for (let e of [m, h]) p += e.score, e.reason && d.push(e.reason), e.difference && f.push(e.difference);
 		t.incoterm && f.push("giá carrier không ghi Incoterm");
-		let g = e.sourceDate || u.received_at, _ = Ec(g, r), v = Dc(_);
+		let g = e.sourceDate || u.received_at, _ = Dc(g, r), v = Oc(_);
 		p += v.score, v.reason && d.push(v.reason);
 		let y = !1;
 		if (e.validUntil) {
-			let t = yc(e.validUntil);
+			let t = bc(e.validUntil);
 			t && t < r ? (y = !0, p -= 25, f.push(`đã hết hiệu lực ${e.validUntil}`)) : t && d.push("còn hiệu lực theo nguồn");
 		}
 		if (e.validUntil || f.push("chưa rõ hiệu lực — cần xác nhận"), (u.status || "").toUpperCase() === "SUPERSEDED" && f.push("snapshot đã được thay thế, không phải giá hiện hành"), (u.status || "").toUpperCase() === "EXPIRED" && (y = !0, p -= 25, f.push("snapshot đã đánh dấu hết hạn")), p <= 0 || d.length === 0) continue;
@@ -14957,7 +15021,7 @@ function Nc(e, t, n, r) {
 			customer: "",
 			supplier: u.supplier || e.carrier,
 			createdAt: g,
-			period: vc(g),
+			period: yc(g),
 			source: "INPUT_RATE",
 			sourceLabel: "GIÁ ĐẦU VÀO",
 			incoterm: "",
@@ -14978,7 +15042,7 @@ function Nc(e, t, n, r) {
 	}
 	return l;
 }
-function Pc(e, t, n = [], r = []) {
+function Fc(e, t, n = [], r = []) {
 	if ([
 		t.incoterm,
 		t.origin,
@@ -14993,22 +15057,22 @@ function Pc(e, t, n = [], r = []) {
 		t.loadModel,
 		t.equipment
 	].filter((e) => e !== "" && e != null).length === 0) return [];
-	let i = Tc(t), a = e.map((e) => jc(e, t, r, i)).filter((e) => e !== null);
-	return a.push(...Nc(n, t, r, i)), a.sort((e, t) => t.score - e.score || yc(t.createdAt) - yc(e.createdAt) || e.referenceId.localeCompare(t.referenceId));
+	let i = Ec(t), a = e.map((e) => Mc(e, t, r, i)).filter((e) => e !== null);
+	return a.push(...Pc(n, t, r, i)), a.sort((e, t) => t.score - e.score || bc(t.createdAt) - bc(e.createdAt) || e.referenceId.localeCompare(t.referenceId));
 }
 //#endregion
 //#region src/components/GetFlyImport.tsx
-var Fc = "SHIPMENT_ONLY", Ic = "SHIPMENT_AND_FINANCE", Lc = 10485760;
-function Rc(e) {
+var Ic = "SHIPMENT_ONLY", Lc = "SHIPMENT_AND_FINANCE", Rc = 10485760;
+function zc(e) {
 	return `${e}-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
 }
-function zc(e) {
+function Bc(e) {
 	return e === "CREATED" ? "CREATED" : e === "SKIPPED_ALREADY_EXISTS" ? "SKIPPED_ALREADY_EXISTS" : e === "REFUSED_VALIDATION" ? "REFUSED_VALIDATION" : "FAILED_WRITE";
 }
-function Bc(e) {
+function Vc(e) {
 	return !e.existing;
 }
-function Vc() {
+function Hc() {
 	let { dispatch: e, toast: t } = Wn(), n = (0, _.useSyncExternalStore)(C, S, S), r = n?.getfly ?? {
 		status: "EMPTY",
 		previewId: "",
@@ -15020,7 +15084,7 @@ function Vc() {
 			profit: null
 		},
 		error: ""
-	}, i = n?.lastWrites ?? [], a = (0, _.useRef)(null), [o, s] = (0, _.useState)(""), [c, l] = (0, _.useState)(""), [u, d] = (0, _.useState)(Fc), [f, p] = (0, _.useState)({}), [m, h] = (0, _.useState)(""), [g, v] = (0, _.useState)(""), [y, b] = (0, _.useState)([]), [x, w] = (0, _.useState)("");
+	}, i = n?.lastWrites ?? [], a = (0, _.useRef)(null), [o, s] = (0, _.useState)(""), [c, l] = (0, _.useState)(""), [u, d] = (0, _.useState)(Ic), [f, p] = (0, _.useState)({}), [m, h] = (0, _.useState)(""), [g, v] = (0, _.useState)(""), [y, b] = (0, _.useState)([]), [x, w] = (0, _.useState)("");
 	(0, _.useEffect)(() => {
 		if (!o) return;
 		let e = i.find((e) => e.event === "getfly_preview" && e.requestId === o);
@@ -15039,8 +15103,8 @@ function Vc() {
 	]), (0, _.useEffect)(() => {
 		r.previewId && r.previewId !== x && (w(r.previewId), p({}), b([]), h(""), v(""));
 	}, [r.previewId, x]);
-	let T = (0, _.useMemo)(() => r.orders.filter(Bc), [r.orders]), E = (0, _.useMemo)(() => T.reduce((e, t) => e + t.serviceLines.length, 0), [T]), D = (0, _.useMemo)(() => {
-		if (u !== Ic) return [];
+	let T = (0, _.useMemo)(() => r.orders.filter(Vc), [r.orders]), E = (0, _.useMemo)(() => T.reduce((e, t) => e + t.serviceLines.length, 0), [T]), D = (0, _.useMemo)(() => {
+		if (u !== Lc) return [];
 		let e = [];
 		for (let t of T) for (let n of t.serviceLines) {
 			let r = f[n.lineId] ?? "";
@@ -15058,11 +15122,11 @@ function Vc() {
 			v("Chỉ nhận file DSDH.xlsx / .xlsx.");
 			return;
 		}
-		if (n.size > Lc) {
-			v(`File DSDH vượt giới hạn ${Lc / 1048576} MB.`);
+		if (n.size > Rc) {
+			v(`File DSDH vượt giới hạn ${Rc / 1048576} MB.`);
 			return;
 		}
-		let r = Rc("GF-PREVIEW");
+		let r = zc("GF-PREVIEW");
 		s(r);
 		let i = new FileReader();
 		i.onerror = () => {
@@ -15091,16 +15155,16 @@ function Vc() {
 			h("Chưa có preview hợp lệ. Hãy chọn DSDH.xlsx trước.");
 			return;
 		}
-		if (u === Ic && D.length > 0) {
+		if (u === Lc && D.length > 0) {
 			h("Không thể xác nhận: mỗi dòng dịch vụ của lô mới phải có Giá vốn, Giá bán, Số lượng và VAT. VAT trống không phải là 0.");
 			return;
 		}
-		let t = Rc("GF-COMMIT"), n = {
+		let t = zc("GF-COMMIT"), n = {
 			previewId: r.previewId,
 			mode: u,
 			requestId: t
 		};
-		if (u === Ic && (n.vatByLineId = f), !e("getfly_import", n)) {
+		if (u === Lc && (n.vatByLineId = f), !e("getfly_import", n)) {
 			v("Không gửi được xác nhận nhập GetFly tới backend.");
 			return;
 		}
@@ -15295,7 +15359,7 @@ function Vc() {
 									/* @__PURE__ */ (0, W.jsx)("th", { children: "Giá vốn" }),
 									/* @__PURE__ */ (0, W.jsx)("th", { children: "Giá bán" }),
 									/* @__PURE__ */ (0, W.jsx)("th", { children: "Thành tiền" }),
-									u === Ic && /* @__PURE__ */ (0, W.jsx)("th", { children: "VAT % *" })
+									u === Lc && /* @__PURE__ */ (0, W.jsx)("th", { children: "VAT % *" })
 								] }) }), /* @__PURE__ */ (0, W.jsx)("tbody", { children: e.serviceLines.map((t) => /* @__PURE__ */ (0, W.jsxs)("tr", {
 									"data-testid": `getfly-line-${t.lineId}`,
 									children: [
@@ -15312,7 +15376,7 @@ function Vc() {
 										/* @__PURE__ */ (0, W.jsx)("td", { children: ns(t.cost) }),
 										/* @__PURE__ */ (0, W.jsx)("td", { children: ns(t.price) }),
 										/* @__PURE__ */ (0, W.jsx)("td", { children: ns(t.revenue) }),
-										u === Ic && /* @__PURE__ */ (0, W.jsx)("td", { children: Bc(e) ? /* @__PURE__ */ (0, W.jsx)("input", {
+										u === Lc && /* @__PURE__ */ (0, W.jsx)("td", { children: Vc(e) ? /* @__PURE__ */ (0, W.jsx)("input", {
 											value: f[t.lineId] ?? "",
 											onChange: (e) => A(t.lineId, e.target.value),
 											inputMode: "decimal",
@@ -15343,10 +15407,10 @@ function Vc() {
 							children: [/* @__PURE__ */ (0, W.jsx)("input", {
 								type: "radio",
 								name: "getfly-mode",
-								value: Fc,
-								checked: u === Fc,
+								value: Ic,
+								checked: u === Ic,
 								onChange: () => {
-									d(Fc), h("");
+									d(Ic), h("");
 								},
 								"data-testid": "getfly-mode-shipment-only"
 							}), /* @__PURE__ */ (0, W.jsxs)("span", { children: [/* @__PURE__ */ (0, W.jsx)("b", { children: "CHỈ TẠO LÔ TỪ GETFLY" }), /* @__PURE__ */ (0, W.jsx)("span", {
@@ -15359,10 +15423,10 @@ function Vc() {
 							children: [/* @__PURE__ */ (0, W.jsx)("input", {
 								type: "radio",
 								name: "getfly-mode",
-								value: Ic,
-								checked: u === Ic,
+								value: Lc,
+								checked: u === Lc,
 								onChange: () => {
-									d(Ic), h("");
+									d(Lc), h("");
 								},
 								"data-testid": "getfly-mode-finance"
 							}), /* @__PURE__ */ (0, W.jsxs)("span", { children: [/* @__PURE__ */ (0, W.jsx)("b", { children: "TẠO LÔ + GHI DỊCH VỤ THỰC TẾ" }), /* @__PURE__ */ (0, W.jsx)("span", {
@@ -15370,7 +15434,7 @@ function Vc() {
 								children: "Mỗi lô mới phải có Giá vốn, Giá bán và VAT do operator nhập. VAT trống bị từ chối; VAT 0 là một câu trả lời hợp lệ."
 							})] })]
 						}),
-						u === Ic && /* @__PURE__ */ (0, W.jsxs)("p", {
+						u === Lc && /* @__PURE__ */ (0, W.jsxs)("p", {
 							className: "text-[13px] text-indigo-900",
 							children: [
 								"Đang chờ VAT cho ",
@@ -15380,7 +15444,7 @@ function Vc() {
 								" lô mới. Các lô đã có sẽ được bỏ qua."
 							]
 						}),
-						D.length > 0 && u === Ic && /* @__PURE__ */ (0, W.jsxs)("div", {
+						D.length > 0 && u === Lc && /* @__PURE__ */ (0, W.jsxs)("div", {
 							className: "rounded-lg border border-amber-300 bg-amber-50 p-2.5 text-[13px] text-amber-900",
 							"data-testid": "getfly-finance-warning",
 							children: ["VAT / tiền bắt buộc chưa đủ — XÁC NHẬN sẽ bị chặn cho đến khi operator nhập đủ. Ví dụ: ", D[0]]
@@ -15401,7 +15465,7 @@ function Vc() {
 											children: String(e.orderId || "UNKNOWN")
 										}),
 										" · ",
-										zc(n),
+										Bc(n),
 										" ",
 										e.message ? `· ${String(e.message)}` : "",
 										" ",
@@ -15427,7 +15491,7 @@ function Vc() {
 								}) : /* @__PURE__ */ (0, W.jsx)(Jr, { size: 17 }), c ? "ĐANG CHỜ BACKEND…" : "XÁC NHẬN NHẬP"]
 							}), /* @__PURE__ */ (0, W.jsx)($, {
 								onClick: () => {
-									d(Fc), b([]), h(""), v("");
+									d(Ic), b([]), h(""), v("");
 								},
 								children: "ĐỔI VỀ CHỈ TẠO LÔ"
 							})]
@@ -15440,11 +15504,11 @@ function Vc() {
 }
 //#endregion
 //#region src/pages/Shipments.tsx
-function Hc(e) {
+function Uc(e) {
 	let t = !!e.importInfo?.delivered || !!e.importInfo?.actualDelivery, n = e.finance?.outstanding;
 	return n == null || Number.isNaN(Number(n)) ? !1 : t && Number(n) === 0;
 }
-var Uc = [
+var Wc = [
 	{
 		id: "thang-nay",
 		label: "Tháng này"
@@ -15462,7 +15526,7 @@ var Uc = [
 		label: "Thời gian khác"
 	}
 ];
-function Wc(e, t, n, r) {
+function Gc(e, t, n, r) {
 	let i = t.getFullYear(), a = t.getMonth();
 	if (e === "thang-nay") return [Date.UTC(i, a, 1), Date.UTC(i, a + 1, 1)];
 	if (e === "thang-truoc") return [Date.UTC(i, a - 1, 1), Date.UTC(i, a, 1)];
@@ -15473,30 +15537,30 @@ function Wc(e, t, n, r) {
 	}
 	return null;
 }
-function Gc() {
-	let { shipments: e, attention: t } = Wn(), [n, r] = nc("q"), [i, a] = nc("status"), o = i || "ALL", s = (e) => a(e === "ALL" ? "" : e), [c, l] = (0, _.useState)(() => i !== ""), [u, d] = nc("period"), f = Uc.some((e) => e.id === u) || u === "tat-ca" ? u : "thang-nay", p = (e) => d(e === "thang-nay" ? "" : e), [m, h] = nc("from"), [g, v] = nc("to"), [y, b] = nc("archive"), x = [
+function Kc() {
+	let { shipments: e, attention: t } = Wn(), n = (0, _.useSyncExternalStore)(C, S, S)?.user?.canViewFinance !== !1 && e.every((e) => e.finance?.canView !== !1), [r, i] = nc("q"), [a, o] = nc("status"), s = a || "ALL", c = (e) => o(e === "ALL" ? "" : e), [l, u] = (0, _.useState)(() => a !== ""), [d, f] = nc("period"), p = Wc.some((e) => e.id === d) || d === "tat-ca" ? d : "thang-nay", m = (e) => f(e === "thang-nay" ? "" : e), [h, g] = nc("from"), [v, y] = nc("to"), [b, x] = nc("archive"), w = [
 		"dang-lam",
 		"hoan-tat",
 		"tat-ca"
-	].includes(y) ? y : "dang-lam", S = (e) => b(e === "dang-lam" ? "" : e), C = (0, _.useMemo)(() => Wc(f, /* @__PURE__ */ new Date(), m, g), [
-		f,
-		m,
-		g
-	]), w = (0, _.useMemo)(() => e.filter((e) => {
-		if (o !== "ALL" && e.status !== o || n && !(e.id + e.customer + e.contract + e.route + e.sale + e.support).toLowerCase().includes(n.toLowerCase())) return !1;
-		if (C) {
-			let t = yc(e.createdAt);
-			if (!t || !(t >= C[0] && t < C[1])) return !1;
+	].includes(b) ? b : "dang-lam", T = (e) => x(e === "dang-lam" ? "" : e), E = (0, _.useMemo)(() => Gc(p, /* @__PURE__ */ new Date(), h, v), [
+		p,
+		h,
+		v
+	]), D = (0, _.useMemo)(() => e.filter((e) => {
+		if (s !== "ALL" && e.status !== s || r && !(e.id + e.customer + e.contract + e.route + e.sale + e.support).toLowerCase().includes(r.toLowerCase())) return !1;
+		if (E) {
+			let t = bc(e.createdAt);
+			if (!t || !(t >= E[0] && t < E[1])) return !1;
 		}
-		let t = Hc(e);
-		return !(x === "dang-lam" && t || x === "hoan-tat" && !t);
+		let t = Uc(e);
+		return !(w === "dang-lam" && t || w === "hoan-tat" && !t);
 	}), [
 		e,
-		n,
-		o,
-		C,
-		x
-	]), T = ["ALL", ...Array.from(new Set(e.map((e) => e.status)))], E = (0, _.useMemo)(() => {
+		r,
+		s,
+		E,
+		w
+	]), O = ["ALL", ...Array.from(new Set(e.map((e) => e.status)))], k = (0, _.useMemo)(() => {
 		let e = {
 			BLOCKING: 0,
 			OVERDUE: 1,
@@ -15511,8 +15575,8 @@ function Gc() {
 			});
 		}
 		return n;
-	}, [t]), D = (e) => {
-		let t = E.get(e.id), n = t?.band === "BLOCKING" || t?.band === "OVERDUE", r = t?.band === "DUE_SOON";
+	}, [t]), A = (e) => {
+		let t = k.get(e.id), n = t?.band === "BLOCKING" || t?.band === "OVERDUE", r = t?.band === "DUE_SOON";
 		return /* @__PURE__ */ (0, W.jsxs)("div", {
 			className: q("rounded-lg px-2 py-1.5 -mx-2 -my-1.5", n && "bg-red-50", r && "bg-amber-50"),
 			children: [t && /* @__PURE__ */ (0, W.jsxs)("span", {
@@ -15530,7 +15594,7 @@ function Gc() {
 	return /* @__PURE__ */ (0, W.jsxs)("div", {
 		className: "space-y-4 max-w-[1300px]",
 		children: [
-			/* @__PURE__ */ (0, W.jsx)(Vc, {}),
+			/* @__PURE__ */ (0, W.jsx)(Hc, {}),
 			/* @__PURE__ */ (0, W.jsxs)("div", {
 				className: "rounded-2xl bg-white border border-slate-200 p-4 md:p-5",
 				children: [
@@ -15551,14 +15615,14 @@ function Gc() {
 								size: 19,
 								className: "ml-3.5 text-slate-400 shrink-0"
 							}), /* @__PURE__ */ (0, W.jsx)("input", {
-								value: n,
-								onChange: (e) => r(e.target.value),
+								value: r,
+								onChange: (e) => i(e.target.value),
 								placeholder: "Nhập mã lô (LO-0306), khách (An Phát), hợp đồng…",
 								className: "w-full bg-transparent px-3 py-3 text-[15px] outline-none"
 							})]
 						}), /* @__PURE__ */ (0, W.jsxs)("button", {
-							onClick: () => l((e) => !e),
-							className: q("touch-target shrink-0 inline-flex items-center gap-1.5 rounded-xl border-2 px-4 min-h-[52px] text-[14.5px] font-bold", c ? "border-[#0f2a4a] bg-[#0f2a4a] text-white" : "border-slate-200 bg-white"),
+							onClick: () => u((e) => !e),
+							className: q("touch-target shrink-0 inline-flex items-center gap-1.5 rounded-xl border-2 px-4 min-h-[52px] text-[14.5px] font-bold", l ? "border-[#0f2a4a] bg-[#0f2a4a] text-white" : "border-slate-200 bg-white"),
 							children: [
 								/* @__PURE__ */ (0, W.jsx)(go, { size: 18 }),
 								" ",
@@ -15572,26 +15636,26 @@ function Gc() {
 					/* @__PURE__ */ (0, W.jsx)("div", {
 						className: "flex flex-wrap gap-2 mt-2.5",
 						"data-testid": "shipment-period-controls",
-						children: [...Uc, {
+						children: [...Wc, {
 							id: "tat-ca",
 							label: "Tất cả thời gian"
 						}].map((e) => /* @__PURE__ */ (0, W.jsx)("button", {
-							onClick: () => p(e.id),
-							"aria-pressed": f === e.id,
+							onClick: () => m(e.id),
+							"aria-pressed": p === e.id,
 							"data-testid": `shipment-period-${e.id}`,
-							className: q("touch-target shrink-0 rounded-full border-2 px-3.5 min-h-[44px] text-[13.5px] font-bold whitespace-nowrap", f === e.id ? "border-[#0f2a4a] bg-[#0f2a4a] text-white" : "border-slate-200 bg-white text-slate-600"),
+							className: q("touch-target shrink-0 rounded-full border-2 px-3.5 min-h-[44px] text-[13.5px] font-bold whitespace-nowrap", p === e.id ? "border-[#0f2a4a] bg-[#0f2a4a] text-white" : "border-slate-200 bg-white text-slate-600"),
 							children: e.label
 						}, e.id))
 					}),
-					f === "khac" && /* @__PURE__ */ (0, W.jsxs)("div", {
+					p === "khac" && /* @__PURE__ */ (0, W.jsxs)("div", {
 						className: "flex flex-wrap items-end gap-2 mt-2",
 						"data-testid": "shipment-period-custom",
 						children: [/* @__PURE__ */ (0, W.jsxs)("label", {
 							className: "text-[13px] font-semibold text-slate-600",
 							children: ["Từ ngày", /* @__PURE__ */ (0, W.jsx)("input", {
 								type: "date",
-								value: m,
-								onChange: (e) => h(e.target.value),
+								value: h,
+								onChange: (e) => g(e.target.value),
 								"data-testid": "shipment-date-from",
 								className: "block mt-1 rounded-xl border-2 border-slate-200 bg-white px-3 min-h-[44px] text-[14px]"
 							})]
@@ -15599,8 +15663,8 @@ function Gc() {
 							className: "text-[13px] font-semibold text-slate-600",
 							children: ["Đến ngày", /* @__PURE__ */ (0, W.jsx)("input", {
 								type: "date",
-								value: g,
-								onChange: (e) => v(e.target.value),
+								value: v,
+								onChange: (e) => y(e.target.value),
 								"data-testid": "shipment-date-to",
 								className: "block mt-1 rounded-xl border-2 border-slate-200 bg-white px-3 min-h-[44px] text-[14px]"
 							})]
@@ -15625,18 +15689,18 @@ function Gc() {
 								label: "Tất cả"
 							}
 						].map((e) => /* @__PURE__ */ (0, W.jsx)("button", {
-							onClick: () => S(e.id),
-							"aria-pressed": x === e.id,
+							onClick: () => T(e.id),
+							"aria-pressed": w === e.id,
 							"data-testid": `shipment-archive-${e.id}`,
-							className: q("touch-target shrink-0 rounded-full border-2 px-3.5 min-h-[44px] text-[13.5px] font-bold whitespace-nowrap", x === e.id ? "border-emerald-600 bg-emerald-600 text-white" : "border-slate-200 bg-white text-slate-600"),
+							className: q("touch-target shrink-0 rounded-full border-2 px-3.5 min-h-[44px] text-[13.5px] font-bold whitespace-nowrap", w === e.id ? "border-emerald-600 bg-emerald-600 text-white" : "border-slate-200 bg-white text-slate-600"),
 							children: e.label
 						}, e.id))
 					}),
-					c && /* @__PURE__ */ (0, W.jsx)("div", {
+					l && /* @__PURE__ */ (0, W.jsx)("div", {
 						className: "flex gap-2 mt-2.5 overflow-x-auto no-scrollbar pb-1",
-						children: T.map((e) => /* @__PURE__ */ (0, W.jsx)("button", {
-							onClick: () => s(e),
-							className: q("touch-target shrink-0 rounded-full border-2 px-4 min-h-[44px] text-[14px] font-bold whitespace-nowrap", o === e ? "border-[#0f2a4a] bg-[#0f2a4a] text-white" : "border-slate-200 bg-white text-slate-600"),
+						children: O.map((e) => /* @__PURE__ */ (0, W.jsx)("button", {
+							onClick: () => c(e),
+							className: q("touch-target shrink-0 rounded-full border-2 px-4 min-h-[44px] text-[14px] font-bold whitespace-nowrap", s === e ? "border-[#0f2a4a] bg-[#0f2a4a] text-white" : "border-slate-200 bg-white text-slate-600"),
 							children: e === "ALL" ? "Tất cả" : e
 						}, e))
 					}),
@@ -15647,11 +15711,11 @@ function Gc() {
 							"Tìm thấy ",
 							/* @__PURE__ */ (0, W.jsxs)("b", {
 								className: "text-[#0f2a4a]",
-								children: [w.length, " lô"]
+								children: [D.length, " lô"]
 							}),
-							n ? /* @__PURE__ */ (0, W.jsxs)(W.Fragment, { children: [
+							r ? /* @__PURE__ */ (0, W.jsxs)(W.Fragment, { children: [
 								" cho “",
-								n,
+								r,
 								"”"
 							] }) : null,
 							" · Mỗi lô: hiện trạng → Incoterm · phương thức · loại hàng · ETD/ETA → việc tiếp theo → nút xử lý."
@@ -15664,85 +15728,111 @@ function Gc() {
 				children: /* @__PURE__ */ (0, W.jsx)("div", {
 					className: "overflow-x-auto",
 					children: /* @__PURE__ */ (0, W.jsxs)("table", {
-						className: "tbl w-full text-[14px] min-w-[1000px]",
+						className: "tbl w-full text-[13.5px] [&_th]:px-2.5 [&_td]:px-2.5",
 						children: [/* @__PURE__ */ (0, W.jsx)("thead", { children: /* @__PURE__ */ (0, W.jsxs)("tr", { children: [
 							/* @__PURE__ */ (0, W.jsx)("th", { children: "Lô · Khách hàng · Tuyến" }),
 							/* @__PURE__ */ (0, W.jsx)("th", { children: "Nhận dạng nhanh" }),
+							n && /* @__PURE__ */ (0, W.jsx)("th", {
+								"data-testid": "shipments-finance-header",
+								children: "Công nợ dịch vụ"
+							}),
 							/* @__PURE__ */ (0, W.jsx)("th", { children: "Việc tiếp theo" }),
 							/* @__PURE__ */ (0, W.jsx)("th", { children: "Trách nhiệm" }),
 							/* @__PURE__ */ (0, W.jsx)("th", { children: "Hành động" })
-						] }) }), /* @__PURE__ */ (0, W.jsx)("tbody", { children: w.map((e) => /* @__PURE__ */ (0, W.jsxs)("tr", {
+						] }) }), /* @__PURE__ */ (0, W.jsx)("tbody", { children: D.map((e) => /* @__PURE__ */ (0, W.jsxs)("tr", {
 							"data-testid": "shipment-row",
 							"data-shipment-id": e.id,
 							className: "hover:bg-slate-50 align-top",
 							children: [
-								/* @__PURE__ */ (0, W.jsxs)("td", {
-									className: "max-w-[300px]",
-									children: [
-										/* @__PURE__ */ (0, W.jsxs)("div", {
-											className: "flex flex-wrap items-center gap-1.5",
-											children: [/* @__PURE__ */ (0, W.jsx)(U, {
-												to: Gn(e.id),
-												className: "font-extrabold text-[#1e5aa8] hover:underline text-[15px]",
-												children: e.id
-											}), /* @__PURE__ */ (0, W.jsx)(Y, {
-												tone: e.statusTone,
-												size: "sm",
-												children: e.status
-											})]
-										}),
-										/* @__PURE__ */ (0, W.jsx)("span", {
-											className: "block text-[14px] font-semibold text-slate-800 mt-1 max-w-[280px]",
-											children: e.customer
-										}),
-										/* @__PURE__ */ (0, W.jsx)("span", {
-											className: "block text-[12.5px] text-slate-500 mt-0.5",
-											children: e.route
-										}),
-										/* @__PURE__ */ (0, W.jsxs)("span", {
-											className: "block text-[12px] text-slate-400 mt-0.5",
-											children: [
-												e.contract,
-												" · cập nhật ",
-												e.updated
-											]
-										})
-									]
-								}),
 								/* @__PURE__ */ (0, W.jsx)("td", {
-									className: "max-w-[320px]",
-									children: /* @__PURE__ */ (0, W.jsx)(mc, {
-										shipment: e,
-										dense: !0
+									className: "max-w-[205px]",
+									children: /* @__PURE__ */ (0, W.jsxs)("div", {
+										className: "max-w-[195px]",
+										children: [
+											/* @__PURE__ */ (0, W.jsxs)("div", {
+												className: "flex flex-wrap items-center gap-1.5",
+												children: [/* @__PURE__ */ (0, W.jsx)(U, {
+													to: Gn(e.id),
+													className: "font-extrabold text-[#1e5aa8] hover:underline text-[15px]",
+													children: e.id
+												}), /* @__PURE__ */ (0, W.jsx)(Y, {
+													tone: e.statusTone,
+													size: "sm",
+													children: e.status
+												})]
+											}),
+											/* @__PURE__ */ (0, W.jsx)("span", {
+												className: "block text-[13.5px] font-semibold text-slate-800 mt-1",
+												children: e.customer
+											}),
+											/* @__PURE__ */ (0, W.jsx)("span", {
+												className: "block text-[12px] text-slate-500 mt-0.5",
+												children: e.route
+											}),
+											/* @__PURE__ */ (0, W.jsxs)("span", {
+												className: "block text-[11.5px] text-slate-400 mt-0.5",
+												children: [
+													e.contract,
+													" · cập nhật ",
+													e.updated
+												]
+											})
+										]
 									})
 								}),
 								/* @__PURE__ */ (0, W.jsx)("td", {
-									className: "max-w-[240px]",
-									"data-attention-band": E.get(e.id)?.band || void 0,
-									children: D(e)
+									className: "max-w-[195px]",
+									children: /* @__PURE__ */ (0, W.jsx)("div", {
+										className: "max-w-[185px]",
+										children: /* @__PURE__ */ (0, W.jsx)(mc, {
+											shipment: e,
+											dense: !0
+										})
+									})
 								}),
-								/* @__PURE__ */ (0, W.jsxs)("td", {
-									className: "text-[13px] whitespace-nowrap",
-									children: [/* @__PURE__ */ (0, W.jsxs)("span", {
-										className: "block",
-										children: ["Phụ trách: ", /* @__PURE__ */ (0, W.jsx)("b", { children: e.sale })]
-									}), /* @__PURE__ */ (0, W.jsxs)("span", {
-										className: "block whitespace-nowrap text-slate-500",
-										children: ["Cập nhật bởi: ", /* @__PURE__ */ (0, W.jsx)("b", { children: e.support || "—" })]
-									})]
+								n && /* @__PURE__ */ (0, W.jsx)("td", {
+									className: "w-[188px]",
+									children: /* @__PURE__ */ (0, W.jsx)(hc, {
+										shipment: e,
+										variant: "desktop"
+									})
 								}),
-								/* @__PURE__ */ (0, W.jsx)("td", { children: /* @__PURE__ */ (0, W.jsxs)("div", {
-									className: "flex gap-1.5",
-									children: [/* @__PURE__ */ (0, W.jsx)(U, {
-										to: e.nextRoute,
-										className: "btn-press touch-target inline-flex items-center rounded-lg bg-[#0f2a4a] text-white text-[13px] font-bold px-3.5 min-h-[44px]",
-										children: "XỬ LÝ"
-									}), /* @__PURE__ */ (0, W.jsxs)(U, {
-										to: Gn(e.id),
-										className: "btn-press touch-target inline-flex items-center gap-1 rounded-lg border-2 border-slate-200 text-[13px] font-bold px-3 min-h-[44px]",
-										children: [/* @__PURE__ */ (0, W.jsx)(K, { size: 15 }), " 360°"]
-									})]
-								}) })
+								/* @__PURE__ */ (0, W.jsx)("td", {
+									className: "max-w-[190px]",
+									"data-attention-band": k.get(e.id)?.band || void 0,
+									children: /* @__PURE__ */ (0, W.jsx)("div", {
+										className: "max-w-[180px]",
+										children: A(e)
+									})
+								}),
+								/* @__PURE__ */ (0, W.jsx)("td", {
+									className: "text-[12px] leading-snug",
+									children: /* @__PURE__ */ (0, W.jsxs)("div", {
+										className: "max-w-[138px]",
+										children: [/* @__PURE__ */ (0, W.jsxs)("span", {
+											className: "block",
+											children: ["Phụ trách: ", /* @__PURE__ */ (0, W.jsx)("b", { children: e.sale })]
+										}), /* @__PURE__ */ (0, W.jsxs)("span", {
+											className: "block text-slate-500 mt-0.5",
+											children: ["Cập nhật bởi: ", /* @__PURE__ */ (0, W.jsx)("b", { children: e.support || "—" })]
+										})]
+									})
+								}),
+								/* @__PURE__ */ (0, W.jsx)("td", {
+									className: "whitespace-nowrap",
+									children: /* @__PURE__ */ (0, W.jsxs)("div", {
+										className: "flex gap-1",
+										children: [/* @__PURE__ */ (0, W.jsx)(U, {
+											to: e.nextRoute,
+											className: "btn-press touch-target inline-flex items-center rounded-lg bg-[#0f2a4a] text-white text-[12.5px] font-bold px-2.5 min-h-[44px]",
+											children: "XỬ LÝ"
+										}), /* @__PURE__ */ (0, W.jsxs)(U, {
+											to: Gn(e.id),
+											className: "btn-press touch-target inline-flex items-center gap-1 rounded-lg border-2 border-slate-200 text-[12.5px] font-bold px-2 min-h-[44px]",
+											children: [/* @__PURE__ */ (0, W.jsx)(K, { size: 14 }), " 360°"]
+										})]
+									})
+								})
 							]
 						}, e.id)) })]
 					})
@@ -15750,7 +15840,7 @@ function Gc() {
 			}),
 			/* @__PURE__ */ (0, W.jsxs)("div", {
 				className: "md:hidden space-y-3",
-				children: [w.map((e) => /* @__PURE__ */ (0, W.jsxs)("div", {
+				children: [D.map((e) => /* @__PURE__ */ (0, W.jsxs)("div", {
 					"data-testid": "shipment-mobile-card",
 					"data-shipment-id": e.id,
 					className: "rounded-2xl bg-white border border-slate-200 overflow-hidden",
@@ -15787,15 +15877,19 @@ function Gc() {
 									dense: !0
 								})
 							}),
+							n && /* @__PURE__ */ (0, W.jsx)(hc, {
+								shipment: e,
+								variant: "mobile"
+							}),
 							/* @__PURE__ */ (0, W.jsxs)("div", {
 								className: "mt-2.5 rounded-xl border border-slate-200 bg-slate-50 p-3",
-								"data-attention-band": E.get(e.id)?.band || void 0,
+								"data-attention-band": k.get(e.id)?.band || void 0,
 								children: [/* @__PURE__ */ (0, W.jsx)("p", {
 									className: "text-[11.5px] font-bold uppercase tracking-wide text-slate-500",
 									children: "Việc tiếp theo"
 								}), /* @__PURE__ */ (0, W.jsx)("div", {
 									className: "mt-1",
-									children: D(e)
+									children: A(e)
 								})]
 							}),
 							/* @__PURE__ */ (0, W.jsxs)("p", {
@@ -15825,7 +15919,7 @@ function Gc() {
 							children: [/* @__PURE__ */ (0, W.jsx)(K, { size: 17 }), " XEM 360°"]
 						})]
 					})]
-				}, e.id)), w.length === 0 && /* @__PURE__ */ (0, W.jsxs)("div", {
+				}, e.id)), D.length === 0 && /* @__PURE__ */ (0, W.jsxs)("div", {
 					className: "rounded-2xl bg-white border p-8 text-center",
 					children: [
 						/* @__PURE__ */ (0, W.jsx)("p", {
@@ -15849,13 +15943,13 @@ function Gc() {
 }
 //#endregion
 //#region src/components/ShipmentOperations.tsx
-var Kc = [
+var qc = [
 	"Truck",
 	"Sea",
 	"Air",
 	"Rail"
-], qc = (e) => `${e}-${typeof crypto < "u" && typeof crypto.randomUUID == "function" ? crypto.randomUUID() : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`}`, Jc = (e, t = "Truck") => ({
-	id: qc("leg"),
+], Jc = (e) => `${e}-${typeof crypto < "u" && typeof crypto.randomUUID == "function" ? crypto.randomUUID() : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`}`, Yc = (e, t = "Truck") => ({
+	id: Jc("leg"),
 	sequence: e,
 	mode: t,
 	origin: "",
@@ -15874,15 +15968,15 @@ var Kc = [
 	hawb: "",
 	flightNo: "",
 	units: []
-}), Yc = (e) => ({
-	id: qc(e),
+}), Xc = (e) => ({
+	id: Jc(e),
 	kind: e,
 	number: "",
 	typeSize: "",
 	sealNo: "",
 	driverName: "",
 	driverPhone: ""
-}), Xc = (e) => ({
+}), Zc = (e) => ({
 	goodsDescription: e?.goodsDescription ?? "",
 	packageCount: e?.packs == null ? "" : String(e.packs),
 	packageType: e?.type ?? "",
@@ -15890,19 +15984,19 @@ var Kc = [
 	cbm: e?.cbm == null ? "" : String(e.cbm),
 	dimensions: e?.dims ?? "",
 	note: e?.note ?? ""
-}), Zc = (e) => e === "Sea" ? /* @__PURE__ */ (0, W.jsx)(mo, { size: 18 }) : e === "Air" ? /* @__PURE__ */ (0, W.jsx)(Na, { size: 18 }) : e === "Rail" ? /* @__PURE__ */ (0, W.jsx)(wo, { size: 18 }) : /* @__PURE__ */ (0, W.jsx)(Ao, { size: 18 });
-function Qc({ shipment: e, dispatch: t, toast: n }) {
+}), Qc = (e) => e === "Sea" ? /* @__PURE__ */ (0, W.jsx)(mo, { size: 18 }) : e === "Air" ? /* @__PURE__ */ (0, W.jsx)(Na, { size: 18 }) : e === "Rail" ? /* @__PURE__ */ (0, W.jsx)(wo, { size: 18 }) : /* @__PURE__ */ (0, W.jsx)(Ao, { size: 18 });
+function $c({ shipment: e, dispatch: t, toast: n }) {
 	let [r, i] = (0, _.useState)(() => (e.transportLegs ?? []).map((e) => ({
 		...e,
 		units: (e.units ?? []).map((e) => ({ ...e }))
-	}))), [a, o] = (0, _.useState)(() => Xc(e.cargo)), s = JSON.stringify(e.transportLegs ?? []), c = JSON.stringify(Xc(e.cargo));
+	}))), [a, o] = (0, _.useState)(() => Zc(e.cargo)), s = JSON.stringify(e.transportLegs ?? []), c = JSON.stringify(Zc(e.cargo));
 	(0, _.useEffect)(() => {
 		i((e.transportLegs ?? []).map((e) => ({
 			...e,
 			units: (e.units ?? []).map((e) => ({ ...e }))
 		})));
 	}, [e.id, s]), (0, _.useEffect)(() => {
-		o(Xc(e.cargo));
+		o(Zc(e.cargo));
 	}, [e.id, c]);
 	let l = (e, t, n) => {
 		i((r) => r.map((r) => r.id === e ? {
@@ -15936,7 +16030,7 @@ function Qc({ shipment: e, dispatch: t, toast: n }) {
 	}, h = (e, t) => {
 		i((n) => n.map((n) => n.id === e ? {
 			...n,
-			units: [...n.units, Yc(t)]
+			units: [...n.units, Xc(t)]
 		} : n));
 	}, g = (e, t) => {
 		let n = t.number || (t.kind === "truck" ? "xe chưa có biển số" : "container chưa có số");
@@ -16103,7 +16197,7 @@ function Qc({ shipment: e, dispatch: t, toast: n }) {
 						className: "text-[13px] text-slate-500 mt-0.5",
 						children: "Mỗi chặng là một fact riêng; xe lấy hàng và xe giao không bị gộp."
 					})] }), /* @__PURE__ */ (0, W.jsx)("button", {
-						onClick: () => i((e) => [...e, Jc(e.length + 1)]),
+						onClick: () => i((e) => [...e, Yc(e.length + 1)]),
 						className: "btn-press touch-target sm:ml-auto rounded-xl border-2 border-[#1e5aa8] text-[#1e5aa8] font-extrabold px-4 min-h-[46px]",
 						children: "+ THÊM CHẶNG"
 					})]
@@ -16127,7 +16221,7 @@ function Qc({ shipment: e, dispatch: t, toast: n }) {
 							children: [
 								/* @__PURE__ */ (0, W.jsx)("span", {
 									className: "w-9 h-9 rounded-xl bg-[#0f2a4a] text-white grid place-items-center",
-									children: Zc(e.mode)
+									children: Qc(e.mode)
 								}),
 								/* @__PURE__ */ (0, W.jsxs)("span", {
 									className: "font-extrabold text-[#0f2a4a]",
@@ -16185,7 +16279,7 @@ function Qc({ shipment: e, dispatch: t, toast: n }) {
 												value: e.mode,
 												onChange: (t) => d(e, t.target.value),
 												className: Z(),
-												children: Kc.map((e) => /* @__PURE__ */ (0, W.jsx)("option", { children: e }, e))
+												children: qc.map((e) => /* @__PURE__ */ (0, W.jsx)("option", { children: e }, e))
 											})
 										}),
 										/* @__PURE__ */ (0, W.jsx)(X, {
@@ -16498,7 +16592,7 @@ function Qc({ shipment: e, dispatch: t, toast: n }) {
 }
 //#endregion
 //#region src/lib/executionProfileCatalog.ts
-var $c = {
+var el = {
 	versions: [
 		{
 			code: "2020",
@@ -16802,7 +16896,7 @@ var $c = {
 			label: "Không có bảo hiểm"
 		}
 	]
-}, el = {
+}, tl = {
 	mode: "",
 	incoterm: "",
 	incotermVersion: "",
@@ -16816,8 +16910,8 @@ var $c = {
 	insurancePolicyNo: "",
 	insuranceCoverageNote: ""
 };
-function tl(e) {
-	let t = (e.incoterm || "").toUpperCase(), n = new Set(ol("2020")), r = e.incotermVersion || (t && n.has(t) ? "2020" : "");
+function nl(e) {
+	let t = (e.incoterm || "").toUpperCase(), n = new Set(sl("2020")), r = e.incotermVersion || (t && n.has(t) ? "2020" : "");
 	return {
 		mode: e.mode,
 		incoterm: e.incoterm,
@@ -16835,7 +16929,7 @@ function tl(e) {
 		}
 	};
 }
-function nl(e) {
+function rl(e) {
 	return e ? {
 		mode: e.mode || "",
 		incoterm: e.incoterm || "",
@@ -16849,21 +16943,21 @@ function nl(e) {
 		insuranceInsurer: e.insurance?.evidence?.insurerName ?? "",
 		insurancePolicyNo: e.insurance?.evidence?.policyNo ?? "",
 		insuranceCoverageNote: e.insurance?.evidence?.coverageNote ?? ""
-	} : { ...el };
+	} : { ...tl };
 }
-var rl = new Set($c.versions.map((e) => String(e.code))), il = "2020";
-function al(e) {
-	let t = $c.rules[e];
+var il = new Set(el.versions.map((e) => String(e.code))), al = "2020";
+function ol(e) {
+	let t = el.rules[e];
 	return t ? t.map((e) => ({
 		code: e.code,
 		scope: e.scope
 	})) : [];
 }
-function ol(e) {
-	return al(e).map((e) => e.code);
+function sl(e) {
+	return ol(e).map((e) => e.code);
 }
-function sl(e, t) {
-	let n = al(t || "2020").find((t) => t.code === e);
+function cl(e, t) {
+	let n = ol(t || "2020").find((t) => t.code === e);
 	return n ? n.scope === "SEA_ONLY" : [
 		"FAS",
 		"FOB",
@@ -16871,20 +16965,20 @@ function sl(e, t) {
 		"CIF"
 	].includes(e);
 }
-function cl(e) {
+function ll(e) {
 	let t = (e.incoterm || "").toUpperCase();
 	if (!t) return "";
 	let n = e.incotermVersion || "2020";
 	if (e.incotermVersion) {
-		if (!rl.has(e.incotermVersion)) return "Phiên bản Incoterms chưa hợp lệ.";
-		if (!ol(e.incotermVersion).includes(t)) return t === "DAT" ? "DAT là điều kiện của Incoterms 2010 — bản 2020 dùng DPU." : t === "DPU" ? "DPU là điều kiện của Incoterms 2020 — bản 2010 dùng DAT." : t === "DAF" || t === "DDU" ? `${t} là điều kiện legacy của Incoterms 2000, không thuộc Incoterms 2010/2020.` : `${t} không thuộc phiên bản Incoterms đã chọn.`;
-	} else if (!ol("2020").includes(t)) return t === "DAT" ? "DAT là điều kiện của Incoterms 2010 — bản 2020 dùng DPU." : t === "DAF" || t === "DDU" ? `${t} là điều kiện legacy của Incoterms 2000, không thuộc Incoterms 2010/2020.` : `${t} không thuộc Incoterms 2020.`;
-	if (e.mode && sl(t, n) && e.mode !== "SEA") return `${t} chỉ áp dụng cho chặng chính đường biển / đường thủy nội địa, không dùng cho ${$c.modes.find((t) => t.code === e.mode)?.label ?? e.mode}.`;
-	let r = $c.loadModels[e.mode] ?? [];
+		if (!il.has(e.incotermVersion)) return "Phiên bản Incoterms chưa hợp lệ.";
+		if (!sl(e.incotermVersion).includes(t)) return t === "DAT" ? "DAT là điều kiện của Incoterms 2010 — bản 2020 dùng DPU." : t === "DPU" ? "DPU là điều kiện của Incoterms 2020 — bản 2010 dùng DAT." : t === "DAF" || t === "DDU" ? `${t} là điều kiện legacy của Incoterms 2000, không thuộc Incoterms 2010/2020.` : `${t} không thuộc phiên bản Incoterms đã chọn.`;
+	} else if (!sl("2020").includes(t)) return t === "DAT" ? "DAT là điều kiện của Incoterms 2010 — bản 2020 dùng DPU." : t === "DAF" || t === "DDU" ? `${t} là điều kiện legacy của Incoterms 2000, không thuộc Incoterms 2010/2020.` : `${t} không thuộc Incoterms 2020.`;
+	if (e.mode && cl(t, n) && e.mode !== "SEA") return `${t} chỉ áp dụng cho chặng chính đường biển / đường thủy nội địa, không dùng cho ${el.modes.find((t) => t.code === e.mode)?.label ?? e.mode}.`;
+	let r = el.loadModels[e.mode] ?? [];
 	return e.loadModel && r.length > 0 && !r.some((t) => t.code === e.loadModel) ? "Loại hàng đã chọn không thuộc phương thức vận chuyển này." : "";
 }
-function ll(e) {
-	let t = $c.loadModels[e.mode] ?? [];
+function ul(e) {
+	let t = el.loadModels[e.mode] ?? [];
 	return [
 		!e.mode && "phương thức vận chuyển",
 		!e.incoterm && "điều kiện giao hàng",
@@ -16894,16 +16988,16 @@ function ll(e) {
 		!e.insuranceStatus && "thực tế bảo hiểm hàng hóa"
 	].filter(Boolean);
 }
-function ul({ draft: e, onChange: t, variant: n = "detail", onOpenEquipment: r, equipmentSummary: i, truckKnown: a, idPrefix: o = "profile" }) {
+function dl({ draft: e, onChange: t, variant: n = "detail", onOpenEquipment: r, equipmentSummary: i, truckKnown: a, idPrefix: o = "profile" }) {
 	let s = (n) => t({
 		...e,
 		...n
-	}), c = $c.modes.find((t) => t.code === e.mode)?.label ?? "", l = al(il), u = l.filter((t) => !(t.scope === "SEA_ONLY" && e.mode && e.mode !== "SEA")).map((e) => e.code), d = (e.incoterm || "").toUpperCase(), f = e.incotermVersion, p = d && f && f !== "2020" && !u.includes(d) ? [...u, d] : u, m = l.filter((t) => t.scope === "SEA_ONLY" && e.mode && e.mode !== "SEA").map((e) => e.code), h = $c.loadModels[e.mode] ?? [], g = cl(e), _ = (t) => {
-		let n = $c.loadModels[t] ?? [], r = !e.loadModel || n.some((t) => t.code === e.loadModel), i = e.incotermVersion || "2020";
+	}), c = el.modes.find((t) => t.code === e.mode)?.label ?? "", l = ol(al), u = l.filter((t) => !(t.scope === "SEA_ONLY" && e.mode && e.mode !== "SEA")).map((e) => e.code), d = (e.incoterm || "").toUpperCase(), f = e.incotermVersion, p = d && f && f !== "2020" && !u.includes(d) ? [...u, d] : u, m = l.filter((t) => t.scope === "SEA_ONLY" && e.mode && e.mode !== "SEA").map((e) => e.code), h = el.loadModels[e.mode] ?? [], g = ll(e), _ = (t) => {
+		let n = el.loadModels[t] ?? [], r = !e.loadModel || n.some((t) => t.code === e.loadModel), i = e.incotermVersion || "2020";
 		s({
 			mode: t,
 			loadModel: r ? e.loadModel : "",
-			incoterm: sl(e.incoterm, i) && t !== "SEA" ? "" : e.incoterm
+			incoterm: cl(e.incoterm, i) && t !== "SEA" ? "" : e.incoterm
 		});
 	}, v = a ?? {
 		known: !1,
@@ -16924,7 +17018,7 @@ function ul({ draft: e, onChange: t, variant: n = "detail", onOpenEquipment: r, 
 					children: [/* @__PURE__ */ (0, W.jsx)("option", {
 						value: "",
 						children: "-- Bổ sung sau --"
-					}), $c.modes.map((e) => /* @__PURE__ */ (0, W.jsx)("option", {
+					}), el.modes.map((e) => /* @__PURE__ */ (0, W.jsx)("option", {
 						value: e.code,
 						children: e.label
 					}, e.code))]
@@ -17007,7 +17101,7 @@ function ul({ draft: e, onChange: t, variant: n = "detail", onOpenEquipment: r, 
 					}),
 					/* @__PURE__ */ (0, W.jsx)("div", {
 						className: "flex flex-wrap gap-2 mt-2.5",
-						children: $c.truckPresets.map((e) => {
+						children: el.truckPresets.map((e) => {
 							let t = v.pickupTruckType.trim().toUpperCase() === e.code.toUpperCase();
 							return /* @__PURE__ */ (0, W.jsx)("span", {
 								className: `inline-flex items-center rounded-lg border-2 px-3 py-1.5 text-[13px] font-bold ${t ? "border-[#0f2a4a] bg-white text-[#0f2a4a]" : "border-slate-200 bg-white text-slate-500"}`,
@@ -17081,7 +17175,7 @@ function ul({ draft: e, onChange: t, variant: n = "detail", onOpenEquipment: r, 
 					}),
 					/* @__PURE__ */ (0, W.jsx)("div", {
 						className: "grid grid-cols-1 sm:grid-cols-2 gap-1.5 mt-2.5",
-						children: $c.serviceScope.map((t) => {
+						children: el.serviceScope.map((t) => {
 							let n = e.serviceScope.includes(t.code);
 							return /* @__PURE__ */ (0, W.jsxs)("label", {
 								className: `flex items-start gap-2.5 rounded-lg border-2 px-3 py-2.5 min-h-[44px] cursor-pointer ${n ? "border-[#1e5aa8] bg-white" : "border-slate-200 bg-white"}`,
@@ -17089,7 +17183,7 @@ function ul({ draft: e, onChange: t, variant: n = "detail", onOpenEquipment: r, 
 									type: "checkbox",
 									"data-testid": `${o}-scope-${t.code}`,
 									checked: n,
-									onChange: (n) => s({ serviceScope: n.target.checked ? $c.serviceScope.filter((n) => n.code === t.code || e.serviceScope.includes(n.code)).map((e) => e.code) : e.serviceScope.filter((e) => e !== t.code) }),
+									onChange: (n) => s({ serviceScope: n.target.checked ? el.serviceScope.filter((n) => n.code === t.code || e.serviceScope.includes(n.code)).map((e) => e.code) : e.serviceScope.filter((e) => e !== t.code) }),
 									className: "mt-0.5 w-5 h-5 shrink-0"
 								}), /* @__PURE__ */ (0, W.jsx)("span", {
 									className: "text-[13.5px] font-semibold text-[#0f2a4a] leading-snug",
@@ -17131,7 +17225,7 @@ function ul({ draft: e, onChange: t, variant: n = "detail", onOpenEquipment: r, 
 					}),
 					/* @__PURE__ */ (0, W.jsx)("div", {
 						className: "flex flex-wrap gap-2 mt-2.5",
-						children: $c.insuranceStatuses.map((t) => {
+						children: el.insuranceStatuses.map((t) => {
 							let n = e.insuranceStatus === t.code;
 							return /* @__PURE__ */ (0, W.jsx)("button", {
 								type: "button",
@@ -17219,7 +17313,7 @@ function ul({ draft: e, onChange: t, variant: n = "detail", onOpenEquipment: r, 
 		]
 	});
 }
-function dl({ profile: e }) {
+function fl({ profile: e }) {
 	if (!e) return /* @__PURE__ */ (0, W.jsx)("div", {
 		"data-testid": "execution-profile-summary",
 		className: "rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5",
@@ -17245,10 +17339,10 @@ function dl({ profile: e }) {
 		})]
 	});
 }
-function fl({ shipment: e, dispatch: t, toast: n, onOpenTransportTab: r }) {
-	let i = (0, _.useSyncExternalStore)(C, S, S)?.lastWrites ?? [], a = e.executionProfile, [o, s] = (0, _.useState)(!1), [c, l] = (0, _.useState)(""), [u, d] = (0, _.useState)(() => nl(a)), f = JSON.stringify(nl(a));
+function pl({ shipment: e, dispatch: t, toast: n, onOpenTransportTab: r }) {
+	let i = (0, _.useSyncExternalStore)(C, S, S)?.lastWrites ?? [], a = e.executionProfile, [o, s] = (0, _.useState)(!1), [c, l] = (0, _.useState)(""), [u, d] = (0, _.useState)(() => rl(a)), f = JSON.stringify(rl(a));
 	(0, _.useEffect)(() => {
-		d(nl(a));
+		d(rl(a));
 	}, [e.id, f]), (0, _.useEffect)(() => {
 		if (!c) return;
 		let e = i.find((e) => e.requestId === c && e.event === "shipment_profile_save");
@@ -17268,7 +17362,7 @@ function fl({ shipment: e, dispatch: t, toast: n, onOpenTransportTab: r }) {
 		c,
 		n
 	]);
-	let p = (0, _.useMemo)(() => cl(u), [u]), m = (0, _.useMemo)(() => ll(u), [u]), h = a?.stages?.length ?? 0;
+	let p = (0, _.useMemo)(() => ll(u), [u]), m = (0, _.useMemo)(() => ul(u), [u]), h = a?.stages?.length ?? 0;
 	return /* @__PURE__ */ (0, W.jsxs)("section", {
 		id: "shipment-execution-profile",
 		className: "rounded-2xl bg-white border border-slate-200 p-4 md:p-5 scroll-mt-24",
@@ -17287,7 +17381,7 @@ function fl({ shipment: e, dispatch: t, toast: n, onOpenTransportTab: r }) {
 					children: o ? "Đóng" : "Sửa hồ sơ lô"
 				})
 			}),
-			/* @__PURE__ */ (0, W.jsx)(dl, { profile: a }),
+			/* @__PURE__ */ (0, W.jsx)(fl, { profile: a }),
 			a?.state === "CONFIG_CHECK" && /* @__PURE__ */ (0, W.jsxs)("div", {
 				role: "alert",
 				"data-testid": "execution-profile-config-check",
@@ -17374,7 +17468,7 @@ function fl({ shipment: e, dispatch: t, toast: n, onOpenTransportTab: r }) {
 							" — hệ thống giữ nguyên cách ghi gốc."
 						]
 					}),
-					/* @__PURE__ */ (0, W.jsx)(ul, {
+					/* @__PURE__ */ (0, W.jsx)(dl, {
 						draft: u,
 						onChange: d,
 						equipmentSummary: a?.equipment ?? null,
@@ -17401,7 +17495,7 @@ function fl({ shipment: e, dispatch: t, toast: n, onOpenTransportTab: r }) {
 								if (!t("shipment_profile_save", {
 									shipmentId: e.id,
 									requestId: r,
-									...tl(u)
+									...nl(u)
 								})) {
 									n("Không gửi được", "Component chưa kết nối backend.", "red");
 									return;
@@ -17413,7 +17507,7 @@ function fl({ shipment: e, dispatch: t, toast: n, onOpenTransportTab: r }) {
 							className: "flex-1",
 							children: [/* @__PURE__ */ (0, W.jsx)(Ya, { size: 16 }), " LƯU HỒ SƠ LÔ"]
 						}), /* @__PURE__ */ (0, W.jsx)($, {
-							onClick: () => d(nl(a)),
+							onClick: () => d(rl(a)),
 							className: "min-h-[48px]",
 							children: "Hoàn tác bản nháp"
 						})]
@@ -17431,7 +17525,7 @@ function fl({ shipment: e, dispatch: t, toast: n, onOpenTransportTab: r }) {
 }
 //#endregion
 //#region src/components/FinanceActualEntry.tsx
-var pl = {
+var ml = {
 	id: "",
 	journeyStage: "",
 	code: "",
@@ -17443,7 +17537,7 @@ var pl = {
 	vat: "",
 	note: ""
 };
-function ml(e) {
+function hl(e) {
 	return {
 		id: e.id ?? "",
 		journeyStage: e.journeyStage ?? "",
@@ -17457,8 +17551,8 @@ function ml(e) {
 		note: e.note ?? ""
 	};
 }
-var hl = () => `FACTUAL-REQ-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
-function gl({ label: e, className: t, children: n }) {
+var gl = () => `FACTUAL-REQ-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+function _l({ label: e, className: t, children: n }) {
 	return /* @__PURE__ */ (0, W.jsxs)("div", {
 		className: q("min-w-0", t),
 		children: [/* @__PURE__ */ (0, W.jsx)("span", {
@@ -17467,10 +17561,10 @@ function gl({ label: e, className: t, children: n }) {
 		}), n]
 	});
 }
-function _l({ shipment: e, services: t, ccy: n, dispatch: r, toast: i, lastWrites: a, stageContext: o }) {
-	let [s, c] = (0, _.useState)(!1), l = e.finance.actual ?? [], u = new Set(e.journey?.nodes.map((e) => e.id) ?? []), d = l.filter((e) => !e.journeyStage || !u.has(e.journeyStage)), f = o ? s ? d : l.filter((e) => e.journeyStage === o) : l, [p, m] = (0, _.useState)(pl), [h, g] = (0, _.useState)(!1), [v, y] = (0, _.useState)(""), [b, x] = (0, _.useState)(""), [S, C] = (0, _.useState)(null), w = (0, _.useRef)(null);
+function vl({ shipment: e, services: t, ccy: n, dispatch: r, toast: i, lastWrites: a, stageContext: o }) {
+	let [s, c] = (0, _.useState)(!1), l = e.finance.actual ?? [], u = new Set(e.journey?.nodes.map((e) => e.id) ?? []), d = l.filter((e) => !e.journeyStage || !u.has(e.journeyStage)), f = o ? s ? d : l.filter((e) => e.journeyStage === o) : l, [p, m] = (0, _.useState)(ml), [h, g] = (0, _.useState)(!1), [v, y] = (0, _.useState)(""), [b, x] = (0, _.useState)(""), [S, C] = (0, _.useState)(null), w = (0, _.useRef)(null);
 	(0, _.useEffect)(() => {
-		g(!1), m(pl), y(""), x(""), C(null);
+		g(!1), m(ml), y(""), x(""), C(null);
 	}, [e.id]);
 	let T = (0, _.useMemo)(() => {
 		let e = /* @__PURE__ */ new Map();
@@ -17491,15 +17585,15 @@ function _l({ shipment: e, services: t, ccy: n, dispatch: r, toast: i, lastWrite
 		let e = T.get(p.code);
 		return !e || e.name.trim() !== p.name.trim();
 	})(), O = (e) => {
-		m(e ? ml(e) : {
-			...pl,
+		m(e ? hl(e) : {
+			...ml,
 			journeyStage: o || ""
 		}), y(""), x(""), C(null), g(!0), window.setTimeout(() => w.current?.scrollIntoView({
 			behavior: "smooth",
 			block: "center"
 		}), 60);
 	}, k = () => {
-		g(!1), m(pl), y(""), x(""), C(null);
+		g(!1), m(ml), y(""), x(""), C(null);
 	}, A = (e, t) => {
 		m((n) => ({
 			...n,
@@ -17637,7 +17731,7 @@ function _l({ shipment: e, services: t, ccy: n, dispatch: r, toast: i, lastWrite
 							children: [/* @__PURE__ */ (0, W.jsxs)("div", {
 								className: "grid grid-cols-2 md:grid-cols-12 gap-x-2 gap-y-1.5 items-baseline",
 								children: [
-									/* @__PURE__ */ (0, W.jsx)(gl, {
+									/* @__PURE__ */ (0, W.jsx)(_l, {
 										label: "Dịch vụ",
 										className: "col-span-2 md:col-span-3",
 										children: /* @__PURE__ */ (0, W.jsx)("span", {
@@ -17646,7 +17740,7 @@ function _l({ shipment: e, services: t, ccy: n, dispatch: r, toast: i, lastWrite
 											children: e.label
 										})
 									}),
-									/* @__PURE__ */ (0, W.jsx)(gl, {
+									/* @__PURE__ */ (0, W.jsx)(_l, {
 										label: "Mã",
 										className: "md:col-span-2",
 										children: /* @__PURE__ */ (0, W.jsx)("span", {
@@ -17654,7 +17748,7 @@ function _l({ shipment: e, services: t, ccy: n, dispatch: r, toast: i, lastWrite
 											children: J(e.code)
 										})
 									}),
-									/* @__PURE__ */ (0, W.jsx)(gl, {
+									/* @__PURE__ */ (0, W.jsx)(_l, {
 										label: "SL",
 										className: "md:col-span-1 text-left md:text-right",
 										children: /* @__PURE__ */ (0, W.jsx)("span", {
@@ -17662,7 +17756,7 @@ function _l({ shipment: e, services: t, ccy: n, dispatch: r, toast: i, lastWrite
 											children: ls(e.qty)
 										})
 									}),
-									/* @__PURE__ */ (0, W.jsx)(gl, {
+									/* @__PURE__ */ (0, W.jsx)(_l, {
 										label: "Đơn vị",
 										className: "md:col-span-1",
 										children: /* @__PURE__ */ (0, W.jsx)("span", {
@@ -17670,7 +17764,7 @@ function _l({ shipment: e, services: t, ccy: n, dispatch: r, toast: i, lastWrite
 											children: J(e.unit)
 										})
 									}),
-									/* @__PURE__ */ (0, W.jsx)(gl, {
+									/* @__PURE__ */ (0, W.jsx)(_l, {
 										label: "Giá vốn",
 										className: "md:col-span-2 text-right",
 										children: /* @__PURE__ */ (0, W.jsx)("span", {
@@ -17678,7 +17772,7 @@ function _l({ shipment: e, services: t, ccy: n, dispatch: r, toast: i, lastWrite
 											children: is(e.cost, e.ccy ?? n)
 										})
 									}),
-									/* @__PURE__ */ (0, W.jsx)(gl, {
+									/* @__PURE__ */ (0, W.jsx)(_l, {
 										label: "Giá bán",
 										className: "md:col-span-2 text-right",
 										children: /* @__PURE__ */ (0, W.jsx)("span", {
@@ -17686,7 +17780,7 @@ function _l({ shipment: e, services: t, ccy: n, dispatch: r, toast: i, lastWrite
 											children: is(e.amount, e.ccy ?? n)
 										})
 									}),
-									/* @__PURE__ */ (0, W.jsx)(gl, {
+									/* @__PURE__ */ (0, W.jsx)(_l, {
 										label: "VAT",
 										className: "md:col-span-1 text-left md:text-right",
 										children: /* @__PURE__ */ (0, W.jsx)("span", {
@@ -17933,7 +18027,7 @@ function _l({ shipment: e, services: t, ccy: n, dispatch: r, toast: i, lastWrite
 									y("Chọn dịch vụ từ danh mục để lấy mã phí và đơn vị tính.");
 									return;
 								}
-								let s = hl(), c = {
+								let s = gl(), c = {
 									name: t,
 									code: p.code,
 									unit: p.unit.trim() || "Lần",
@@ -17973,7 +18067,7 @@ function _l({ shipment: e, services: t, ccy: n, dispatch: r, toast: i, lastWrite
 }
 //#endregion
 //#region src/components/ShipmentAttachments.tsx
-var vl = 6, yl = "Kết quả chỉ để kiểm tra — chưa ghi vào hồ sơ lô hàng.", bl = [
+var yl = 6, bl = "Kết quả chỉ để kiểm tra — chưa ghi vào hồ sơ lô hàng.", xl = [
 	{
 		key: "can-xem",
 		title: "CẦN XEM",
@@ -17993,23 +18087,23 @@ var vl = 6, yl = "Kết quả chỉ để kiểm tra — chưa ghi vào hồ sơ
 		title: "ĐÃ KHỚP",
 		statuses: ["SAME"]
 	}
-], xl = {
+], Sl = {
 	CONFLICT: "bg-red-50 border-red-200 text-red-800",
 	UNKNOWN: "bg-amber-50 border-amber-200 text-amber-900",
 	MISSING: "bg-orange-50 border-orange-200 text-orange-900",
 	SINGLE_SOURCE: "bg-slate-50 border-slate-200 text-slate-700",
 	SAME: "bg-emerald-50 border-emerald-200 text-emerald-800"
-}, Sl = {
+}, Cl = {
 	READABLE: "text-emerald-700",
 	NEEDS_OCR_NOT_RUN: "text-amber-800",
 	UNSUPPORTED_FORMAT: "text-slate-500",
 	TOO_LARGE_FOR_REVIEW: "text-amber-800",
 	READ_FAILED: "text-red-700"
 };
-function Cl(e) {
+function wl(e) {
 	return `${e}-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
 }
-var wl = {
+var Tl = {
 	allowUpload: !1,
 	categories: [],
 	allowedExtensions: [],
@@ -18019,15 +18113,15 @@ var wl = {
 	storageBackend: "gridfs",
 	storageConfigured: !1,
 	storageLabel: "Kho chứng từ"
-}, Tl = /* @__PURE__ */ new Set(["image/jpeg", "image/png"]);
-function El(e) {
-	let t = String(e || "").toLowerCase();
-	return Tl.has(t) ? t : null;
-}
+}, El = /* @__PURE__ */ new Set(["image/jpeg", "image/png"]);
 function Dl(e) {
+	let t = String(e || "").toLowerCase();
+	return El.has(t) ? t : null;
+}
+function Ol(e) {
 	for (let t of Array.from(e.items || [])) {
 		if (t.kind !== "file") continue;
-		let e = El(t.type);
+		let e = Dl(t.type);
 		if (!e) continue;
 		let n = t.getAsFile();
 		if (n) return {
@@ -18036,7 +18130,7 @@ function Dl(e) {
 		};
 	}
 	for (let t of Array.from(e.files || [])) {
-		let e = El(t.type);
+		let e = Dl(t.type);
 		if (e) return {
 			file: t,
 			mime: e
@@ -18044,31 +18138,31 @@ function Dl(e) {
 	}
 	return null;
 }
-function Ol(e) {
+function kl(e) {
 	return e === "image/jpeg" ? "jpg" : "png";
 }
-function kl(e = /* @__PURE__ */ new Date()) {
+function Al(e = /* @__PURE__ */ new Date()) {
 	let t = (e) => String(e).padStart(2, "0");
 	return `${e.getFullYear()}${t(e.getMonth() + 1)}${t(e.getDate())}-${t(e.getHours())}${t(e.getMinutes())}${t(e.getSeconds())}`;
 }
-function Al(e) {
-	return `anh-dan-${kl()}.${Ol(e)}`;
+function jl(e) {
+	return `anh-dan-${Al()}.${kl(e)}`;
 }
-function jl(e, t) {
+function Ml(e, t) {
 	let n = String(e || "").trim();
 	if (!n || n.length > 180 || /[\\/\u0000-\u001f\u007f]/.test(n)) return !1;
 	let r = n.toLowerCase();
 	return t === "image/png" ? r.endsWith(".png") : r.endsWith(".jpg") || r.endsWith(".jpeg");
 }
-function Ml({ file: e, mime: t }) {
-	let n = jl(e.name, t) ? e.name.trim() : Al(t);
+function Nl({ file: e, mime: t }) {
+	let n = Ml(e.name, t) ? e.name.trim() : jl(t);
 	return e.name === n && e.type === t ? e : new File([e], n, {
 		type: t,
 		lastModified: e.lastModified || Date.now()
 	});
 }
-function Nl({ shipmentId: e, attachments: t, policy: n, contextCategories: r }) {
-	let { dispatch: i, toast: a } = Wn(), o = (0, _.useSyncExternalStore)(C, S, S), s = o?.lastWrites ?? [], c = n ?? wl, l = c.storageLabel || (c.driveConfigured ? "Shared Drive" : "Kho chứng từ"), u = c.storageConfigured ?? c.driveConfigured ?? !1, d = (0, _.useRef)(null), [f, p] = (0, _.useState)(c.categories[0]?.id ?? "other"), [m, h] = (0, _.useState)(!1), g = r?.join("|") || "";
+function Pl({ shipmentId: e, attachments: t, policy: n, contextCategories: r }) {
+	let { dispatch: i, toast: a } = Wn(), o = (0, _.useSyncExternalStore)(C, S, S), s = o?.lastWrites ?? [], c = n ?? Tl, l = c.storageLabel || (c.driveConfigured ? "Shared Drive" : "Kho chứng từ"), u = c.storageConfigured ?? c.driveConfigured ?? !1, d = (0, _.useRef)(null), [f, p] = (0, _.useState)(c.categories[0]?.id ?? "other"), [m, h] = (0, _.useState)(!1), g = r?.join("|") || "";
 	(0, _.useEffect)(() => {
 		h(!1), r?.length && p(r[0]);
 	}, [e, g]);
@@ -18083,18 +18177,18 @@ function Nl({ shipmentId: e, attachments: t, policy: n, contextCategories: r }) 
 		e && (L(""), e.ok ? ee("") : ee(String(e.error || "Chưa kiểm tra được chứng từ.")));
 	}, [s, I]);
 	let re = (e) => {
-		ee(""), F((t) => t.includes(e.id) ? t.filter((t) => t !== e.id) : t.length >= vl ? t : [...t, e.id]);
+		ee(""), F((t) => t.includes(e.id) ? t.filter((t) => t !== e.id) : t.length >= yl ? t : [...t, e.id]);
 	}, z = () => {
 		if (ee(""), I) return;
 		if (!P.length) {
 			ee("Chưa chọn tệp nào để kiểm tra.");
 			return;
 		}
-		if (P.length > vl) {
-			ee(`Chỉ kiểm tra tối đa ${vl} tệp một lần.`);
+		if (P.length > yl) {
+			ee(`Chỉ kiểm tra tối đa ${yl} tệp một lần.`);
 			return;
 		}
-		let t = Cl("ATTREV");
+		let t = wl("ATTREV");
 		L(t), i("shipment_document_review", {
 			shipmentId: e,
 			attachmentIds: P,
@@ -18120,10 +18214,10 @@ function Nl({ shipmentId: e, attachments: t, policy: n, contextCategories: r }) 
 		}
 	}, [t, a]);
 	let ie = c.accept || void 0, ae = (e) => {
-		let t = Dl(e.clipboardData);
+		let t = Ol(e.clipboardData);
 		if (!t) return;
 		e.preventDefault(), e.stopPropagation(), k("");
-		let n = Ml(t);
+		let n = Nl(t);
 		if (c.maxUploadBytes > 0 && n.size > c.maxUploadBytes) {
 			y(null), d.current && (d.current.value = ""), D(`Tệp vượt giới hạn ${c.maxUploadLabel}. Chưa gửi lên máy chủ.`);
 			return;
@@ -18138,7 +18232,7 @@ function Nl({ shipmentId: e, attachments: t, policy: n, contextCategories: r }) 
 			D(`Tệp vượt giới hạn ${c.maxUploadLabel}. Chưa gửi lên máy chủ.`);
 			return;
 		}
-		let t = Cl("ATT");
+		let t = wl("ATT");
 		x(t);
 		let n = new FileReader();
 		n.onerror = () => {
@@ -18161,7 +18255,7 @@ function Nl({ shipmentId: e, attachments: t, policy: n, contextCategories: r }) 
 		}, n.readAsDataURL(v);
 	}, se = (t) => {
 		D(""), k("");
-		let n = Cl("ATTDOWN");
+		let n = wl("ATTDOWN");
 		T({
 			requestId: n,
 			attachmentId: t.id
@@ -18375,7 +18469,7 @@ function Nl({ shipmentId: e, attachments: t, policy: n, contextCategories: r }) 
 					]
 				}, e.id))
 			}),
-			/* @__PURE__ */ (0, W.jsx)(Pl, {
+			/* @__PURE__ */ (0, W.jsx)(Fl, {
 				pendingReview: I,
 				selectedCount: P.length,
 				reviewableCount: ne.length,
@@ -18390,7 +18484,7 @@ function Nl({ shipmentId: e, attachments: t, policy: n, contextCategories: r }) 
 		]
 	});
 }
-function Pl({ pendingReview: e, selectedCount: t, reviewableCount: n, reviewError: r, review: i, onReview: a }) {
+function Fl({ pendingReview: e, selectedCount: t, reviewableCount: n, reviewError: r, review: i, onReview: a }) {
 	let o = !!e;
 	if (n === 0 && !i) return null;
 	let s = i?.statusCounts, c = s ? [
@@ -18449,7 +18543,7 @@ function Pl({ pendingReview: e, selectedCount: t, reviewableCount: n, reviewErro
 				className: "mt-1.5 text-[12.5px] text-slate-500",
 				children: [
 					"Chọn tối đa ",
-					vl,
+					yl,
 					" tệp PDF/XLSX đã có sẵn của lô rồi bấm kiểm tra. Hệ thống đọc tệp trên máy chủ — không tải lên lại, không ghi vào hồ sơ lô."
 				]
 			}),
@@ -18468,7 +18562,7 @@ function Pl({ pendingReview: e, selectedCount: t, reviewableCount: n, reviewErro
 				}), /* @__PURE__ */ (0, W.jsx)("span", {
 					className: "text-[12.5px] font-semibold text-slate-600",
 					"data-testid": "document-review-ephemeral",
-					children: yl
+					children: bl
 				})]
 			}),
 			r && /* @__PURE__ */ (0, W.jsx)("p", {
@@ -18476,14 +18570,14 @@ function Pl({ pendingReview: e, selectedCount: t, reviewableCount: n, reviewErro
 				className: "mt-3 rounded-xl bg-red-50 border border-red-200 px-3 py-2 text-[13.5px] font-semibold text-red-700",
 				children: r
 			}),
-			i && /* @__PURE__ */ (0, W.jsx)(Fl, {
+			i && /* @__PURE__ */ (0, W.jsx)(Il, {
 				review: i,
 				summaryChips: c
 			})
 		]
 	});
 }
-function Fl({ review: e, summaryChips: t }) {
+function Il({ review: e, summaryChips: t }) {
 	let n = e.documents ?? [], r = e.facts ?? [];
 	return /* @__PURE__ */ (0, W.jsxs)("div", {
 		className: "mt-3",
@@ -18493,7 +18587,7 @@ function Fl({ review: e, summaryChips: t }) {
 			/* @__PURE__ */ (0, W.jsx)("p", {
 				className: "rounded-xl bg-blue-50 border border-blue-200 px-3 py-2 text-[13.5px] font-bold text-blue-900",
 				"data-testid": "document-review-not-saved",
-				children: yl
+				children: bl
 			}),
 			/* @__PURE__ */ (0, W.jsx)("div", {
 				className: "mt-3 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2",
@@ -18536,7 +18630,7 @@ function Fl({ review: e, summaryChips: t }) {
 							children: e.fileName
 						}),
 						/* @__PURE__ */ (0, W.jsxs)("p", {
-							className: q("text-[12.5px] font-semibold break-words", Sl[e.state] || "text-slate-600"),
+							className: q("text-[12.5px] font-semibold break-words", Cl[e.state] || "text-slate-600"),
 							children: [e.stateLabel, e.documentTypeLabel ? ` · ${e.documentTypeLabel}` : ""]
 						}),
 						e.reason && /* @__PURE__ */ (0, W.jsx)("p", {
@@ -18550,7 +18644,7 @@ function Fl({ review: e, summaryChips: t }) {
 				className: "mt-3 text-[13.5px] font-semibold text-slate-600",
 				"data-testid": "document-review-no-facts",
 				children: "Chưa đọc được nội dung chứng từ nào — chưa đối chiếu được thông tin."
-			}) : bl.map((e) => {
+			}) : xl.map((e) => {
 				let t = r.filter((t) => e.statuses.includes(t.status));
 				return t.length === 0 ? null : /* @__PURE__ */ (0, W.jsxs)("div", {
 					className: "mt-4",
@@ -18560,20 +18654,20 @@ function Fl({ review: e, summaryChips: t }) {
 						children: e.title
 					}), /* @__PURE__ */ (0, W.jsx)("ul", {
 						className: "mt-2 space-y-2",
-						children: t.map((e) => /* @__PURE__ */ (0, W.jsx)(Il, { fact: e }, e.fieldKey))
+						children: t.map((e) => /* @__PURE__ */ (0, W.jsx)(Ll, { fact: e }, e.fieldKey))
 					})]
 				}, e.key);
 			})
 		]
 	});
 }
-function Il({ fact: e }) {
+function Ll({ fact: e }) {
 	let t = e.sides ?? [];
 	return /* @__PURE__ */ (0, W.jsxs)("li", {
 		"data-testid": "document-review-fact",
 		"data-field-key": e.fieldKey,
 		"data-status": e.status,
-		className: q("rounded-xl border px-3 py-2.5 min-w-0", xl[e.status] || "bg-white border-slate-200"),
+		className: q("rounded-xl border px-3 py-2.5 min-w-0", Sl[e.status] || "bg-white border-slate-200"),
 		children: [
 			/* @__PURE__ */ (0, W.jsxs)("div", {
 				className: "flex flex-wrap items-center gap-x-2 gap-y-1",
@@ -18636,30 +18730,30 @@ function Il({ fact: e }) {
 }
 //#endregion
 //#region src/pages/Inbox.tsx
-var Ll = {
+var Rl = {
 	zalo: "Zalo",
 	wechat: "WeChat",
 	bank: "Ngân hàng",
 	other: "Khác"
-}, Rl = [];
-function zl(e = "INBOX-LINK") {
+}, zl = [];
+function Bl(e = "INBOX-LINK") {
 	return `${e}-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
 }
-function Bl(e) {
-	return e ? Ll[e] || e : "Không ghi nguồn";
-}
 function Vl(e) {
+	return e ? Rl[e] || e : "Không ghi nguồn";
+}
+function Hl(e) {
 	if (e.title.trim()) return e.title.trim();
 	let t = e.rawText.split(/\n/)[0]?.trim() || "";
 	return t ? t.length > 80 ? `${t.slice(0, 80)}…` : t : e.attachments?.[0]?.name || e.id;
 }
-function Hl(e, t) {
+function Ul(e, t) {
 	if (!t.length) return e;
 	if (!e.length) return t;
 	let n = new Set(e.map((e) => e.id)), r = t.filter((e) => !n.has(e.id));
 	return r.length ? [...e, ...r] : e;
 }
-function Ul({ testId: e, onClick: t }) {
+function Wl({ testId: e, onClick: t }) {
 	return /* @__PURE__ */ (0, W.jsx)("button", {
 		type: "button",
 		"data-testid": e,
@@ -18668,22 +18762,22 @@ function Ul({ testId: e, onClick: t }) {
 		children: "Xem thêm"
 	});
 }
-var Wl = {};
-function Gl() {
+var Gl = {};
+function Kl() {
 	let e = (0, _.useSyncExternalStore)(C, S, S);
 	(0, _.useEffect)(() => {
 		let t = e?.inbox?.download;
 		if (!t?.downloadAvailable || !t.downloadBase64 || !t.attachmentId) return;
 		let n = t.downloadSeq ?? 0;
-		Wl[t.attachmentId] !== n && (Wl[t.attachmentId] = n, fs(t.name, t.downloadBase64, t.mime || "application/octet-stream"));
+		Gl[t.attachmentId] !== n && (Gl[t.attachmentId] = n, fs(t.name, t.downloadBase64, t.mime || "application/octet-stream"));
 	}, [e?.inbox?.download]);
 }
-function Kl({ snippet: e, shipmentId: t, contractId: n }) {
+function ql({ snippet: e, shipmentId: t, contractId: n }) {
 	let r = e.attachments ?? [];
 	if (!r.length) return null;
 	let i = (r) => {
 		j("inbox_snippet_download", {
-			requestId: zl("INBOX-DOWN"),
+			requestId: Bl("INBOX-DOWN"),
 			snippetId: e.id,
 			attachmentId: r.id,
 			...t ? { shipmentId: t } : {},
@@ -18719,12 +18813,12 @@ function Kl({ snippet: e, shipmentId: t, contractId: n }) {
 		}, e.id))
 	});
 }
-function ql({ contractId: e }) {
-	Gl();
-	let t = (0, _.useSyncExternalStore)(C, S, S), n = t?.inbox?.byContractId?.[e] ?? Rl, [r, i] = (0, _.useState)(n), a = (0, _.useRef)(e);
+function Jl({ contractId: e }) {
+	Kl();
+	let t = (0, _.useSyncExternalStore)(C, S, S), n = t?.inbox?.byContractId?.[e] ?? zl, [r, i] = (0, _.useState)(n), a = (0, _.useRef)(e);
 	return (0, _.useEffect)(() => {
 		j("inbox_snippet_search", {
-			requestId: zl("INBOX-Q"),
+			requestId: Bl("INBOX-Q"),
 			query: "",
 			filter: "all",
 			targetType: "contract",
@@ -18736,7 +18830,7 @@ function ql({ contractId: e }) {
 			return;
 		}
 		if (t?.inbox?.before) {
-			i((e) => Hl(e, n));
+			i((e) => Ul(e, n));
 			return;
 		}
 		i(n);
@@ -18767,12 +18861,12 @@ function ql({ contractId: e }) {
 					children: [
 						/* @__PURE__ */ (0, W.jsx)("p", {
 							className: "font-bold text-[14.5px] text-[#0f2a4a]",
-							children: Vl(t)
+							children: Hl(t)
 						}),
 						/* @__PURE__ */ (0, W.jsxs)("p", {
 							className: "text-[12.5px] text-slate-500 mt-0.5",
 							children: [
-								Bl(t.source),
+								Vl(t.source),
 								" · ",
 								t.createdBy || "—",
 								" · ",
@@ -18783,7 +18877,7 @@ function ql({ contractId: e }) {
 							className: "whitespace-pre-wrap text-[14px] text-slate-700 mt-2",
 							children: t.rawText || "—"
 						}),
-						/* @__PURE__ */ (0, W.jsx)(Kl, {
+						/* @__PURE__ */ (0, W.jsx)(ql, {
 							snippet: t,
 							contractId: e
 						})
@@ -18792,12 +18886,12 @@ function ql({ contractId: e }) {
 			}),
 			t?.inbox?.hasMore && t?.inbox?.targetType === "contract" && t?.inbox?.targetId === e ? /* @__PURE__ */ (0, W.jsx)("div", {
 				className: "mt-3",
-				children: /* @__PURE__ */ (0, W.jsx)(Ul, {
+				children: /* @__PURE__ */ (0, W.jsx)(Wl, {
 					testId: "contract-inbox-load-more",
 					onClick: () => {
 						let t = r[r.length - 1]?.createdAt;
 						t && j("inbox_snippet_search", {
-							requestId: zl("INBOX-Q"),
+							requestId: Bl("INBOX-Q"),
 							query: "",
 							filter: "all",
 							before: t,
@@ -18810,12 +18904,12 @@ function ql({ contractId: e }) {
 		]
 	});
 }
-function Jl({ shipmentId: e }) {
-	Gl();
-	let t = (0, _.useSyncExternalStore)(C, S, S), n = t?.inbox?.byShipmentId?.[e] ?? Rl, [r, i] = (0, _.useState)(n), a = (0, _.useRef)(e);
+function Yl({ shipmentId: e }) {
+	Kl();
+	let t = (0, _.useSyncExternalStore)(C, S, S), n = t?.inbox?.byShipmentId?.[e] ?? zl, [r, i] = (0, _.useState)(n), a = (0, _.useRef)(e);
 	return (0, _.useEffect)(() => {
 		j("inbox_snippet_search", {
-			requestId: zl("INBOX-Q"),
+			requestId: Bl("INBOX-Q"),
 			query: "",
 			filter: "all",
 			targetType: "shipment",
@@ -18827,7 +18921,7 @@ function Jl({ shipmentId: e }) {
 			return;
 		}
 		if (t?.inbox?.before) {
-			i((e) => Hl(e, n));
+			i((e) => Ul(e, n));
 			return;
 		}
 		i(n);
@@ -18858,12 +18952,12 @@ function Jl({ shipmentId: e }) {
 					children: [
 						/* @__PURE__ */ (0, W.jsx)("p", {
 							className: "font-bold text-[14.5px] text-[#0f2a4a]",
-							children: Vl(t)
+							children: Hl(t)
 						}),
 						/* @__PURE__ */ (0, W.jsxs)("p", {
 							className: "text-[12.5px] text-slate-500 mt-0.5",
 							children: [
-								Bl(t.source),
+								Vl(t.source),
 								" · ",
 								t.createdBy || "—",
 								" · ",
@@ -18874,7 +18968,7 @@ function Jl({ shipmentId: e }) {
 							className: "whitespace-pre-wrap text-[14px] text-slate-700 mt-2",
 							children: t.rawText
 						}) : null,
-						/* @__PURE__ */ (0, W.jsx)(Kl, {
+						/* @__PURE__ */ (0, W.jsx)(ql, {
 							snippet: t,
 							shipmentId: e
 						})
@@ -18883,12 +18977,12 @@ function Jl({ shipmentId: e }) {
 			}),
 			t?.inbox?.hasMore && t?.inbox?.targetType === "shipment" && t?.inbox?.targetId === e ? /* @__PURE__ */ (0, W.jsx)("div", {
 				className: "mt-3",
-				children: /* @__PURE__ */ (0, W.jsx)(Ul, {
+				children: /* @__PURE__ */ (0, W.jsx)(Wl, {
 					testId: "shipment-inbox-load-more",
 					onClick: () => {
 						let t = r[r.length - 1]?.createdAt;
 						t && j("inbox_snippet_search", {
-							requestId: zl("INBOX-Q"),
+							requestId: Bl("INBOX-Q"),
 							query: "",
 							filter: "all",
 							before: t,
@@ -18901,13 +18995,13 @@ function Jl({ shipmentId: e }) {
 		]
 	});
 }
-function Yl() {
-	Gl();
-	let e = (0, _.useSyncExternalStore)(C, S, S), t = e?.inbox?.snippets ?? Rl, n = e?.contracts ?? [], r = e?.shipments ?? [], i = e?.inbox?.canRead !== !1, [a, o] = (0, _.useState)(""), [s, c] = (0, _.useState)("all"), [l, u] = (0, _.useState)([]), [d, f] = (0, _.useState)(!1), [p, m] = (0, _.useState)("contract"), [h, g] = (0, _.useState)(""), [v, y] = (0, _.useState)(""), [b, x] = (0, _.useState)(""), [w, T] = (0, _.useState)(t), E = (0, _.useRef)(!1), D = `${a}|${s}`, O = (0, _.useRef)(D);
+function Xl() {
+	Kl();
+	let e = (0, _.useSyncExternalStore)(C, S, S), t = e?.inbox?.snippets ?? zl, n = e?.contracts ?? [], r = e?.shipments ?? [], i = e?.inbox?.canRead !== !1, [a, o] = (0, _.useState)(""), [s, c] = (0, _.useState)("all"), [l, u] = (0, _.useState)([]), [d, f] = (0, _.useState)(!1), [p, m] = (0, _.useState)("contract"), [h, g] = (0, _.useState)(""), [v, y] = (0, _.useState)(""), [b, x] = (0, _.useState)(""), [w, T] = (0, _.useState)(t), E = (0, _.useRef)(!1), D = `${a}|${s}`, O = (0, _.useRef)(D);
 	(0, _.useEffect)(() => {
 		let e = window.setTimeout(() => {
 			j("inbox_snippet_search", {
-				requestId: zl("INBOX-Q"),
+				requestId: Bl("INBOX-Q"),
 				query: a,
 				filter: s
 			});
@@ -18919,7 +19013,7 @@ function Yl() {
 			return;
 		}
 		if (e?.inbox?.before) {
-			T((e) => Hl(e, t));
+			T((e) => Ul(e, t));
 			return;
 		}
 		T(t);
@@ -18944,7 +19038,7 @@ function Yl() {
 	]), A = () => {
 		let e = w[w.length - 1]?.createdAt;
 		e && j("inbox_snippet_search", {
-			requestId: zl("INBOX-Q"),
+			requestId: Bl("INBOX-Q"),
 			query: a,
 			filter: s,
 			before: e
@@ -18963,7 +19057,7 @@ function Yl() {
 			return;
 		}
 		E.current = !0;
-		let n = zl();
+		let n = Bl();
 		x(""), y(n), j("inbox_snippet_link", {
 			requestId: n,
 			snippetIds: t,
@@ -19061,7 +19155,7 @@ function Yl() {
 					children: "Về tổng quan"
 				})]
 			}),
-			e?.inbox?.hasMore && !e?.inbox?.targetType ? /* @__PURE__ */ (0, W.jsx)(Ul, {
+			e?.inbox?.hasMore && !e?.inbox?.targetType ? /* @__PURE__ */ (0, W.jsx)(Wl, {
 				testId: "inbox-load-more",
 				onClick: A
 			}) : null,
@@ -19081,7 +19175,7 @@ function Yl() {
 							className: "mt-1.5 w-5 h-5 accent-[#0f2a4a]",
 							checked: l.includes(e.id),
 							onChange: () => M(e.id),
-							"aria-label": `Chọn ${Vl(e)}`
+							"aria-label": `Chọn ${Hl(e)}`
 						}), /* @__PURE__ */ (0, W.jsxs)("div", {
 							className: "min-w-0 flex-1",
 							children: [
@@ -19090,7 +19184,7 @@ function Yl() {
 									children: [
 										/* @__PURE__ */ (0, W.jsx)("p", {
 											className: "font-extrabold text-[15.5px] text-[#0f2a4a]",
-											children: Vl(e)
+											children: Hl(e)
 										}),
 										/* @__PURE__ */ (0, W.jsx)(Y, {
 											tone: e.linked ? "green" : "amber",
@@ -19100,7 +19194,7 @@ function Yl() {
 										/* @__PURE__ */ (0, W.jsx)(Y, {
 											tone: "gray",
 											size: "sm",
-											children: Bl(e.source)
+											children: Vl(e.source)
 										})
 									]
 								}),
@@ -19118,7 +19212,7 @@ function Yl() {
 									className: "whitespace-pre-wrap text-[14.5px] text-slate-700 mt-2",
 									children: e.rawText
 								}) : null,
-								/* @__PURE__ */ (0, W.jsx)(Kl, { snippet: e }),
+								/* @__PURE__ */ (0, W.jsx)(ql, { snippet: e }),
 								(e.contractIds ?? []).length > 0 && /* @__PURE__ */ (0, W.jsxs)("p", {
 									className: "text-[13px] mt-2",
 									children: [
@@ -19258,7 +19352,7 @@ function Yl() {
 								children: "— Chọn mẩu —"
 							}), t.filter((e) => !l.includes(e.id)).map((e) => /* @__PURE__ */ (0, W.jsx)("option", {
 								value: e.id,
-								children: Vl(e)
+								children: Hl(e)
 							}, e.id))]
 						})]
 					}),
@@ -19300,7 +19394,7 @@ function Yl() {
 }
 //#endregion
 //#region src/components/ShipmentDocumentPicker.tsx
-var Xl = {
+var Zl = {
 	READY: {
 		label: "Sẵn sàng",
 		tone: "blue"
@@ -19318,10 +19412,10 @@ var Xl = {
 		tone: "gray"
 	}
 };
-function Zl(e, t) {
+function Ql(e, t) {
 	return !!(e.downloadBase64 || e.attachmentId && e.downloadAvailable && t);
 }
-function Ql(e) {
+function $l(e) {
 	switch (e) {
 		case "GENERATE_CONTRACT": return "Tạo bản chứng từ";
 		case "GENERATE_PXK": return "Tạo phiếu xuất kho";
@@ -19338,7 +19432,7 @@ function Ql(e) {
 		case "OPEN_UPLOADED": return "Bổ sung thông tin biểu mẫu";
 	}
 }
-function $l(e) {
+function eu(e) {
 	return [
 		Number(e.revision) > 0 ? `R${e.revision}` : "Bản đã tạo",
 		e.fileName,
@@ -19346,7 +19440,7 @@ function $l(e) {
 		e.generatedBy
 	].filter(Boolean).join(" · ");
 }
-function eu({ shipmentId: e, cards: t, selection: n, onAction: r, onDownload: i }) {
+function tu({ shipmentId: e, cards: t, selection: n, onAction: r, onDownload: i }) {
 	let a = n.savedIds.length, o = (e) => `document-template-reason-${e}`;
 	return /* @__PURE__ */ (0, W.jsxs)("section", {
 		id: "shipment-document-picker",
@@ -19408,7 +19502,7 @@ function eu({ shipmentId: e, cards: t, selection: n, onAction: r, onDownload: i 
 				className: "mt-4 grid grid-cols-1 lg:grid-cols-2 gap-3",
 				"data-testid": "shipment-document-cards",
 				children: t.map((e) => {
-					let t = Xl[e.state], a = e.currentOutput ?? e.history[e.history.length - 1], o = !!(a && e.latestDownloadAvailable && Zl(a, n.storageConfigured));
+					let t = Zl[e.state], a = e.currentOutput ?? e.history[e.history.length - 1], o = !!(a && e.latestDownloadAvailable && Ql(a, n.storageConfigured));
 					return /* @__PURE__ */ (0, W.jsxs)("article", {
 						"data-testid": "shipment-document-card",
 						"data-document-id": e.id,
@@ -19456,7 +19550,7 @@ function eu({ shipmentId: e, cards: t, selection: n, onAction: r, onDownload: i 
 									}),
 									/* @__PURE__ */ (0, W.jsx)("p", {
 										className: "text-[12.5px] font-semibold text-emerald-950 break-words mt-0.5",
-										children: $l(a)
+										children: eu(a)
 									}),
 									/* @__PURE__ */ (0, W.jsxs)("button", {
 										type: "button",
@@ -19477,7 +19571,7 @@ function eu({ shipmentId: e, cards: t, selection: n, onAction: r, onDownload: i 
 								"data-testid": "shipment-document-primary-action",
 								onClick: () => r(e, e.action),
 								className: "btn-press touch-target mt-3 inline-flex min-h-[42px] items-center justify-center rounded-lg bg-[#0f2a4a] px-3.5 text-[12.5px] font-bold text-white hover:bg-[#14365e]",
-								children: Ql(e.action)
+								children: $l(e.action)
 							}),
 							e.openOutputAction && /* @__PURE__ */ (0, W.jsx)("button", {
 								type: "button",
@@ -19510,7 +19604,7 @@ function eu({ shipmentId: e, cards: t, selection: n, onAction: r, onDownload: i 
 								}), /* @__PURE__ */ (0, W.jsx)("ol", {
 									className: "mt-2 space-y-2",
 									children: e.history.map((t, r) => {
-										let a = Zl(t, n.storageConfigured);
+										let a = Ql(t, n.storageConfigured);
 										return /* @__PURE__ */ (0, W.jsxs)("li", {
 											className: "flex flex-wrap items-center justify-between gap-2 rounded-lg bg-slate-50 px-2.5 py-2",
 											children: [/* @__PURE__ */ (0, W.jsxs)("div", {
@@ -19666,14 +19760,14 @@ function eu({ shipmentId: e, cards: t, selection: n, onAction: r, onDownload: i 
 }
 //#endregion
 //#region src/components/JourneyDiscussionPanel.tsx
-var tu = {};
-function nu(e) {
+var nu = {};
+function ru(e) {
 	return `${e}-${typeof crypto < "u" && "randomUUID" in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`}`;
 }
-function ru(e) {
+function iu(e) {
 	return String(e || "").replace("T", " ").slice(0, 19) || "—";
 }
-function iu({ noteId: e, item: t, disabled: n, onDownload: r }) {
+function au({ noteId: e, item: t, disabled: n, onDownload: r }) {
 	return /* @__PURE__ */ (0, W.jsxs)("li", {
 		className: "flex items-center gap-1.5 text-[11.5px] text-slate-600",
 		children: [
@@ -19701,7 +19795,7 @@ function iu({ noteId: e, item: t, disabled: n, onDownload: r }) {
 		]
 	});
 }
-function au({ note: e, replies: t, canWrite: n, onReply: r, onDownload: i, downloadBusy: a }) {
+function ou({ note: e, replies: t, canWrite: n, onReply: r, onDownload: i, downloadBusy: a }) {
 	let o = e.visibility === "INTERNAL", s = (e, t) => /* @__PURE__ */ (0, W.jsxs)("div", {
 		"data-testid": `journey-discussion-note-${e.id}`,
 		"data-visibility": e.visibility,
@@ -19720,7 +19814,7 @@ function au({ note: e, replies: t, canWrite: n, onReply: r, onDownload: i, downl
 					}),
 					/* @__PURE__ */ (0, W.jsxs)("span", {
 						className: "text-slate-400",
-						children: ["· ", ru(e.created_at)]
+						children: ["· ", iu(e.created_at)]
 					}),
 					o && /* @__PURE__ */ (0, W.jsx)("span", {
 						className: "rounded bg-amber-100 px-1 text-[10px] font-bold text-amber-800",
@@ -19734,7 +19828,7 @@ function au({ note: e, replies: t, canWrite: n, onReply: r, onDownload: i, downl
 			}) : null,
 			e.attachments.length > 0 && /* @__PURE__ */ (0, W.jsx)("ul", {
 				className: "mt-1 space-y-1",
-				children: e.attachments.map((t) => /* @__PURE__ */ (0, W.jsx)(iu, {
+				children: e.attachments.map((t) => /* @__PURE__ */ (0, W.jsx)(au, {
 					noteId: e.id,
 					item: t,
 					disabled: a,
@@ -19761,7 +19855,7 @@ function au({ note: e, replies: t, canWrite: n, onReply: r, onDownload: i, downl
 		})]
 	});
 }
-function ou({ shipmentId: e, nodeId: t, nodeLabel: n, onClose: r, style: i }) {
+function su({ shipmentId: e, nodeId: t, nodeLabel: n, onClose: r, style: i }) {
 	let a = (0, _.useSyncExternalStore)(C, S, S), o = a?.journeyDiscussion ?? null, s = !(!o || o.shipmentId !== e || o.nodeId !== t && o.stageId !== t), c = s ? o : null, [l, u] = (0, _.useState)(""), [d, f] = (0, _.useState)(null), [p, m] = (0, _.useState)(null), [h, g] = (0, _.useState)(""), [v, y] = (0, _.useState)("INTERNAL"), [b, x] = (0, _.useState)(""), [w, T] = (0, _.useState)(""), [E, D] = (0, _.useState)(""), O = (0, _.useRef)(null), k = (0, _.useRef)(null);
 	(0, _.useEffect)(() => {
 		let e = O.current;
@@ -19777,7 +19871,7 @@ function ou({ shipmentId: e, nodeId: t, nodeLabel: n, onClose: r, style: i }) {
 	(0, _.useEffect)(() => {
 		if (!M?.base64) return;
 		let e = `${M.noteId}:${M.attachmentId}`;
-		tu[e] !== M.seq && (tu[e] = M.seq, fs(M.name, M.base64, M.mime), T(""));
+		nu[e] !== M.seq && (nu[e] = M.seq, fs(M.name, M.base64, M.mime), T(""));
 	}, [M]);
 	let N = w ? (a?.lastWrites ?? []).find((e) => e.event === "journey_note_download" && e.requestId === w) : void 0;
 	(0, _.useEffect)(() => {
@@ -19812,7 +19906,7 @@ function ou({ shipmentId: e, nodeId: t, nodeLabel: n, onClose: r, style: i }) {
 			return;
 		}
 		D("");
-		let r = nu("JRN");
+		let r = ru("JRN");
 		x(r), j("journey_note_create", {
 			requestId: r,
 			shipmentId: e,
@@ -19830,7 +19924,7 @@ function ou({ shipmentId: e, nodeId: t, nodeLabel: n, onClose: r, style: i }) {
 		}) || (x(""), D("Chưa kết nối được backend."));
 	}, I = (n, r) => {
 		if (w) return;
-		let i = nu("JRN-DOWN");
+		let i = ru("JRN-DOWN");
 		T(i), D(""), j("journey_note_download", {
 			requestId: i,
 			shipmentId: e,
@@ -19904,7 +19998,7 @@ function ou({ shipmentId: e, nodeId: t, nodeLabel: n, onClose: r, style: i }) {
 					}),
 					L.length > 0 && /* @__PURE__ */ (0, W.jsx)("ul", {
 						className: "space-y-2",
-						children: L.map((e) => /* @__PURE__ */ (0, W.jsx)(au, {
+						children: L.map((e) => /* @__PURE__ */ (0, W.jsx)(ou, {
 							note: e,
 							replies: e.replies ?? [],
 							canWrite: !!c?.canWrite,
@@ -20031,92 +20125,92 @@ function ou({ shipmentId: e, nodeId: t, nodeLabel: n, onClose: r, style: i }) {
 }
 //#endregion
 //#region src/components/JourneyMap.tsx
-var su = 164, cu = 136, lu = 212, uu = 48, du = (e) => uu + e * lu, fu = {
+var cu = 164, lu = 136, uu = 212, du = 48, fu = (e) => du + e * uu, pu = {
 	start: {
-		x: du(0),
+		x: fu(0),
 		y: 4,
-		w: su,
+		w: cu,
 		h: 32
 	},
 	plan: {
-		x: du(0),
+		x: fu(0),
 		y: 48,
-		w: su,
+		w: cu,
 		h: 84
 	},
 	booking: {
-		x: du(0),
+		x: fu(0),
 		y: 140,
-		w: su,
-		h: cu
+		w: cu,
+		h: lu
 	},
 	pickup: {
-		x: du(1),
+		x: fu(1),
 		y: 140,
-		w: su,
-		h: cu
+		w: cu,
+		h: lu
 	},
 	"customs-export": {
-		x: du(2),
+		x: fu(2),
 		y: 140,
-		w: su,
-		h: cu
+		w: cu,
+		h: lu
 	},
 	"si-vgm": {
-		x: du(3),
+		x: fu(3),
 		y: 56,
-		w: su,
-		h: cu
+		w: cu,
+		h: lu
 	},
 	"gate-in": {
-		x: du(3),
+		x: fu(3),
 		y: 224,
-		w: su,
-		h: cu
+		w: cu,
+		h: lu
 	},
 	etd: {
-		x: du(4),
+		x: fu(4),
 		y: 140,
-		w: su,
-		h: cu
+		w: cu,
+		h: lu
 	},
 	"on-board": {
-		x: du(4),
+		x: fu(4),
 		y: 400,
-		w: su,
-		h: cu
+		w: cu,
+		h: lu
 	},
 	transit: {
-		x: du(3),
+		x: fu(3),
 		y: 400,
-		w: su,
-		h: cu
+		w: cu,
+		h: lu
 	},
 	arrival: {
-		x: du(2),
+		x: fu(2),
 		y: 400,
-		w: su,
-		h: cu
+		w: cu,
+		h: lu
 	},
 	"customs-import": {
-		x: du(1),
+		x: fu(1),
 		y: 400,
-		w: su,
-		h: cu
+		w: cu,
+		h: lu
 	},
 	delivery: {
-		x: du(0),
+		x: fu(0),
 		y: 400,
-		w: su,
-		h: cu
+		w: cu,
+		h: lu
 	},
 	completed: {
-		x: du(0),
+		x: fu(0),
 		y: 590,
-		w: su,
+		w: cu,
 		h: 44
 	}
-}, pu = du(4) + su + uu, mu = 690, hu = {
+}, mu = fu(4) + cu + du, hu = 690, gu = {
 	COMPLETED: {
 		label: "Hoàn thành",
 		icon: Jr,
@@ -20148,12 +20242,12 @@ var su = 164, cu = 136, lu = 212, uu = 48, du = (e) => uu + e * lu, fu = {
 		text: "text-slate-500"
 	}
 };
-function gu(e, t, n) {
+function _u(e, t, n) {
 	if (e.id === "plan") return "00";
 	let r = +(n[0]?.id === "plan");
 	return String(t - r + 1);
 }
-function _u(e) {
+function vu(e) {
 	let t = e.plan;
 	return t ? {
 		id: "plan",
@@ -20173,8 +20267,8 @@ function _u(e) {
 		documentIds: []
 	} : null;
 }
-function vu({ node: e, solid: t = !1 }) {
-	let n = hu[e.state], r = n.icon;
+function yu({ node: e, solid: t = !1 }) {
+	let n = gu[e.state], r = n.icon;
 	return /* @__PURE__ */ (0, W.jsxs)("span", {
 		className: q("inline-flex items-center gap-1.5 text-xs font-bold", n.text, t && "rounded-md border bg-white px-2 py-1"),
 		children: [/* @__PURE__ */ (0, W.jsx)(r, {
@@ -20183,7 +20277,7 @@ function vu({ node: e, solid: t = !1 }) {
 		}), n.label]
 	});
 }
-function yu(e, t) {
+function bu(e, t) {
 	if (e.x === t.x && t.y > e.y) return `M${e.x + e.w / 2},${e.y + e.h} L${t.x + t.w / 2},${t.y}`;
 	if (t.x < e.x && e.y === t.y) return `M${e.x},${e.y + e.h / 2} L${t.x + t.w},${t.y + t.h / 2}`;
 	if (t.x > e.x) {
@@ -20193,8 +20287,8 @@ function yu(e, t) {
 	let n = Math.min(e.x, t.x) - 24;
 	return `M${e.x},${e.y + e.h / 2} H${n} V${t.y + t.h / 2} H${t.x}`;
 }
-var bu = (e, t, n) => Math.min(n, Math.max(t, e));
-function xu({ shipment: e, nodes: t, selectedId: n, onPick: r, collapsed: i, onExpand: a }) {
+var xu = (e, t, n) => Math.min(n, Math.max(t, e));
+function Su({ shipment: e, nodes: t, selectedId: n, onPick: r, collapsed: i, onExpand: a }) {
 	let [o, s] = (0, _.useState)({
 		x: 0,
 		y: 0,
@@ -20207,22 +20301,22 @@ function xu({ shipment: e, nodes: t, selectedId: n, onPick: r, collapsed: i, onE
 	}), b = t.some((e) => e.id === "booking"), x = /* @__PURE__ */ new Map();
 	t.filter((e) => e.id !== "plan").forEach((e, t) => x.set(e.id, t));
 	let S = new Map(t.map((e) => {
-		if (b && fu[e.id]) return [e.id, fu[e.id]];
-		if (e.id === "plan") return [e.id, fu.plan];
+		if (b && pu[e.id]) return [e.id, pu[e.id]];
+		if (e.id === "plan") return [e.id, pu.plan];
 		let t = x.get(e.id) ?? 0;
 		return [e.id, {
-			x: du(t % 5),
+			x: fu(t % 5),
 			y: 140 + Math.floor(t / 5) * 212,
-			w: su,
-			h: cu
+			w: cu,
+			h: lu
 		}];
-	})), C = b ? mu : Math.max(mu, 140 + Math.ceil(t.length / 5) * 212), w = (0, _.useCallback)(() => {
+	})), C = b ? hu : Math.max(hu, 140 + Math.ceil(t.length / 5) * 212), w = (0, _.useCallback)(() => {
 		let e = l.current;
 		if (!e?.clientWidth || !e.clientHeight) return;
-		let t = e.clientWidth, n = e.clientHeight, r = bu(Math.min((t - 32) / pu, (n - 32) / C), t < 600 ? .65 : .3, 1.15);
+		let t = e.clientWidth, n = e.clientHeight, r = xu(Math.min((t - 32) / mu, (n - 32) / C), t < 600 ? .65 : .3, 1.15);
 		s({
 			k: r,
-			x: (t - pu * r) / 2,
+			x: (t - mu * r) / 2,
 			y: Math.max(12, (n - C * r) / 2)
 		});
 	}, [C]);
@@ -20244,7 +20338,7 @@ function xu({ shipment: e, nodes: t, selectedId: n, onPick: r, collapsed: i, onE
 	}, [w, i]);
 	let T = (0, _.useCallback)((e, t, n) => {
 		u.current = !1, s((r) => {
-			let i = bu(r.k * e, .3, 2), a = i / r.k;
+			let i = xu(r.k * e, .3, 2), a = i / r.k;
 			return {
 				k: i,
 				x: t - (t - r.x) * a,
@@ -20295,7 +20389,7 @@ function xu({ shipment: e, nodes: t, selectedId: n, onPick: r, collapsed: i, onE
 			type: "button",
 			onClick: () => r(e.id),
 			className: q("touch-target flex w-full items-center gap-2 border-l-4 px-3 py-2 text-left text-xs font-semibold", n === e.id ? "border-slate-900 bg-slate-100" : "border-transparent", e.state === "PROBLEM" && "bg-red-50 text-red-700"),
-			children: [/* @__PURE__ */ (0, W.jsx)(vu, { node: e }), /* @__PURE__ */ (0, W.jsx)("span", { children: e.label })]
+			children: [/* @__PURE__ */ (0, W.jsx)(yu, { node: e }), /* @__PURE__ */ (0, W.jsx)("span", { children: e.label })]
 		}, e.id))]
 	});
 	let O = t[0], k = t[t.length - 1], A = (e.journey?.edges ?? []).filter((e) => S.has(e.from) && S.has(e.to)), M = t.find((e) => e.id !== "plan"), N = M && S.has("plan") ? [{
@@ -20309,8 +20403,8 @@ function xu({ shipment: e, nodes: t, selectedId: n, onPick: r, collapsed: i, onE
 		bottom: 8,
 		maxHeight: "64vh"
 	} : I ? {
-		left: bu(o.x + (I.x + I.w + 10) * o.k, 8, Math.max(8, v.w - 376)),
-		top: bu(o.y + I.y * o.k, 8, Math.max(8, v.h - 440)),
+		left: xu(o.x + (I.x + I.w + 10) * o.k, 8, Math.max(8, v.w - 376)),
+		top: xu(o.y + I.y * o.k, 8, Math.max(8, v.h - 440)),
 		width: 360,
 		maxHeight: Math.max(260, v.h - 24)
 	} : {
@@ -20329,7 +20423,7 @@ function xu({ shipment: e, nodes: t, selectedId: n, onPick: r, collapsed: i, onE
 			/* @__PURE__ */ (0, W.jsxs)("div", {
 				className: "absolute left-0 top-0 origin-top-left",
 				style: {
-					width: pu,
+					width: mu,
 					height: C,
 					transform: `translate(${o.x}px, ${o.y}px) scale(${o.k})`
 				},
@@ -20338,10 +20432,10 @@ function xu({ shipment: e, nodes: t, selectedId: n, onPick: r, collapsed: i, onE
 					S.has("si-vgm") && S.has("gate-in") && /* @__PURE__ */ (0, W.jsx)("div", {
 						className: "absolute rounded-2xl border-2 border-dashed border-slate-400/70 bg-slate-200/30",
 						style: {
-							left: fu["si-vgm"].x - 14,
-							top: fu["si-vgm"].y - 36,
+							left: pu["si-vgm"].x - 14,
+							top: pu["si-vgm"].y - 36,
 							width: 192,
-							height: fu["gate-in"].y + cu - fu["si-vgm"].y + 50
+							height: pu["gate-in"].y + lu - pu["si-vgm"].y + 50
 						},
 						"data-testid": "journey-parallel-branch",
 						children: /* @__PURE__ */ (0, W.jsx)("span", {
@@ -20352,14 +20446,14 @@ function xu({ shipment: e, nodes: t, selectedId: n, onPick: r, collapsed: i, onE
 					S.has("si-vgm") && S.has("gate-in") && /* @__PURE__ */ (0, W.jsx)("div", {
 						className: "pointer-events-none absolute rounded bg-slate-200 px-1.5 py-0.5 text-[10px] font-bold text-slate-600",
 						style: {
-							left: fu.etd.x - 4,
-							top: fu.etd.y - 30,
+							left: pu.etd.x - 4,
+							top: pu.etd.y - 30,
 							width: 172
 						},
 						children: "⛓ Phụ thuộc SI/VGM + Gate-in"
 					}),
 					/* @__PURE__ */ (0, W.jsxs)("svg", {
-						width: pu,
+						width: mu,
 						height: C,
 						className: "pointer-events-none absolute left-0 top-0 z-[1]",
 						"aria-hidden": "true",
@@ -20386,7 +20480,7 @@ function xu({ shipment: e, nodes: t, selectedId: n, onPick: r, collapsed: i, onE
 								return /* @__PURE__ */ (0, W.jsx)("path", {
 									"data-from": e.from,
 									"data-to": e.to,
-									d: yu(S.get(e.from), S.get(e.to)),
+									d: bu(S.get(e.from), S.get(e.to)),
 									fill: "none",
 									stroke: r === "g" ? "#059669" : r === "r" ? "#dc2626" : "#94a3b8",
 									strokeWidth: r === "g" ? 3 : 2.5,
@@ -20395,14 +20489,14 @@ function xu({ shipment: e, nodes: t, selectedId: n, onPick: r, collapsed: i, onE
 								}, e.from + e.to);
 							}),
 							b && O && /* @__PURE__ */ (0, W.jsx)("path", {
-								d: yu(fu.start, S.get(O.id)),
+								d: bu(pu.start, S.get(O.id)),
 								fill: "none",
 								stroke: "#94a3b8",
 								strokeWidth: "2.5",
 								markerEnd: "url(#journey-arr-s)"
 							}),
 							b && k && /* @__PURE__ */ (0, W.jsx)("path", {
-								d: yu(S.get(k.id), fu.completed),
+								d: bu(S.get(k.id), pu.completed),
 								fill: "none",
 								stroke: "#94a3b8",
 								strokeWidth: "2.5",
@@ -20413,18 +20507,18 @@ function xu({ shipment: e, nodes: t, selectedId: n, onPick: r, collapsed: i, onE
 					b && /* @__PURE__ */ (0, W.jsxs)(W.Fragment, { children: [/* @__PURE__ */ (0, W.jsx)("span", {
 						className: "absolute z-10 flex items-center justify-center gap-2 rounded-full border-2 border-slate-400 bg-white text-xs font-bold tracking-wide text-slate-600",
 						style: {
-							left: fu.start.x,
-							top: fu.start.y,
-							width: su,
-							height: fu.start.h
+							left: pu.start.x,
+							top: pu.start.y,
+							width: cu,
+							height: pu.start.h
 						},
 						children: "START"
 					}), /* @__PURE__ */ (0, W.jsx)("span", {
 						className: "absolute z-10 flex items-center justify-center gap-2 rounded-full border-2 border-dashed border-slate-400 bg-white text-xs font-bold tracking-wide text-slate-500",
 						style: {
-							left: fu.completed.x,
-							top: fu.completed.y,
-							width: su,
+							left: pu.completed.x,
+							top: pu.completed.y,
+							width: cu,
 							height: 44
 						},
 						children: "RÀ SOÁT HOÀN TẤT"
@@ -20455,7 +20549,7 @@ function xu({ shipment: e, nodes: t, selectedId: n, onPick: r, collapsed: i, onE
 						}, `talk-${t.id}`);
 					}),
 					t.map((r, i) => {
-						let a = S.get(r.id), o = hu[r.state];
+						let a = S.get(r.id), o = gu[r.state];
 						return /* @__PURE__ */ (0, W.jsxs)("button", {
 							type: "button",
 							"data-testid": `journey-node-${r.id}`,
@@ -20480,10 +20574,10 @@ function xu({ shipment: e, nodes: t, selectedId: n, onPick: r, collapsed: i, onE
 								}),
 								/* @__PURE__ */ (0, W.jsxs)("div", {
 									className: "flex items-center justify-between gap-1",
-									children: [/* @__PURE__ */ (0, W.jsx)(vu, { node: r }), /* @__PURE__ */ (0, W.jsx)("span", {
+									children: [/* @__PURE__ */ (0, W.jsx)(yu, { node: r }), /* @__PURE__ */ (0, W.jsx)("span", {
 										"data-testid": `journey-node-number-${r.id}`,
 										className: "rounded bg-slate-900/10 px-1 text-[10px] font-bold text-slate-600",
-										children: gu(r, i, t)
+										children: _u(r, i, t)
 									})]
 								}),
 								/* @__PURE__ */ (0, W.jsx)("div", {
@@ -20566,7 +20660,7 @@ function xu({ shipment: e, nodes: t, selectedId: n, onPick: r, collapsed: i, onE
 			}),
 			/* @__PURE__ */ (0, W.jsx)("div", {
 				className: "pointer-events-none absolute bottom-16 right-3 z-20 flex flex-col gap-1 rounded-lg border border-slate-300 bg-white/95 px-2.5 py-2 text-[11px] font-semibold text-slate-600 shadow",
-				children: Object.entries(hu).map(([e, t]) => {
+				children: Object.entries(gu).map(([e, t]) => {
 					let n = t.icon;
 					return /* @__PURE__ */ (0, W.jsxs)("span", {
 						className: "flex items-center gap-1.5",
@@ -20581,7 +20675,7 @@ function xu({ shipment: e, nodes: t, selectedId: n, onPick: r, collapsed: i, onE
 				className: "pointer-events-none absolute right-3 top-3 z-20 rounded bg-white/80 px-2 py-1 text-[10.5px] text-slate-500",
 				children: "Kéo để di chuyển · Cuộn để zoom · Click node để xem"
 			}),
-			F && /* @__PURE__ */ (0, W.jsx)(ou, {
+			F && /* @__PURE__ */ (0, W.jsx)(su, {
 				shipmentId: e.id,
 				nodeId: F.id,
 				nodeLabel: F.label,
@@ -20593,7 +20687,7 @@ function xu({ shipment: e, nodes: t, selectedId: n, onPick: r, collapsed: i, onE
 }
 //#endregion
 //#region src/components/JourneyQuickPanel.tsx
-var Su = [
+var Cu = [
 	{
 		key: "why",
 		label: "WHY — vì sao"
@@ -20622,7 +20716,7 @@ var Su = [
 		key: "impact",
 		label: "IMPACT if incomplete — nếu chưa xong"
 	}
-], Cu = {
+], wu = {
 	PROBLEM: {
 		box: "border-red-700 bg-red-600 text-white",
 		label: "CẦN LÀM NGAY"
@@ -20644,17 +20738,17 @@ var Su = [
 		label: "CHƯA XÁC ĐỊNH / SẮP TỚI"
 	}
 };
-function wu({ children: e }) {
+function Tu({ children: e }) {
 	return /* @__PURE__ */ (0, W.jsx)("div", {
 		className: "mb-1 text-[10.5px] font-bold uppercase tracking-widest text-slate-500",
 		children: e
 	});
 }
-function Tu(e) {
+function Eu(e) {
 	return e.blockers.join(" · ") || (e.completed ? "Mốc hoàn thành đã được ghi nhận; kiểm tra thông tin liên quan khi cần." : e.owned ? "Kiểm tra bằng chứng và cập nhật tại bàn làm việc công đoạn." : "Theo dõi thông tin tham chiếu; chưa xác nhận Trường Thành phụ trách.");
 }
-function Eu({ shipment: e, selected: t, onOpen: n, runPrimary: r, onClose: i }) {
-	let [a, o] = (0, _.useState)(""), [s, c] = (0, _.useState)(!1), l = Cu[t.state], u = hu[t.state], d = e.journey.nodes, f = t.evidence ? `${t.label}: ${t.evidence}.${t.deadline ? ` Mốc dự kiến: ${t.deadline}.` : ""}` : "Chưa có bằng chứng để xác nhận tiến độ với khách.", p = e.attachments?.filter((e) => t.documentIds.includes(e.id)) ?? [], m = async () => {
+function Du({ shipment: e, selected: t, onOpen: n, runPrimary: r, onClose: i }) {
+	let [a, o] = (0, _.useState)(""), [s, c] = (0, _.useState)(!1), l = wu[t.state], u = gu[t.state], d = e.journey.nodes, f = t.evidence ? `${t.label}: ${t.evidence}.${t.deadline ? ` Mốc dự kiến: ${t.deadline}.` : ""}` : "Chưa có bằng chứng để xác nhận tiến độ với khách.", p = e.attachments?.filter((e) => t.documentIds.includes(e.id)) ?? [], m = async () => {
 		try {
 			await navigator.clipboard.writeText(f), o("Đã sao chép");
 		} catch {
@@ -20690,7 +20784,7 @@ function Eu({ shipment: e, selected: t, onOpen: n, runPrimary: r, onClose: i }) 
 						children: [/* @__PURE__ */ (0, W.jsx)("h3", {
 							className: "text-2xl font-black tracking-tight text-slate-900",
 							children: t.label
-						}), /* @__PURE__ */ (0, W.jsx)(vu, {
+						}), /* @__PURE__ */ (0, W.jsx)(yu, {
 							node: t,
 							solid: !0
 						})]
@@ -20704,7 +20798,7 @@ function Eu({ shipment: e, selected: t, onOpen: n, runPrimary: r, onClose: i }) 
 			/* @__PURE__ */ (0, W.jsxs)("div", {
 				className: "min-h-0 flex-1 space-y-3 overflow-auto px-4 py-3",
 				children: [
-					/* @__PURE__ */ (0, W.jsxs)("section", { children: [/* @__PURE__ */ (0, W.jsx)(wu, { children: "Support Sale cần làm" }), /* @__PURE__ */ (0, W.jsxs)("div", {
+					/* @__PURE__ */ (0, W.jsxs)("section", { children: [/* @__PURE__ */ (0, W.jsx)(Tu, { children: "Support Sale cần làm" }), /* @__PURE__ */ (0, W.jsxs)("div", {
 						className: q("rounded-lg border-2 p-3", l.box),
 						children: [
 							/* @__PURE__ */ (0, W.jsx)("div", {
@@ -20713,7 +20807,7 @@ function Eu({ shipment: e, selected: t, onOpen: n, runPrimary: r, onClose: i }) 
 							}),
 							/* @__PURE__ */ (0, W.jsx)("div", {
 								className: "mt-0.5 text-[19px] font-extrabold leading-snug",
-								children: Tu(t)
+								children: Eu(t)
 							}),
 							/* @__PURE__ */ (0, W.jsxs)("button", {
 								type: "button",
@@ -20724,7 +20818,7 @@ function Eu({ shipment: e, selected: t, onOpen: n, runPrimary: r, onClose: i }) 
 							})
 						]
 					})] }),
-					/* @__PURE__ */ (0, W.jsx)("section", { children: /* @__PURE__ */ (0, W.jsx)(wu, { children: "Thông tin chính" }) }),
+					/* @__PURE__ */ (0, W.jsx)("section", { children: /* @__PURE__ */ (0, W.jsx)(Tu, { children: "Thông tin chính" }) }),
 					/* @__PURE__ */ (0, W.jsxs)("dl", {
 						className: "divide-y divide-slate-100 rounded-lg border border-slate-200 text-[13px]",
 						"data-testid": "journey-quick-facts",
@@ -20855,7 +20949,7 @@ function Eu({ shipment: e, selected: t, onOpen: n, runPrimary: r, onClose: i }) 
 						className: "rounded-lg border border-slate-300 bg-slate-50 p-3",
 						"data-testid": "journey-module-context",
 						children: [
-							/* @__PURE__ */ (0, W.jsxs)(wu, { children: ["Quy trình · V", t.moduleTemplateVersion] }),
+							/* @__PURE__ */ (0, W.jsxs)(Tu, { children: ["Quy trình · V", t.moduleTemplateVersion] }),
 							/* @__PURE__ */ (0, W.jsx)("div", {
 								className: "font-bold",
 								children: t.moduleName
@@ -20892,12 +20986,12 @@ function Eu({ shipment: e, selected: t, onOpen: n, runPrimary: r, onClose: i }) 
 							t.guidance && /* @__PURE__ */ (0, W.jsxs)("section", {
 								className: "rounded-lg border border-slate-300 p-3",
 								"data-testid": "journey-module-guidance",
-								children: [/* @__PURE__ */ (0, W.jsxs)(wu, { children: [/* @__PURE__ */ (0, W.jsx)(qi, {
+								children: [/* @__PURE__ */ (0, W.jsxs)(Tu, { children: [/* @__PURE__ */ (0, W.jsx)(qi, {
 									size: 13,
 									className: "inline"
 								}), " Hướng dẫn bước"] }), /* @__PURE__ */ (0, W.jsx)("dl", {
 									className: "space-y-1 text-sm",
-									children: Su.filter((e) => t.guidance?.[e.key]).map((e) => /* @__PURE__ */ (0, W.jsxs)("div", { children: [/* @__PURE__ */ (0, W.jsx)("dt", {
+									children: Cu.filter((e) => t.guidance?.[e.key]).map((e) => /* @__PURE__ */ (0, W.jsxs)("div", { children: [/* @__PURE__ */ (0, W.jsx)("dt", {
 										className: "text-xs text-slate-500",
 										children: e.label
 									}), /* @__PURE__ */ (0, W.jsx)("dd", {
@@ -20906,16 +21000,16 @@ function Eu({ shipment: e, selected: t, onOpen: n, runPrimary: r, onClose: i }) 
 									})] }, e.key))
 								})]
 							}),
-							/* @__PURE__ */ (0, W.jsxs)("section", { children: [/* @__PURE__ */ (0, W.jsx)(wu, { children: "CẦN CÓ" }), /* @__PURE__ */ (0, W.jsx)("div", {
+							/* @__PURE__ */ (0, W.jsxs)("section", { children: [/* @__PURE__ */ (0, W.jsx)(Tu, { children: "CẦN CÓ" }), /* @__PURE__ */ (0, W.jsx)("div", {
 								className: "rounded-md border border-slate-300 bg-slate-50 px-3 py-2 text-sm",
 								children: t.guidance?.needs || (p.length ? `Đã liên kết ${p.length} tệp; kiểm tra đúng bằng chứng trước khi cập nhật.` : t.evidence ? `Bằng chứng hiện có: ${t.evidence}` : "Chưa có tiêu chí/tệp cụ thể được lưu; không tự đoán.")
 							})] }),
-							/* @__PURE__ */ (0, W.jsxs)("section", { children: [/* @__PURE__ */ (0, W.jsx)(wu, { children: "DONE WHEN / XONG KHI" }), /* @__PURE__ */ (0, W.jsx)("div", {
+							/* @__PURE__ */ (0, W.jsxs)("section", { children: [/* @__PURE__ */ (0, W.jsx)(Tu, { children: "DONE WHEN / XONG KHI" }), /* @__PURE__ */ (0, W.jsx)("div", {
 								className: "rounded-md border border-slate-300 bg-white px-3 py-2 text-sm",
 								children: t.guidance?.done_when || (t.completed && t.evidence ? `Đã có bằng chứng: ${t.evidence}` : "Khi authority của công đoạn ghi nhận bằng chứng thực tế; không suy completion từ lịch dự kiến hay file upload.")
 							})] }),
 							/* @__PURE__ */ (0, W.jsxs)("section", { children: [
-								/* @__PURE__ */ (0, W.jsx)(wu, { children: "Next Action — toàn lô (tham chiếu)" }),
+								/* @__PURE__ */ (0, W.jsx)(Tu, { children: "Next Action — toàn lô (tham chiếu)" }),
 								/* @__PURE__ */ (0, W.jsx)("p", {
 									className: "text-sm font-bold",
 									children: e.journey.primaryAction.text
@@ -20928,7 +21022,7 @@ function Eu({ shipment: e, selected: t, onOpen: n, runPrimary: r, onClose: i }) 
 								})
 							] }),
 							/* @__PURE__ */ (0, W.jsxs)("section", { children: [
-								/* @__PURE__ */ (0, W.jsx)(wu, { children: "CHỨNG TỪ" }),
+								/* @__PURE__ */ (0, W.jsx)(Tu, { children: "CHỨNG TỪ" }),
 								/* @__PURE__ */ (0, W.jsx)("div", {
 									className: "flex flex-wrap gap-1.5",
 									children: p.length ? p.map((e) => /* @__PURE__ */ (0, W.jsxs)("button", {
@@ -20951,7 +21045,7 @@ function Eu({ shipment: e, selected: t, onOpen: n, runPrimary: r, onClose: i }) 
 									children: "Quản lý chứng từ →"
 								})
 							] }),
-							/* @__PURE__ */ (0, W.jsxs)("section", { children: [/* @__PURE__ */ (0, W.jsx)(wu, { children: "Customer update" }), /* @__PURE__ */ (0, W.jsxs)("div", {
+							/* @__PURE__ */ (0, W.jsxs)("section", { children: [/* @__PURE__ */ (0, W.jsx)(Tu, { children: "Customer update" }), /* @__PURE__ */ (0, W.jsxs)("div", {
 								className: "rounded-md border border-slate-300 bg-slate-50 p-2.5",
 								children: [
 									/* @__PURE__ */ (0, W.jsxs)("p", {
@@ -20997,11 +21091,11 @@ function Eu({ shipment: e, selected: t, onOpen: n, runPrimary: r, onClose: i }) 
 }
 //#endregion
 //#region src/components/PlanQuickPanel.tsx
-var Du = {
+var Ou = {
 	quotation: zi,
 	customer_contract: zi,
 	customer_advance: qi
-}, Ou = {
+}, ku = {
 	LINKED: "border-emerald-200 bg-emerald-50 text-emerald-900",
 	ATTESTED: "border-emerald-200 bg-emerald-50 text-emerald-900",
 	UNVERIFIED: "border-amber-300 bg-amber-50 text-amber-950",
@@ -21011,10 +21105,10 @@ var Du = {
 	AMBIGUOUS: "border-red-300 bg-red-50 text-red-900",
 	UNRESOLVED: "border-red-300 bg-red-50 text-red-900"
 };
-function ku(e) {
-	return e.id === "customer_contract" ? Ou[e.signature === "ATTESTED" ? "ATTESTED" : "UNVERIFIED"] ?? Ou.UNVERIFIED : Ou[e.state] ?? Ou.MODE_UNKNOWN;
+function Au(e) {
+	return e.id === "customer_contract" ? ku[e.signature === "ATTESTED" ? "ATTESTED" : "UNVERIFIED"] ?? ku.UNVERIFIED : ku[e.state] ?? ku.MODE_UNKNOWN;
 }
-function Au({ item: e, onOpenFinance: t }) {
+function ju({ item: e, onOpenFinance: t }) {
 	let n = e.actionLabel || "Mở", r = "touch-target mt-1.5 inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-lg border-2 border-slate-300 bg-white px-3 text-[13px] font-extrabold text-[#0f2a4a]";
 	return e.targetRoute ? /* @__PURE__ */ (0, W.jsxs)(U, {
 		to: e.targetRoute,
@@ -21043,8 +21137,8 @@ function Au({ item: e, onOpenFinance: t }) {
 		]
 	});
 }
-function ju({ shipment: e, plan: t, onOpenFinance: n, onClose: r }) {
-	let i = hu[t.state === "COMPLETED" ? "COMPLETED" : t.state === "PROBLEM" ? "PROBLEM" : "WAITING"], a = t.state === "COMPLETED" ? Jr : t.state === "PROBLEM" ? Kr : fi;
+function Mu({ shipment: e, plan: t, onOpenFinance: n, onClose: r }) {
+	let i = gu[t.state === "COMPLETED" ? "COMPLETED" : t.state === "PROBLEM" ? "PROBLEM" : "WAITING"], a = t.state === "COMPLETED" ? Jr : t.state === "PROBLEM" ? Kr : fi;
 	return /* @__PURE__ */ (0, W.jsxs)("div", {
 		className: "flex h-full min-h-0 flex-col bg-white",
 		"data-testid": "plan-quick-panel",
@@ -21115,12 +21209,12 @@ function ju({ shipment: e, plan: t, onOpenFinance: n, onClose: r }) {
 				}), /* @__PURE__ */ (0, W.jsx)("div", {
 					className: "space-y-2",
 					children: t.items.map((e, t) => {
-						let r = Du[e.id] ?? qi;
+						let r = Ou[e.id] ?? qi;
 						return /* @__PURE__ */ (0, W.jsx)("article", {
 							"data-testid": `plan-item-${e.id}`,
 							"data-item-state": e.state,
 							"data-signature": e.signature ?? "",
-							className: q("rounded-xl border-2 p-2.5", ku(e)),
+							className: q("rounded-xl border-2 p-2.5", Au(e)),
 							children: /* @__PURE__ */ (0, W.jsxs)("div", {
 								className: "flex items-start gap-2",
 								children: [/* @__PURE__ */ (0, W.jsx)("span", {
@@ -21161,7 +21255,7 @@ function ju({ shipment: e, plan: t, onOpenFinance: n, onClose: r }) {
 											className: "mt-1 text-[11.5px] font-semibold opacity-90",
 											children: "Hợp đồng đã link hoặc chứng từ PDF đã tạo không đồng nghĩa đã ký."
 										}),
-										/* @__PURE__ */ (0, W.jsx)(Au, {
+										/* @__PURE__ */ (0, W.jsx)(ju, {
 											item: e,
 											onOpenFinance: n
 										})
@@ -21181,7 +21275,7 @@ function ju({ shipment: e, plan: t, onOpenFinance: n, onClose: r }) {
 }
 //#endregion
 //#region src/components/ShipmentJourney.tsx
-var Mu = [
+var Nu = [
 	{
 		id: "overview",
 		label: "Tổng quan"
@@ -21202,7 +21296,7 @@ var Mu = [
 		id: "history",
 		label: "Lịch sử"
 	}
-], Nu = {
+], Pu = {
 	DONE: {
 		label: "Hoàn thành",
 		cls: "border-emerald-300 bg-emerald-50 text-emerald-900"
@@ -21219,10 +21313,10 @@ var Mu = [
 		label: "Chưa xác định",
 		cls: "border-slate-300 bg-slate-50 text-slate-700"
 	}
-}, Pu = {
+}, Fu = {
 	MANUAL_ADDITION: "Thêm thủ công",
 	COMPANY_STANDARD: "Chuẩn công ty"
-}, Fu = [
+}, Iu = [
 	{
 		key: "why",
 		label: "WHY — vì sao"
@@ -21252,8 +21346,8 @@ var Mu = [
 		label: "IMPACT if incomplete — nếu chưa xong"
 	}
 ];
-function Iu({ module: e, nodes: t, expanded: n, onToggle: r, onPick: i, selectedId: a }) {
-	let o = Nu[e.status] ?? Nu.UNKNOWN, s = e.status === "DONE" ? Jr : e.status === "BLOCKING" ? Kr : fi, c = e.steps.map((e) => e.id);
+function Lu({ module: e, nodes: t, expanded: n, onToggle: r, onPick: i, selectedId: a }) {
+	let o = Pu[e.status] ?? Pu.UNKNOWN, s = e.status === "DONE" ? Jr : e.status === "BLOCKING" ? Kr : fi, c = e.steps.map((e) => e.id);
 	return /* @__PURE__ */ (0, W.jsxs)("article", {
 		className: "rounded-xl border border-slate-200 bg-white p-3",
 		"data-testid": `journey-module-${e.instanceId}`,
@@ -21335,7 +21429,7 @@ function Iu({ module: e, nodes: t, expanded: n, onToggle: r, onPick: i, selected
 			/* @__PURE__ */ (0, W.jsxs)("div", {
 				className: "mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500",
 				children: [
-					/* @__PURE__ */ (0, W.jsxs)("span", { children: ["Nguồn: ", Pu[e.provenance] ?? e.provenance] }),
+					/* @__PURE__ */ (0, W.jsxs)("span", { children: ["Nguồn: ", Fu[e.provenance] ?? e.provenance] }),
 					/* @__PURE__ */ (0, W.jsx)("span", {
 						"aria-hidden": "true",
 						children: "·"
@@ -21372,7 +21466,7 @@ function Iu({ module: e, nodes: t, expanded: n, onToggle: r, onPick: i, selected
 							className: "text-slate-400",
 							"aria-hidden": "true",
 							children: "→"
-						}), o && /* @__PURE__ */ (0, W.jsx)(Lu, {
+						}), o && /* @__PURE__ */ (0, W.jsx)(Ru, {
 							node: o,
 							onPick: i,
 							selectedId: a
@@ -21383,8 +21477,8 @@ function Iu({ module: e, nodes: t, expanded: n, onToggle: r, onPick: i, selected
 		]
 	});
 }
-function Lu({ node: e, onPick: t, selectedId: n }) {
-	let r = e.id, i = hu[e.state], a = i.icon;
+function Ru({ node: e, onPick: t, selectedId: n }) {
+	let r = e.id, i = gu[e.state], a = i.icon;
 	return /* @__PURE__ */ (0, W.jsxs)("button", {
 		type: "button",
 		"data-testid": `journey-node-${r}`,
@@ -21411,7 +21505,7 @@ function Lu({ node: e, onPick: t, selectedId: n }) {
 		]
 	});
 }
-function Ru({ s: e, selected: t, onOpen: n, runPrimary: r, onClose: i }) {
+function zu({ s: e, selected: t, onOpen: n, runPrimary: r, onClose: i }) {
 	let a = e.importInfo, o = e.commercialFlow, s = e.finance?.partner, c = s?.partners ?? [], l = a.gnt, u = e.journey?.modules ?? [], d = u.find((e) => e.anchorLabel === t.label) ?? u.find((e) => e.gate?.stage === t.id), f = e.journey?.primaryAction, p = e.documentWorkflow?.steps ?? [], m = (e) => ({
 		BLOCKED: 0,
 		MISSING_INFO: 1,
@@ -21752,7 +21846,7 @@ function Ru({ s: e, selected: t, onOpen: n, runPrimary: r, onClose: i }) {
 		]
 	});
 }
-var zu = [
+var Bu = [
 	{
 		id: "profile",
 		label: "HỒ SƠ",
@@ -21790,7 +21884,7 @@ var zu = [
 		tab: "chung-tu"
 	}
 ];
-function Bu({ shipment: e, onGlobal: t, runPrimary: n, children: r, globalActive: i = !1, globalTab: a = "van-tai" }) {
+function Vu({ shipment: e, onGlobal: t, runPrimary: n, children: r, globalActive: i = !1, globalTab: a = "van-tai" }) {
 	let o = e.executionProfile, s = o?.issues ?? [], c = o?.nextAction, [l, u] = (0, _.useState)(!1);
 	return /* @__PURE__ */ (0, W.jsxs)("section", {
 		className: "journey-demo rounded-xl border border-slate-300 bg-white overflow-hidden",
@@ -21821,7 +21915,7 @@ function Bu({ shipment: e, onGlobal: t, runPrimary: n, children: r, globalActive
 				"data-testid": "journey-phase-strip",
 				children: /* @__PURE__ */ (0, W.jsx)("div", {
 					className: "grid grid-cols-2 gap-1 sm:grid-cols-3 xl:grid-cols-6",
-					children: zu.map((e, t) => {
+					children: Bu.map((e, t) => {
 						let r = e.id === "profile", i = r ? Kr : oi;
 						return /* @__PURE__ */ (0, W.jsxs)("button", {
 							type: "button",
@@ -21944,7 +22038,7 @@ function Bu({ shipment: e, onGlobal: t, runPrimary: n, children: r, globalActive
 							/* @__PURE__ */ (0, W.jsx)("div", {
 								className: "mt-5 grid w-full grid-cols-2 gap-2 sm:grid-cols-5",
 								"aria-label": "Các giai đoạn chưa xác định",
-								children: zu.slice(1).map((e) => /* @__PURE__ */ (0, W.jsxs)("div", {
+								children: Bu.slice(1).map((e) => /* @__PURE__ */ (0, W.jsxs)("div", {
 									className: "rounded-lg border-2 border-dashed border-slate-300 bg-white/80 px-2 py-3 text-center text-xs font-bold text-slate-500",
 									children: [e.label, /* @__PURE__ */ (0, W.jsx)("span", {
 										className: "mt-1 block text-[10px] font-medium",
@@ -21960,7 +22054,7 @@ function Bu({ shipment: e, onGlobal: t, runPrimary: n, children: r, globalActive
 					children: l && e.plan ? /* @__PURE__ */ (0, W.jsx)("div", {
 						className: "h-full min-h-0",
 						"data-testid": "journey-empty-plan-panel",
-						children: /* @__PURE__ */ (0, W.jsx)(ju, {
+						children: /* @__PURE__ */ (0, W.jsx)(Mu, {
 							shipment: e,
 							plan: e.plan,
 							onOpenFinance: () => t("tai-chinh"),
@@ -22091,7 +22185,7 @@ function Bu({ shipment: e, onGlobal: t, runPrimary: n, children: r, globalActive
 		]
 	});
 }
-function Vu({ shipment: e, activeStage: t, work: n, onOpen: r, onGlobal: i, runPrimary: a, children: o, globalActive: s = !1, globalTab: c = "van-tai", globalRequest: l = 0, attachRequest: u = 0 }) {
+function Hu({ shipment: e, activeStage: t, work: n, onOpen: r, onGlobal: i, runPrimary: a, children: o, globalActive: s = !1, globalTab: c = "van-tai", globalRequest: l = 0, attachRequest: u = 0 }) {
 	let [d, f] = (0, _.useState)(""), [p, m] = (0, _.useState)(!1), [h, g] = (0, _.useState)(!1), [v, y] = (0, _.useState)(t ? "stage" : s ? "global" : "quick"), [b, x] = (0, _.useState)(""), [w, T] = (0, _.useState)(!1), [E, D] = (0, _.useState)(""), [O, k] = (0, _.useState)(""), [A, j] = (0, _.useState)(""), { dispatch: M } = Wn(), N = (0, _.useSyncExternalStore)(C, S, S);
 	(0, _.useEffect)(() => {
 		f(t || ""), y(t ? "stage" : s ? "global" : "quick");
@@ -22105,7 +22199,7 @@ function Vu({ shipment: e, activeStage: t, work: n, onOpen: r, onGlobal: i, runP
 	(0, _.useEffect)(() => {
 		I && (I.ok ? (T(!1), D(""), k(""), j("")) : (j(String(I.error || "Backend từ chối gắn quy trình.")), k("")));
 	}, [I]);
-	let R = (0, _.useMemo)(() => _u(e), [e]), ee = (0, _.useMemo)(() => {
+	let R = (0, _.useMemo)(() => vu(e), [e]), ee = (0, _.useMemo)(() => {
 		let e = P?.nodes ?? [];
 		return R ? [R, ...e] : e;
 	}, [P, R]), te = ee.filter((e) => !e.moduleId), ne = te.filter((e) => e.id !== "plan"), re = ne.find((e) => e.state === "PROBLEM" || e.blockers.length), z = ee.find((e) => e.id === d) ?? ee.find((e) => e.id === t) ?? re ?? ne.find((e) => e.current) ?? ne[0] ?? ee[0], ie = ee.find((e) => e.id === t), ae = N?.workModules, oe = ae?.templates ?? [], se = !!ae?.canAttach, ce = () => {
@@ -22132,7 +22226,7 @@ function Vu({ shipment: e, activeStage: t, work: n, onOpen: r, onGlobal: i, runP
 	let me = re, [he, ge] = (0, _.useState)(() => F.some((e) => e.status === "BLOCKING")), _e = (0, _.useRef)(F.length);
 	if ((0, _.useEffect)(() => {
 		F.length > _e.current && ge(!0), _e.current = F.length;
-	}, [F]), !P?.nodes.length) return /* @__PURE__ */ (0, W.jsx)(Bu, {
+	}, [F]), !P?.nodes.length) return /* @__PURE__ */ (0, W.jsx)(Vu, {
 		shipment: e,
 		onGlobal: i,
 		runPrimary: a,
@@ -22144,7 +22238,7 @@ function Vu({ shipment: e, activeStage: t, work: n, onOpen: r, onGlobal: i, runP
 		className: q("journey-side border-l-2 border-slate-400 bg-white shadow-[-6px_0_16px_-8px_rgba(15,23,42,0.25)]", t),
 		"data-testid": "journey-side-panel",
 		children: [
-			v === "quick" && (z.id === "plan" && e.plan ? /* @__PURE__ */ (0, W.jsx)(ju, {
+			v === "quick" && (z.id === "plan" && e.plan ? /* @__PURE__ */ (0, W.jsx)(Mu, {
 				shipment: e,
 				plan: e.plan,
 				onOpenFinance: () => ue("tai-chinh"),
@@ -22152,14 +22246,14 @@ function Vu({ shipment: e, activeStage: t, work: n, onOpen: r, onGlobal: i, runP
 			}, `plan-${e.id}`) : z.id === "customs-import" ? /* @__PURE__ */ (0, W.jsx)("div", {
 				className: "h-full min-h-0",
 				"data-testid": "journey-customs-import-panel",
-				children: /* @__PURE__ */ (0, W.jsx)(Ru, {
+				children: /* @__PURE__ */ (0, W.jsx)(zu, {
 					s: e,
 					selected: z,
 					onOpen: le,
 					runPrimary: a,
 					onClose: () => y("overview")
 				})
-			}) : /* @__PURE__ */ (0, W.jsx)(Eu, {
+			}) : /* @__PURE__ */ (0, W.jsx)(Du, {
 				shipment: e,
 				selected: z,
 				onOpen: le,
@@ -22320,7 +22414,7 @@ function Vu({ shipment: e, activeStage: t, work: n, onOpen: r, onGlobal: i, runP
 								children: [/* @__PURE__ */ (0, W.jsx)("h3", {
 									className: "text-2xl font-black tracking-tight text-slate-900",
 									children: ie.label
-								}), /* @__PURE__ */ (0, W.jsx)(vu, {
+								}), /* @__PURE__ */ (0, W.jsx)(yu, {
 									node: ie,
 									solid: !0
 								})]
@@ -22329,7 +22423,7 @@ function Vu({ shipment: e, activeStage: t, work: n, onOpen: r, onGlobal: i, runP
 								className: q("mt-1.5 rounded px-2 py-1 text-[13px]", ie.state === "PROBLEM" ? "bg-red-600 text-white" : "bg-white text-slate-800 ring-1 ring-slate-200"),
 								children: [
 									/* @__PURE__ */ (0, W.jsx)("b", { children: "Việc cần làm: " }),
-									Tu(ie),
+									Eu(ie),
 									/* @__PURE__ */ (0, W.jsxs)("span", {
 										className: "mt-1 block text-xs",
 										children: [
@@ -22345,7 +22439,7 @@ function Vu({ shipment: e, activeStage: t, work: n, onOpen: r, onGlobal: i, runP
 					/* @__PURE__ */ (0, W.jsx)("div", {
 						className: "flex shrink-0 overflow-x-auto border-b border-slate-300 bg-white px-2",
 						"aria-label": "Nội dung công đoạn",
-						children: Mu.map((e) => /* @__PURE__ */ (0, W.jsx)("button", {
+						children: Nu.map((e) => /* @__PURE__ */ (0, W.jsx)("button", {
 							type: "button",
 							"aria-pressed": n === e.id,
 							onClick: () => le(ie, e.id),
@@ -22469,7 +22563,7 @@ function Vu({ shipment: e, activeStage: t, work: n, onOpen: r, onGlobal: i, runP
 			}),
 			h ? /* @__PURE__ */ (0, W.jsxs)("div", {
 				className: q("journey-split", de && "journey-split-wide", de && p && "journey-split-collapsed"),
-				children: [/* @__PURE__ */ (0, W.jsx)(xu, {
+				children: [/* @__PURE__ */ (0, W.jsx)(Su, {
 					shipment: e,
 					nodes: te,
 					selectedId: v === "overview" || v === "global" ? "" : z.id,
@@ -22485,7 +22579,7 @@ function Vu({ shipment: e, activeStage: t, work: n, onOpen: r, onGlobal: i, runP
 					"data-testid": "journey-compact-stepper",
 					className: "grid grid-cols-2 gap-1.5 sm:grid-cols-3 xl:grid-cols-4",
 					children: te.map((e, t) => {
-						let n = hu[e.state], r = n.icon;
+						let n = gu[e.state], r = n.icon;
 						return /* @__PURE__ */ (0, W.jsxs)("button", {
 							type: "button",
 							"data-testid": `journey-step-${e.id}`,
@@ -22496,7 +22590,7 @@ function Vu({ shipment: e, activeStage: t, work: n, onOpen: r, onGlobal: i, runP
 							children: [
 								/* @__PURE__ */ (0, W.jsx)("span", {
 									className: "grid h-5 w-5 shrink-0 place-items-center rounded-full bg-slate-900/10 text-[10px] font-black",
-									children: gu(e, t, te)
+									children: _u(e, t, te)
 								}),
 								/* @__PURE__ */ (0, W.jsx)(r, {
 									size: 13,
@@ -22518,7 +22612,7 @@ function Vu({ shipment: e, activeStage: t, work: n, onOpen: r, onGlobal: i, runP
 					})
 				}), ye("journey-compact-side")]
 			}),
-			/* @__PURE__ */ (0, W.jsx)(Hu, {
+			/* @__PURE__ */ (0, W.jsx)(Uu, {
 				s: e,
 				nodes: te,
 				onOpen: le,
@@ -22668,7 +22762,7 @@ function Vu({ shipment: e, activeStage: t, work: n, onOpen: r, onGlobal: i, runP
 						]
 					}), he && F.length > 0 && /* @__PURE__ */ (0, W.jsx)("div", {
 						className: "grid grid-cols-1 gap-2 xl:grid-cols-2",
-						children: F.map((e) => /* @__PURE__ */ (0, W.jsx)(Iu, {
+						children: F.map((e) => /* @__PURE__ */ (0, W.jsx)(Lu, {
 							module: e,
 							nodes: ee,
 							expanded: b === e.instanceId,
@@ -22682,7 +22776,7 @@ function Vu({ shipment: e, activeStage: t, work: n, onOpen: r, onGlobal: i, runP
 		]
 	});
 }
-function Hu({ s: e, nodes: t, onOpen: n, onGlobal: r, canAttachModule: i, onAttachModule: a }) {
+function Uu({ s: e, nodes: t, onOpen: n, onGlobal: r, canAttachModule: i, onAttachModule: a }) {
 	let o = (e) => t.find((t) => t.id === e), s = e.transportLegs?.[0], c = {
 		origin: [
 			"booking",
@@ -22719,7 +22813,7 @@ function Hu({ s: e, nodes: t, onOpen: n, onGlobal: r, canAttachModule: i, onAtta
 			id: "history",
 			label: "Lịch sử"
 		}
-	], g = (e) => e ? hu[e.state].label : "Chưa xác định", _ = (e) => e ? hu[e.state].text : "text-slate-500", v = (e, t, i) => e ? n(e, t) : r(t === "docs" ? "chung-tu" : t === "costs" ? "tai-chinh" : t === "history" ? "lich-su" : i), y = [
+	], g = (e) => e ? gu[e.state].label : "Chưa xác định", _ = (e) => e ? gu[e.state].text : "text-slate-500", v = (e, t, i) => e ? n(e, t) : r(t === "docs" ? "chung-tu" : t === "costs" ? "tai-chinh" : t === "history" ? "lich-su" : i), y = [
 		{
 			n: u,
 			num: 1,
@@ -22905,7 +22999,7 @@ function Hu({ s: e, nodes: t, onOpen: n, onGlobal: r, canAttachModule: i, onAtta
 		}, e.num))
 	});
 }
-function Uu({ shipment: e, node: t }) {
+function Wu({ shipment: e, node: t }) {
 	let { dispatch: n } = Wn(), r = (0, _.useSyncExternalStore)(C, S, S), [i, a] = (0, _.useState)(""), [o, s] = (0, _.useState)(""), c = r?.userAccess?.currentUser, l = !!(c?.wildcard || c?.permissions.includes("shipment_edit")), u = r?.lastWrites?.find((e) => e.event === "work_module_step_complete" && e.requestId === i), d = !(!i || u);
 	(0, _.useEffect)(() => {
 		u && (u.ok ? (a(""), s("")) : (s(String(u.error || "Backend từ chối ghi nhận.")), a("")));
@@ -22938,14 +23032,14 @@ function Uu({ shipment: e, node: t }) {
 				className: "rounded-lg border border-slate-200 bg-slate-50 p-3",
 				children: [/* @__PURE__ */ (0, W.jsx)("ol", {
 					className: "space-y-1 text-sm",
-					children: f.guidance && Fu.filter((e) => f.guidance[e.key]).map((e) => /* @__PURE__ */ (0, W.jsxs)("li", { children: [/* @__PURE__ */ (0, W.jsx)("span", {
+					children: f.guidance && Iu.filter((e) => f.guidance[e.key]).map((e) => /* @__PURE__ */ (0, W.jsxs)("li", { children: [/* @__PURE__ */ (0, W.jsx)("span", {
 						className: "text-xs font-bold text-slate-500",
 						children: e.label
 					}), /* @__PURE__ */ (0, W.jsx)("p", {
 						className: "font-medium",
 						children: f.guidance[e.key]
 					})] }, e.key))
-				}), !f.guidance || Fu.every((e) => !f.guidance?.[e.key]) ? /* @__PURE__ */ (0, W.jsx)("p", {
+				}), !f.guidance || Iu.every((e) => !f.guidance?.[e.key]) ? /* @__PURE__ */ (0, W.jsx)("p", {
 					className: "text-sm text-slate-500",
 					children: "Bước này chưa có hướng dẫn chi tiết."
 				}) : null]
@@ -22989,7 +23083,7 @@ function Uu({ shipment: e, node: t }) {
 		]
 	});
 }
-function Wu({ shipment: e, stageId: t }) {
+function Gu({ shipment: e, stageId: t }) {
 	let { dispatch: n } = Wn(), r = (0, _.useSyncExternalStore)(C, S, S), [i, a] = (0, _.useState)({}), [o, s] = (0, _.useState)(""), [c, l] = (0, _.useState)(""), [u] = (0, _.useState)(e.version ?? 0), d = r?.userAccess?.currentUser, f = !!(d?.wildcard || d?.permissions.includes("shipment_edit")), p = e.journey?.nodes.find((e) => e.id === t), m = r?.lastWrites?.find((e) => e.event === "shipment_sea_facts_save" && e.requestId === o), h = !(!o || m), g = !!m?.ok, v = t === "customs-export" ? [{
 		key: "export_declaration_no",
 		label: "Số tờ khai xuất (đã đăng ký)"
@@ -23100,18 +23194,18 @@ function Wu({ shipment: e, stageId: t }) {
 }
 //#endregion
 //#region src/components/ShipmentCompletionGoals.tsx
-var Gu = {
+var Ku = {
 	EVIDENCED: "Có bằng chứng",
 	ACTION: "Cần xử lý",
 	UNKNOWN: "Chưa xác định",
 	NOT_APPLICABLE: "Không áp dụng"
-}, Ku = {
+}, qu = {
 	EVIDENCED: "border-emerald-200 bg-emerald-50 text-emerald-900",
 	ACTION: "border-red-200 bg-red-50 text-red-900",
 	UNKNOWN: "border-slate-300 bg-slate-50 text-slate-700",
 	NOT_APPLICABLE: "border-slate-200 bg-white text-slate-500"
 };
-function qu(e, t) {
+function Ju(e, t) {
 	let n = (e.journey?.nodes ?? []).filter((e) => !e.moduleId && t.includes(e.id));
 	return {
 		nodes: n,
@@ -23119,19 +23213,19 @@ function qu(e, t) {
 		factual: n.filter((e) => e.completed || !!e.evidence)
 	};
 }
-function Ju(e) {
-	let t = e.executionProfile, n = qu(e, [
+function Yu(e) {
+	let t = e.executionProfile, n = Ju(e, [
 		"booking",
 		"pickup",
 		"customs-export",
 		"si-vgm",
 		"gate-in"
-	]), r = qu(e, [
+	]), r = Ju(e, [
 		"etd",
 		"on-board",
 		"transit",
 		"arrival"
-	]), i = qu(e, ["customs-import", "delivery"]), a = (e.documentWorkflow?.steps ?? []).filter((e) => e.state !== "NOT_APPLICABLE"), o = a.find((e) => e.state === "BLOCKED" || e.state === "MISSING_INFO"), s = a.filter((e) => e.state === "COMPLETE"), c = e.finance.outstanding, l = c != null, u = e.finance.partner, d = u?.partners ?? [], f = d.length > 0 || !!(u && !u.suggested && u.partnerName), p = d.length > 0 ? d.flatMap((e) => Object.values(e.totalsByCurrency).map((e) => e.remaining)) : u && !u.suggested && u.partnerName ? [u.remaining] : [], m = p.filter((e) => e != null), h = f && (p.length === 0 || m.length !== p.length), g = l && c !== 0 || m.some((e) => e !== 0), _ = l || f && !h && m.length > 0, v = e.journey?.modules ?? [], y = v.find((e) => e.status === "BLOCKING"), b = v.filter((e) => e.status === "DONE");
+	]), i = Ju(e, ["customs-import", "delivery"]), a = (e.documentWorkflow?.steps ?? []).filter((e) => e.state !== "NOT_APPLICABLE"), o = a.find((e) => e.state === "BLOCKED" || e.state === "MISSING_INFO"), s = a.filter((e) => e.state === "COMPLETE"), c = e.finance.outstanding, l = c != null, u = e.finance.partner, d = u?.partners ?? [], f = d.length > 0 || !!(u && !u.suggested && u.partnerName), p = d.length > 0 ? d.flatMap((e) => Object.values(e.totalsByCurrency).map((e) => e.remaining)) : u && !u.suggested && u.partnerName ? [u.remaining] : [], m = p.filter((e) => e != null), h = f && (p.length === 0 || m.length !== p.length), g = l && c !== 0 || m.some((e) => e !== 0), _ = l || f && !h && m.length > 0, v = e.journey?.modules ?? [], y = v.find((e) => e.status === "BLOCKING"), b = v.filter((e) => e.status === "DONE");
 	return [
 		{
 			id: "profile",
@@ -23198,7 +23292,7 @@ function Ju(e) {
 		}
 	];
 }
-function Yu({ state: e }) {
+function Xu({ state: e }) {
 	return e === "EVIDENCED" ? /* @__PURE__ */ (0, W.jsx)(Jr, {
 		size: 16,
 		"aria-hidden": "true"
@@ -23213,8 +23307,8 @@ function Yu({ state: e }) {
 		"aria-hidden": "true"
 	});
 }
-function Xu({ shipment: e, onOpenTab: t }) {
-	let [n, r] = (0, _.useState)(!1), i = Ju(e), a = i.filter((e) => e.state !== "NOT_APPLICABLE"), o = a.filter((e) => e.state === "EVIDENCED").length, s = a.filter((e) => e.state === "ACTION").length, c = a.filter((e) => e.state === "UNKNOWN").length;
+function Zu({ shipment: e, onOpenTab: t }) {
+	let [n, r] = (0, _.useState)(!1), i = Yu(e), a = i.filter((e) => e.state !== "NOT_APPLICABLE"), o = a.filter((e) => e.state === "EVIDENCED").length, s = a.filter((e) => e.state === "ACTION").length, c = a.filter((e) => e.state === "UNKNOWN").length;
 	return /* @__PURE__ */ (0, W.jsxs)("section", {
 		className: "rounded-xl border border-slate-200 bg-white",
 		"data-testid": "shipment-completion-goals",
@@ -23255,21 +23349,21 @@ function Xu({ shipment: e, onOpenTab: t }) {
 			}), /* @__PURE__ */ (0, W.jsx)("div", {
 				className: "grid grid-cols-1 gap-2 lg:grid-cols-2 xl:grid-cols-3",
 				children: i.map((e) => /* @__PURE__ */ (0, W.jsxs)("article", {
-					className: q("rounded-xl border p-3", Ku[e.state]),
+					className: q("rounded-xl border p-3", qu[e.state]),
 					"data-testid": `completion-goal-${e.id}`,
 					"data-state": e.state,
 					children: [
 						/* @__PURE__ */ (0, W.jsxs)("div", {
 							className: "flex items-center gap-2",
 							children: [
-								/* @__PURE__ */ (0, W.jsx)(Yu, { state: e.state }),
+								/* @__PURE__ */ (0, W.jsx)(Xu, { state: e.state }),
 								/* @__PURE__ */ (0, W.jsx)("h3", {
 									className: "font-extrabold",
 									children: e.title
 								}),
 								/* @__PURE__ */ (0, W.jsx)("span", {
 									className: "ml-auto text-[11px] font-bold",
-									children: Gu[e.state]
+									children: Ku[e.state]
 								})
 							]
 						}),
@@ -23304,32 +23398,32 @@ function Xu({ shipment: e, onOpenTab: t }) {
 }
 //#endregion
 //#region src/lib/shipmentDocumentPicker.ts
-var Zu = /* @__PURE__ */ new Set([
+var Qu = /* @__PURE__ */ new Set([
 	"CONTRACT_DOCGEN",
 	"PXK_DOCGEN",
 	"GNT_BUILDER",
 	"FORM07_DOCGEN",
 	"UPLOADED_DOCGEN"
-]), Qu = /* @__PURE__ */ new Set([
+]), $u = /* @__PURE__ */ new Set([
 	"GENERATE_CONTRACT",
 	"GENERATE_PXK",
 	"GENERATE_GNT",
 	"GENERATE_FORM07",
 	"GENERATE_UPLOADED"
 ]);
-function $u(e) {
+function ed(e) {
 	return Array.isArray(e) ? e.filter((e) => typeof e == "string" && e.trim().length > 0) : [];
 }
-function ed(e) {
+function td(e) {
 	let t = Number(e.revision ?? 0);
 	return Number.isFinite(t) && t > 0 ? t : 0;
 }
-function td(e) {
+function nd(e) {
 	return {
 		recordId: e.id,
 		documentId: e.documentId,
 		documentType: e.documentType,
-		revision: ed(e),
+		revision: td(e),
 		status: e.status,
 		fileName: e.fileName,
 		mime: e.mime,
@@ -23340,24 +23434,24 @@ function td(e) {
 		downloadBase64: e.downloadBase64
 	};
 }
-function nd(e) {
-	return [...e].sort((e, t) => ed(e) - ed(t) || e.recordId.localeCompare(t.recordId));
+function rd(e) {
+	return [...e].sort((e, t) => td(e) - td(t) || e.recordId.localeCompare(t.recordId));
 }
-function rd(e, t) {
+function id(e, t) {
 	let n = e?.docCards?.find((e) => e.document_type === t);
 	return n ? {
 		state: n.state,
 		reason: n.reason || "",
-		missing: $u(n.missing)
+		missing: ed(n.missing)
 	} : {
 		state: "UNKNOWN",
 		reason: "Chưa đọc được cổng chứng từ canonical của hợp đồng.",
 		missing: []
 	};
 }
-function id(e, t) {
+function ad(e, t) {
 	let { shipment: n, linkedContract: r, linkedContractCount: i } = t;
-	if (!e.active || !Zu.has(e.adapter)) return {
+	if (!e.active || !Qu.has(e.adapter)) return {
 		state: "UNAVAILABLE",
 		reason: "Biểu mẫu không hoạt động hoặc chưa có bộ xử lý được hỗ trợ.",
 		missing: []
@@ -23377,7 +23471,7 @@ function id(e, t) {
 				action: "OPEN_CONTRACT_LIST"
 			};
 		}
-		let t = rd(r, e.documentType);
+		let t = id(r, e.documentType);
 		return t.state === "READY" ? {
 			...t,
 			action: "GENERATE_CONTRACT"
@@ -23401,7 +23495,7 @@ function id(e, t) {
 			reason: "Chưa có readback cổng GNT từ backend.",
 			missing: []
 		};
-		let r = $u(t.missing ?? e?.missing);
+		let r = ed(t.missing ?? e?.missing);
 		if (t.state === "READY") return {
 			state: "READY",
 			reason: t.reason || "",
@@ -23435,7 +23529,7 @@ function id(e, t) {
 			reason: "Chưa có readback cổng biểu mẫu tải lên từ backend.",
 			missing: []
 		};
-		let r = $u(n.missing);
+		let r = ed(n.missing);
 		if (n.state === "READY") return {
 			state: "READY",
 			reason: n.reason || "",
@@ -23469,7 +23563,7 @@ function id(e, t) {
 			reason: "Chưa có readback cổng FORM_07 từ backend.",
 			missing: []
 		};
-		let r = $u(e.missing), i = t.form07Draft?.number?.trim() || n.form07?.number?.trim() || "", a = t.form07Draft?.orderDate?.trim() || n.form07?.orderDate?.trim() || "", o = r.some((e) => /thiếu số biên bản/i.test(e)), s = r.some((e) => /thiếu ngày đơn đặt hàng/i.test(e)), c = r.filter((e) => !/thiếu (số biên bản|ngày đơn đặt hàng)/i.test(e)), l = [...i ? [] : ["Số biên bản"], ...a ? [] : ["Ngày đơn đặt hàng"]], u = e.state === "MISSING_INFO" && c.length === 0 && (o || s), d = [...c, ...l];
+		let r = ed(e.missing), i = t.form07Draft?.number?.trim() || n.form07?.number?.trim() || "", a = t.form07Draft?.orderDate?.trim() || n.form07?.orderDate?.trim() || "", o = r.some((e) => /thiếu số biên bản/i.test(e)), s = r.some((e) => /thiếu ngày đơn đặt hàng/i.test(e)), c = r.filter((e) => !/thiếu (số biên bản|ngày đơn đặt hàng)/i.test(e)), l = [...i ? [] : ["Số biên bản"], ...a ? [] : ["Ngày đơn đặt hàng"]], u = e.state === "MISSING_INFO" && c.length === 0 && (o || s), d = [...c, ...l];
 		if (e.state === "READY" || u) return l.length ? {
 			state: "MISSING_INFO",
 			reason: "Nhập số biên bản và ngày đơn đặt hàng ở phần tạo biên bản.",
@@ -23507,7 +23601,7 @@ function id(e, t) {
 		reason: "Chưa có readback cổng PXK từ backend.",
 		missing: []
 	};
-	let o = $u(a.missing), s = t.pxkDraft?.number?.trim() || n.pxk?.number?.trim() || "", c = t.pxkDraft?.date?.trim() || n.pxk?.date?.trim() || "", l = o.some((e) => /thiếu số phiếu xuất kho/i.test(e)), u = o.some((e) => /thiếu ngày phiếu xuất kho/i.test(e)), d = o.filter((e) => !/thiếu (số|ngày) phiếu xuất kho/i.test(e)), f = [...s ? [] : ["Số PXK"], ...c ? [] : ["Ngày PXK"]], p = a.state === "MISSING_INFO" && d.length === 0 && (l || u), m = [...d, ...f];
+	let o = ed(a.missing), s = t.pxkDraft?.number?.trim() || n.pxk?.number?.trim() || "", c = t.pxkDraft?.date?.trim() || n.pxk?.date?.trim() || "", l = o.some((e) => /thiếu số phiếu xuất kho/i.test(e)), u = o.some((e) => /thiếu ngày phiếu xuất kho/i.test(e)), d = o.filter((e) => !/thiếu (số|ngày) phiếu xuất kho/i.test(e)), f = [...s ? [] : ["Số PXK"], ...c ? [] : ["Ngày PXK"]], p = a.state === "MISSING_INFO" && d.length === 0 && (l || u), m = [...d, ...f];
 	if (a.state === "READY" || p) return f.length ? {
 		state: "MISSING_INFO",
 		reason: "Nhập số và ngày pháp lý của PXK ở phần tạo phiếu.",
@@ -23539,24 +23633,24 @@ function id(e, t) {
 		missing: o
 	};
 }
-function ad(e, t) {
-	if (e.adapter === "CONTRACT_DOCGEN") return nd((t.linkedContract?.documents ?? []).filter((t) => t.documentType === e.documentType).map(td));
+function od(e, t) {
+	if (e.adapter === "CONTRACT_DOCGEN") return rd((t.linkedContract?.documents ?? []).filter((t) => t.documentType === e.documentType).map(nd));
 	if (e.adapter === "GNT_BUILDER") {
 		let n = t.shipment.importInfo?.gnt, r = Array.isArray(n?.documentHistory) ? n.documentHistory : [], i = Array.isArray(n?.document?.history) ? n.document.history : [];
-		return nd((r.length ? r : i).filter((t) => t.documentType === e.documentType));
+		return rd((r.length ? r : i).filter((t) => t.documentType === e.documentType));
 	}
 	if (e.adapter === "UPLOADED_DOCGEN") {
 		let n = t.shipment.uploadedTemplates?.[e.id]?.documentHistory;
-		return nd(Array.isArray(n) ? n : []);
+		return rd(Array.isArray(n) ? n : []);
 	}
 	if (e.adapter === "FORM07_DOCGEN") {
 		let n = Array.isArray(t.shipment.form07?.documentHistory) ? t.shipment.form07.documentHistory : [], r = Array.isArray(t.shipment.form07?.document?.history) ? t.shipment.form07.document.history : [];
-		return nd((n.length ? n : r).filter((t) => t.documentType === e.documentType));
+		return rd((n.length ? n : r).filter((t) => t.documentType === e.documentType));
 	}
 	let n = Array.isArray(t.shipment.pxk?.documentHistory) ? t.shipment.pxk.documentHistory : [], r = Array.isArray(t.shipment.pxk?.document?.history) ? t.shipment.pxk.document.history : [];
-	return nd((n.length ? n : r).filter((t) => t.documentType === e.documentType));
+	return rd((n.length ? n : r).filter((t) => t.documentType === e.documentType));
 }
-function od(e, t) {
+function sd(e, t) {
 	if (e.adapter === "CONTRACT_DOCGEN") return;
 	let n = e.adapter === "GNT_BUILDER" ? t.shipment.importInfo?.gnt?.document : e.adapter === "FORM07_DOCGEN" ? t.shipment.form07?.document : t.shipment.pxk?.document;
 	if (!n) return;
@@ -23576,13 +23670,13 @@ function od(e, t) {
 		downloadBase64: n.downloadBase64
 	};
 }
-function sd(e, t, n) {
+function cd(e, t, n) {
 	return e.downloadBase64 ? !0 : t.adapter !== "CONTRACT_DOCGEN" && !!(e.attachmentId && n);
 }
-function cd(e) {
-	let t = new Set($u(e.selectedIds));
+function ld(e) {
+	let t = new Set(ed(e.selectedIds));
 	return e.catalog.filter((e) => e.active && t.has(e.id)).map((t) => {
-		let n = ad(t, e), r = od(t, e), i = r ?? n[n.length - 1], a = id(t, e), o = n.length > 0 || !!r, s = e.canGenerate ? "" : "Tài khoản hiện không có quyền tạo chứng từ.", c = o ? "GENERATED" : !e.canGenerate && a.state === "READY" ? "UNAVAILABLE" : a.state, l = o ? [a.state === "READY" ? "Đã có bản tạo; lịch sử được giữ nguyên khi bỏ chọn biểu mẫu." : `Đã có bản tạo. ${a.reason}`.trim(), s].filter(Boolean).join(" ") : !e.canGenerate && a.state === "READY" ? s : a.reason, u = o && e.canGenerate && a.state === "READY" ? a.action : void 0, d = !e.canGenerate && a.action && Qu.has(a.action) ? void 0 : a.action, f = o ? t.adapter === "CONTRACT_DOCGEN" ? "OPEN_CONTRACT" : t.adapter === "GNT_BUILDER" ? "OPEN_IMPORT" : t.adapter === "FORM07_DOCGEN" ? "OPEN_FORM07" : t.adapter === "UPLOADED_DOCGEN" ? "OPEN_UPLOADED" : "OPEN_PXK" : void 0;
+		let n = od(t, e), r = sd(t, e), i = r ?? n[n.length - 1], a = ad(t, e), o = n.length > 0 || !!r, s = e.canGenerate ? "" : "Tài khoản hiện không có quyền tạo chứng từ.", c = o ? "GENERATED" : !e.canGenerate && a.state === "READY" ? "UNAVAILABLE" : a.state, l = o ? [a.state === "READY" ? "Đã có bản tạo; lịch sử được giữ nguyên khi bỏ chọn biểu mẫu." : `Đã có bản tạo. ${a.reason}`.trim(), s].filter(Boolean).join(" ") : !e.canGenerate && a.state === "READY" ? s : a.reason, u = o && e.canGenerate && a.state === "READY" ? a.action : void 0, d = !e.canGenerate && a.action && $u.has(a.action) ? void 0 : a.action, f = o ? t.adapter === "CONTRACT_DOCGEN" ? "OPEN_CONTRACT" : t.adapter === "GNT_BUILDER" ? "OPEN_IMPORT" : t.adapter === "FORM07_DOCGEN" ? "OPEN_FORM07" : t.adapter === "UPLOADED_DOCGEN" ? "OPEN_UPLOADED" : "OPEN_PXK" : void 0;
 		return {
 			id: t.id,
 			label: t.label,
@@ -23597,13 +23691,13 @@ function cd(e) {
 			action: o ? void 0 : d,
 			openOutputAction: f,
 			createRevisionAction: u,
-			latestDownloadAvailable: i ? sd(i, t, e.storageConfigured) : !1
+			latestDownloadAvailable: i ? cd(i, t, e.storageConfigured) : !1
 		};
 	});
 }
 //#endregion
 //#region src/pages/ShipmentDetail.tsx
-var ld = new Set([
+var ud = new Set([
 	{
 		id: "van-tai",
 		label: "Vận chuyển & Hàng hóa",
@@ -23635,25 +23729,25 @@ var ld = new Set([
 		short: "Lịch sử"
 	}
 ].map((e) => e.id));
-function ud(e) {
+function dd(e) {
 	return `${e}-REQ-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
 }
-function dd(e) {
+function fd(e) {
 	return e === "COMPLETE" ? "bg-emerald-50 border-emerald-200 text-emerald-800" : e === "READY" ? "bg-blue-50 border-blue-200 text-blue-800" : e === "NOT_APPLICABLE" ? "bg-slate-50 border-slate-200 text-slate-500" : e === "CONDITIONAL" ? "bg-violet-50 border-violet-200 text-violet-800" : e === "BLOCKED" ? "bg-red-50 border-red-200 text-red-800" : "bg-amber-50 border-amber-200 text-amber-900";
 }
-function fd(e) {
+function pd(e) {
 	let t = e.indexOf("?");
 	if (t < 0) return null;
 	let n = e.slice(t + 1).split("#", 1)[0], r = new URLSearchParams(n).get("tab");
-	return r && ld.has(r) ? r : null;
+	return r && ud.has(r) ? r : null;
 }
-function pd(e) {
+function md(e) {
 	let t = e.indexOf("#");
 	if (t < 0) return null;
 	let n = e.slice(t + 1).trim();
 	return n === "fld-tk" || n === "shipment-execution-profile" ? n : null;
 }
-function md(e) {
+function hd(e) {
 	let t = () => document.querySelector("[data-testid=\"shipment-journey\"]")?.scrollIntoView({ behavior: "smooth" });
 	if (!e) {
 		t();
@@ -23669,7 +23763,7 @@ function md(e) {
 		block: e === "fld-tk" ? "center" : "start"
 	}), e === "fld-tk" && n instanceof HTMLElement && n.focus({ preventScroll: !0 });
 }
-function hd() {
+function gd() {
 	let { id: e } = gt(), { pathname: t } = dt(), n = Kn(t, e), [r, i] = Pn(), a = r.get("tab") || "van-tai", { shipments: o, attention: s, updateShipment: c, toast: l, contracts: u, customers: d, dispatch: f, financeServices: p, environment: m } = Wn(), h = (0, _.useSyncExternalStore)(C, S, S), g = mt(), v = o.find((e) => e.id === n), [y, b] = (0, _.useState)(!1), [x, w] = (0, _.useState)(!1), [T, E] = (0, _.useState)(!1), [D, O] = (0, _.useState)(null), k = (0, _.useRef)(!1), [A, j] = (0, _.useState)(""), [M, N] = (0, _.useState)(0), [P, F] = (0, _.useState)(0), [I, L] = (0, _.useState)(!1), [R, ee] = (0, _.useState)(!1), [te, ne] = (0, _.useState)(!1), [re, z] = (0, _.useState)(!1), [ie, ae] = (0, _.useState)(""), [oe, se] = (0, _.useState)("Thu tiền khách"), [ce, B] = (0, _.useState)(""), [le, ue] = (0, _.useState)({}), [de, fe] = (0, _.useState)(0), [pe, me] = (0, _.useState)(""), [he, ge] = (0, _.useState)(""), [_e, ve] = (0, _.useState)(""), [ye, be] = (0, _.useState)(""), [xe, Se] = (0, _.useState)(""), [Ce, we] = (0, _.useState)(""), [Te, Ee] = (0, _.useState)(null), [De, Oe] = (0, _.useState)(""), [ke, Ae] = (0, _.useState)(null), [je, Me] = (0, _.useState)(""), [Ne, Pe] = (0, _.useState)(!1), [Fe, Ie] = (0, _.useState)([]), [Le, Re] = (0, _.useState)(""), [ze, Be] = (0, _.useState)(""), [Ve, He] = (0, _.useState)("");
 	(0, _.useEffect)(() => {
 		ue({}), B("");
@@ -23782,7 +23876,7 @@ function hd() {
 	]), (0, _.useEffect)(() => {
 		let e = window.location.hash.replace(/^#/, "");
 		if (e !== "fld-tk" && e !== "shipment-execution-profile") return;
-		let t = setTimeout(() => md(e), 200);
+		let t = setTimeout(() => hd(e), 200);
 		return () => clearTimeout(t);
 	}, []);
 	let Ge = (e, t) => ue((n) => ({
@@ -23795,7 +23889,7 @@ function hd() {
 		u,
 		v?.contract,
 		v?.id
-	]), Je = Ke ?? (qe.length === 1 ? qe[0] : null), Ye = h?.shipmentDocumentPicker, Xe = (0, _.useMemo)(() => v ? cd({
+	]), Je = Ke ?? (qe.length === 1 ? qe[0] : null), Ye = h?.shipmentDocumentPicker, Xe = (0, _.useMemo)(() => v ? ld({
 		catalog: Ye?.catalog ?? [],
 		selectedIds: Ue,
 		shipment: v,
@@ -23850,7 +23944,7 @@ function hd() {
 			Oe("Chọn một khách hàng trong danh bạ trước khi gán — hệ thống không đoán theo tên.");
 			return;
 		}
-		let t = ud("FLOWC");
+		let t = dd("FLOWC");
 		Oe(""), Ee({
 			requestId: t,
 			customerId: e
@@ -23877,7 +23971,7 @@ function hd() {
 			Se(pe === "TT_ENTRUSTED_SUB" ? "Chọn pháp nhân Trường Thành sẽ ký với đơn vị nhập khẩu hộ." : "Chọn pháp nhân Trường Thành sẽ đứng tên nhập khẩu.");
 			return;
 		}
-		let t = ud("FLOW");
+		let t = dd("FLOW");
 		Se(""), be(t), f("shipment_commercial_flow_save", {
 			shipmentId: v.id,
 			requestId: t,
@@ -23894,7 +23988,7 @@ function hd() {
 			Be("Tài khoản hiện không có quyền lưu lựa chọn biểu mẫu.");
 			return;
 		}
-		let e = ud("SDOC");
+		let e = dd("SDOC");
 		Be(""), Re(e), f("shipment_document_selection_save", {
 			shipmentId: v.id,
 			requestId: e,
@@ -23944,7 +24038,7 @@ function hd() {
 			l("Chưa sửa ngày", "Chọn/ghi Ngày tạo rồi bấm Lưu — app không tự điền hôm nay.", "amber");
 			return;
 		}
-		let t = ud("HDRD");
+		let t = dd("HDRD");
 		k.current = !0, j(""), O({
 			requestId: t,
 			date: e
@@ -23986,7 +24080,7 @@ function hd() {
 			l("Chưa đổi khách hàng", "Bấm “Tìm / đổi”, chọn khách trong danh bạ rồi bấm Lưu.", "amber");
 			return;
 		}
-		let t = ud("HDRC");
+		let t = dd("HDRC");
 		if (Me(""), Ae({
 			requestId: t,
 			customerId: e
@@ -24010,7 +24104,7 @@ function hd() {
 		});
 		w(!1), e ? l("Đã gửi xác nhận giao hàng " + v.id, "Backend ghi nhận + audit; PXK sẽ mở ở tab Chứng từ.", "green") : l("Không gửi được", "Component chưa kết nối backend.", "red");
 	}, St = (0, _.useRef)(""), [Ct, wt] = (0, _.useState)(""), Tt = (0, _.useRef)(""), [Et, Dt] = (0, _.useState)(""), Ot = () => {
-		St.current = ud("PAY"), Tt.current = "", wt(""), Dt(""), b(!0);
+		St.current = dd("PAY"), Tt.current = "", wt(""), Dt(""), b(!0);
 	}, kt = () => {
 		Tt.current = "", wt("");
 	}, At = () => {
@@ -24039,11 +24133,11 @@ function hd() {
 			if (e.ok) {
 				if (!(h?.shipments ?? []).find((e) => e.id === v.id)?.finance?.payments?.some((e) => e.requestId === Ct)) return;
 				b(!1), ae(""), Dt(""), kt(), l("Đã ghi nhận khoản thu " + v.id, "Backend đã xác nhận ghi sổ — khoản thu với mã yêu cầu này đã hiển thị trong sổ tài chính đọc lại.", "green");
-			} else kt(), Dt(e.error || "Backend từ chối khoản thu này."), St.current = ud("PAY"), l("Chưa ghi nhận được", e.error || "Backend từ chối khoản thu.", "red");
+			} else kt(), Dt(e.error || "Backend từ chối khoản thu này."), St.current = dd("PAY"), l("Chưa ghi nhận được", e.error || "Backend từ chối khoản thu.", "red");
 		}
 	}, [h?.lastWrites, Ct]);
 	let [jt, Mt] = (0, _.useState)(null), [Nt, Pt] = (0, _.useState)(""), [Ft, It] = (0, _.useState)(""), [Lt, Rt] = (0, _.useState)(""), [zt, Bt] = (0, _.useState)(""), [Vt, Ht] = (0, _.useState)(""), [Ut, Wt] = (0, _.useState)(""), Gt = (0, _.useRef)(""), Kt = (0, _.useRef)(""), qt = (e) => {
-		Gt.current = ud("CORR"), Kt.current = "", Mt(e), Pt(""), It(""), Rt(""), Bt(""), Ht(""), Wt("");
+		Gt.current = dd("CORR"), Kt.current = "", Mt(e), Pt(""), It(""), Rt(""), Bt(""), Ht(""), Wt("");
 	}, Jt = () => {
 		Mt(null), Kt.current = "", Wt("");
 	}, Yt = () => {
@@ -24075,9 +24169,9 @@ function hd() {
 	(0, _.useEffect)(() => {
 		if (!Ut) return;
 		let e = (h?.lastWrites ?? []).find((e) => e.event === "payment_correction" && e.correctionRequestId === Ut);
-		e && (e.ok ? (Jt(), l("Đã ghi bút toán hoàn tác có liên kết", "financial_corrections + audit payment_reversed; khoản thu gốc vẫn ở lại lịch sử với trạng thái Đã hoàn tác, số liệu đọc lại từ backend.", "green")) : (Kt.current = "", Wt(""), Ht(e.error || "Backend từ chối bút toán điều chỉnh này."), Gt.current = ud("CORR"), l("Chưa điều chỉnh được", e.error || "Backend từ chối.", "red")));
+		e && (e.ok ? (Jt(), l("Đã ghi bút toán hoàn tác có liên kết", "financial_corrections + audit payment_reversed; khoản thu gốc vẫn ở lại lịch sử với trạng thái Đã hoàn tác, số liệu đọc lại từ backend.", "green")) : (Kt.current = "", Wt(""), Ht(e.error || "Backend từ chối bút toán điều chỉnh này."), Gt.current = dd("CORR"), l("Chưa điều chỉnh được", e.error || "Backend từ chối.", "red")));
 	}, [h?.lastWrites, Ut]);
-	let Xt = (0, _.useRef)(""), Zt = (0, _.useRef)(""), [Qt, $t] = (0, _.useState)({}), en = (0, _.useRef)({}), [tn, nn] = (0, _.useState)({}), rn = (e) => ud(e), an = () => {
+	let Xt = (0, _.useRef)(""), Zt = (0, _.useRef)(""), [Qt, $t] = (0, _.useState)({}), en = (0, _.useRef)({}), [tn, nn] = (0, _.useState)({}), rn = (e) => dd(e), an = () => {
 		Xt.current = rn("POBL");
 	}, on = () => {
 		Zt.current = rn("PPAY");
@@ -24311,7 +24405,7 @@ function hd() {
 			return;
 		}
 		if (Ve) return;
-		let n = ud("DOCDOWN");
+		let n = dd("DOCDOWN");
 		He(n), f("attachment_download", {
 			shipmentId: v.id,
 			attachmentId: t.attachmentId,
@@ -24433,7 +24527,7 @@ function hd() {
 				title: "Cần xử lý",
 				compact: !0
 			}),
-			/* @__PURE__ */ (0, W.jsxs)(Vu, {
+			/* @__PURE__ */ (0, W.jsxs)(Hu, {
 				shipment: v,
 				activeStage: rt?.id || "",
 				work: it,
@@ -24443,8 +24537,8 @@ function hd() {
 				onGlobal: (e = "van-tai") => e === "lay-hang" && Dn ? (z(!0), !1) : (i({ tab: e }), !0),
 				runPrimary: () => {
 					if (v.nextRoute.startsWith("/lo-hang")) {
-						let e = fd(v.nextRoute), t = pd(v.nextRoute), n = v.nextRoute.split("?", 2)[1]?.split("#", 1)[0] || "", r = new URLSearchParams(n);
-						e && r.set("tab", e), i(r), t ? setTimeout(() => md(t), 150) : md(null);
+						let e = pd(v.nextRoute), t = md(v.nextRoute), n = v.nextRoute.split("?", 2)[1]?.split("#", 1)[0] || "", r = new URLSearchParams(n);
+						e && r.set("tab", e), i(r), t ? setTimeout(() => hd(t), 150) : hd(null);
 					} else g(v.nextRoute);
 				},
 				globalActive: !!r.get("tab") && !rt,
@@ -24454,11 +24548,11 @@ function hd() {
 						"si-vgm",
 						"gate-in",
 						"customs-export"
-					].includes(rt.id) && /* @__PURE__ */ (0, W.jsx)(Wu, {
+					].includes(rt.id) && /* @__PURE__ */ (0, W.jsx)(Gu, {
 						shipment: v,
 						stageId: rt.id
 					}, `${v.id}-${rt.id}-${v.version}`),
-					rt && at && it === "info" && /* @__PURE__ */ (0, W.jsx)(Uu, {
+					rt && at && it === "info" && /* @__PURE__ */ (0, W.jsx)(Wu, {
 						shipment: v,
 						node: rt
 					}, `${v.id}-${rt.id}`),
@@ -24701,12 +24795,12 @@ function hd() {
 							}, e))
 						})]
 					}),
-					ot && a === "van-tai" && /* @__PURE__ */ (0, W.jsxs)(W.Fragment, { children: [/* @__PURE__ */ (0, W.jsx)(fl, {
+					ot && a === "van-tai" && /* @__PURE__ */ (0, W.jsxs)(W.Fragment, { children: [/* @__PURE__ */ (0, W.jsx)(pl, {
 						shipment: v,
 						dispatch: f,
 						toast: l,
 						onOpenTransportTab: () => i({ tab: "van-tai" })
-					}), /* @__PURE__ */ (0, W.jsx)(Qc, {
+					}), /* @__PURE__ */ (0, W.jsx)($c, {
 						shipment: v,
 						dispatch: f,
 						toast: l
@@ -25303,11 +25397,29 @@ function hd() {
 							})]
 						})]
 					}),
-					ot && a === "tai-chinh" && /* @__PURE__ */ (0, W.jsxs)("div", {
+					ot && a === "tai-chinh" && v.finance.canView === !1 && /* @__PURE__ */ (0, W.jsxs)("section", {
+						"data-testid": "finance-view-restricted",
+						className: "rounded-2xl bg-white border border-slate-200 p-5 space-y-1.5",
+						children: [/* @__PURE__ */ (0, W.jsx)("h3", {
+							className: "font-extrabold text-[16px] text-[#0f2a4a]",
+							children: "Không có quyền xem Tài chính / Công nợ"
+						}), /* @__PURE__ */ (0, W.jsxs)("p", {
+							className: "text-[13.5px] text-slate-600",
+							children: [
+								"Vai trò hiện tại không có quyền ",
+								/* @__PURE__ */ (0, W.jsx)("code", {
+									className: "rounded bg-slate-100 px-1.5 py-0.5 text-[12px]",
+									children: "finance_view"
+								}),
+								"; dữ liệu công nợ dịch vụ và lịch sử thu/chi đã được chặn từ server."
+							]
+						})]
+					}),
+					ot && a === "tai-chinh" && v.finance.canView !== !1 && /* @__PURE__ */ (0, W.jsxs)("div", {
 						className: "space-y-4",
 						id: "missing-anchor",
 						children: [
-							/* @__PURE__ */ (0, W.jsx)(_l, {
+							/* @__PURE__ */ (0, W.jsx)(vl, {
 								stageContext: rt?.id,
 								shipment: v,
 								services: p,
@@ -25972,7 +26084,7 @@ function hd() {
 									})
 								]
 							}),
-							Ye && /* @__PURE__ */ (0, W.jsx)(eu, {
+							Ye && /* @__PURE__ */ (0, W.jsx)(tu, {
 								shipmentId: v.id,
 								cards: Xe,
 								selection: {
@@ -26042,7 +26154,7 @@ function hd() {
 														className: "font-extrabold text-[14.5px] text-[#0f2a4a]",
 														children: e.label
 													}), /* @__PURE__ */ (0, W.jsx)("span", {
-														className: q("rounded-full border px-2 py-0.5 text-[11.5px] font-extrabold", dd(e.state)),
+														className: q("rounded-full border px-2 py-0.5 text-[11.5px] font-extrabold", fd(e.state)),
 														children: e.stateLabel
 													})]
 												}), /* @__PURE__ */ (0, W.jsx)("p", {
@@ -26575,13 +26687,13 @@ function hd() {
 									})
 								]
 							}),
-							/* @__PURE__ */ (0, W.jsx)(Nl, {
+							/* @__PURE__ */ (0, W.jsx)(Pl, {
 								contextCategories: rt?.documentCategories,
 								shipmentId: v.id,
 								attachments: v.attachments ?? [],
 								policy: h?.attachmentPolicy
 							}),
-							/* @__PURE__ */ (0, W.jsx)(Jl, { shipmentId: v.id })
+							/* @__PURE__ */ (0, W.jsx)(Yl, { shipmentId: v.id })
 						]
 					}),
 					ot && a === "lich-su" && /* @__PURE__ */ (0, W.jsxs)("section", {
@@ -26633,7 +26745,7 @@ function hd() {
 					})
 				]
 			}, v.id),
-			/* @__PURE__ */ (0, W.jsx)(Xu, {
+			/* @__PURE__ */ (0, W.jsx)(Zu, {
 				shipment: v,
 				onOpenTab: (e) => {
 					if (e === "lay-hang" && Dn) {
@@ -26712,7 +26824,7 @@ function hd() {
 								value: oe,
 								disabled: !!Ct,
 								onChange: (e) => {
-									se(e.target.value), St.current = ud("PAY");
+									se(e.target.value), St.current = dd("PAY");
 								},
 								className: Z(),
 								children: [
@@ -26730,7 +26842,7 @@ function hd() {
 								value: ie,
 								disabled: !!Ct,
 								onChange: (e) => {
-									ae(e.target.value), St.current = ud("PAY");
+									ae(e.target.value), St.current = dd("PAY");
 								},
 								inputMode: "numeric",
 								placeholder: "VD: 150000000",
@@ -26938,8 +27050,8 @@ function hd() {
 }
 //#endregion
 //#region src/pages/CreateShipment.tsx
-function gd() {
-	let { customers: e, quotes: t, contracts: n, dispatch: r, toast: i } = Wn(), a = mt(), o = (0, _.useSyncExternalStore)(C, S, S), [s, c] = (0, _.useState)(""), [l, u] = (0, _.useState)(""), [d, f] = (0, _.useState)(""), [p, m] = (0, _.useState)(""), [h, g] = (0, _.useState)(() => nl(null)), [v, y] = (0, _.useState)(""), [b, x] = (0, _.useState)(""), [w, T] = (0, _.useState)(null), [E, D] = (0, _.useState)(""), O = (0, _.useMemo)(() => t.filter((e) => (e.status || "").toLowerCase().includes("accept") || (e.status || "").toLowerCase().includes("chốt")), [t]), k = t.find((e) => e.id === s) ?? null, A = $c.modes.find((e) => e.code === h.mode)?.stored ?? "", j = cl(h), M = !!(h.incoterm || h.namedPlace.trim() || h.loadModel || h.serviceScopeConfirmed || h.serviceScope.length || h.insuranceStatus), N = ll(h), P = M && N.length === 0 && !j, F = (r) => {
+function _d() {
+	let { customers: e, quotes: t, contracts: n, dispatch: r, toast: i } = Wn(), a = mt(), o = (0, _.useSyncExternalStore)(C, S, S), [s, c] = (0, _.useState)(""), [l, u] = (0, _.useState)(""), [d, f] = (0, _.useState)(""), [p, m] = (0, _.useState)(""), [h, g] = (0, _.useState)(() => rl(null)), [v, y] = (0, _.useState)(""), [b, x] = (0, _.useState)(""), [w, T] = (0, _.useState)(null), [E, D] = (0, _.useState)(""), O = (0, _.useMemo)(() => t.filter((e) => (e.status || "").toLowerCase().includes("accept") || (e.status || "").toLowerCase().includes("chốt")), [t]), k = t.find((e) => e.id === s) ?? null, A = el.modes.find((e) => e.code === h.mode)?.stored ?? "", j = ll(h), M = !!(h.incoterm || h.namedPlace.trim() || h.loadModel || h.serviceScopeConfirmed || h.serviceScope.length || h.insuranceStatus), N = ul(h), P = M && N.length === 0 && !j, F = (r) => {
 		c(r);
 		let a = t.find((e) => e.id === r);
 		if (!a) return;
@@ -26950,7 +27062,7 @@ function gd() {
 			"Sea",
 			"Air",
 			"Rail"
-		].includes(a.transportMode) ? a.transportMode : "", l = $c.modes.find((e) => e.stored === s)?.code ?? "";
+		].includes(a.transportMode) ? a.transportMode : "", l = el.modes.find((e) => e.stored === s)?.code ?? "";
 		g((e) => ({
 			...e,
 			mode: l,
@@ -27142,7 +27254,7 @@ function gd() {
 									}),
 									/* @__PURE__ */ (0, W.jsx)("div", {
 										className: "mt-3",
-										children: /* @__PURE__ */ (0, W.jsx)(ul, {
+										children: /* @__PURE__ */ (0, W.jsx)(dl, {
 											draft: h,
 											onChange: g,
 											variant: "create",
@@ -27212,7 +27324,7 @@ function gd() {
 												incoterm: h.incoterm,
 												pol: v.trim(),
 												pod: b.trim(),
-												...P ? tl(h) : {}
+												...P ? nl(h) : {}
 											},
 											requestId: n
 										}) ? (D(""), T({
@@ -27250,7 +27362,7 @@ function gd() {
 }
 //#endregion
 //#region src/pages/Receivables.tsx
-function _d() {
+function vd() {
 	let { receivables: e, dispatch: t, toast: n } = Wn(), r = (0, _.useSyncExternalStore)(C, S, S), [i] = Pn(), [a, o] = nc("q"), [s, c] = (0, _.useState)(() => [
 		"noPaid",
 		"ccy",
@@ -27751,8 +27863,8 @@ function _d() {
 }
 //#endregion
 //#region src/pages/PartnerPayables.tsx
-var vd = (e) => e === "CONFIRMED" ? "blue" : e === "REVIEW_REQUIRED" ? "amber" : "gray";
-function yd() {
+var yd = (e) => e === "CONFIRMED" ? "blue" : e === "REVIEW_REQUIRED" ? "amber" : "gray";
+function bd() {
 	let { payables: e, dispatch: t, toast: n } = Wn(), [r, i] = (0, _.useState)(""), [a, o] = (0, _.useState)(!1), [s, c] = (0, _.useState)(!1), [l, u] = (0, _.useState)("ALL"), [d, f] = (0, _.useState)("ALL"), [p, m] = (0, _.useState)("ALL"), [h, g] = (0, _.useState)(null), [v, y] = (0, _.useState)(""), b = (0, _.useRef)(""), x = e.rows ?? [], S = e.totals ?? {}, C = ["ALL", ...Array.from(new Set(x.map((e) => e.currency)))], w = ["ALL", ...Array.from(new Set(x.map((e) => e.partnerId)))], T = ["ALL", ...Array.from(new Set(x.map((e) => e.status)))], E = (e) => x.find((t) => t.partnerId === e)?.partnerName ?? e, D = (0, _.useMemo)(() => {
 		let e = r.trim().toLowerCase();
 		return x.filter((t) => !(s && !(t.remaining != null && t.remaining > 0) || l !== "ALL" && t.currency !== l || d !== "ALL" && t.partnerId !== d || p !== "ALL" && t.status !== p || e && !(t.shipmentId + " " + t.partnerName + " " + t.partnerId).toLowerCase().includes(e))).sort((e, t) => (t.remaining ?? -1) - (e.remaining ?? -1));
@@ -27976,7 +28088,7 @@ function yd() {
 									children: e.currency
 								}) }),
 								/* @__PURE__ */ (0, W.jsx)("td", { children: /* @__PURE__ */ (0, W.jsx)(Y, {
-									tone: vd(e.status),
+									tone: yd(e.status),
 									size: "sm",
 									children: e.status
 								}) }),
@@ -28007,13 +28119,13 @@ function yd() {
 							/* @__PURE__ */ (0, W.jsxs)("div", {
 								className: "flex items-center gap-2 flex-wrap",
 								children: [
-									/* @__PURE__ */ (0, W.jsx)(Ts, { tone: vd(e.status) }),
+									/* @__PURE__ */ (0, W.jsx)(Ts, { tone: yd(e.status) }),
 									/* @__PURE__ */ (0, W.jsx)("span", {
 										className: "font-extrabold text-[17px] text-[#0f2a4a]",
 										children: e.shipmentId
 									}),
 									/* @__PURE__ */ (0, W.jsx)(Y, {
-										tone: vd(e.status),
+										tone: yd(e.status),
 										size: "sm",
 										children: e.status
 									}),
@@ -28191,7 +28303,7 @@ function yd() {
 }
 //#endregion
 //#region src/pages/Customers.tsx
-var bd = {
+var xd = {
 	id: "",
 	name: "",
 	phone: "",
@@ -28201,8 +28313,8 @@ var bd = {
 	address: "",
 	note: ""
 };
-function xd() {
-	let { customers: e, dispatch: t, toast: n, role: r } = Wn(), i = (0, _.useSyncExternalStore)(C, S, S), [a, o] = nc("q"), [s, c] = (0, _.useState)(!1), [l, u] = (0, _.useState)(null), [d, f] = (0, _.useState)(null), [p, m] = (0, _.useState)(!1), [h, g] = (0, _.useState)(bd), [v, y] = (0, _.useState)(""), [b, x] = (0, _.useState)(""), [w, T] = (0, _.useState)(null), [E, D] = (0, _.useState)(""), O = (0, _.useMemo)(() => e.filter((e) => !a || ds([
+function Sd() {
+	let { customers: e, dispatch: t, toast: n, role: r } = Wn(), i = (0, _.useSyncExternalStore)(C, S, S), [a, o] = nc("q"), [s, c] = (0, _.useState)(!1), [l, u] = (0, _.useState)(null), [d, f] = (0, _.useState)(null), [p, m] = (0, _.useState)(!1), [h, g] = (0, _.useState)(xd), [v, y] = (0, _.useState)(""), [b, x] = (0, _.useState)(""), [w, T] = (0, _.useState)(null), [E, D] = (0, _.useState)(""), O = (0, _.useMemo)(() => e.filter((e) => !a || ds([
 		e.id,
 		e.name,
 		e.short,
@@ -28214,7 +28326,7 @@ function xd() {
 		...n,
 		[e]: t
 	})), A = () => {
-		g(bd), D(""), c(!0);
+		g(xd), D(""), c(!0);
 	}, j = (e) => {
 		D(""), g({
 			id: e.id,
@@ -28230,7 +28342,7 @@ function xd() {
 	return (0, _.useEffect)(() => {
 		if (!w || !i) return;
 		let e = (i.lastWrites ?? []).find((e) => e.event === w.event && e.requestId === w.requestId);
-		e && (e.ok ? (i.customers ?? []).some((e) => e.id === w.id) ? (T(null), c(!1), u(null), g(bd), D(""), n(w.event === "customer_create" ? "Đã tạo khách hàng " + w.id : "Đã lưu khách hàng " + w.id, "Backend ghi + audit thành công; khách hàng đã có trong dữ liệu mới.", "green")) : (T(null), D("Backend báo thành công nhưng khách hàng chưa xuất hiện trong dữ liệu mới — biểu mẫu được giữ nguyên.")) : (T(null), D(e.error || "Backend từ chối yêu cầu."), n("Không lưu được khách hàng", e.error || "Backend từ chối.", "red")));
+		e && (e.ok ? (i.customers ?? []).some((e) => e.id === w.id) ? (T(null), c(!1), u(null), g(xd), D(""), n(w.event === "customer_create" ? "Đã tạo khách hàng " + w.id : "Đã lưu khách hàng " + w.id, "Backend ghi + audit thành công; khách hàng đã có trong dữ liệu mới.", "green")) : (T(null), D("Backend báo thành công nhưng khách hàng chưa xuất hiện trong dữ liệu mới — biểu mẫu được giữ nguyên.")) : (T(null), D(e.error || "Backend từ chối yêu cầu."), n("Không lưu được khách hàng", e.error || "Backend từ chối.", "red")));
 	}, [
 		i,
 		w,
@@ -28744,7 +28856,7 @@ function xd() {
 		]
 	});
 }
-function Sd(e, t, n) {
+function Cd(e, t, n) {
 	let r = t.filter((t) => t.customerId === e.id), i = new Set(r.map((e) => e.id)), a = n.filter((e) => i.has(e.shipmentId)), o = /* @__PURE__ */ new Map(), s = /* @__PURE__ */ new Map();
 	for (let e of r) (e.journey?.modules ?? []).forEach((t, n) => {
 		let r = (t.templateId ?? "").trim(), i = (t.name ?? "").trim(), a = (t.instanceId ?? "").trim(), c = r ? `template:${r}` : i ? `name:${i}` : `instance:${a || `${e.id}:${n}`}`, l = JSON.stringify([c, t.templateVersion]), u = o.get(l);
@@ -28785,13 +28897,13 @@ function Sd(e, t, n) {
 }
 //#endregion
 //#region src/pages/CustomerPlaybook.tsx
-function Cd(e) {
+function wd(e) {
 	let t = e.journey;
 	if (!t) return "";
 	let n = t.nodes.find((e) => e.current) ?? t.nodes.find((e) => e.id === t.currentStageId);
 	return n?.label ? n.label : t.currentStageId ? t.currentStageId : t.positionNote?.trim() ? t.positionNote : "";
 }
-function wd(e) {
+function Td(e) {
 	let t = e.journey?.primaryAction, n = t?.text || e.nextAction || e.nextLabel || "";
 	return n ? {
 		label: n,
@@ -28799,8 +28911,8 @@ function wd(e) {
 		route: t?.route || e.nextRoute || ""
 	} : null;
 }
-function Td() {
-	let { id: e = "" } = gt(), t = (0, _.useRef)(null), n = (0, _.useSyncExternalStore)(C, S, S), r = n?.customers.find((t) => t.id === e), i = (0, _.useMemo)(() => r && n ? Sd(r, n.shipments, n.attention ?? []) : null, [r, n]), a = Array.isArray(n?.attention);
+function Ed() {
+	let { id: e = "" } = gt(), t = (0, _.useRef)(null), n = (0, _.useSyncExternalStore)(C, S, S), r = n?.customers.find((t) => t.id === e), i = (0, _.useMemo)(() => r && n ? Cd(r, n.shipments, n.attention ?? []) : null, [r, n]), a = Array.isArray(n?.attention);
 	if ((0, _.useEffect)(() => {
 		t.current?.scrollIntoView?.({ block: "start" });
 	}, [e]), !r || !i) return /* @__PURE__ */ (0, W.jsxs)("section", {
@@ -28972,7 +29084,7 @@ function Td() {
 					}) : /* @__PURE__ */ (0, W.jsx)("ul", {
 						className: "mt-3 grid min-w-0 grid-cols-1 gap-2.5",
 						children: i.linkedShipments.map((e) => {
-							let t = Cd(e), n = wd(e);
+							let t = wd(e), n = Td(e);
 							return /* @__PURE__ */ (0, W.jsxs)("li", {
 								className: "min-w-0 rounded-xl border border-slate-200 bg-white p-3",
 								"data-testid": "customer-playbook-shipment",
@@ -29143,7 +29255,7 @@ function Td() {
 }
 //#endregion
 //#region src/lib/quoteTextParser.ts
-var Ed = {
+var Dd = {
 	incoterm: "",
 	origin: "",
 	destination: "",
@@ -29152,7 +29264,7 @@ var Ed = {
 	lines: [],
 	assumptions: [],
 	unparsed: []
-}, Dd = [
+}, Od = [
 	"EXW",
 	"FCA",
 	"FAS",
@@ -29164,15 +29276,15 @@ var Ed = {
 	"DAP",
 	"DPU",
 	"DDP"
-], Od = /^(vn|việt nam|vietnam|tq|cn|trung quốc|china|nước ngoài|local charges?|phí địa phương)\s*:?\s*$/i;
-function kd(e) {
+], kd = /^(vn|việt nam|vietnam|tq|cn|trung quốc|china|nước ngoài|local charges?|phí địa phương)\s*:?\s*$/i;
+function Ad(e) {
 	return e.replace(/^\s*(?:[-–—•*]|\d+[.)])\s*/, "").trim();
 }
-function Ad(e) {
+function jd(e) {
 	let t = e.trim();
 	return t ? t.charAt(0).toUpperCase() + t.slice(1) : "";
 }
-function jd(e) {
+function Md(e) {
 	let t = String(e || "").trim().toLowerCase();
 	if (!t) return null;
 	let n = t.match(/^([0-9][0-9.,\s]*)\s*(tr|triệu|trieu|k|nghìn|nghin|ngàn|ngan|tỷ|ty|tỉ)?$/);
@@ -29184,11 +29296,11 @@ function jd(e) {
 	let a = n[2] || "";
 	return a === "tr" || a === "triệu" || a === "trieu" ? i * 1e6 : a === "tỷ" || a === "ty" || a === "tỉ" ? i * 1e9 : a ? i * 1e3 : i;
 }
-function Md(e) {
+function Nd(e) {
 	let t = e.toLowerCase();
 	return /\$|\busd\b|\bđô\b|\bdola\b/.test(t) ? "USD" : /\brmb\b|\bcny\b|\btệ\b|\bte\b(?!n)/.test(t) ? "CNY" : "VND";
 }
-var Nd = [
+var Pd = [
 	[/cont(?:ainer)?\s*40\s*(?:'|hc|hq|feet|ft)?/i, "cont 40'"],
 	[/cont(?:ainer)?\s*20\s*(?:'|feet|ft)?/i, "cont 20'"],
 	[/\bcont(?:ainer)?\b/i, "cont"],
@@ -29202,37 +29314,37 @@ var Nd = [
 	[/\bkiện\b/i, "kiện"],
 	[/\blần\b/i, "lần"]
 ];
-function Pd(e) {
-	for (let [t, n] of Nd) if (t.test(e)) return n;
+function Fd(e) {
+	for (let [t, n] of Pd) if (t.test(e)) return n;
 	return "";
 }
-function Fd(e) {
+function Id(e) {
 	let t = e.match(/(?:\$\s*)?([0-9][0-9.,]*)\s*(usd|uds|\$|rmb|cny|tệ|triệu|trieu|tr|k|nghìn|nghin|ngàn|ngan|tỷ|ty|tỉ)?\b/i);
 	if (!t) return null;
-	let n = t[1], r = (t[2] || "").toLowerCase(), i = /^(usd|uds|\$|rmb|cny|tệ)$/.test(r), a = jd(i || !r ? n : `${n}${r}`);
+	let n = t[1], r = (t[2] || "").toLowerCase(), i = /^(usd|uds|\$|rmb|cny|tệ)$/.test(r), a = Md(i || !r ? n : `${n}${r}`);
 	if (a == null) return null;
-	let o = e.slice(0, (t.index ?? 0) + t[0].length + 6), s = Md(i ? r : o), c = e.slice((t.index ?? 0) + t[0].length), l = c.match(/^\s*(?:usd|rmb|cny|\$)?\s*\/\s*([^,;()]*)/i);
+	let o = e.slice(0, (t.index ?? 0) + t[0].length + 6), s = Nd(i ? r : o), c = e.slice((t.index ?? 0) + t[0].length), l = c.match(/^\s*(?:usd|rmb|cny|\$)?\s*\/\s*([^,;()]*)/i);
 	return {
 		sell: a,
 		currency: s,
-		unit: Pd(l ? l[1] : c.split(/[-–—(]/)[0] || "")
+		unit: Fd(l ? l[1] : c.split(/[-–—(]/)[0] || "")
 	};
 }
-function Id(e) {
+function Ld(e) {
 	let t = [], n = e.match(/vượt\s+([0-9.,]+)\s*(tấn|tan|kg|cbm|khối)[^+]*\+\s*([0-9][0-9.,]*\s*(?:usd|\$|rmb|cny|tr|triệu|k|nghìn)?)\s*(?:\/\s*([^\s,;)]+))?/i);
 	if (n) {
-		let e = Fd(n[3]), r = n[4] ? `/${n[4]}` : "";
+		let e = Id(n[3]), r = n[4] ? `/${n[4]}` : "";
 		e && t.push(`Nếu vượt ${n[1]} ${n[2]}: +${e.sell} ${e.currency}${r}`);
 	}
 	let r = e.match(/(?<!vượt[^+]{0,40})\+\s*([0-9][0-9.,]*\s*(?:usd|\$|rmb|cny|tr|triệu|k|nghìn|nghin)?)\s*(?:\/\s*([^\s,;)]+))?/i);
 	if (r && !n) {
-		let e = Fd(r[1]);
+		let e = Id(r[1]);
 		e && t.push(`Phụ phí thêm: +${e.sell} ${e.currency}${r[2] ? `/${r[2]}` : ""}`);
 	}
 	return t;
 }
-function Ld(e) {
-	let t = e.replace(/:\s*$/, "").trim().match(RegExp(`^(${Dd.join("|")})\\b[\\s:.-]*(.*)$`, "i"));
+function Rd(e) {
+	let t = e.replace(/:\s*$/, "").trim().match(RegExp(`^(${Od.join("|")})\\b[\\s:.-]*(.*)$`, "i"));
 	if (!t) return null;
 	let n = t[1].toUpperCase(), r = (t[2] || "").trim().split(/\s+(?:-|–|—|→|=>|>)\s+|\s*→\s*/).map((e) => e.trim()).filter(Boolean);
 	return {
@@ -29241,27 +29353,27 @@ function Ld(e) {
 		destination: r[1] ? r[1].replace(/[:,]$/, "") : ""
 	};
 }
-function Rd(e) {
-	let t = e.match(/([0-9][0-9.,]*)\s*(?:cbm|khối|khoi|m3)\b/i);
-	return t ? jd(t[1]) : null;
-}
 function zd(e) {
+	let t = e.match(/([0-9][0-9.,]*)\s*(?:cbm|khối|khoi|m3)\b/i);
+	return t ? Md(t[1]) : null;
+}
+function Bd(e) {
 	let t = e.trim();
 	return t ? /^[0-9][0-9.,]*\s*(?:cbm|khối|khoi|m3|kgs?|kí|kilo|tấn|tan)$/i.test(t) : !1;
 }
-function Bd(e) {
+function Vd(e) {
 	let t = e.match(/([0-9][0-9.,]*)\s*(?:kgs?|kí|kilo)\b/i);
-	if (t) return jd(t[1]);
+	if (t) return Md(t[1]);
 	let n = e.match(/([0-9][0-9.,]*)\s*(?:tấn|tan)\b/i);
 	if (n) {
-		let e = jd(n[1]);
+		let e = Md(n[1]);
 		return e == null ? null : e * 1e3;
 	}
 	return null;
 }
-function Vd(e) {
+function Hd(e) {
 	let t = {
-		...Ed,
+		...Dd,
 		lines: [],
 		assumptions: [],
 		unparsed: []
@@ -29269,30 +29381,30 @@ function Vd(e) {
 	for (let e of n) {
 		let n = e.trim();
 		if (!n || /^[-–—=_*]{2,}$/.test(n)) continue;
-		let r = kd(n);
-		if (!r || Od.test(r)) continue;
+		let r = Ad(n);
+		if (!r || kd.test(r)) continue;
 		let i = r, a = [];
 		if (/^\s*(?:[A-Za-z]{3})\b/.test(r) && r.includes("/")) {
 			let e = r.split("/").map((e) => e.trim());
-			for (; e.length > 1 && zd(e[e.length - 1]);) a.unshift(e.pop());
+			for (; e.length > 1 && Bd(e[e.length - 1]);) a.unshift(e.pop());
 			a.length > 0 && (i = e.join("/").trim());
 		}
-		let o = Ld(i);
+		let o = Rd(i);
 		if (o && !t.incoterm) {
 			t.incoterm = o.incoterm, o.origin && (t.origin = o.origin), o.destination && (t.destination = o.destination);
 			for (let e of a) {
-				let n = Rd(e);
+				let n = zd(e);
 				if (n != null && t.cbm == null) {
 					t.cbm = n;
 					continue;
 				}
-				let r = Bd(e);
+				let r = Vd(e);
 				r != null && t.weightKg == null && (t.weightKg = r);
 			}
 			continue;
 		}
 		if (!r.includes(":")) {
-			let e = Rd(r), n = Bd(r);
+			let e = zd(r), n = Vd(r);
 			if (e != null && t.cbm == null && /cbm|khối|khoi|m3/i.test(r)) {
 				t.cbm = e, n != null && t.weightKg == null && (t.weightKg = n);
 				continue;
@@ -29307,17 +29419,17 @@ function Vd(e) {
 			t.assumptions.push(r);
 			continue;
 		}
-		let c = r.slice(0, s).trim(), l = r.slice(s + 1).trim(), u = Fd(l);
+		let c = r.slice(0, s).trim(), l = r.slice(s + 1).trim(), u = Id(l);
 		if (!u) {
 			t.assumptions.push(r);
 			continue;
 		}
-		let d = /\(\s*nếu có\s*\)|\bnếu có\b|\bphát sinh\b|\bnếu phát sinh\b/i.test(c), f = /\bkhoảng\b|\bước tính\b|\buoc tinh\b|\btạm tính\b|\bchưa nắm rõ\b|\bchưa rõ\b/i.test(r), p = Ad(c.replace(/\(\s*nếu có\s*\)/gi, "").replace(/\s{2,}/g, " ").trim()), m = [];
+		let d = /\(\s*nếu có\s*\)|\bnếu có\b|\bphát sinh\b|\bnếu phát sinh\b/i.test(c), f = /\bkhoảng\b|\bước tính\b|\buoc tinh\b|\btạm tính\b|\bchưa nắm rõ\b|\bchưa rõ\b/i.test(r), p = jd(c.replace(/\(\s*nếu có\s*\)/gi, "").replace(/\s{2,}/g, " ").trim()), m = [];
 		d && m.push("Có thể phát sinh (nếu có)"), f && m.push("Ước tính — cần xác nhận, chưa phải chi phí chắc chắn");
 		let h = l.slice(0), g = h.split(/\s+[-–—]\s+/).slice(1).join(" - ").trim(), _ = [...h.matchAll(/\(([^)]*)\)/g)].map((e) => e[1].trim());
 		for (let e of _) e && m.push(e);
 		g && m.push(g.replace(/\([^)]*\)/g, "").trim());
-		for (let e of Id(h)) m.push(e);
+		for (let e of Ld(h)) m.push(e);
 		if (f) {
 			let e = h.match(/(khoảng|KHOẢNG|ước tính)\s*[0-9][^,;()]*/i);
 			e && m.push(e[0].trim());
@@ -29345,12 +29457,12 @@ function Vd(e) {
 	}
 	return t;
 }
-function Hd(e) {
+function Ud(e) {
 	return !e.incoterm && !e.origin && !e.destination && e.cbm == null && e.weightKg == null && e.lines.length === 0 && e.assumptions.length === 0;
 }
 //#endregion
 //#region src/components/QuickQuotePaste.tsx
-function Ud({ title: e, hint: t, applyLabel: n, testId: r, placeholder: i, onApply: a }) {
+function Wd({ title: e, hint: t, applyLabel: n, testId: r, placeholder: i, onApply: a }) {
 	let [o, s] = (0, _.useState)(""), [c, l] = (0, _.useState)(null), [u, d] = (0, _.useState)("");
 	return /* @__PURE__ */ (0, W.jsxs)("section", {
 		"data-testid": r,
@@ -29399,8 +29511,8 @@ function Ud({ title: e, hint: t, applyLabel: n, testId: r, placeholder: i, onApp
 								l(null), d("Chưa có nội dung để phân tích — dán báo giá vào ô trên.");
 								return;
 							}
-							let e = Vd(o);
-							if (Hd(e)) {
+							let e = Hd(o);
+							if (Ud(e)) {
 								l(null), d("Không đọc được thông tin nào — kiểm tra lại định dạng “tên dịch vụ: giá/đơn vị”.");
 								return;
 							}
@@ -29454,22 +29566,22 @@ function Ud({ title: e, hint: t, applyLabel: n, testId: r, placeholder: i, onApp
 					/* @__PURE__ */ (0, W.jsxs)("div", {
 						className: "grid grid-cols-2 md:grid-cols-4 gap-2 mt-2",
 						children: [
-							/* @__PURE__ */ (0, W.jsx)(Wd, {
+							/* @__PURE__ */ (0, W.jsx)(Gd, {
 								label: "Incoterm",
 								value: c.incoterm,
 								testId: `${r}-incoterm`
 							}),
-							/* @__PURE__ */ (0, W.jsx)(Wd, {
+							/* @__PURE__ */ (0, W.jsx)(Gd, {
 								label: "Nơi đi",
 								value: c.origin,
 								testId: `${r}-origin`
 							}),
-							/* @__PURE__ */ (0, W.jsx)(Wd, {
+							/* @__PURE__ */ (0, W.jsx)(Gd, {
 								label: "Nơi đến",
 								value: c.destination,
 								testId: `${r}-destination`
 							}),
-							/* @__PURE__ */ (0, W.jsx)(Wd, {
+							/* @__PURE__ */ (0, W.jsx)(Gd, {
 								label: "Số khối / cân nặng",
 								value: [c.cbm == null ? "" : `${c.cbm} CBM`, c.weightKg == null ? "" : `${ns(c.weightKg)} kg`].filter(Boolean).join(" · "),
 								testId: `${r}-cargo`
@@ -29562,7 +29674,7 @@ function Ud({ title: e, hint: t, applyLabel: n, testId: r, placeholder: i, onApp
 		]
 	});
 }
-function Wd({ label: e, value: t, testId: n }) {
+function Gd({ label: e, value: t, testId: n }) {
 	return /* @__PURE__ */ (0, W.jsxs)("div", {
 		className: "rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5",
 		children: [/* @__PURE__ */ (0, W.jsx)("p", {
@@ -29577,7 +29689,7 @@ function Wd({ label: e, value: t, testId: n }) {
 }
 //#endregion
 //#region src/components/CostCheck.tsx
-var Gd = {
+var Kd = {
 	incoterm: "",
 	loadModel: "",
 	equipment: "",
@@ -29589,18 +29701,18 @@ var Gd = {
 	delivery: "",
 	mode: "Sea",
 	targetDate: ""
-}, Kd = (e) => {
+}, qd = (e) => {
 	let t = String(e || "").replace(/\s/g, "").replace(/\.(?=\d{3}\b)/g, "").replace(",", ".");
 	if (!t) return null;
 	let n = Number(t);
 	return Number.isFinite(n) ? n : null;
 };
-function qd({ shipments: e, onUseMatch: t }) {
-	let { costIntelligence: n } = Wn(), [r, i] = (0, _.useState)(Gd), [a, o] = (0, _.useState)(null), [s, c] = (0, _.useState)(null), [l, u] = (0, _.useState)(""), d = (e, t) => i((n) => ({
+function Jd({ shipments: e, onUseMatch: t }) {
+	let { costIntelligence: n } = Wn(), [r, i] = (0, _.useState)(Kd), [a, o] = (0, _.useState)(null), [s, c] = (0, _.useState)(null), [l, u] = (0, _.useState)(""), d = (e, t) => i((n) => ({
 		...n,
 		[e]: t,
 		...e === "loadModel" && t !== "FCL" ? { equipment: "" } : {}
-	})), f = (0, _.useMemo)(() => a ? Pc(e, a, n.rates, n.catalog).slice(0, 5) : [], [
+	})), f = (0, _.useMemo)(() => a ? Fc(e, a, n.rates, n.catalog).slice(0, 5) : [], [
 		a,
 		e,
 		n
@@ -29609,7 +29721,7 @@ function qd({ shipments: e, onUseMatch: t }) {
 		className: "space-y-4",
 		"data-testid": "cost-check",
 		children: [
-			/* @__PURE__ */ (0, W.jsx)(Ud, {
+			/* @__PURE__ */ (0, W.jsx)(Wd, {
 				testId: "cost-paste",
 				title: "DÁN THÔNG TIN KHÁCH / GIÁ ĐANG HỎI",
 				hint: "Dán yêu cầu khách nếu có — chỉ điền giúp tiêu chí tìm kiếm. Không lưu và không tự chọn giá.",
@@ -29825,8 +29937,8 @@ function qd({ shipments: e, onUseMatch: t }) {
 									delivery: r.delivery.trim(),
 									loadModel: r.loadModel.trim().toUpperCase(),
 									equipment: r.equipment.trim().toUpperCase(),
-									cbm: Kd(r.cbm),
-									weightKg: Kd(r.weight),
+									cbm: qd(r.cbm),
+									weightKg: qd(r.weight),
 									mode: r.mode.trim(),
 									targetDate: r.targetDate.trim()
 								});
@@ -29895,7 +30007,7 @@ function qd({ shipments: e, onUseMatch: t }) {
 							children: "Thử bớt tiêu chí. Hệ thống không tự bịa giá khi không có nguồn phù hợp."
 						})]
 					}),
-					f.map((e) => /* @__PURE__ */ (0, W.jsx)(Jd, {
+					f.map((e) => /* @__PURE__ */ (0, W.jsx)(Yd, {
 						match: e,
 						selected: l === e.referenceId,
 						onSelect: () => {
@@ -29911,7 +30023,7 @@ function qd({ shipments: e, onUseMatch: t }) {
 		]
 	});
 }
-function Jd({ match: e, selected: t, onSelect: n }) {
+function Yd({ match: e, selected: t, onSelect: n }) {
 	let r = e.source === "ACTUAL" ? "border-emerald-300 bg-emerald-50 text-emerald-800" : e.source === "INPUT_RATE" ? "border-blue-300 bg-blue-50 text-blue-800" : "border-violet-300 bg-violet-50 text-violet-800";
 	return /* @__PURE__ */ (0, W.jsxs)("article", {
 		"data-testid": "cost-result",
@@ -30032,7 +30144,7 @@ function Jd({ match: e, selected: t, onSelect: n }) {
 				children: [/* @__PURE__ */ (0, W.jsx)("button", {
 					type: "button",
 					onClick: n,
-					disabled: !e.lines.some((t) => !hc(e, t)),
+					disabled: !e.lines.some((t) => !gc(e, t)),
 					className: q("btn-press touch-target inline-flex items-center rounded-xl px-3.5 min-h-[44px] text-[13.5px] font-bold disabled:opacity-50 disabled:cursor-not-allowed", t ? "bg-emerald-700 text-white" : "border-2 border-emerald-700 bg-white text-emerald-800"),
 					children: t ? "ĐÃ CHỌN LÀM THAM CHIẾU" : "DÙNG LÀM GIÁ VỐN"
 				}), e.shipmentId && /* @__PURE__ */ (0, W.jsxs)(U, {
@@ -30047,14 +30159,14 @@ function Jd({ match: e, selected: t, onSelect: n }) {
 }
 //#endregion
 //#region src/components/CostIntelligence.tsx
-var Yd = (e) => `${e}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, Xd = "OOCL\nCước biển ningbo- HPH\nUSD 750/20GP\nOOCL BERLIN 060W 9.27.2026\nMCC USD 675/20GP\n---\nNINGBO-HAIPHONG\nO/F:USD1425/40HQ ETD:21/09/2026 COSCO\nUSD1200/40HQ ETD:27/09 MSK", Zd = {
+var Xd = (e) => `${e}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, Zd = "OOCL\nCước biển ningbo- HPH\nUSD 750/20GP\nOOCL BERLIN 060W 9.27.2026\nMCC USD 675/20GP\n---\nNINGBO-HAIPHONG\nO/F:USD1425/40HQ ETD:21/09/2026 COSCO\nUSD1200/40HQ ETD:27/09 MSK", Qd = {
 	SERVICE: "Dịch vụ / loại phí",
 	CARRIER: "Hãng tàu / nhà vận chuyển",
 	PLACE: "Địa điểm / cảng",
 	ZONE: "Vùng logistics",
 	UNIT: "Đơn vị tính",
 	EQUIPMENT: "Container / thiết bị"
-}, Qd = {
+}, $d = {
 	id: "",
 	kind: "SERVICE",
 	code: "",
@@ -30068,31 +30180,31 @@ var Yd = (e) => `${e}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, 
 	unlocode: "",
 	zoneIds: "",
 	mergedInto: ""
-}, $d = (e) => e.replace(/\n/g, ",").split(",").map((e) => e.trim()).filter(Boolean), ef = (e) => e.confidence === "NEEDS_REVIEW" || e.carrier?.state === "NEEDS_REVIEW" || e.equipmentState === "NEEDS_REVIEW" || e.origin?.state === "NEEDS_REVIEW" || e.destination?.state === "NEEDS_REVIEW", tf = (e) => {
+}, ef = (e) => e.replace(/\n/g, ",").split(",").map((e) => e.trim()).filter(Boolean), tf = (e) => e.confidence === "NEEDS_REVIEW" || e.carrier?.state === "NEEDS_REVIEW" || e.equipmentState === "NEEDS_REVIEW" || e.origin?.state === "NEEDS_REVIEW" || e.destination?.state === "NEEDS_REVIEW", nf = (e) => {
 	let t = (e || "").toUpperCase().replace(/[^A-Z]/g, "");
 	return t.length === 5 ? t : "";
-}, nf = (e, t) => {
+}, rf = (e, t) => {
 	if (!e) return "";
 	let n = t.find((t) => t.kind !== "PLACE" || t.active === !1 ? !1 : e.id && t.id === e.id ? !0 : [
 		t.code,
 		t.name,
 		t.unlocode,
 		...t.aliases || []
-	].filter(Boolean).some((t) => gc(String(t)) === gc(e.name) || gc(String(t)) === gc(e.raw)));
-	return tf(n?.unlocode) || tf(n?.code) || tf(e.name) || tf(e.raw);
-}, rf = (e) => {
+	].filter(Boolean).some((t) => _c(String(t)) === _c(e.name) || _c(String(t)) === _c(e.raw)));
+	return nf(n?.unlocode) || nf(n?.code) || nf(e.name) || nf(e.raw);
+}, af = (e) => {
 	let t = (e || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
 	return t === "20GP" || t === "20" || t === "20FT" ? "container20" : t === "40HQ" || t === "40HC" ? "container40HC" : t === "40GP" || t === "40" || t === "40FT" ? "container40" : "";
-}, af = (e) => [
+}, of = (e) => [
 	e.chargeLabel,
 	e.chargeId,
 	e.chargeRaw
 ].some((e) => {
-	let t = gc(e);
+	let t = _c(e);
 	return t ? t === "of" || t === "o f" || t === "s of" || t === "ocean freight" || t.endsWith(" ocean freight") || t === "cuoc bien" || t.endsWith(" cuoc bien") ? !0 : /(?:^| )of$/.test(t) : !1;
-}), of = (e) => e.status === "NO_SPACE" || e.kind === "AVAILABILITY" || ef(e) || e.amount == null || !e.equipment ? !1 : af(e);
-function sf({ row: e, onChange: t, onRememberPlace: n }) {
-	let [r, i] = (0, _.useState)(ef(e)), a = (n) => t({
+}), sf = (e) => e.status === "NO_SPACE" || e.kind === "AVAILABILITY" || tf(e) || e.amount == null || !e.equipment ? !1 : of(e);
+function cf({ row: e, onChange: t, onRememberPlace: n }) {
+	let [r, i] = (0, _.useState)(tf(e)), a = (n) => t({
 		...e,
 		...n
 	}), o = (n, r) => {
@@ -30217,7 +30329,7 @@ function sf({ row: e, onChange: t, onRememberPlace: n }) {
 			}),
 			/* @__PURE__ */ (0, W.jsxs)("div", {
 				className: "mt-2 flex flex-wrap gap-2",
-				children: [e.origin?.raw && e.origin?.name && gc(e.origin.raw) !== gc(e.origin.name) && /* @__PURE__ */ (0, W.jsxs)($, {
+				children: [e.origin?.raw && e.origin?.name && _c(e.origin.raw) !== _c(e.origin.name) && /* @__PURE__ */ (0, W.jsxs)($, {
 					onClick: () => n(e.origin.raw, e.origin.name),
 					className: "min-h-[36px] px-3 text-[12px]",
 					children: [
@@ -30226,7 +30338,7 @@ function sf({ row: e, onChange: t, onRememberPlace: n }) {
 						"” = ",
 						e.origin.name
 					]
-				}), e.destination?.raw && e.destination?.name && gc(e.destination.raw) !== gc(e.destination.name) && /* @__PURE__ */ (0, W.jsxs)($, {
+				}), e.destination?.raw && e.destination?.name && _c(e.destination.raw) !== _c(e.destination.name) && /* @__PURE__ */ (0, W.jsxs)($, {
 					onClick: () => n(e.destination.raw, e.destination.name),
 					className: "min-h-[36px] px-3 text-[12px]",
 					children: [
@@ -30260,7 +30372,7 @@ function sf({ row: e, onChange: t, onRememberPlace: n }) {
 			/* @__PURE__ */ (0, W.jsxs)("div", {
 				className: "flex flex-wrap items-center gap-2",
 				children: [
-					ef(e) ? /* @__PURE__ */ (0, W.jsx)(Oo, {
+					tf(e) ? /* @__PURE__ */ (0, W.jsx)(Oo, {
 						size: 16,
 						className: "text-amber-600"
 					}) : /* @__PURE__ */ (0, W.jsx)(Jr, {
@@ -30320,12 +30432,12 @@ function sf({ row: e, onChange: t, onRememberPlace: n }) {
 		]
 	});
 }
-function cf() {
-	let { costIntelligence: e, dispatch: t, toast: n } = Wn(), r = (0, _.useSyncExternalStore)(C, S, S), [i, a] = (0, _.useState)(Qd), [o, s] = (0, _.useState)(null);
+function lf() {
+	let { costIntelligence: e, dispatch: t, toast: n } = Wn(), r = (0, _.useSyncExternalStore)(C, S, S), [i, a] = (0, _.useState)($d), [o, s] = (0, _.useState)(null);
 	(0, _.useEffect)(() => {
 		if (!o) return;
 		let e = (r?.lastWrites ?? []).find((e) => e.event === "cost_catalog_save" && e.requestId === o);
-		e && (s(null), e.ok ? (n("Đã lưu danh mục", "Mã/tên/alias mới đã vào dữ liệu dùng chung của app.", "green"), a(Qd)) : n("Không lưu được danh mục", e.error || "Backend từ chối.", "red"));
+		e && (s(null), e.ok ? (n("Đã lưu danh mục", "Mã/tên/alias mới đã vào dữ liệu dùng chung của app.", "green"), a($d)) : n("Không lưu được danh mục", e.error || "Backend từ chối.", "red"));
 	}, [
 		r,
 		o,
@@ -30350,20 +30462,20 @@ function cf() {
 			n("Thiếu tên/mã", "Danh mục cần ít nhất tên hoặc mã.", "red");
 			return;
 		}
-		let e = Yd("CAT");
+		let e = Xd("CAT");
 		if (!t("cost_catalog_save", {
 			id: i.id || void 0,
 			kind: i.kind,
 			code: i.code.trim(),
 			name: i.name.trim(),
-			aliases: $d(i.aliases),
+			aliases: ef(i.aliases),
 			active: i.active,
 			unit: i.unit.trim(),
 			group: i.group.trim(),
-			legacyCodes: $d(i.legacyCodes),
+			legacyCodes: ef(i.legacyCodes),
 			country: i.country.trim(),
 			unlocode: i.unlocode.trim(),
-			zoneIds: $d(i.zoneIds),
+			zoneIds: ef(i.zoneIds),
 			mergedInto: i.mergedInto.trim(),
 			requestId: e
 		})) {
@@ -30406,7 +30518,7 @@ function cf() {
 									"EQUIPMENT"
 								].map((e) => /* @__PURE__ */ (0, W.jsx)("option", {
 									value: e,
-									children: Zd[e] || e
+									children: Qd[e] || e
 								}, e))
 							})
 						}),
@@ -30561,7 +30673,7 @@ function cf() {
 							]
 						}),
 						i.id && /* @__PURE__ */ (0, W.jsx)($, {
-							onClick: () => a(Qd),
+							onClick: () => a($d),
 							children: "Hủy sửa"
 						})
 					]
@@ -30576,7 +30688,7 @@ function cf() {
 							/* @__PURE__ */ (0, W.jsxs)("span", {
 								className: "font-extrabold text-[13.5px] text-[#0f2a4a]",
 								children: [
-									Zd[e.kind] || e.kind,
+									Qd[e.kind] || e.kind,
 									" · ",
 									e.code || "—"
 								]
@@ -30596,7 +30708,7 @@ function cf() {
 		})]
 	});
 }
-function lf() {
+function uf() {
 	let { costIntelligence: e, dispatch: t, toast: n } = Wn(), r = (0, _.useSyncExternalStore)(C, S, S), [i, a] = (0, _.useState)(""), [o, s] = (0, _.useState)(""), [c, l] = (0, _.useState)(""), [u, d] = (0, _.useState)(null), [f, p] = (0, _.useState)(null), [m, h] = (0, _.useState)(null), [g, v] = (0, _.useState)(null), [y, b] = (0, _.useState)(null), [x, w] = (0, _.useState)(null), [T, E] = (0, _.useState)(null), [D, O] = (0, _.useState)({});
 	(0, _.useEffect)(() => {
 		if (!f) return;
@@ -30661,7 +30773,7 @@ function lf() {
 		n
 	]);
 	let k = (e, r) => {
-		let i = Yd("RATE-STATUS");
+		let i = Xd("RATE-STATUS");
 		if (!t("cost_rate_status_set", {
 			id: e,
 			status: r,
@@ -30676,7 +30788,7 @@ function lf() {
 			e.name,
 			e.code,
 			...e.aliases || []
-		].some((e) => gc(e) === gc(i))), o = Array.from(/* @__PURE__ */ new Set([...a?.aliases || [], r])), s = Yd("ALIAS");
+		].some((e) => _c(e) === _c(i))), o = Array.from(/* @__PURE__ */ new Set([...a?.aliases || [], r])), s = Xd("ALIAS");
 		if (!t("cost_catalog_save", {
 			id: a?.id || void 0,
 			kind: "PLACE",
@@ -30694,12 +30806,12 @@ function lf() {
 		}
 		v(s);
 	}, j = (r, i) => {
-		let a = nf(i.origin, e.catalog), o = nf(i.destination, e.catalog), s = rf(i.equipment);
+		let a = rf(i.origin, e.catalog), o = rf(i.destination, e.catalog), s = af(i.equipment);
 		if (!a || !o || !s) {
 			n("Chưa đủ dữ liệu tuyến", "Cần UN/LOCODE gốc/đích và loại container đã xác nhận.", "amber");
 			return;
 		}
-		let c = Yd("RATE-MARKET"), l = `${r}:${i.id}`;
+		let c = Xd("RATE-MARKET"), l = `${r}:${i.id}`;
 		if (!t("cost_market_benchmark_fetch", {
 			snapshotId: r,
 			rowId: i.id,
@@ -30719,7 +30831,7 @@ function lf() {
 			n("Chưa có dữ liệu", "Dán tin nhắn/bảng giá đầu vào trước.", "red");
 			return;
 		}
-		let e = Yd("RATE-PARSE");
+		let e = Xd("RATE-PARSE");
 		if (!t("cost_rate_parse", {
 			text: i,
 			receivedOn: c || void 0,
@@ -30734,16 +30846,16 @@ function lf() {
 		rows: n.rows.map((n, r) => r === e ? t : n),
 		summary: {
 			...n.summary,
-			needsReview: n.rows.map((n, r) => r === e ? t : n).filter(ef).length
+			needsReview: n.rows.map((n, r) => r === e ? t : n).filter(tf).length
 		}
 	}), P = () => {
 		if (!u) return;
-		let e = u.rows.filter(ef).length;
+		let e = u.rows.filter(tf).length;
 		if (e) {
 			n("Còn chỗ cần xác nhận", `Sửa ${e} dòng màu vàng trước khi lưu để dữ liệu không học sai.`, "amber");
 			return;
 		}
-		let r = Yd("RATE-SAVE");
+		let r = Xd("RATE-SAVE");
 		if (!t("cost_rate_save", {
 			parsed: u,
 			supplier: o.trim(),
@@ -30778,7 +30890,7 @@ function lf() {
 							onChange: (e) => {
 								a(e.target.value), d(null);
 							},
-							placeholder: Xd,
+							placeholder: Zd,
 							className: Z() + " font-mono text-[13px]"
 						})
 					}), /* @__PURE__ */ (0, W.jsxs)("div", {
@@ -30857,7 +30969,7 @@ function lf() {
 					}, t)),
 					/* @__PURE__ */ (0, W.jsx)("div", {
 						className: "mt-3 space-y-2",
-						children: u.rows.map((e, t) => /* @__PURE__ */ (0, W.jsx)(sf, {
+						children: u.rows.map((e, t) => /* @__PURE__ */ (0, W.jsx)(cf, {
 							row: e,
 							onChange: (e) => N(t, e),
 							onRememberPlace: A
@@ -30963,8 +31075,8 @@ function lf() {
 										]
 									})]
 								}),
-								(t.rows || []).filter((t) => of(t) && rf(t.equipment) && nf(t.origin, e.catalog) && nf(t.destination, e.catalog)).map((n) => {
-									let r = `${t.id}:${n.id}`, i = D[r], a = nf(n.origin, e.catalog), o = nf(n.destination, e.catalog);
+								(t.rows || []).filter((t) => sf(t) && af(t.equipment) && rf(t.origin, e.catalog) && rf(t.destination, e.catalog)).map((n) => {
+									let r = `${t.id}:${n.id}`, i = D[r], a = rf(n.origin, e.catalog), o = rf(n.destination, e.catalog);
 									return /* @__PURE__ */ (0, W.jsxs)("div", {
 										"data-testid": "cost-internal-row-" + r,
 										className: "mb-3 rounded-xl border border-slate-200 bg-slate-50 p-3",
@@ -31078,13 +31190,13 @@ function lf() {
 					}, t.id))
 				})]
 			}),
-			/* @__PURE__ */ (0, W.jsx)(cf, {})
+			/* @__PURE__ */ (0, W.jsx)(lf, {})
 		]
 	});
 }
 //#endregion
 //#region src/components/InlineText.tsx
-function uf({ region: e, enabled: t, onApply: n, onRestore: r, tag: i = "span", className: a, testPrefix: o = "eq-text" }) {
+function df({ region: e, enabled: t, onApply: n, onRestore: r, tag: i = "span", className: a, testPrefix: o = "eq-text" }) {
 	let [s, c] = (0, _.useState)(!1), [l, u] = (0, _.useState)(e.value), d = (0, _.useRef)(null), f = e.value !== e.default, p = e.multiline;
 	(0, _.useEffect)(() => {
 		s && (d.current?.focus(), d.current?.select());
@@ -31163,12 +31275,12 @@ function uf({ region: e, enabled: t, onApply: n, onRestore: r, tag: i = "span", 
 }
 //#endregion
 //#region src/components/ExcelSourceWorkbook.tsx
-var df = {
+var ff = {
 	CUSTOMER: "Sheet khách",
 	INTERNAL: "Sheet nội bộ",
 	UNCLASSIFIED: "Chưa phân loại"
 };
-function ff(e) {
+function pf(e) {
 	let t = {};
 	if (e.font?.bold && (t.fontWeight = 700), e.font?.italic && (t.fontStyle = "italic"), e.font?.size && (t.fontSize = `${Math.min(20, Math.max(9, e.font.size))}px`), e.font?.color && (t.color = e.font.color), e.fill && (t.background = e.fill), e.align?.h === "center" && (t.textAlign = "center"), e.align?.h === "right" && (t.textAlign = "right"), e.align?.v === "top" && (t.verticalAlign = "top"), e.align?.v === "center" && (t.verticalAlign = "middle"), e.align?.wrap && (t.whiteSpace = "pre-wrap"), e.border) {
 		let n = e.border.split(","), r = (e) => n.some((t) => t.startsWith(e)) ? "1px solid #94a3b8" : void 0;
@@ -31176,7 +31288,7 @@ function ff(e) {
 	}
 	return t;
 }
-function pf(e) {
+function mf(e) {
 	return e ? e.kind === "formula" ? e.unknown || e.value === "" || e.value === void 0 ? {
 		text: `${e.f} → chưa có giá trị cache`,
 		badge: "UNKNOWN"
@@ -31194,7 +31306,7 @@ function pf(e) {
 		badge: ""
 	};
 }
-function mf({ page: e }) {
+function hf({ page: e }) {
 	let t = (0, _.useMemo)(() => new Map(e.cells.map((e) => [`${e.r}:${e.c}`, e])), [e]), { anchors: n, covered: r, rows: i, cols: a } = (0, _.useMemo)(() => {
 		let t = /* @__PURE__ */ new Map(), n = /* @__PURE__ */ new Set();
 		for (let r of e.merges) {
@@ -31230,9 +31342,9 @@ function mf({ page: e }) {
 				}), a.map((e) => {
 					let a = `${i}:${e}`;
 					if (r.has(a)) return null;
-					let o = t.get(a), s = n.get(a), { text: c, badge: l } = pf(o);
+					let o = t.get(a), s = n.get(a), { text: c, badge: l } = mf(o);
 					return /* @__PURE__ */ (0, W.jsxs)("td", {
-						style: ff(o || {
+						style: pf(o || {
 							r: i,
 							c: e
 						}),
@@ -31253,7 +31365,7 @@ function mf({ page: e }) {
 		})
 	});
 }
-function hf({ quoteId: e, customerId: t, source: n, onRequestOpen: r }) {
+function gf({ quoteId: e, customerId: t, source: n, onRequestOpen: r }) {
 	let { dispatch: i } = Wn(), a = (0, _.useSyncExternalStore)(C, S, S), [o, s] = (0, _.useState)(!1), [c, l] = (0, _.useState)(""), [u, d] = (0, _.useState)(""), [f, p] = (0, _.useState)(null), [m, h] = (0, _.useState)(""), g = (r) => {
 		if (!e && !n?.storage_file_id) {
 			h("Chưa có tệp nguồn đã lưu để đối chiếu.");
@@ -31358,7 +31470,7 @@ function hf({ quoteId: e, customerId: t, source: n, onRequestOpen: r }) {
 							}),
 							/* @__PURE__ */ (0, W.jsx)("span", {
 								className: q("eq-wb-tab-class", `eq-wb-class-${e.classification.toLowerCase()}`),
-								children: df[e.classification]
+								children: ff[e.classification]
 							})
 						]
 					}, e.name))
@@ -31387,7 +31499,7 @@ function hf({ quoteId: e, customerId: t, source: n, onRequestOpen: r }) {
 					children: [
 						/* @__PURE__ */ (0, W.jsx)(Y, {
 							tone: f.page.classification === "CUSTOMER" ? "green" : "amber",
-							children: df[f.page.classification]
+							children: ff[f.page.classification]
 						}),
 						/* @__PURE__ */ (0, W.jsxs)("span", { children: [
 							f.page.row_count,
@@ -31410,7 +31522,7 @@ function hf({ quoteId: e, customerId: t, source: n, onRequestOpen: r }) {
 							]
 						})
 					]
-				}), /* @__PURE__ */ (0, W.jsx)(mf, { page: f.page })] }) : null,
+				}), /* @__PURE__ */ (0, W.jsx)(hf, { page: f.page })] }) : null,
 				/* @__PURE__ */ (0, W.jsxs)("details", {
 					className: "eq-wb-fidelity",
 					"data-testid": "workbook-fidelity",
@@ -31470,8 +31582,8 @@ function hf({ quoteId: e, customerId: t, source: n, onRequestOpen: r }) {
 }
 //#endregion
 //#region src/lib/excelQuote.ts
-var gf = () => `excel-quote-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`, _f = () => ({
-	id: gf(),
+var _f = () => `excel-quote-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`, vf = () => ({
+	id: _f(),
 	service_name: "",
 	qty: "1",
 	unit: "Lần",
@@ -31485,12 +31597,12 @@ var gf = () => `excel-quote-${Date.now()}-${Math.random().toString(36).slice(2, 
 	cost_source: "Nhập thủ công",
 	valid_until: "",
 	condition: "UNCONFIRMED"
-}), vf = [
+}), yf = [
 	"Thông tin khách gửi",
 	"Tính giá nội bộ",
 	"Báo giá gửi khách"
-], yf = (e, t = "") => e == null ? "Chưa xác định" : `${ns(e)} ${t === "CNY" ? "RMB" : t}`, bf = (e) => e == null ? "" : String(e);
-function xf(e) {
+], bf = (e, t = "") => e == null ? "Chưa xác định" : `${ns(e)} ${t === "CNY" ? "RMB" : t}`, xf = (e) => e == null ? "" : String(e);
+function Sf(e) {
 	let { calculation: t, ...n } = e;
 	return {
 		...n,
@@ -31509,7 +31621,7 @@ function xf(e) {
 		}
 	};
 }
-function Sf(e) {
+function Cf(e) {
 	let t = structuredClone(e), n = t.excelQuote || {};
 	delete n.customer_text, n.additional_public_notes = "";
 	for (let e of n.goods || []) for (let t of [
@@ -31529,8 +31641,8 @@ function Sf(e) {
 	]) t[e] = "";
 	return t;
 }
-var Cf = (e) => ({ ...e?.customer_text?.overrides || {} });
-function wf(e, t) {
+var wf = (e) => ({ ...e?.customer_text?.overrides || {} });
+function Tf(e, t) {
 	let n = e?.active_option || "A";
 	return {
 		header: { ...t },
@@ -31549,10 +31661,10 @@ function wf(e, t) {
 			B: e?.options?.B?.scope || ""
 		},
 		additional: e?.additional_public_notes || "",
-		overrides: Cf(e)
+		overrides: wf(e)
 	};
 }
-function Tf({ initialQuote: e, onClose: t }) {
+function Ef({ initialQuote: e, onClose: t }) {
 	let { customers: n, dispatch: r, toast: i, userName: a } = Wn(), o = new Set(T()?.currentUser.permissions ?? []), s = o.has("*") || o.has("commercial_write"), c = (0, _.useSyncExternalStore)(C, S, S), [l, u] = (0, _.useState)(e ?? null), [d, f] = (0, _.useState)(1), [p, m] = (0, _.useState)(e?.excelQuote ?? null), [h, g] = (0, _.useState)(null), [v, y] = (0, _.useState)(() => ({
 		customerId: e?.customerId ?? "",
 		salesOwner: e?.salesOwner || a,
@@ -31564,24 +31676,24 @@ function Tf({ initialQuote: e, onClose: t }) {
 		transportMode: e?.transportMode || "Sea",
 		expectedDeliveryDate: e?.expectedDeliveryDate ?? ""
 	})), [b, x] = (0, _.useState)(() => ({
-		CNY: bf(e?.fxRatesToVnd?.CNY),
-		USD: bf(e?.fxRatesToVnd?.USD),
+		CNY: xf(e?.fxRatesToVnd?.CNY),
+		USD: xf(e?.fxRatesToVnd?.USD),
 		CNY_PER_USD: ""
-	})), [w, E] = (0, _.useState)(!0), [D, O] = (0, _.useState)({}), [k, A] = (0, _.useState)(() => wf(e?.excelQuote ?? null, {
+	})), [w, E] = (0, _.useState)(!0), [D, O] = (0, _.useState)({}), [k, A] = (0, _.useState)(() => Tf(e?.excelQuote ?? null, {
 		goodsDescription: e?.goodsDescription ?? "",
 		route: e?.route ?? ""
 	})), [j, M] = (0, _.useState)(null), [N, P] = (0, _.useState)(""), [F, I] = (0, _.useState)(null), [L, R] = (0, _.useState)(null), [ee, te] = (0, _.useState)(""), [ne, re] = (0, _.useState)(""), [z, ie] = (0, _.useState)(!1), [ae, oe] = (0, _.useState)(!0), se = (0, _.useRef)(null), ce = (0, _.useRef)(null), B = h ?? p, le = (0, _.useMemo)(() => B ? {
 		...v,
 		fx: b,
-		excelQuote: xf(B)
+		excelQuote: Sf(B)
 	} : null, [
 		v,
 		b,
 		B
-	]), ue = le ? JSON.stringify(le) : "", de = le ? JSON.stringify(Sf(le)) : "", [fe, pe] = (0, _.useState)(""), [me, he] = (0, _.useState)(() => e?.excelQuote ? JSON.stringify({
+	]), ue = le ? JSON.stringify(le) : "", de = le ? JSON.stringify(Cf(le)) : "", [fe, pe] = (0, _.useState)(""), [me, he] = (0, _.useState)(() => e?.excelQuote ? JSON.stringify({
 		...v,
 		fx: b,
-		excelQuote: xf(e.excelQuote)
+		excelQuote: Sf(e.excelQuote)
 	}) : ""), ge = !!B && ue !== me, _e = !!j && N === ue, ve = !!j && !_e && !!fe && fe === de, ye = _e ? j.quote.excelQuote : null, be = n.find((e) => e.id === v.customerId), xe = !!L, Se = !L && !F && !z, Ce = (e, t) => y((n) => ({
 		...n,
 		[e]: t
@@ -31602,7 +31714,7 @@ function Tf({ initialQuote: e, onClose: t }) {
 	(0, _.useEffect)(() => {
 		if (!le || !v.customerId || L || F || z || N === ue) return;
 		let e = window.setTimeout(() => {
-			let e = gf();
+			let e = _f();
 			r("quote_preview", {
 				...le,
 				requestId: e
@@ -31642,7 +31754,7 @@ function Tf({ initialQuote: e, onClose: t }) {
 					te("Backend chưa trả về bản báo giá đã đọc lại; không coi là đã lưu.");
 					return;
 				}
-				u(t), L.fingerprint && he(L.fingerprint), A(wf(t.excelQuote ?? null, {
+				u(t), L.fingerprint && he(L.fingerprint), A(Tf(t.excelQuote ?? null, {
 					goodsDescription: v.goodsDescription,
 					route: v.route
 				})), re(`${t.id} · phiên bản ${t.version} · ${t.statusLabel} — đã đọc lại từ backend.`), i("Backend đã xác nhận", t.statusLabel + " · " + t.id, "green");
@@ -31677,7 +31789,7 @@ function Tf({ initialQuote: e, onClose: t }) {
 	}, [ge]);
 	let Ee = (e, t, n = !1) => {
 		if (!Se) return;
-		let i = gf();
+		let i = _f();
 		r(e, {
 			...t,
 			requestId: i
@@ -31751,7 +31863,7 @@ function Tf({ initialQuote: e, onClose: t }) {
 			we({ customer_text: {
 				schema: "quote-customer-text/1",
 				overrides: {
-					...Cf(B),
+					...wf(B),
 					[e.id]: t
 				}
 			} });
@@ -31790,7 +31902,7 @@ function Tf({ initialQuote: e, onClose: t }) {
 			...n,
 			[e.id]: t
 		})), !e.bound && B) {
-			let t = Cf(B);
+			let t = wf(B);
 			delete t[e.id], we({ customer_text: {
 				schema: "quote-customer-text/1",
 				overrides: t
@@ -31826,13 +31938,13 @@ function Tf({ initialQuote: e, onClose: t }) {
 			}
 		}));
 	}, Be = Ne.filter((e) => Pe(e) !== (e.bound ? Fe(e) : e.default)).map((e) => e.id), Ve = j?.customer.text?.unmapped ?? [], He = Ne.filter((e) => e.guarded && Pe(e) !== e.default), Ue = (e, t) => {
-		let n = hc(e, t);
+		let n = gc(e, t);
 		if (n) {
 			i("Không thể dùng làm giá vốn", n, "blue");
 			return;
 		}
 		Me({
-			..._f(),
+			...vf(),
 			service_name: t.label,
 			unit: t.unit,
 			qty: t.qty ?? 1,
@@ -31886,7 +31998,7 @@ function Tf({ initialQuote: e, onClose: t }) {
 			/* @__PURE__ */ (0, W.jsx)("nav", {
 				className: "eq-steps",
 				"aria-label": "Ba bước báo giá",
-				children: vf.map((e, t) => /* @__PURE__ */ (0, W.jsxs)("button", {
+				children: yf.map((e, t) => /* @__PURE__ */ (0, W.jsxs)("button", {
 					type: "button",
 					"aria-current": d === t + 1 ? "step" : void 0,
 					disabled: t > 0 && (!p || !!h),
@@ -32049,7 +32161,7 @@ function Tf({ initialQuote: e, onClose: t }) {
 							})
 						]
 					}),
-					B && /* @__PURE__ */ (0, W.jsx)(hf, {
+					B && /* @__PURE__ */ (0, W.jsx)(gf, {
 						quoteId: l?.id,
 						customerId: v.customerId,
 						source: B.source
@@ -32073,7 +32185,7 @@ function Tf({ initialQuote: e, onClose: t }) {
 								children: h ? "Chưa áp dụng" : "Đã áp dụng vào nháp"
 							})]
 						}),
-						/* @__PURE__ */ (0, W.jsx)(Df, {
+						/* @__PURE__ */ (0, W.jsx)(Of, {
 							goods: B.goods,
 							calculated: ye?.goods,
 							onChange: Ae
@@ -32083,8 +32195,8 @@ function Tf({ initialQuote: e, onClose: t }) {
 							"data-testid": "excel-goods-summary",
 							children: [
 								/* @__PURE__ */ (0, W.jsxs)("span", { children: [/* @__PURE__ */ (0, W.jsx)("b", { children: ye?.calculation?.row_count ?? B.goods.length }), " dòng hàng"] }),
-								/* @__PURE__ */ (0, W.jsxs)("span", { children: [/* @__PURE__ */ (0, W.jsx)("b", { children: _e ? yf(ye?.calculation?.quantity) : "…" }), " chiếc"] }),
-								_e ? ye?.calculation?.goods_totals.map((e) => /* @__PURE__ */ (0, W.jsx)("strong", { children: yf(e.amount, e.currency) }, e.currency)) : /* @__PURE__ */ (0, W.jsx)("span", { children: "Chờ tính lại thành tiền…" })
+								/* @__PURE__ */ (0, W.jsxs)("span", { children: [/* @__PURE__ */ (0, W.jsx)("b", { children: _e ? bf(ye?.calculation?.quantity) : "…" }), " chiếc"] }),
+								_e ? ye?.calculation?.goods_totals.map((e) => /* @__PURE__ */ (0, W.jsx)("strong", { children: bf(e.amount, e.currency) }, e.currency)) : /* @__PURE__ */ (0, W.jsx)("span", { children: "Chờ tính lại thành tiền…" })
 							]
 						}),
 						h && /* @__PURE__ */ (0, W.jsxs)("div", {
@@ -32123,7 +32235,7 @@ function Tf({ initialQuote: e, onClose: t }) {
 						})
 					]
 				}),
-				/* @__PURE__ */ (0, W.jsx)(Of, {
+				/* @__PURE__ */ (0, W.jsx)(kf, {
 					details: B,
 					onChange: we
 				})
@@ -32257,7 +32369,7 @@ function Tf({ initialQuote: e, onClose: t }) {
 								}, e)),
 								/* @__PURE__ */ (0, W.jsx)(X, {
 									label: "CBM đã xác nhận",
-									children: /* @__PURE__ */ (0, W.jsx)(Ef, {
+									children: /* @__PURE__ */ (0, W.jsx)(Df, {
 										value: B.shipment.cbm,
 										onChange: (e) => we({ shipment: {
 											...B.shipment,
@@ -32268,7 +32380,7 @@ function Tf({ initialQuote: e, onClose: t }) {
 								}),
 								/* @__PURE__ */ (0, W.jsx)(X, {
 									label: "Trọng lượng kg đã xác nhận",
-									children: /* @__PURE__ */ (0, W.jsx)(Ef, {
+									children: /* @__PURE__ */ (0, W.jsx)(Df, {
 										value: B.shipment.weight_kg,
 										onChange: (e) => we({ shipment: {
 											...B.shipment,
@@ -32371,7 +32483,7 @@ function Tf({ initialQuote: e, onClose: t }) {
 							className: "eq-muted mb-3",
 							children: "Chọn từng phí cần dùng. Chỉ điền giá vốn, giá bán để trống. Không tự cộng nâng hạ, phụ phí điều kiện hoặc khoản dự phòng."
 						}),
-						ae && /* @__PURE__ */ (0, W.jsx)(kf, {
+						ae && /* @__PURE__ */ (0, W.jsx)(Af, {
 							criteria: Ke,
 							onPick: Ue,
 							onManage: ie
@@ -32386,7 +32498,7 @@ function Tf({ initialQuote: e, onClose: t }) {
 						}),
 						/* @__PURE__ */ (0, W.jsx)("div", {
 							className: "space-y-3 mt-4",
-							children: Ge?.service_lines.map((e, t) => /* @__PURE__ */ (0, W.jsx)(Af, {
+							children: Ge?.service_lines.map((e, t) => /* @__PURE__ */ (0, W.jsx)(jf, {
 								line: e,
 								computed: V?.service_lines[t],
 								index: t,
@@ -32402,14 +32514,14 @@ function Tf({ initialQuote: e, onClose: t }) {
 						}),
 						/* @__PURE__ */ (0, W.jsxs)($, {
 							className: "mt-3",
-							onClick: () => Me(_f()),
+							onClick: () => Me(vf()),
 							testId: "excel-add-fee",
 							children: [/* @__PURE__ */ (0, W.jsx)(Fa, { size: 16 }), " Thêm phí thủ công"]
 						}),
 						/* @__PURE__ */ (0, W.jsxs)("div", {
 							className: "eq-totals",
 							"data-testid": "excel-service-subtotal",
-							children: [/* @__PURE__ */ (0, W.jsx)("span", { children: "Giá bán dịch vụ trước VAT:" }), _e ? V?.calculation?.totals_by_currency.map((e) => /* @__PURE__ */ (0, W.jsx)("strong", { children: yf(e.sell_total, e.currency) }, e.currency)) : /* @__PURE__ */ (0, W.jsx)("span", { children: "Chờ backend tính lại…" })]
+							children: [/* @__PURE__ */ (0, W.jsx)("span", { children: "Giá bán dịch vụ trước VAT:" }), _e ? V?.calculation?.totals_by_currency.map((e) => /* @__PURE__ */ (0, W.jsx)("strong", { children: bf(e.sell_total, e.currency) }, e.currency)) : /* @__PURE__ */ (0, W.jsx)("span", { children: "Chờ backend tính lại…" })]
 						})
 					]
 				}),
@@ -32432,12 +32544,12 @@ function Tf({ initialQuote: e, onClose: t }) {
 								["CNY_PER_USD", "RMB cho 1 USD (nếu dùng chéo)"]
 							].map(([e, t]) => /* @__PURE__ */ (0, W.jsx)(X, {
 								label: t,
-								children: /* @__PURE__ */ (0, W.jsx)(Ef, {
+								children: /* @__PURE__ */ (0, W.jsx)(Df, {
 									label: t,
 									value: b[e],
 									onChange: (t) => x((n) => ({
 										...n,
-										[e]: bf(t)
+										[e]: xf(t)
 									})),
 									testId: `excel-fx-${e}`
 								})
@@ -32475,7 +32587,7 @@ function Tf({ initialQuote: e, onClose: t }) {
 								["vat_pct", "VAT NK %"]
 							].map(([e, t]) => /* @__PURE__ */ (0, W.jsx)(X, {
 								label: t,
-								children: /* @__PURE__ */ (0, W.jsx)(Ef, {
+								children: /* @__PURE__ */ (0, W.jsx)(Df, {
 									label: t,
 									value: B.customs[e],
 									testId: `excel-customs-${e}`,
@@ -32519,11 +32631,11 @@ function Tf({ initialQuote: e, onClose: t }) {
 						/* @__PURE__ */ (0, W.jsxs)("p", {
 							className: "mt-3 font-semibold",
 							"data-testid": "excel-customs-result",
-							children: ["Thuế NK + VAT NK dự kiến: ", _e ? yf(ye?.customs.total_vnd, "VND") : "Chờ tính lại…"]
+							children: ["Thuế NK + VAT NK dự kiến: ", _e ? bf(ye?.customs.total_vnd, "VND") : "Chờ tính lại…"]
 						})
 					]
 				}),
-				/* @__PURE__ */ (0, W.jsx)(Of, {
+				/* @__PURE__ */ (0, W.jsx)(kf, {
 					details: B,
 					onChange: we
 				})
@@ -32647,7 +32759,7 @@ function Tf({ initialQuote: e, onClose: t }) {
 							className: "text-center text-[12px] font-bold tracking-widest text-slate-500",
 							children: ["BẢN XEM TRƯỚC · ", l?.status === "SENT" && !ge ? "ĐÃ ĐÁNH DẤU GỬI" : "DỰ THẢO CHƯA GỬI"]
 						}),
-						(_e || ve) && j ? /* @__PURE__ */ (0, W.jsx)(jf, {
+						(_e || ve) && j ? /* @__PURE__ */ (0, W.jsx)(Mf, {
 							value: j.customer,
 							enabled: w && Se,
 							shown: Pe,
@@ -32759,18 +32871,18 @@ function Tf({ initialQuote: e, onClose: t }) {
 		]
 	});
 }
-function Ef({ value: e, onChange: t, label: n, testId: r }) {
+function Df({ value: e, onChange: t, label: n, testId: r }) {
 	return /* @__PURE__ */ (0, W.jsx)("input", {
 		className: Z(),
 		inputMode: "decimal",
-		value: bf(e),
+		value: xf(e),
 		"aria-label": n,
 		onChange: (e) => t(e.target.value),
 		"data-testid": r,
 		placeholder: "Chưa biết"
 	});
 }
-function Df({ goods: e, calculated: t, onChange: n }) {
+function Of({ goods: e, calculated: t, onChange: n }) {
 	return /* @__PURE__ */ (0, W.jsxs)("table", {
 		className: "eq-goods-table",
 		children: [/* @__PURE__ */ (0, W.jsx)("thead", { children: /* @__PURE__ */ (0, W.jsxs)("tr", { children: [
@@ -32814,7 +32926,7 @@ function Df({ goods: e, calculated: t, onChange: n }) {
 							"length_mm",
 							"width_mm",
 							"height_mm"
-						].map((t, i) => /* @__PURE__ */ (0, W.jsx)(Ef, {
+						].map((t, i) => /* @__PURE__ */ (0, W.jsx)(Df, {
 							label: `${[
 								"Dài",
 								"Rộng",
@@ -32828,7 +32940,7 @@ function Df({ goods: e, calculated: t, onChange: n }) {
 				}),
 				/* @__PURE__ */ (0, W.jsx)("td", {
 					"data-label": "Số lượng",
-					children: /* @__PURE__ */ (0, W.jsx)(Ef, {
+					children: /* @__PURE__ */ (0, W.jsx)(Df, {
 						label: `Số lượng hàng ${r + 1}`,
 						value: e.qty,
 						onChange: (e) => n(r, "qty", e),
@@ -32837,7 +32949,7 @@ function Df({ goods: e, calculated: t, onChange: n }) {
 				}),
 				/* @__PURE__ */ (0, W.jsxs)("td", {
 					"data-label": "Đơn giá",
-					children: [/* @__PURE__ */ (0, W.jsx)(Ef, {
+					children: [/* @__PURE__ */ (0, W.jsx)(Df, {
 						label: `Đơn giá hàng ${r + 1}`,
 						value: e.unit_price,
 						onChange: (e) => n(r, "unit_price", e),
@@ -32851,7 +32963,7 @@ function Df({ goods: e, calculated: t, onChange: n }) {
 					"data-label": "Thành tiền",
 					className: "font-bold tabular-nums",
 					"data-testid": `excel-goods-${r + 1}-total`,
-					children: t ? yf(t[r]?.line_total, e.currency) : "Chờ tính…"
+					children: t ? bf(t[r]?.line_total, e.currency) : "Chờ tính…"
 				}),
 				/* @__PURE__ */ (0, W.jsx)("td", {
 					"data-label": "Ghi chú",
@@ -32867,7 +32979,7 @@ function Df({ goods: e, calculated: t, onChange: n }) {
 		}, e.id || r)) })]
 	});
 }
-function Of({ details: e, onChange: t }) {
+function kf({ details: e, onChange: t }) {
 	return /* @__PURE__ */ (0, W.jsxs)("section", {
 		className: "eq-card border-amber-200",
 		"data-testid": "excel-warnings",
@@ -32947,7 +33059,7 @@ function Of({ details: e, onChange: t }) {
 					children: [e.source_costs.map((e, t) => /* @__PURE__ */ (0, W.jsxs)("p", { children: [
 						e.label,
 						": ",
-						yf(e.amount, "VND"),
+						bf(e.amount, "VND"),
 						e.condition === "IF_APPLICABLE" ? " · NẾU PHÁT SINH" : ""
 					] }, t)), /* @__PURE__ */ (0, W.jsx)("p", {
 						className: "mt-2 font-semibold",
@@ -32958,14 +33070,14 @@ function Of({ details: e, onChange: t }) {
 		]
 	});
 }
-function kf({ criteria: e, onPick: t, onManage: n }) {
-	let { shipments: r, costIntelligence: i } = Wn(), [a, o] = (0, _.useState)(""), s = (0, _.useMemo)(() => Pc(r, e, i.rates, i.catalog), [
+function Af({ criteria: e, onPick: t, onManage: n }) {
+	let { shipments: r, costIntelligence: i } = Wn(), [a, o] = (0, _.useState)(""), s = (0, _.useMemo)(() => Fc(r, e, i.rates, i.catalog), [
 		r,
 		JSON.stringify(e),
 		i
 	]);
 	(0, _.useEffect)(() => () => n(!1), [n]);
-	let c = gc(a), l = s.filter((e) => !c || gc([
+	let c = _c(a), l = s.filter((e) => !c || _c([
 		e.supplier,
 		e.referenceId,
 		e.origin,
@@ -33020,7 +33132,7 @@ function kf({ criteria: e, onPick: t, onManage: n }) {
 						/* @__PURE__ */ (0, W.jsx)("div", {
 							className: "mt-2 space-y-2",
 							children: e.lines.map((n, r) => {
-								let i = hc(e, n);
+								let i = gc(e, n);
 								return /* @__PURE__ */ (0, W.jsxs)("div", {
 									className: "eq-cost-result",
 									"data-cost-basis": n.priceBasis,
@@ -33028,7 +33140,7 @@ function kf({ criteria: e, onPick: t, onManage: n }) {
 										/* @__PURE__ */ (0, W.jsxs)("b", { children: [
 											n.label,
 											" · ",
-											yf(n.price, n.ccy),
+											bf(n.price, n.ccy),
 											n.unit ? ` / ${n.unit}` : ""
 										] }),
 										i && /* @__PURE__ */ (0, W.jsx)("p", {
@@ -33075,13 +33187,13 @@ function kf({ criteria: e, onPick: t, onManage: n }) {
 						className: "eq-muted mb-3",
 						children: "Đóng khung này sau khi lưu giá để tiếp tục tính báo giá."
 					}),
-					/* @__PURE__ */ (0, W.jsx)(lf, {})
+					/* @__PURE__ */ (0, W.jsx)(uf, {})
 				]
 			})
 		]
 	});
 }
-function Af({ line: e, computed: t, index: n, onChange: r, onRemove: i }) {
+function jf({ line: e, computed: t, index: n, onChange: r, onRemove: i }) {
 	let a = n + 1, o = t || e;
 	return /* @__PURE__ */ (0, W.jsxs)("fieldset", {
 		className: "eq-service",
@@ -33125,7 +33237,7 @@ function Af({ line: e, computed: t, index: n, onChange: r, onRemove: i }) {
 						children: /* @__PURE__ */ (0, W.jsx)("input", {
 							className: Z(),
 							inputMode: "decimal",
-							value: bf(e.cost_unit),
+							value: xf(e.cost_unit),
 							readOnly: !!e.rate_snapshot_id,
 							onChange: (e) => r({ cost_unit: e.target.value }),
 							placeholder: "Chưa biết",
@@ -33134,7 +33246,7 @@ function Af({ line: e, computed: t, index: n, onChange: r, onRemove: i }) {
 					}),
 					/* @__PURE__ */ (0, W.jsx)(X, {
 						label: "Giá bán do Sale nhập",
-						children: /* @__PURE__ */ (0, W.jsx)(Ef, {
+						children: /* @__PURE__ */ (0, W.jsx)(Df, {
 							value: e.sell_unit,
 							onChange: (e) => r({
 								sell_unit: e,
@@ -33146,7 +33258,7 @@ function Af({ line: e, computed: t, index: n, onChange: r, onRemove: i }) {
 					}),
 					/* @__PURE__ */ (0, W.jsx)(X, {
 						label: "Số lượng",
-						children: /* @__PURE__ */ (0, W.jsx)(Ef, {
+						children: /* @__PURE__ */ (0, W.jsx)(Df, {
 							value: e.qty,
 							onChange: (e) => r({
 								qty: e,
@@ -33184,7 +33296,7 @@ function Af({ line: e, computed: t, index: n, onChange: r, onRemove: i }) {
 					}),
 					/* @__PURE__ */ (0, W.jsx)(X, {
 						label: "VAT dịch vụ % (nếu biết)",
-						children: /* @__PURE__ */ (0, W.jsx)(Ef, {
+						children: /* @__PURE__ */ (0, W.jsx)(Df, {
 							value: e.tax_pct,
 							onChange: (e) => r({ tax_pct: e }),
 							label: `VAT dịch vụ phí ${a}`,
@@ -33220,10 +33332,10 @@ function Af({ line: e, computed: t, index: n, onChange: r, onRemove: i }) {
 				children: [/* @__PURE__ */ (0, W.jsx)("input", {
 					type: "checkbox",
 					checked: e.sell_confirmed,
-					disabled: bf(e.sell_unit).trim() === "",
+					disabled: xf(e.sell_unit).trim() === "",
 					onChange: (e) => r({ sell_confirmed: e.target.checked }),
 					"data-testid": `excel-fee-${a}-confirmed`
-				}), /* @__PURE__ */ (0, W.jsxs)("span", { children: ["Sale xác nhận giá bán dòng này · thành tiền ", yf(t?.sell_total, e.currency)] })]
+				}), /* @__PURE__ */ (0, W.jsxs)("span", { children: ["Sale xác nhận giá bán dòng này · thành tiền ", bf(t?.sell_total, e.currency)] })]
 			}),
 			/* @__PURE__ */ (0, W.jsxs)("div", {
 				className: "rounded-lg bg-amber-50 border border-amber-200 p-3 mt-3 text-[13px]",
@@ -33265,10 +33377,10 @@ function Af({ line: e, computed: t, index: n, onChange: r, onRemove: i }) {
 		]
 	});
 }
-function jf({ value: e, enabled: t, shown: n, onEdit: r, onRestore: i }) {
+function Mf({ value: e, enabled: t, shown: n, onEdit: r, onRestore: i }) {
 	let a = e.text?.regions ?? [], o = (0, _.useMemo)(() => new Map(a.map((e) => [e.id, e])), [a]), s = e.goods_calculation, c = ({ id: e, field: s, tag: c = "span", className: l }) => {
 		let u = s ? a.find((e) => e.binding?.scope === s.scope && e.binding.field === s.field && (s.index === void 0 || e.binding.index === s.index)) : e ? o.get(e) : void 0;
-		return u ? /* @__PURE__ */ (0, W.jsx)(uf, {
+		return u ? /* @__PURE__ */ (0, W.jsx)(df, {
 			region: {
 				...u,
 				value: n(u)
@@ -33281,7 +33393,7 @@ function jf({ value: e, enabled: t, shown: n, onEdit: r, onRestore: i }) {
 		}) : null;
 	}, l = ({ id: e, default: a }) => {
 		let s = o.get(e);
-		return s ? /* @__PURE__ */ (0, W.jsx)("th", { children: /* @__PURE__ */ (0, W.jsx)(uf, {
+		return s ? /* @__PURE__ */ (0, W.jsx)("th", { children: /* @__PURE__ */ (0, W.jsx)(df, {
 			region: {
 				...s,
 				value: n(s)
@@ -33488,16 +33600,16 @@ function jf({ value: e, enabled: t, shown: n, onEdit: r, onRestore: i }) {
 						}),
 						/* @__PURE__ */ (0, W.jsx)("td", {
 							className: "num",
-							children: bf(e.qty)
+							children: xf(e.qty)
 						}),
 						/* @__PURE__ */ (0, W.jsx)("td", {
 							className: "num",
-							children: yf(e.unit_price == null || e.unit_price === "" ? null : Number(e.unit_price), e.currency)
+							children: bf(e.unit_price == null || e.unit_price === "" ? null : Number(e.unit_price), e.currency)
 						}),
 						/* @__PURE__ */ (0, W.jsx)("td", { children: e.currency }),
 						/* @__PURE__ */ (0, W.jsx)("td", {
 							className: "num",
-							children: /* @__PURE__ */ (0, W.jsx)("b", { children: yf(e.line_total, e.currency) })
+							children: /* @__PURE__ */ (0, W.jsx)("b", { children: bf(e.line_total, e.currency) })
 						})
 					]
 				}, t)) })]
@@ -33510,7 +33622,7 @@ function jf({ value: e, enabled: t, shown: n, onEdit: r, onRestore: i }) {
 				" dòng · ",
 				s.quantity ?? "—",
 				" chiếc"
-			] }), s.goods_totals.map((e) => /* @__PURE__ */ (0, W.jsx)("strong", { children: yf(e.amount, e.currency) }, e.currency))]
+			] }), s.goods_totals.map((e) => /* @__PURE__ */ (0, W.jsx)("strong", { children: bf(e.amount, e.currency) }, e.currency))]
 		}),
 		/* @__PURE__ */ (0, W.jsx)(c, {
 			id: "doc.option_line",
@@ -33597,19 +33709,19 @@ function jf({ value: e, enabled: t, shown: n, onEdit: r, onRestore: i }) {
 						})] }),
 						/* @__PURE__ */ (0, W.jsx)("td", {
 							className: "num",
-							children: yf(e.sell_unit == null || e.sell_unit === "" ? null : Number(e.sell_unit), e.currency)
+							children: bf(e.sell_unit == null || e.sell_unit === "" ? null : Number(e.sell_unit), e.currency)
 						}),
 						/* @__PURE__ */ (0, W.jsxs)("td", {
 							className: "num",
 							children: [
-								bf(e.qty),
+								xf(e.qty),
 								" ",
 								e.unit
 							]
 						}),
 						/* @__PURE__ */ (0, W.jsx)("td", {
 							className: "num",
-							children: yf(e.sell_total, e.currency)
+							children: bf(e.sell_total, e.currency)
 						}),
 						/* @__PURE__ */ (0, W.jsx)("td", {
 							className: "num",
@@ -33617,7 +33729,7 @@ function jf({ value: e, enabled: t, shown: n, onEdit: r, onRestore: i }) {
 						}),
 						/* @__PURE__ */ (0, W.jsx)("td", {
 							className: "num",
-							children: e.tax_total == null || e.sell_total == null ? "—" : yf(e.sell_total + e.tax_total, e.currency)
+							children: e.tax_total == null || e.sell_total == null ? "—" : bf(e.sell_total + e.tax_total, e.currency)
 						}),
 						/* @__PURE__ */ (0, W.jsx)("td", { children: e.currency }),
 						/* @__PURE__ */ (0, W.jsx)("td", { children: e.condition === "IF_APPLICABLE" ? "Phát sinh — chỉ thực hiện sau khi thống nhất." : "" })
@@ -33637,18 +33749,18 @@ function jf({ value: e, enabled: t, shown: n, onEdit: r, onRestore: i }) {
 		/* @__PURE__ */ (0, W.jsxs)("p", { children: [
 			/* @__PURE__ */ (0, W.jsx)(c, { id: "label.duty" }),
 			": ",
-			yf(e.customs.duty_vnd, "VND"),
+			bf(e.customs.duty_vnd, "VND"),
 			" · ",
 			/* @__PURE__ */ (0, W.jsx)(c, { id: "label.vat" }),
 			": ",
-			yf(e.customs.vat_vnd, "VND")
+			bf(e.customs.vat_vnd, "VND")
 		] }),
 		/* @__PURE__ */ (0, W.jsxs)("p", {
 			className: "mt-1",
 			children: [
 				/* @__PURE__ */ (0, W.jsx)(c, { id: "label.before_tax" }),
 				": ",
-				/* @__PURE__ */ (0, W.jsx)("b", { children: yf(s.before_tax_vnd, "VND") })
+				/* @__PURE__ */ (0, W.jsx)("b", { children: bf(s.before_tax_vnd, "VND") })
 			]
 		}),
 		/* @__PURE__ */ (0, W.jsxs)("p", {
@@ -33658,7 +33770,7 @@ function jf({ value: e, enabled: t, shown: n, onEdit: r, onRestore: i }) {
 				": ",
 				/* @__PURE__ */ (0, W.jsx)("span", {
 					"data-testid": "excel-public-total",
-					children: yf(s.estimate_vnd, "VND")
+					children: bf(s.estimate_vnd, "VND")
 				})
 			]
 		}),
@@ -33676,7 +33788,7 @@ function jf({ value: e, enabled: t, shown: n, onEdit: r, onRestore: i }) {
 			children: [
 				/* @__PURE__ */ (0, W.jsx)(c, { id: "label.customs_basis" }),
 				": ",
-				e.customs.calculable ? yf(e.customs.basis_vnd, "VND") : "chưa xác nhận",
+				e.customs.calculable ? bf(e.customs.basis_vnd, "VND") : "chưa xác nhận",
 				" · ",
 				/* @__PURE__ */ (0, W.jsx)(c, { id: "label.duty_rate" }),
 				" ",
@@ -33733,7 +33845,7 @@ function jf({ value: e, enabled: t, shown: n, onEdit: r, onRestore: i }) {
 }
 //#endregion
 //#region src/pages/SalesQuotes.tsx
-var Mf = {
+var Nf = {
 	DRAFT: "Nháp",
 	READY_FOR_REVIEW: "Chờ review",
 	SENT: "Đã gửi khách",
@@ -33741,7 +33853,7 @@ var Mf = {
 	REJECTED: "Từ chối",
 	EXPIRED: "Hết hạn",
 	READY_TO_CREATE_SHIPMENT: "Sẵn sàng tạo lô"
-}, Nf = {
+}, Pf = {
 	DRAFT: "gray",
 	READY_FOR_REVIEW: "blue",
 	SENT: "amber",
@@ -33749,7 +33861,7 @@ var Mf = {
 	REJECTED: "red",
 	EXPIRED: "gray",
 	READY_TO_CREATE_SHIPMENT: "green"
-}, Pf = ["USD", "CNY"], Ff = {
+}, Ff = ["USD", "CNY"], If = {
 	code: "",
 	serviceName: "",
 	unit: "Lần",
@@ -33760,11 +33872,11 @@ var Mf = {
 	taxPct: "8",
 	note: ""
 };
-function If(e, t) {
+function Lf(e, t) {
 	let n = t.trim();
 	return n ? `Dòng ${e + 1} · ${n}` : `Dòng ${e + 1}`;
 }
-var Lf = {
+var Rf = {
 	customerId: "",
 	salesOwner: "",
 	origin: "",
@@ -33774,16 +33886,16 @@ var Lf = {
 	transportMode: "Road",
 	goodsDescription: "",
 	expectedDeliveryDate: "",
-	lines: [{ ...Ff }],
+	lines: [{ ...If }],
 	fx: {
 		USD: "",
 		CNY: ""
 	}
-}, Rf = (e) => e == null ? "" : Number(e).toLocaleString("vi-VN"), zf = (e) => {
-	let t = e.fxRatesToVnd ?? {}, n = (e.fxNeededFor ?? []).filter((e) => t[e] != null).map((e) => `${e} ${Rf(t[e])}`);
+}, zf = (e) => e == null ? "" : Number(e).toLocaleString("vi-VN"), Bf = (e) => {
+	let t = e.fxRatesToVnd ?? {}, n = (e.fxNeededFor ?? []).filter((e) => t[e] != null).map((e) => `${e} ${zf(t[e])}`);
 	return n.length ? "Tỷ giá báo giá: " + n.join(" · ") : "";
 };
-function Bf(e) {
+function Vf(e) {
 	return {
 		code: e.code,
 		serviceName: e.serviceName,
@@ -33796,7 +33908,7 @@ function Bf(e) {
 		note: e.note ?? ""
 	};
 }
-function Vf() {
+function Hf() {
 	let [e] = Pn(), { quotes: t, customers: n, shipments: r, dispatch: i, toast: a } = Wn(), [o, s] = (0, _.useState)(e.get("q") ?? ""), c = (t) => {
 		s(t);
 		let n = new URLSearchParams(e);
@@ -33805,11 +33917,11 @@ function Vf() {
 		p(e);
 		let t = new URLSearchParams(window.location.search);
 		e === "bao-gia" ? t.delete("view") : t.set("view", e), window.history.replaceState(null, "", `?${t.toString()}`);
-	}, [h, g] = (0, _.useState)(!1), [v, y] = (0, _.useState)(!1), [b, x] = (0, _.useState)(null), [w, T] = (0, _.useState)(null), [E, D] = (0, _.useState)(Lf), [O, k] = (0, _.useState)([]), A = (0, _.useRef)(null), [j, M] = (0, _.useState)(null), N = (0, _.useSyncExternalStore)(C, S, S), P = (0, _.useMemo)(() => t.filter((e) => (l === "ALL" || e.status === l) && (!o || (e.id + e.quoteNo + e.customer + e.salesOwner + e.origin + e.destination).toLowerCase().includes(o.toLowerCase()))), [
+	}, [h, g] = (0, _.useState)(!1), [v, y] = (0, _.useState)(!1), [b, x] = (0, _.useState)(null), [w, T] = (0, _.useState)(null), [E, D] = (0, _.useState)(Rf), [O, k] = (0, _.useState)([]), A = (0, _.useRef)(null), [j, M] = (0, _.useState)(null), N = (0, _.useSyncExternalStore)(C, S, S), P = (0, _.useMemo)(() => t.filter((e) => (l === "ALL" || e.status === l) && (!o || (e.id + e.quoteNo + e.customer + e.salesOwner + e.origin + e.destination).toLowerCase().includes(o.toLowerCase()))), [
 		t,
 		o,
 		l
-	]), F = ["ALL", ...Array.from(new Set(t.map((e) => e.status)))], I = Pf.filter((e) => E.lines.some((t) => (t.currency || "VND").trim().toUpperCase() === e)), L = (0, _.useMemo)(() => n.map((e) => ({
+	]), F = ["ALL", ...Array.from(new Set(t.map((e) => e.status)))], I = Ff.filter((e) => E.lines.some((t) => (t.currency || "VND").trim().toUpperCase() === e)), L = (0, _.useMemo)(() => n.map((e) => ({
 		id: e.id,
 		label: `${e.name} (${e.id})`,
 		sub: [e.taxCode || e.mst, e.phone].filter(Boolean).join(" · ") || e.id
@@ -33830,14 +33942,14 @@ function Vf() {
 		} : r)
 	})), re = () => D((e) => ({
 		...e,
-		lines: [...e.lines, { ...Ff }]
+		lines: [...e.lines, { ...If }]
 	})), z = (e) => D((t) => ({
 		...t,
 		lines: t.lines.length > 1 ? t.lines.filter((t, n) => n !== e) : t.lines
 	})), ie = () => {
 		k([]), D({
-			...Lf,
-			lines: [{ ...Ff }],
+			...Rf,
+			lines: [{ ...If }],
 			fx: {
 				USD: "",
 				CNY: ""
@@ -33845,7 +33957,7 @@ function Vf() {
 			salesOwner: "Minh Tú"
 		}), g(!0);
 	}, ae = (e) => {
-		let t = e.lines.filter((t) => !hc(e, t));
+		let t = e.lines.filter((t) => !gc(e, t));
 		if (!t.length) {
 			a("Chỉ xem tham chiếu", "Nguồn này không có giá vốn đủ căn cứ; không nạp giá bán lịch sử làm giá vốn.", "blue");
 			return;
@@ -33862,7 +33974,7 @@ function Vf() {
 			note: "Nguồn giá vốn: " + e.sourceLabel + " · " + t.priceProvenance
 		}));
 		k([]), D({
-			...Lf,
+			...Rf,
 			salesOwner: "Minh Tú",
 			origin: e.origin || "",
 			destination: e.destination || "",
@@ -33890,10 +34002,10 @@ function Vf() {
 			transportMode: e.transportMode,
 			goodsDescription: e.goodsDescription,
 			expectedDeliveryDate: e.expectedDeliveryDate,
-			lines: e.serviceLines.length ? e.serviceLines.map(Bf) : [{ ...Ff }],
+			lines: e.serviceLines.length ? e.serviceLines.map(Vf) : [{ ...If }],
 			fx: {
-				USD: Rf(e.fxRatesToVnd?.USD),
-				CNY: Rf(e.fxRatesToVnd?.CNY)
+				USD: zf(e.fxRatesToVnd?.USD),
+				CNY: zf(e.fxRatesToVnd?.CNY)
 			}
 		}), T(e);
 	}, se = () => E.lines.filter((e) => e.code.trim() || e.serviceName.trim()).map((e) => ({
@@ -33931,7 +34043,7 @@ function Vf() {
 			a("Thiếu giá bán", n.slice(0, 4).join(" · ") + (n.length > 4 ? ` · +${n.length - 4} dòng nữa` : "") + " — giá bán là con số báo cho khách nên bắt buộc. Giá vốn / thuế có thể để trống nếu chưa biết.", "red");
 			return;
 		}
-		let r = Pf.filter((e) => t.some((t) => t.currency === e)), o = {}, s = [];
+		let r = Ff.filter((e) => t.some((t) => t.currency === e)), o = {}, s = [];
 		for (let e of r) {
 			let t = String(E.fx[e] ?? "").replace(/\s|\./g, "").replace(",", ".");
 			if (t.trim() === "") continue;
@@ -34034,9 +34146,9 @@ function Vf() {
 		i("quote_transition", {
 			id: e.id,
 			nextStatus: t
-		}), a("Đã gửi chuyển trạng thái " + e.id, `→ ${Mf[t] ?? t}. Backend kiểm tra đúng luồng.`, "blue");
+		}), a("Đã gửi chuyển trạng thái " + e.id, `→ ${Nf[t] ?? t}. Backend kiểm tra đúng luồng.`, "blue");
 	};
-	return v ? /* @__PURE__ */ (0, W.jsx)(Tf, {
+	return v ? /* @__PURE__ */ (0, W.jsx)(Ef, {
 		initialQuote: b,
 		onClose: () => {
 			y(!1), x(null);
@@ -34126,7 +34238,7 @@ function Vf() {
 						children: F.map((e) => /* @__PURE__ */ (0, W.jsx)("button", {
 							onClick: () => u(e),
 							className: q("touch-target shrink-0 rounded-full border-2 px-4 min-h-[44px] text-[14px] font-bold whitespace-nowrap", l === e ? "border-[#0f2a4a] bg-[#0f2a4a] text-white" : "border-slate-200 bg-white text-slate-600"),
-							children: e === "ALL" ? "Tất cả" : Mf[e] ?? e
+							children: e === "ALL" ? "Tất cả" : Nf[e] ?? e
 						}, e))
 					}),
 					f === "bao-gia" && /* @__PURE__ */ (0, W.jsxs)("p", {
@@ -34154,11 +34266,11 @@ function Vf() {
 					})
 				]
 			}),
-			f === "check-chi-phi" && /* @__PURE__ */ (0, W.jsx)(qd, {
+			f === "check-chi-phi" && /* @__PURE__ */ (0, W.jsx)(Jd, {
 				shipments: r,
 				onUseMatch: ae
 			}),
-			f === "kho-gia-von" && /* @__PURE__ */ (0, W.jsx)(lf, {}),
+			f === "kho-gia-von" && /* @__PURE__ */ (0, W.jsx)(uf, {}),
 			f === "bao-gia" && /* @__PURE__ */ (0, W.jsxs)(W.Fragment, { children: [/* @__PURE__ */ (0, W.jsxs)("div", {
 				className: "hidden md:block rounded-2xl bg-white border border-slate-200 overflow-hidden",
 				children: [/* @__PURE__ */ (0, W.jsx)("div", {
@@ -34198,13 +34310,13 @@ function Vf() {
 								/* @__PURE__ */ (0, W.jsx)("td", { children: J(e.salesOwner) }),
 								/* @__PURE__ */ (0, W.jsxs)("td", {
 									className: "font-bold",
-									children: [ns(e.sellingPriceTotalVnd ?? e.total, "VND"), zf(e) && /* @__PURE__ */ (0, W.jsx)("span", {
+									children: [ns(e.sellingPriceTotalVnd ?? e.total, "VND"), Bf(e) && /* @__PURE__ */ (0, W.jsx)("span", {
 										className: "block text-[11.5px] font-semibold text-slate-400",
-										children: zf(e)
+										children: Bf(e)
 									})]
 								}),
 								/* @__PURE__ */ (0, W.jsx)("td", { children: /* @__PURE__ */ (0, W.jsx)(Y, {
-									tone: Nf[e.status] ?? "gray",
+									tone: Pf[e.status] ?? "gray",
 									size: "sm",
 									children: e.statusLabel || e.status
 								}) }),
@@ -34214,7 +34326,7 @@ function Vf() {
 										e.allowedTransitions.map((t) => /* @__PURE__ */ (0, W.jsx)("button", {
 											onClick: () => ue(e, t),
 											className: "btn-press touch-target inline-flex items-center rounded-lg bg-[#0f2a4a] text-white text-[12.5px] font-bold px-2.5 min-h-[40px]",
-											children: Mf[t] ?? t
+											children: Nf[t] ?? t
 										}, t)),
 										/* @__PURE__ */ (0, W.jsxs)("button", {
 											onClick: () => oe(e),
@@ -34268,7 +34380,7 @@ function Vf() {
 									className: "font-extrabold text-[16px] text-[#0f2a4a]",
 									children: e.id
 								}), /* @__PURE__ */ (0, W.jsx)(Y, {
-									tone: Nf[e.status] ?? "gray",
+									tone: Pf[e.status] ?? "gray",
 									size: "sm",
 									children: e.statusLabel || e.status
 								})]
@@ -34289,9 +34401,9 @@ function Vf() {
 								className: "font-extrabold text-[16px] mt-1.5",
 								children: [ns(e.sellingPriceTotalVnd ?? e.total, "VND"), " ₫"]
 							}),
-							zf(e) && /* @__PURE__ */ (0, W.jsx)("p", {
+							Bf(e) && /* @__PURE__ */ (0, W.jsx)("p", {
 								className: "text-[12px] font-semibold text-slate-400 mt-0.5",
-								children: zf(e)
+								children: Bf(e)
 							})
 						]
 					}), /* @__PURE__ */ (0, W.jsxs)("div", {
@@ -34300,7 +34412,7 @@ function Vf() {
 							e.allowedTransitions.map((t) => /* @__PURE__ */ (0, W.jsx)("button", {
 								onClick: () => ue(e, t),
 								className: "btn-press touch-target rounded-lg bg-[#0f2a4a] text-white text-[13px] font-bold px-3 min-h-[44px]",
-								children: Mf[t] ?? t
+								children: Nf[t] ?? t
 							}, t)),
 							/* @__PURE__ */ (0, W.jsxs)("button", {
 								onClick: () => oe(e),
@@ -34472,7 +34584,7 @@ function Vf() {
 						}),
 						/* @__PURE__ */ (0, W.jsx)("div", {
 							className: "mt-4",
-							children: /* @__PURE__ */ (0, W.jsx)(Ud, {
+							children: /* @__PURE__ */ (0, W.jsx)(Wd, {
 								testId: "quote-paste",
 								title: "DÁN BÁO GIÁ NHANH",
 								hint: "Dán báo giá bạn vừa gõ trong chat — hệ thống đọc thử tuyến / Incoterm / dòng dịch vụ / giá / đơn vị / ghi chú điều kiện, bạn xem lại rồi mới áp dụng.",
@@ -34562,14 +34674,14 @@ function Vf() {
 									children: [
 										/* @__PURE__ */ (0, W.jsx)("legend", {
 											className: "sr-only",
-											children: If(t, e.serviceName)
+											children: Lf(t, e.serviceName)
 										}),
 										/* @__PURE__ */ (0, W.jsxs)("div", {
 											className: "flex items-start justify-between gap-2 mb-2",
 											children: [/* @__PURE__ */ (0, W.jsx)("p", {
 												"data-testid": `quote-line-${t + 1}-title`,
 												className: "rounded-xl bg-[#0f2a4a] text-white font-extrabold text-[13.5px] leading-snug px-3 py-1",
-												children: If(t, e.serviceName)
+												children: Lf(t, e.serviceName)
 											}), E.lines.length > 1 && /* @__PURE__ */ (0, W.jsxs)("button", {
 												type: "button",
 												"data-testid": `quote-line-${t + 1}-remove`,
@@ -34694,7 +34806,7 @@ function Vf() {
 }
 //#endregion
 //#region src/pages/Contracts.tsx
-function Hf() {
+function Uf() {
 	let { contracts: e } = Wn(), [t, n] = nc("q"), [r, i] = nc("kind"), a = r || "ALL", o = (e) => i(e === "ALL" ? "" : e), s = (0, _.useMemo)(() => e.filter((e) => (a === "ALL" || e.kind === a) && (!t || (e.id + e.contractNo + e.client + e.company + e.agent).toLowerCase().includes(t.toLowerCase()))), [
 		e,
 		t,
@@ -34886,7 +34998,7 @@ function Hf() {
 }
 //#endregion
 //#region src/pages/ContractDetail.tsx
-var Uf = [
+var Wf = [
 	{
 		id: "tong-quan",
 		label: "Tổng quan",
@@ -34907,7 +35019,7 @@ var Uf = [
 		label: "Lô liên kết",
 		short: "Lô liên kết"
 	}
-], Wf = {
+], Gf = {
 	READY: "green",
 	GENERATED: "blue",
 	MISSING_INFO: "amber",
@@ -34916,7 +35028,7 @@ var Uf = [
 	BLOCKED: "red",
 	DEFERRED: "gray",
 	ISSUED: "green"
-}, Gf = {
+}, Kf = {
 	READY: "Sẵn sàng",
 	GENERATED: "Đã sinh",
 	MISSING_INFO: "Thiếu thông tin",
@@ -34926,7 +35038,7 @@ var Uf = [
 	DEFERRED: "Hoãn lại",
 	ISSUED: "Đã phát hành"
 };
-function Kf(e) {
+function qf(e) {
 	return {
 		description: e.description,
 		unit: e.unit,
@@ -34934,7 +35046,7 @@ function Kf(e) {
 		unitPrice: e.unitPrice == null ? "" : String(e.unitPrice)
 	};
 }
-function qf() {
+function Jf() {
 	let { pathname: e } = dt(), t;
 	try {
 		t = decodeURIComponent(e.slice(10));
@@ -34960,7 +35072,7 @@ function qf() {
 			pl_date: e.identity?.plDate ?? "",
 			hdmb_no: e.identity?.hdmbNo ?? "",
 			hdmb_date: e.identity?.hdmbDate ?? ""
-		}), g(e.goodsLines.length ? e.goodsLines.map(Kf) : [{
+		}), g(e.goodsLines.length ? e.goodsLines.map(qf) : [{
 			description: "",
 			unit: "",
 			quantity: "",
@@ -35155,7 +35267,7 @@ function qf() {
 					/* @__PURE__ */ (0, W.jsx)("div", {
 						id: "contract-tabs",
 						className: "px-3 md:px-6 pb-3 flex gap-2 overflow-x-auto no-scrollbar border-t border-slate-100 pt-3",
-						children: Uf.map((e) => /* @__PURE__ */ (0, W.jsxs)("button", {
+						children: Wf.map((e) => /* @__PURE__ */ (0, W.jsxs)("button", {
 							onClick: () => r({ tab: e.id }),
 							className: q("touch-target shrink-0 rounded-xl px-4 min-h-[48px] text-[14.5px] font-bold border-2 whitespace-nowrap", i === e.id ? "border-[#0f2a4a] bg-[#0f2a4a] text-white shadow" : "border-slate-200 bg-white text-slate-600"),
 							children: [/* @__PURE__ */ (0, W.jsx)("span", {
@@ -35438,7 +35550,7 @@ function qf() {
 							})
 						]
 					})]
-				}), /* @__PURE__ */ (0, W.jsx)(ql, { contractId: f.id })]
+				}), /* @__PURE__ */ (0, W.jsx)(Jl, { contractId: f.id })]
 			}),
 			i === "hang-hoa" && /* @__PURE__ */ (0, W.jsxs)("div", {
 				className: "space-y-4",
@@ -35639,9 +35751,9 @@ function qf() {
 											className: "font-extrabold text-[14.5px] text-[#0f2a4a]",
 											children: e.document_type
 										}), /* @__PURE__ */ (0, W.jsx)(Y, {
-											tone: Wf[e.state] ?? "gray",
+											tone: Gf[e.state] ?? "gray",
 											size: "sm",
-											children: Gf[e.state] ?? e.state
+											children: Kf[e.state] ?? e.state
 										})]
 									}),
 									/* @__PURE__ */ (0, W.jsx)("p", {
@@ -35799,8 +35911,8 @@ function qf() {
 }
 //#endregion
 //#region src/pages/NewContract.tsx
-var Jf = "Mã ĐH	Ngày đặt hàng	Tên KH	Mã KH\nDH-1001	05/09/2026	An Phát JSC	CUST-ANPHAT";
-function Yf() {
+var Yf = "Mã ĐH	Ngày đặt hàng	Tên KH	Mã KH\nDH-1001	05/09/2026	An Phát JSC	CUST-ANPHAT";
+function Xf() {
 	let { customers: e, dispatch: t, toast: n } = Wn(), r = (0, _.useSyncExternalStore)(C, S, S), i = mt(), a = (0, _.useRef)(null), [o, s] = (0, _.useState)(null), [c, l] = (0, _.useState)("");
 	(0, _.useEffect)(() => {
 		if (!o || a.current !== o) return;
@@ -35982,7 +36094,7 @@ function Yf() {
 									value: D,
 									onChange: (e) => O(e.target.value),
 									rows: 5,
-									placeholder: Jf,
+									placeholder: Yf,
 									className: Z() + " font-mono text-[13px]",
 									"data-testid": "contract-getfly-text"
 								}),
@@ -36060,14 +36172,14 @@ function Yf() {
 }
 //#endregion
 //#region src/pages/TariffLookup.tsx
-var Xf = 12582912;
-function Zf(e) {
+var Zf = 12582912;
+function Qf(e) {
 	return e || "—";
 }
-function Qf() {
+function $f() {
 	return `TARIFF-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
 }
-function $f({ label: e, value: t }) {
+function ep({ label: e, value: t }) {
 	return /* @__PURE__ */ (0, W.jsxs)("span", {
 		className: "inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-[12px]",
 		children: [/* @__PURE__ */ (0, W.jsx)("span", {
@@ -36075,11 +36187,11 @@ function $f({ label: e, value: t }) {
 			children: e
 		}), /* @__PURE__ */ (0, W.jsx)("span", {
 			className: "font-extrabold text-[#0f2a4a]",
-			children: Zf(t)
+			children: Qf(t)
 		})]
 	});
 }
-function ep({ row: e }) {
+function tp({ row: e }) {
 	return e.fields.length ? /* @__PURE__ */ (0, W.jsxs)("details", {
 		className: "mt-2",
 		children: [/* @__PURE__ */ (0, W.jsxs)("summary", {
@@ -36091,14 +36203,14 @@ function ep({ row: e }) {
 			]
 		}), /* @__PURE__ */ (0, W.jsx)("div", {
 			className: "mt-2 flex flex-wrap gap-1.5",
-			children: e.fields.map((e) => /* @__PURE__ */ (0, W.jsx)($f, {
+			children: e.fields.map((e) => /* @__PURE__ */ (0, W.jsx)(ep, {
 				label: e.label,
 				value: e.value
 			}, e.label))
 		})]
 	}) : null;
 }
-function tp() {
+function np() {
 	let e = (0, _.useSyncExternalStore)(C, S, S), t = e?.tariff ?? null, n = t?.source, [r, i] = (0, _.useState)(""), [a, o] = (0, _.useState)(""), [s, c] = (0, _.useState)(null), [l, u] = (0, _.useState)(""), [d, f] = (0, _.useState)(""), [p, m] = (0, _.useState)(""), h = (0, _.useRef)(null), g = a.length > 0 && a !== (t?.query ?? ""), v = t?.rows ?? [], y = !!t?.searched && !g;
 	(0, _.useEffect)(() => {
 		if (!l) return;
@@ -36159,11 +36271,11 @@ function tp() {
 												f("Chỉ nhận file .xlsx.");
 												return;
 											}
-											if (s.size <= 0 || s.size > Xf) {
+											if (s.size <= 0 || s.size > Zf) {
 												f("File phải lớn hơn 0 và không vượt 12 MB.");
 												return;
 											}
-											let e = Qf();
+											let e = $f();
 											u(e);
 											let t = new FileReader();
 											t.onerror = () => {
@@ -36327,27 +36439,27 @@ function tp() {
 									className: "flex flex-wrap items-center gap-2",
 									children: [/* @__PURE__ */ (0, W.jsx)("span", {
 										className: "font-mono text-[18px] font-black text-[#0f2a4a]",
-										children: Zf(e.hsCode)
+										children: Qf(e.hsCode)
 									}), e.unit && /* @__PURE__ */ (0, W.jsxs)("span", {
 										className: "rounded-lg bg-slate-100 px-2 py-1 text-[11.5px] font-bold text-slate-600",
 										children: ["ĐVT: ", e.unit]
 									})]
 								}), /* @__PURE__ */ (0, W.jsx)("p", {
 									className: "mt-1 text-[15px] font-semibold text-slate-800",
-									children: Zf(e.descriptionVi)
+									children: Qf(e.descriptionVi)
 								})]
 							}), /* @__PURE__ */ (0, W.jsxs)("div", {
 								className: "flex shrink-0 flex-wrap gap-1.5",
 								children: [
-									/* @__PURE__ */ (0, W.jsx)($f, {
+									/* @__PURE__ */ (0, W.jsx)(ep, {
 										label: "NK TT",
 										value: e.importNormal
 									}),
-									/* @__PURE__ */ (0, W.jsx)($f, {
+									/* @__PURE__ */ (0, W.jsx)(ep, {
 										label: "NK ưu đãi",
 										value: e.importPreferential
 									}),
-									/* @__PURE__ */ (0, W.jsx)($f, {
+									/* @__PURE__ */ (0, W.jsx)(ep, {
 										label: "VAT",
 										value: e.vat
 									})
@@ -36370,7 +36482,7 @@ function tp() {
 								}), /* @__PURE__ */ (0, W.jsx)("p", { children: e.vatReduction })]
 							})]
 						}),
-						/* @__PURE__ */ (0, W.jsx)(ep, { row: e })
+						/* @__PURE__ */ (0, W.jsx)(tp, { row: e })
 					]
 				}, (e.hsCode ?? "?") + "-" + t))]
 			})
@@ -36379,13 +36491,13 @@ function tp() {
 }
 //#endregion
 //#region src/pages/PolicyLookup.tsx
-function np() {
+function rp() {
 	return `NOTEBOOKLM-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
 }
-function rp(e) {
+function ip(e) {
 	window.open(e, "logistics-notebooklm")?.focus();
 }
-function ip() {
+function ap() {
 	let e = (0, _.useSyncExternalStore)(C, S, S), t = e?.notebookLM, n = t?.items ?? [], r = t?.canManage === !0, [i, a] = (0, _.useState)(!1), [o, s] = (0, _.useState)([]), [c, l] = (0, _.useState)(null), [u, d] = (0, _.useState)("");
 	return (0, _.useEffect)(() => {
 		i || s(n.map((e) => ({ ...e })));
@@ -36483,7 +36595,7 @@ function ip() {
 									d("Mỗi nguồn phải có đủ tên và URL.");
 									return;
 								}
-								let e = np();
+								let e = rp();
 								if (!j("notebooklm_registry_save", {
 									items: o.map((e) => ({
 										label: e.label.trim(),
@@ -36507,7 +36619,7 @@ function ip() {
 				className: "mt-3 grid gap-3 md:grid-cols-2",
 				children: n.map((e) => /* @__PURE__ */ (0, W.jsxs)("button", {
 					type: "button",
-					onClick: () => rp(e.url),
+					onClick: () => ip(e.url),
 					className: "group flex min-h-[86px] items-center justify-between gap-3 rounded-2xl border border-slate-200 p-4 text-left hover:border-[#1e5aa8] hover:bg-slate-50",
 					children: [/* @__PURE__ */ (0, W.jsxs)("span", {
 						className: "flex min-w-0 items-center gap-3",
@@ -36535,23 +36647,23 @@ function ip() {
 }
 //#endregion
 //#region src/pages/WorkModuleLibrary.tsx
-var ap = {
+var op = {
 	ACTIVE: "green",
 	DRAFT: "amber",
 	RETIRED: "gray"
-}, op = {
+}, sp = {
 	ACTIVE: "Đang dùng",
 	DRAFT: "Bản nháp",
 	RETIRED: "Ngừng dùng"
-}, sp = [
+}, cp = [
 	"BLOCKING",
 	"PARALLEL_REQUIRED",
 	"INFORMATIONAL"
-], cp = {
+], lp = {
 	BLOCKING: "Bắt buộc trước (chặn)",
 	PARALLEL_REQUIRED: "Bắt buộc, có thể song song",
 	INFORMATIONAL: "Chỉ tham khảo"
-}, lp = [
+}, up = [
 	{
 		key: "why",
 		label: "WHY — vì sao phải làm",
@@ -36587,14 +36699,14 @@ var ap = {
 		label: "IMPACT if incomplete — nếu chưa xong",
 		placeholder: "Ảnh hưởng nếu bỏ qua"
 	}
-], up = () => ({
+], dp = () => ({
 	id: "",
 	label: "",
 	dependsOn: "",
 	dependencyType: "BLOCKING",
 	guidance: {}
 });
-function dp() {
+function fp() {
 	let e = (0, _.useSyncExternalStore)(C, S, S), t = e?.workModules, n = !!t?.canAuthor, r = (0, _.useMemo)(() => t?.all ?? [], [t]), i = (0, _.useMemo)(() => {
 		let n = /* @__PURE__ */ new Map();
 		for (let t of e?.shipments ?? []) for (let e of t.journey?.nodes ?? []) n.has(e.id) || n.set(e.id, e.label), n.has(e.family) || n.set(e.family, e.family);
@@ -36603,12 +36715,12 @@ function dp() {
 			id: e,
 			label: t
 		})).sort((e, t) => e.label.localeCompare(t.label, "vi"));
-	}, [e?.shipments, t?.stages]), [a, o] = (0, _.useState)(!1), [s, c] = (0, _.useState)(""), [l, u] = (0, _.useState)(""), [d, f] = (0, _.useState)("1"), [p, m] = (0, _.useState)("DRAFT"), [h, g] = (0, _.useState)(""), [v, y] = (0, _.useState)(""), [b, x] = (0, _.useState)(""), [w, T] = (0, _.useState)([up()]), [E, D] = (0, _.useState)(""), [O, k] = (0, _.useState)(""), A = e?.lastWrites?.find((e) => e.event === "work_module_template_save" && e.requestId === E), M = !(!E || A);
+	}, [e?.shipments, t?.stages]), [a, o] = (0, _.useState)(!1), [s, c] = (0, _.useState)(""), [l, u] = (0, _.useState)(""), [d, f] = (0, _.useState)("1"), [p, m] = (0, _.useState)("DRAFT"), [h, g] = (0, _.useState)(""), [v, y] = (0, _.useState)(""), [b, x] = (0, _.useState)(""), [w, T] = (0, _.useState)([dp()]), [E, D] = (0, _.useState)(""), [O, k] = (0, _.useState)(""), A = e?.lastWrites?.find((e) => e.event === "work_module_template_save" && e.requestId === E), M = !(!E || A);
 	(0, _.useEffect)(() => {
 		A && (A.ok ? (D(""), k(""), o(!1), N()) : (k(String(A.error || "Backend từ chối lưu quy trình.")), D("")));
 	}, [A]);
 	let N = () => {
-		c(""), u(""), f("1"), m("DRAFT"), g(""), y(""), x(""), T([up()]);
+		c(""), u(""), f("1"), m("DRAFT"), g(""), y(""), x(""), T([dp()]);
 	}, P = (e, t) => T((n) => n.map((n, r) => r === e ? {
 		...n,
 		...t
@@ -36830,7 +36942,7 @@ function dp() {
 								children: "Các bước"
 							}), /* @__PURE__ */ (0, W.jsxs)("button", {
 								type: "button",
-								onClick: () => T((e) => [...e, up()]),
+								onClick: () => T((e) => [...e, dp()]),
 								className: "touch-target inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-sm font-bold",
 								"data-testid": "wm-add-step",
 								children: [/* @__PURE__ */ (0, W.jsx)(Fa, {
@@ -36891,9 +37003,9 @@ function dp() {
 												value: e.dependencyType,
 												onChange: (e) => P(t, { dependencyType: e.target.value }),
 												disabled: !e.dependsOn,
-												children: sp.map((e) => /* @__PURE__ */ (0, W.jsx)("option", {
+												children: cp.map((e) => /* @__PURE__ */ (0, W.jsx)("option", {
 													value: e,
-													children: cp[e]
+													children: lp[e]
 												}, e))
 											})
 										}),
@@ -36910,7 +37022,7 @@ function dp() {
 									]
 								}), /* @__PURE__ */ (0, W.jsx)("div", {
 									className: "mt-2 grid grid-cols-1 gap-2 md:grid-cols-2",
-									children: lp.map((n) => /* @__PURE__ */ (0, W.jsxs)("label", {
+									children: up.map((n) => /* @__PURE__ */ (0, W.jsxs)("label", {
 										className: "text-sm",
 										children: [/* @__PURE__ */ (0, W.jsx)("span", {
 											className: "text-xs font-bold text-slate-500",
@@ -36977,9 +37089,9 @@ function dp() {
 									children: ["V", e.version]
 								}),
 								/* @__PURE__ */ (0, W.jsx)("td", { children: /* @__PURE__ */ (0, W.jsx)(Y, {
-									tone: ap[e.status] ?? "gray",
+									tone: op[e.status] ?? "gray",
 									size: "sm",
-									children: op[e.status] ?? e.status
+									children: sp[e.status] ?? e.status
 								}) }),
 								/* @__PURE__ */ (0, W.jsx)("td", { children: e.anchorStage }),
 								/* @__PURE__ */ (0, W.jsx)("td", { children: e.gateStage || "—" }),
@@ -37058,22 +37170,22 @@ function dp() {
 }
 //#endregion
 //#region src/pages/DocgenTemplates.tsx
-var fp = /* @__PURE__ */ new Set([
+var pp = /* @__PURE__ */ new Set([
 	"docgen_template_upload",
 	"docgen_template_mapping_save",
 	"docgen_template_publish",
 	"docgen_template_status_set",
 	"docgen_template_preview"
-]), pp = {
+]), mp = {
 	ACTIVE: "green",
 	DRAFT: "amber",
 	RETIRED: "gray"
-}, mp = {
+}, hp = {
 	ACTIVE: "Đang dùng",
 	DRAFT: "Bản nháp",
 	RETIRED: "Đã ngừng"
 };
-function hp({ kind: e }) {
+function gp({ kind: e }) {
 	return e === "XLSX" ? /* @__PURE__ */ (0, W.jsx)(Li, {
 		size: 18,
 		"aria-hidden": "true"
@@ -37082,7 +37194,7 @@ function hp({ kind: e }) {
 		"aria-hidden": "true"
 	});
 }
-function gp() {
+function _p() {
 	let e = S(), t = E(), [, n] = (0, _.useState)(0);
 	(0, _.useEffect)(() => C(() => n((e) => e + 1)), []);
 	let [r, i] = (0, _.useState)(""), [a, o] = (0, _.useState)("Biểu mẫu tải lên"), [s, c] = (0, _.useState)(""), [l, u] = (0, _.useState)(""), [d, f] = (0, _.useState)(!1), p = (0, _.useRef)(null), [m, h] = (0, _.useState)(null), [g, v] = (0, _.useState)([]), [y, b] = (0, _.useState)(""), [x, w] = (0, _.useState)(null), T = t?.canManage === !0, D = (0, _.useMemo)(() => t?.templates ?? [], [t?.templates]), O = (0, _.useMemo)(() => t?.fields ?? [], [t?.fields]), k = (0, _.useMemo)(() => new Map(O.map((e) => [e.key, e])), [O]), A = (0, _.useMemo)(() => {
@@ -37092,7 +37204,7 @@ function gp() {
 	}, [O]), M = e?.lastWrites ?? [];
 	(0, _.useEffect)(() => {
 		if (!y) return;
-		let e = M.find((e) => e.requestId === y && fp.has(String(e.event ?? "")));
+		let e = M.find((e) => e.requestId === y && pp.has(String(e.event ?? "")));
 		if (e) {
 			if (b(""), e.ok) {
 				if (e.event === "docgen_template_preview") {
@@ -37342,7 +37454,7 @@ function gp() {
 										className: "min-w-0 flex items-start gap-2.5",
 										children: [/* @__PURE__ */ (0, W.jsx)("span", {
 											className: "mt-0.5 text-[#0f2a4a]",
-											children: /* @__PURE__ */ (0, W.jsx)(hp, { kind: e.kind })
+											children: /* @__PURE__ */ (0, W.jsx)(gp, { kind: e.kind })
 										}), /* @__PURE__ */ (0, W.jsxs)("div", {
 											className: "min-w-0",
 											children: [
@@ -37367,9 +37479,9 @@ function gp() {
 											]
 										})]
 									}), /* @__PURE__ */ (0, W.jsx)(Y, {
-										tone: pp[e.status] ?? "gray",
+										tone: mp[e.status] ?? "gray",
 										size: "sm",
-										children: mp[e.status] ?? e.status
+										children: hp[e.status] ?? e.status
 									})]
 								}),
 								T && /* @__PURE__ */ (0, W.jsxs)("div", {
@@ -37620,25 +37732,25 @@ function gp() {
 }
 //#endregion
 //#region src/pages/TranslationWorkspace.tsx
-function _p(e) {
+function vp(e) {
 	return typeof TextEncoder < "u" ? new TextEncoder().encode(e).length : e.length;
 }
-function vp(e, t, n) {
+function yp(e, t, n) {
 	return `${t}\u0000${n}\u0000${e}`;
 }
-var yp = [
+var bp = [
 	"Vui lòng gửi hóa đơn và phiếu đóng gói trước khi xe lấy hàng.",
 	"Xe dự kiến tới nhà máy lúc 8 giờ sáng ngày mai.",
 	"Vui lòng gửi kích thước, số kiện và tổng trọng lượng hàng.",
 	"Vui lòng gửi thông tin lái xe và biển số xe.",
 	"Hàng sẽ làm thủ tục tại cửa khẩu."
-], bp = [
+], xp = [
 	"请在车辆提货前发送发票和装箱单。",
 	"车辆预计明天早上8点到达工厂。",
 	"请发送货物的尺寸、件数和总重量。",
 	"请发送司机信息和车牌号。",
 	"货物将在口岸办理手续。"
-], xp = [
+], Sp = [
 	{
 		zh: "你好",
 		pinyin: "Nǐ hǎo",
@@ -37715,7 +37827,7 @@ var yp = [
 		vi: "Cảm ơn, hẹn hợp tác lần sau."
 	}
 ];
-function Sp(e) {
+function Cp(e) {
 	switch (e) {
 		case "VI": return "Nhập tiếng Việt";
 		case "ZH": return "Nhập tiếng Trung";
@@ -37723,7 +37835,7 @@ function Sp(e) {
 		default: return "Văn bản gốc";
 	}
 }
-function Cp({ value: e, options: t, onChange: n, ariaLabel: r }) {
+function wp({ value: e, options: t, onChange: n, ariaLabel: r }) {
 	return /* @__PURE__ */ (0, W.jsx)("select", {
 		value: e,
 		onChange: (e) => n(e.target.value),
@@ -37735,10 +37847,10 @@ function Cp({ value: e, options: t, onChange: n, ariaLabel: r }) {
 		}, e.code))
 	});
 }
-function wp() {
+function Tp() {
 	(0, _.useSyncExternalStore)(C, S, S);
-	let e = S()?.translation ?? null, t = e?.capability ?? null, n = e?.request ?? null, r = e?.result ?? null, [i, a] = (0, _.useState)(""), [o, s] = (0, _.useState)("AUTO"), [c, l] = (0, _.useState)("VI"), [u, d] = (0, _.useState)(null), [f, p] = (0, _.useState)("idle"), m = t?.maxTextBytes ?? 1e5, h = (0, _.useMemo)(() => _p(i), [i]), g = h > m, v = t?.configured ?? !1, y = t?.allowed ?? !1, b = n ? vp(n.text, n.sourceLang, n.targetLang) : null, x = u !== null && u !== b, w = v && y && i.trim().length > 0 && !g && !x, T = r?.status === "translated" ? r.text ?? "" : "", E = r && r.status !== "translated" ? r.error : null, D = o === "ZH" ? bp : yp, O = () => {
-		w && (p("idle"), d(vp(i, o, c)), j("translate_text", {
+	let e = S()?.translation ?? null, t = e?.capability ?? null, n = e?.request ?? null, r = e?.result ?? null, [i, a] = (0, _.useState)(""), [o, s] = (0, _.useState)("AUTO"), [c, l] = (0, _.useState)("VI"), [u, d] = (0, _.useState)(null), [f, p] = (0, _.useState)("idle"), m = t?.maxTextBytes ?? 1e5, h = (0, _.useMemo)(() => vp(i), [i]), g = h > m, v = t?.configured ?? !1, y = t?.allowed ?? !1, b = n ? yp(n.text, n.sourceLang, n.targetLang) : null, x = u !== null && u !== b, w = v && y && i.trim().length > 0 && !g && !x, T = r?.status === "translated" ? r.text ?? "" : "", E = r && r.status !== "translated" ? r.error : null, D = o === "ZH" ? xp : bp, O = () => {
+		w && (p("idle"), d(yp(i, o, c)), j("translate_text", {
 			text: i,
 			sourceLang: o,
 			targetLang: c
@@ -37802,7 +37914,7 @@ function wp() {
 						className: "flex items-center justify-center gap-2 sm:gap-3",
 						"data-testid": "language-direction",
 						children: [
-							/* @__PURE__ */ (0, W.jsx)(Cp, {
+							/* @__PURE__ */ (0, W.jsx)(wp, {
 								ariaLabel: "Ngôn ngữ nguồn",
 								value: o,
 								options: P,
@@ -37816,7 +37928,7 @@ function wp() {
 								className: "btn-press shrink-0 w-11 h-11 rounded-full border border-slate-200 bg-slate-100 text-[#0f2a4a] grid place-items-center hover:bg-slate-200",
 								children: /* @__PURE__ */ (0, W.jsx)(ur, { size: 18 })
 							}),
-							/* @__PURE__ */ (0, W.jsx)(Cp, {
+							/* @__PURE__ */ (0, W.jsx)(wp, {
 								ariaLabel: "Ngôn ngữ đích",
 								value: c,
 								options: F,
@@ -37835,7 +37947,7 @@ function wp() {
 									className: "flex items-center justify-between gap-2 mb-1.5",
 									children: [/* @__PURE__ */ (0, W.jsx)("span", {
 										className: "text-[12.5px] font-extrabold uppercase tracking-wide text-slate-500",
-										children: Sp(o)
+										children: Cp(o)
 									}), /* @__PURE__ */ (0, W.jsxs)("button", {
 										type: "button",
 										onClick: A,
@@ -38003,7 +38115,7 @@ function wp() {
 					/* @__PURE__ */ (0, W.jsx)("div", {
 						"data-testid": "glossary",
 						className: "mt-2 grid grid-cols-2 sm:grid-cols-3 gap-2",
-						children: xp.map((e) => /* @__PURE__ */ (0, W.jsxs)("div", {
+						children: Sp.map((e) => /* @__PURE__ */ (0, W.jsxs)("div", {
 							"data-testid": "glossary-item",
 							className: "rounded-lg bg-slate-50 px-2.5 py-2 min-w-0",
 							children: [
@@ -38037,7 +38149,7 @@ function wp() {
 }
 //#endregion
 //#region src/pages/PartnerContext.tsx
-var Tp = {
+var Ep = {
 	agentId: "",
 	legalName: "",
 	legalCode: "",
@@ -38050,7 +38162,7 @@ var Tp = {
 	bankAccountNumber: "",
 	bankName: "",
 	bankBranch: ""
-}, Ep = [
+}, Dp = [
 	{
 		key: "agentId",
 		label: "Mã đại lý",
@@ -38108,13 +38220,13 @@ var Tp = {
 		key: "bankBranch",
 		label: "Chi nhánh ngân hàng"
 	}
-], Dp = {
+], Op = {
 	CONFIRMED: "blue",
 	REVIEW_REQUIRED: "amber",
 	KNOWN: "green",
 	UNKNOWN: "gray"
-}, Op = (e) => Dp[(e ?? "").toUpperCase()] ?? "gray";
-function kp({ label: e, value: t, mono: n }) {
+}, kp = (e) => Op[(e ?? "").toUpperCase()] ?? "gray";
+function Ap({ label: e, value: t, mono: n }) {
 	return /* @__PURE__ */ (0, W.jsxs)("div", {
 		className: "rounded-xl bg-slate-50 border border-slate-200 p-3",
 		children: [/* @__PURE__ */ (0, W.jsx)("p", {
@@ -38126,7 +38238,7 @@ function kp({ label: e, value: t, mono: n }) {
 		})]
 	});
 }
-function Ap({ label: e, value: t, ccy: n, strong: r }) {
+function jp({ label: e, value: t, ccy: n, strong: r }) {
 	return /* @__PURE__ */ (0, W.jsxs)("div", {
 		className: q("rounded-xl border p-2.5 text-center", r ? "bg-amber-50 border-amber-200" : "bg-white border-slate-200"),
 		children: [/* @__PURE__ */ (0, W.jsx)("p", {
@@ -38138,7 +38250,7 @@ function Ap({ label: e, value: t, ccy: n, strong: r }) {
 		})]
 	});
 }
-function jp({ row: e }) {
+function Mp({ row: e }) {
 	let t = [
 		e.role ? `Vai trò: ${e.role}` : null,
 		e.route ? `Tuyến: ${e.route}` : null,
@@ -38211,9 +38323,9 @@ function jp({ row: e }) {
 		]
 	});
 }
-function Mp() {
-	let e = (0, _.useSyncExternalStore)(C, S, S), t = e?.partnerContext ?? null, { toast: n } = Wn(), [r, i] = (0, _.useState)(""), [a, o] = (0, _.useState)(null), [s, c] = (0, _.useState)(!1), [l, u] = (0, _.useState)("create"), [d, f] = (0, _.useState)({ ...Tp }), [p, m] = (0, _.useState)(null), [h, g] = (0, _.useState)(""), v = () => {
-		u("create"), f({ ...Tp }), g(""), c(!0);
+function Np() {
+	let e = (0, _.useSyncExternalStore)(C, S, S), t = e?.partnerContext ?? null, { toast: n } = Wn(), [r, i] = (0, _.useState)(""), [a, o] = (0, _.useState)(null), [s, c] = (0, _.useState)(!1), [l, u] = (0, _.useState)("create"), [d, f] = (0, _.useState)({ ...Ep }), [p, m] = (0, _.useState)(null), [h, g] = (0, _.useState)(""), v = () => {
+		u("create"), f({ ...Ep }), g(""), c(!0);
 	}, y = () => {
 		let e = t?.identity?.party ?? null;
 		e && (u("edit"), f({
@@ -38406,7 +38518,7 @@ function Mp() {
 					}),
 					/* @__PURE__ */ (0, W.jsx)("div", {
 						className: "grid grid-cols-1 md:grid-cols-2 gap-3 mt-3",
-						children: Ep.map((e) => {
+						children: Dp.map((e) => {
 							let t = l === "edit" && e.lockedOnEdit;
 							return /* @__PURE__ */ (0, W.jsx)("div", {
 								className: q(e.wide && "md:col-span-2"),
@@ -38550,7 +38662,7 @@ function Mp() {
 							}), /* @__PURE__ */ (0, W.jsxs)("span", {
 								className: "ml-auto shrink-0 flex items-center gap-1.5",
 								children: [/* @__PURE__ */ (0, W.jsxs)(Y, {
-									tone: Op(M?.masterStatus),
+									tone: kp(M?.masterStatus),
 									size: "sm",
 									children: ["master: ", M?.masterStatus === "KNOWN" ? "CÓ HỒ SƠ" : "CHƯA CÓ"]
 								}), N && /* @__PURE__ */ (0, W.jsxs)("button", {
@@ -38572,21 +38684,21 @@ function Mp() {
 						/* @__PURE__ */ (0, W.jsxs)("div", {
 							className: "grid gap-2 mt-3 sm:grid-cols-2 lg:grid-cols-3",
 							children: [
-								/* @__PURE__ */ (0, W.jsx)(kp, {
+								/* @__PURE__ */ (0, W.jsx)(Ap, {
 									label: "Mã số thuế / pháp lý",
 									value: N?.legalCode,
 									mono: !0
 								}),
-								/* @__PURE__ */ (0, W.jsx)(kp, {
+								/* @__PURE__ */ (0, W.jsx)(Ap, {
 									label: "Điện thoại",
 									value: N?.phone,
 									mono: !0
 								}),
-								/* @__PURE__ */ (0, W.jsx)(kp, {
+								/* @__PURE__ */ (0, W.jsx)(Ap, {
 									label: "Email",
 									value: N?.email
 								}),
-								/* @__PURE__ */ (0, W.jsx)(kp, {
+								/* @__PURE__ */ (0, W.jsx)(Ap, {
 									label: "Người đại diện",
 									value: N ? `${N.representative}${N.representativeTitle ? ` — ${N.representativeTitle}` : ""}` : null
 								}),
@@ -38610,20 +38722,20 @@ function Mp() {
 							}), /* @__PURE__ */ (0, W.jsxs)("div", {
 								className: "grid gap-2 mt-2 sm:grid-cols-2 lg:grid-cols-4",
 								children: [
-									/* @__PURE__ */ (0, W.jsx)(kp, {
+									/* @__PURE__ */ (0, W.jsx)(Ap, {
 										label: "Chủ tài khoản",
 										value: N?.bankAccountHolder
 									}),
-									/* @__PURE__ */ (0, W.jsx)(kp, {
+									/* @__PURE__ */ (0, W.jsx)(Ap, {
 										label: "Số tài khoản",
 										value: N?.bankAccountNumber,
 										mono: !0
 									}),
-									/* @__PURE__ */ (0, W.jsx)(kp, {
+									/* @__PURE__ */ (0, W.jsx)(Ap, {
 										label: "Ngân hàng",
 										value: N?.bankName
 									}),
-									/* @__PURE__ */ (0, W.jsx)(kp, {
+									/* @__PURE__ */ (0, W.jsx)(Ap, {
 										label: "Chi nhánh",
 										value: N?.bankBranch
 									})
@@ -38708,7 +38820,7 @@ function Mp() {
 						}),
 						/* @__PURE__ */ (0, W.jsx)("div", {
 							className: "lg:hidden space-y-3 mt-3",
-							children: I.map((e) => /* @__PURE__ */ (0, W.jsx)(jp, { row: e }, e.shipmentId))
+							children: I.map((e) => /* @__PURE__ */ (0, W.jsx)(Mp, { row: e }, e.shipmentId))
 						}),
 						t.shipmentTruncated && /* @__PURE__ */ (0, W.jsxs)("p", {
 							className: "text-[12.5px] text-amber-700 font-semibold mt-2",
@@ -38731,7 +38843,7 @@ function Mp() {
 							title: "Công nợ phải trả theo lô",
 							sub: P?.note ?? "",
 							right: /* @__PURE__ */ (0, W.jsx)(Y, {
-								tone: Op(P?.status),
+								tone: kp(P?.status),
 								size: "sm",
 								children: J(P?.statusLabel)
 							})
@@ -38764,7 +38876,7 @@ function Mp() {
 												children: J(e.currency)
 											}),
 											/* @__PURE__ */ (0, W.jsx)(Y, {
-												tone: Op(e.status),
+												tone: kp(e.status),
 												size: "sm",
 												children: J(e.status)
 											}),
@@ -38777,17 +38889,17 @@ function Mp() {
 									/* @__PURE__ */ (0, W.jsxs)("div", {
 										className: "grid grid-cols-3 gap-2 mt-2",
 										children: [
-											/* @__PURE__ */ (0, W.jsx)(Ap, {
+											/* @__PURE__ */ (0, W.jsx)(jp, {
 												label: "Phải trả",
 												value: e.payable,
 												ccy: e.currency
 											}),
-											/* @__PURE__ */ (0, W.jsx)(Ap, {
+											/* @__PURE__ */ (0, W.jsx)(jp, {
 												label: "Đã trả",
 												value: e.paid,
 												ccy: e.currency
 											}),
-											/* @__PURE__ */ (0, W.jsx)(Ap, {
+											/* @__PURE__ */ (0, W.jsx)(jp, {
 												label: "Còn lại",
 												value: e.remaining,
 												ccy: e.currency,
@@ -38921,17 +39033,17 @@ function Mp() {
 }
 //#endregion
 //#region src/pages/Reconciliation.tsx
-var Np = {
+var Pp = {
 	obligation: "Phải trả / nghĩa vụ",
 	money: "Tiền đã phát sinh"
-}, Pp = {
+}, Fp = {
 	MATCHED: "green",
 	ALLOCATED: "green",
 	PARTIAL: "amber",
 	UNMATCHED: "red",
 	UNALLOCATED: "red"
 };
-function Fp(e) {
+function Ip(e) {
 	let t = [{
 		value: "ALL",
 		label: "Tất cả"
@@ -38994,7 +39106,7 @@ function Fp(e) {
 		...n
 	];
 }
-var Ip = [
+var Lp = [
 	{
 		value: "ALL",
 		label: "Cả hai"
@@ -39008,7 +39120,7 @@ var Ip = [
 		label: "Tiền"
 	}
 ];
-function Lp(e) {
+function Rp(e) {
 	return [
 		`q=${(e.query ?? "").trim().toLowerCase()}`,
 		`c=${(e.currency ?? "ALL").trim().toUpperCase()}`,
@@ -39016,15 +39128,15 @@ function Lp(e) {
 		`d=${(e.side ?? "ALL").trim().toUpperCase()}`
 	].join("|");
 }
-function Rp({ value: e, ccy: t, strong: n }) {
+function zp({ value: e, ccy: t, strong: n }) {
 	return /* @__PURE__ */ (0, W.jsx)("span", {
 		className: q("tabular-nums whitespace-nowrap", n ? "font-extrabold text-[#0f2a4a]" : "font-bold"),
 		children: ts(e) ? `— ${t}`.trim() : is(e, t)
 	});
 }
-function zp({ row: e }) {
+function Bp({ row: e }) {
 	return e.matchState ? /* @__PURE__ */ (0, W.jsx)(Y, {
-		tone: Pp[e.matchState] ?? "gray",
+		tone: Fp[e.matchState] ?? "gray",
 		size: "sm",
 		children: e.matchLabel ?? e.matchState
 	}) : /* @__PURE__ */ (0, W.jsxs)(Y, {
@@ -39033,7 +39145,7 @@ function zp({ row: e }) {
 		children: ["trạng thái ", "—"]
 	});
 }
-function Bp({ row: e }) {
+function Vp({ row: e }) {
 	let t = [
 		e.obligationIds.length ? `nghĩa vụ: ${e.obligationIds.join(", ")}` : null,
 		e.transactionIds.length ? `giao dịch: ${e.transactionIds.join(", ")}` : null,
@@ -39044,7 +39156,7 @@ function Bp({ row: e }) {
 		children: t.length ? t.join(" · ") : "Chưa có tham chiếu phân bổ — —"
 	});
 }
-function Vp({ row: e }) {
+function Hp({ row: e }) {
 	return e.canOpen ? /* @__PURE__ */ (0, W.jsxs)(U, {
 		to: e.openHref,
 		className: "btn-press touch-target inline-flex items-center gap-1.5 rounded-xl bg-[#0f2a4a] text-white font-bold text-[13px] px-3.5 min-h-[44px]",
@@ -39058,7 +39170,7 @@ function Vp({ row: e }) {
 		children: [/* @__PURE__ */ (0, W.jsx)(pa, { size: 14 }), " Lô không có trong dữ liệu"]
 	});
 }
-function Hp({ row: e }) {
+function Up({ row: e }) {
 	return /* @__PURE__ */ (0, W.jsxs)("div", {
 		className: "rounded-2xl bg-white border border-slate-200 p-4",
 		children: [
@@ -39069,11 +39181,11 @@ function Hp({ row: e }) {
 						className: "font-extrabold text-[16px] text-[#0f2a4a] break-all",
 						children: e.shipmentId
 					}),
-					/* @__PURE__ */ (0, W.jsx)(zp, { row: e }),
+					/* @__PURE__ */ (0, W.jsx)(Bp, { row: e }),
 					/* @__PURE__ */ (0, W.jsx)(Y, {
 						tone: e.side === "obligation" ? "blue" : "gray",
 						size: "sm",
-						children: Np[e.side] ?? e.side
+						children: Pp[e.side] ?? e.side
 					}),
 					/* @__PURE__ */ (0, W.jsx)("span", {
 						className: "rounded-md bg-slate-100 px-2 py-0.5 text-[12px] font-bold",
@@ -39116,7 +39228,7 @@ function Hp({ row: e }) {
 						children: t.label
 					}), /* @__PURE__ */ (0, W.jsx)("p", {
 						className: "text-[13px] mt-0.5",
-						children: /* @__PURE__ */ (0, W.jsx)(Rp, {
+						children: /* @__PURE__ */ (0, W.jsx)(zp, {
 							value: t.value,
 							ccy: e.currency
 						})
@@ -39132,16 +39244,16 @@ function Hp({ row: e }) {
 			}) : null,
 			/* @__PURE__ */ (0, W.jsx)("div", {
 				className: "mt-3",
-				children: /* @__PURE__ */ (0, W.jsx)(Bp, { row: e })
+				children: /* @__PURE__ */ (0, W.jsx)(Vp, { row: e })
 			}),
 			/* @__PURE__ */ (0, W.jsx)("div", {
 				className: "mt-3",
-				children: /* @__PURE__ */ (0, W.jsx)(Vp, { row: e })
+				children: /* @__PURE__ */ (0, W.jsx)(Hp, { row: e })
 			})
 		]
 	});
 }
-function Up({ options: e, value: t, onPick: n, ariaLabel: r }) {
+function Wp({ options: e, value: t, onPick: n, ariaLabel: r }) {
 	return /* @__PURE__ */ (0, W.jsx)("div", {
 		className: "flex flex-wrap gap-2",
 		role: "group",
@@ -39154,7 +39266,7 @@ function Up({ options: e, value: t, onPick: n, ariaLabel: r }) {
 		}, e.value))
 	});
 }
-function Wp() {
+function Gp() {
 	(0, _.useSyncExternalStore)(C, S, S);
 	let e = S()?.reconciliation ?? null, [t, n] = (0, _.useState)(""), [r, i] = (0, _.useState)(null), a = e?.rows ?? [], o = e?.totals ?? {}, s = e?.currencies ?? [], c = e?.side ?? "ALL", l = e?.state ?? "ALL", u = e?.currency ?? "ALL", d = (0, _.useMemo)(() => a.filter((e) => e.reviewReason), [a]), f = (e) => {
 		let n = {
@@ -39163,7 +39275,7 @@ function Wp() {
 			state: e.state ?? l,
 			side: e.side ?? c
 		};
-		e.side && e.side !== c && !e.state && (n.state = "ALL"), i(Lp(n)), j("reconciliation_filter", n);
+		e.side && e.side !== c && !e.state && (n.state = "ALL"), i(Rp(n)), j("reconciliation_filter", n);
 	}, p = () => {
 		n("");
 		let e = {
@@ -39172,8 +39284,8 @@ function Wp() {
 			state: "ALL",
 			side: "ALL"
 		};
-		i(Lp(e)), j("reconciliation_filter", e);
-	}, m = e ? Lp({
+		i(Rp(e)), j("reconciliation_filter", e);
+	}, m = e ? Rp({
 		query: e.query,
 		currency: e.currency,
 		state: e.state,
@@ -39224,19 +39336,19 @@ function Wp() {
 					/* @__PURE__ */ (0, W.jsxs)("div", {
 						className: "mt-3 space-y-2.5",
 						children: [
-							/* @__PURE__ */ (0, W.jsx)(Up, {
+							/* @__PURE__ */ (0, W.jsx)(Wp, {
 								ariaLabel: "Lọc theo loại dòng",
-								options: Ip,
+								options: Lp,
 								value: c,
 								onPick: (e) => f({ side: e })
 							}),
-							/* @__PURE__ */ (0, W.jsx)(Up, {
+							/* @__PURE__ */ (0, W.jsx)(Wp, {
 								ariaLabel: "Lọc theo trạng thái đối soát",
-								options: Fp(c),
-								value: Fp(c).some((e) => e.value === l) ? l : "ALL",
+								options: Ip(c),
+								value: Ip(c).some((e) => e.value === l) ? l : "ALL",
 								onPick: (e) => f({ state: e })
 							}),
-							/* @__PURE__ */ (0, W.jsx)(Up, {
+							/* @__PURE__ */ (0, W.jsx)(Wp, {
 								ariaLabel: "Lọc theo tiền tệ",
 								options: [{
 									value: "ALL",
@@ -39375,7 +39487,7 @@ function Wp() {
 												children: "Phải trả"
 											}), /* @__PURE__ */ (0, W.jsx)("p", {
 												className: "text-[13.5px] mt-0.5",
-												children: /* @__PURE__ */ (0, W.jsx)(Rp, {
+												children: /* @__PURE__ */ (0, W.jsx)(zp, {
 													value: t.obligations.amount,
 													ccy: e
 												})
@@ -39388,7 +39500,7 @@ function Wp() {
 												children: "Đã phân bổ"
 											}), /* @__PURE__ */ (0, W.jsx)("p", {
 												className: "text-[13.5px] mt-0.5",
-												children: /* @__PURE__ */ (0, W.jsx)(Rp, {
+												children: /* @__PURE__ */ (0, W.jsx)(zp, {
 													value: t.obligations.allocated,
 													ccy: e
 												})
@@ -39401,7 +39513,7 @@ function Wp() {
 												children: "Còn lại"
 											}), /* @__PURE__ */ (0, W.jsx)("p", {
 												className: "text-[13.5px] mt-0.5",
-												children: /* @__PURE__ */ (0, W.jsx)(Rp, {
+												children: /* @__PURE__ */ (0, W.jsx)(zp, {
 													value: t.obligations.remaining,
 													ccy: e,
 													strong: !0
@@ -39412,7 +39524,7 @@ function Wp() {
 								}),
 								/* @__PURE__ */ (0, W.jsxs)("p", {
 									className: "text-[12.5px] text-slate-500 mt-2.5",
-									children: ["Tiền chưa phân bổ: ", /* @__PURE__ */ (0, W.jsx)(Rp, {
+									children: ["Tiền chưa phân bổ: ", /* @__PURE__ */ (0, W.jsx)(zp, {
 										value: t.money.unallocated,
 										ccy: e
 									})]
@@ -39430,7 +39542,7 @@ function Wp() {
 								}),
 								t.review.count > 0 ? /* @__PURE__ */ (0, W.jsxs)("p", {
 									className: "text-[12.5px] mt-2 text-amber-800",
-									children: ["Trong đó cần rà soát: ", /* @__PURE__ */ (0, W.jsx)(Rp, {
+									children: ["Trong đó cần rà soát: ", /* @__PURE__ */ (0, W.jsx)(zp, {
 										value: t.review.amount,
 										ccy: e
 									})]
@@ -39483,7 +39595,7 @@ function Wp() {
 					})]
 				}) : /* @__PURE__ */ (0, W.jsxs)(W.Fragment, { children: [/* @__PURE__ */ (0, W.jsx)("div", {
 					className: "space-y-3 md:hidden",
-					children: a.map((e) => /* @__PURE__ */ (0, W.jsx)(Hp, { row: e }, e.id))
+					children: a.map((e) => /* @__PURE__ */ (0, W.jsx)(Up, { row: e }, e.id))
 				}), /* @__PURE__ */ (0, W.jsx)("div", {
 					className: "hidden md:block rounded-2xl bg-white border border-slate-200 overflow-hidden",
 					children: /* @__PURE__ */ (0, W.jsxs)("table", {
@@ -39512,7 +39624,7 @@ function Wp() {
 									children: [/* @__PURE__ */ (0, W.jsx)("p", {
 										className: "font-extrabold text-[#0f2a4a] break-all",
 										children: e.shipmentId
-									}), /* @__PURE__ */ (0, W.jsx)(Bp, { row: e })]
+									}), /* @__PURE__ */ (0, W.jsx)(Vp, { row: e })]
 								}),
 								/* @__PURE__ */ (0, W.jsxs)("td", {
 									className: "px-3 py-2.5 break-words",
@@ -39533,32 +39645,32 @@ function Wp() {
 								}),
 								/* @__PURE__ */ (0, W.jsx)("td", {
 									className: "px-3 py-2.5 whitespace-nowrap",
-									children: Np[e.side] ?? e.side
+									children: Pp[e.side] ?? e.side
 								}),
 								/* @__PURE__ */ (0, W.jsxs)("td", {
 									className: "px-3 py-2.5",
-									children: [/* @__PURE__ */ (0, W.jsx)(zp, { row: e }), e.reviewReason ? /* @__PURE__ */ (0, W.jsx)("p", {
+									children: [/* @__PURE__ */ (0, W.jsx)(Bp, { row: e }), e.reviewReason ? /* @__PURE__ */ (0, W.jsx)("p", {
 										className: "text-[12px] text-amber-800 mt-1 break-words",
 										children: e.reviewReason
 									}) : null]
 								}),
 								/* @__PURE__ */ (0, W.jsx)("td", {
 									className: "px-3 py-2.5",
-									children: /* @__PURE__ */ (0, W.jsx)(Rp, {
+									children: /* @__PURE__ */ (0, W.jsx)(zp, {
 										value: e.amount,
 										ccy: e.currency
 									})
 								}),
 								/* @__PURE__ */ (0, W.jsx)("td", {
 									className: "px-3 py-2.5",
-									children: /* @__PURE__ */ (0, W.jsx)(Rp, {
+									children: /* @__PURE__ */ (0, W.jsx)(zp, {
 										value: e.allocated,
 										ccy: e.currency
 									})
 								}),
 								/* @__PURE__ */ (0, W.jsx)("td", {
 									className: "px-3 py-2.5",
-									children: /* @__PURE__ */ (0, W.jsx)(Rp, {
+									children: /* @__PURE__ */ (0, W.jsx)(zp, {
 										value: e.remaining,
 										ccy: e.currency,
 										strong: !0
@@ -39570,7 +39682,7 @@ function Wp() {
 								}),
 								/* @__PURE__ */ (0, W.jsx)("td", {
 									className: "px-3 py-2.5",
-									children: /* @__PURE__ */ (0, W.jsx)(Vp, { row: e })
+									children: /* @__PURE__ */ (0, W.jsx)(Hp, { row: e })
 								})
 							]
 						}, e.id)) })]
@@ -39620,11 +39732,11 @@ function Wp() {
 }
 //#endregion
 //#region src/pages/CeoReport.tsx
-var Gp = {
+var Kp = {
 	Khan: "Khẩn",
 	CanXuLy: "Cần xử lý"
 };
-function Kp({ position: e, kind: t }) {
+function qp({ position: e, kind: t }) {
 	let n = t === "receivable", r = n ? "phải thu" : "phải trả", i = n ? "text-red-700" : "text-amber-800", a = n ? "bg-red-50 border-red-200" : "bg-amber-50 border-amber-200", o = e.incompleteRowCount > 0 ? "dòng còn mở đã xác định" : "dòng còn mở", s = n ? "dòng chưa đủ Finance Actual, không tính là 0" : "dòng chưa đủ số dư canonical, không tính là 0";
 	return /* @__PURE__ */ (0, W.jsxs)("div", {
 		"data-testid": `ceo-${t}-${e.currency}`,
@@ -39669,7 +39781,7 @@ function Kp({ position: e, kind: t }) {
 		]
 	});
 }
-function qp({ label: e, value: t, tone: n = "gray" }) {
+function Jp({ label: e, value: t, tone: n = "gray" }) {
 	return /* @__PURE__ */ (0, W.jsxs)("div", {
 		className: `min-w-0 rounded-xl border px-3 py-2.5 ${{
 			green: "border-emerald-200 bg-emerald-50 text-emerald-800",
@@ -39686,13 +39798,13 @@ function qp({ label: e, value: t, tone: n = "gray" }) {
 		})]
 	});
 }
-function Jp({ children: e }) {
+function Yp({ children: e }) {
 	return /* @__PURE__ */ (0, W.jsx)("div", {
 		className: "rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50/60 px-4 py-5 text-[14px] leading-relaxed text-slate-600",
 		children: e
 	});
 }
-function Yp({ counts: e, total: t }) {
+function Xp({ counts: e, total: t }) {
 	let n = [...e].sort((e, t) => t.count - e.count || e.status.localeCompare(t.status, "vi")), r = [
 		"bg-[#1e5aa8]",
 		"bg-sky-500",
@@ -39738,7 +39850,7 @@ function Yp({ counts: e, total: t }) {
 		})
 	});
 }
-function Xp({ position: e }) {
+function Zp({ position: e }) {
 	let t = e.profit === null ? "text-slate-500" : e.profit >= 0 ? "text-emerald-700" : "text-red-700";
 	return /* @__PURE__ */ (0, W.jsxs)("div", {
 		"data-testid": `ceo-finance-actual-${e.currency}`,
@@ -39810,7 +39922,7 @@ function Xp({ position: e }) {
 		]
 	});
 }
-function Zp({ group: e }) {
+function Qp({ group: e }) {
 	return /* @__PURE__ */ (0, W.jsxs)("div", {
 		"data-testid": `ceo-top-customers-${e.currency}`,
 		"data-ceo-currency": e.currency,
@@ -39843,7 +39955,7 @@ function Zp({ group: e }) {
 		})]
 	});
 }
-function Qp({ item: e }) {
+function $p({ item: e }) {
 	let t = e.level === "Khan" ? "border-red-200 bg-red-50 text-red-700" : "border-amber-200 bg-amber-50 text-amber-900";
 	return /* @__PURE__ */ (0, W.jsxs)(U, {
 		to: e.route,
@@ -39858,7 +39970,7 @@ function Qp({ item: e }) {
 					children: [
 						/* @__PURE__ */ (0, W.jsx)("span", {
 							className: `rounded-md border px-1.5 py-0.5 text-[11px] font-extrabold uppercase tracking-wide ${t}`,
-							children: Gp[e.level] ?? e.level
+							children: Kp[e.level] ?? e.level
 						}),
 						/* @__PURE__ */ (0, W.jsx)("b", {
 							className: "text-[14px] text-[#0f2a4a]",
@@ -39885,11 +39997,11 @@ function Qp({ item: e }) {
 		})]
 	});
 }
-function $p() {
+function em() {
 	let { ceoReport: e } = Wn();
 	if (!e) return /* @__PURE__ */ (0, W.jsx)("div", {
 		className: "max-w-[1000px]",
-		children: /* @__PURE__ */ (0, W.jsx)(Jp, { children: "Chưa nhận được tóm tắt quản trị từ nguồn Logistics. Hệ thống không hiển thị số liệu thay thế." })
+		children: /* @__PURE__ */ (0, W.jsx)(Yp, { children: "Chưa nhận được tóm tắt quản trị từ nguồn Logistics. Hệ thống không hiển thị số liệu thay thế." })
 	});
 	let { operations: t, actionables: n, receivables: r, payables: i, financeActual: a, topCustomers: o, finance: s, reconciliation: c, quickLinks: l, unavailable: u } = e, d = c.obligations, f = c.money, p = !!(c.available && d && f), m = Math.max(t.actionableTaskCount - n.length, 0);
 	return /* @__PURE__ */ (0, W.jsxs)("div", {
@@ -39992,11 +40104,11 @@ function $p() {
 					}), r.positions.length > 0 ? /* @__PURE__ */ (0, W.jsx)("div", {
 						className: "grid gap-3 sm:grid-cols-2",
 						"data-testid": "ceo-receivable-currency-grid",
-						children: r.positions.map((e) => /* @__PURE__ */ (0, W.jsx)(Kp, {
+						children: r.positions.map((e) => /* @__PURE__ */ (0, W.jsx)(qp, {
 							position: e,
 							kind: "receivable"
 						}, e.currency))
-					}) : /* @__PURE__ */ (0, W.jsxs)(Jp, { children: [
+					}) : /* @__PURE__ */ (0, W.jsxs)(Yp, { children: [
 						"Chưa có tổng phải thu đủ điều kiện từ Finance Actual. Đây là trạng thái ",
 						/* @__PURE__ */ (0, W.jsx)("b", { children: "chưa xác định" }),
 						", không phải 0."
@@ -40013,18 +40125,18 @@ function $p() {
 							title: "Phải trả đối tác",
 							sub: "C2D · nghĩa vụ và phân bổ từ ledger canonical."
 						}),
-						i.error ? /* @__PURE__ */ (0, W.jsxs)(Jp, { children: [
+						i.error ? /* @__PURE__ */ (0, W.jsxs)(Yp, { children: [
 							"Chưa đọc được ledger phải trả canonical: ",
 							i.error,
 							". Hệ thống không hiển thị số 0 thay thế."
 						] }) : i.hasCanonicalRecords ? /* @__PURE__ */ (0, W.jsx)("div", {
 							className: "grid gap-3 sm:grid-cols-2",
 							"data-testid": "ceo-payable-currency-grid",
-							children: i.positions.map((e) => /* @__PURE__ */ (0, W.jsx)(Kp, {
+							children: i.positions.map((e) => /* @__PURE__ */ (0, W.jsx)(qp, {
 								position: e,
 								kind: "payable"
 							}, e.currency))
-						}) : /* @__PURE__ */ (0, W.jsxs)(Jp, { children: [
+						}) : /* @__PURE__ */ (0, W.jsxs)(Yp, { children: [
 							"Chưa có bản ghi nghĩa vụ hoặc thanh toán canonical. Đây là trạng thái ",
 							/* @__PURE__ */ (0, W.jsx)("b", { children: "chưa có dữ liệu" }),
 							", không phải phải trả bằng 0."
@@ -40046,10 +40158,10 @@ function $p() {
 					}),
 					title: "Trạng thái lô",
 					sub: `Phân bổ theo ${ls(t.totalShipmentCount)} lô hiện tại — không kỳ, không ước tính.`
-				}), t.statusCounts.length > 0 ? /* @__PURE__ */ (0, W.jsx)(Yp, {
+				}), t.statusCounts.length > 0 ? /* @__PURE__ */ (0, W.jsx)(Xp, {
 					counts: t.statusCounts,
 					total: t.totalShipmentCount
-				}) : /* @__PURE__ */ (0, W.jsx)(Jp, { children: "Chưa có lô hàng trong dữ liệu hiện tại." })]
+				}) : /* @__PURE__ */ (0, W.jsx)(Yp, { children: "Chưa có lô hàng trong dữ liệu hiện tại." })]
 			}),
 			/* @__PURE__ */ (0, W.jsxs)("section", {
 				className: "rounded-2xl border border-slate-200 bg-white p-4 md:p-5",
@@ -40064,8 +40176,8 @@ function $p() {
 				}), a.available ? /* @__PURE__ */ (0, W.jsx)("div", {
 					className: "grid gap-3 sm:grid-cols-2 lg:grid-cols-3",
 					"data-testid": "ceo-finance-actual-grid",
-					children: a.positions.map((e) => /* @__PURE__ */ (0, W.jsx)(Xp, { position: e }, e.currency))
-				}) : /* @__PURE__ */ (0, W.jsxs)(Jp, { children: [
+					children: a.positions.map((e) => /* @__PURE__ */ (0, W.jsx)(Zp, { position: e }, e.currency))
+				}) : /* @__PURE__ */ (0, W.jsxs)(Yp, { children: [
 					"Chưa có lô nào đủ Finance Actual để nêu vị thế tài chính thực tế. Đây là trạng thái ",
 					/* @__PURE__ */ (0, W.jsx)("b", { children: "chưa xác định" }),
 					", không phải doanh thu hay lợi nhuận bằng 0."
@@ -40084,7 +40196,7 @@ function $p() {
 				}), /* @__PURE__ */ (0, W.jsx)("div", {
 					className: "grid gap-3 sm:grid-cols-2 lg:grid-cols-3",
 					"data-testid": "ceo-top-customers-grid",
-					children: o.map((e) => /* @__PURE__ */ (0, W.jsx)(Zp, { group: e }, e.currency))
+					children: o.map((e) => /* @__PURE__ */ (0, W.jsx)(Qp, { group: e }, e.currency))
 				})]
 			}) : null,
 			/* @__PURE__ */ (0, W.jsx)("section", {
@@ -40128,7 +40240,7 @@ function $p() {
 				}), n.length > 0 ? /* @__PURE__ */ (0, W.jsxs)("div", {
 					className: "space-y-2.5",
 					"data-testid": "ceo-actionable-list",
-					children: [n.map((e) => /* @__PURE__ */ (0, W.jsx)(Qp, { item: e }, e.id)), m > 0 ? /* @__PURE__ */ (0, W.jsxs)(U, {
+					children: [n.map((e) => /* @__PURE__ */ (0, W.jsx)($p, { item: e }, e.id)), m > 0 ? /* @__PURE__ */ (0, W.jsxs)(U, {
 						to: "/lo-hang",
 						className: "flex min-h-[44px] min-w-0 items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-3 py-2 text-[13px] font-semibold text-slate-600 hover:border-[#1e5aa8]",
 						children: [
@@ -40141,7 +40253,7 @@ function $p() {
 							})
 						]
 					}) : null]
-				}) : /* @__PURE__ */ (0, W.jsx)(Jp, { children: "Hiện không có việc Khẩn hoặc Cần xử lý. Đây là trạng thái thật của hàng đợi việc hiện tại." })]
+				}) : /* @__PURE__ */ (0, W.jsx)(Yp, { children: "Hiện không có việc Khẩn hoặc Cần xử lý. Đây là trạng thái thật của hàng đợi việc hiện tại." })]
 			}),
 			/* @__PURE__ */ (0, W.jsxs)("section", {
 				className: "rounded-2xl border border-slate-200 bg-white p-4 md:p-5",
@@ -40160,7 +40272,7 @@ function $p() {
 							children: "CẦN RÀ SOÁT"
 						}) : void 0
 					}),
-					!c.available || !d || !f ? /* @__PURE__ */ (0, W.jsx)(Jp, { children: c.status === "NO_SOURCE" ? `Chưa đọc được ledger đối soát${c.error ? `: ${c.error}` : ""}. Không hiển thị số 0 thay thế.` : "Chưa có bản ghi đối soát canonical. Đây là trạng thái chưa có dữ liệu, không phải công nợ bằng 0." }) : /* @__PURE__ */ (0, W.jsxs)("div", {
+					!c.available || !d || !f ? /* @__PURE__ */ (0, W.jsx)(Yp, { children: c.status === "NO_SOURCE" ? `Chưa đọc được ledger đối soát${c.error ? `: ${c.error}` : ""}. Không hiển thị số 0 thay thế.` : "Chưa có bản ghi đối soát canonical. Đây là trạng thái chưa có dữ liệu, không phải công nợ bằng 0." }) : /* @__PURE__ */ (0, W.jsxs)("div", {
 						className: "grid gap-3 lg:grid-cols-2",
 						children: [/* @__PURE__ */ (0, W.jsxs)("div", {
 							className: "rounded-2xl border border-slate-200 bg-slate-50/70 p-3.5",
@@ -40177,22 +40289,22 @@ function $p() {
 								/* @__PURE__ */ (0, W.jsxs)("div", {
 									className: "mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4",
 									children: [
-										/* @__PURE__ */ (0, W.jsx)(qp, {
+										/* @__PURE__ */ (0, W.jsx)(Jp, {
 											label: "Đã đối soát",
 											value: d.MATCHED,
 											tone: "green"
 										}),
-										/* @__PURE__ */ (0, W.jsx)(qp, {
+										/* @__PURE__ */ (0, W.jsx)(Jp, {
 											label: "Một phần",
 											value: d.PARTIAL,
 											tone: "amber"
 										}),
-										/* @__PURE__ */ (0, W.jsx)(qp, {
+										/* @__PURE__ */ (0, W.jsx)(Jp, {
 											label: "Chưa đối soát",
 											value: d.UNMATCHED,
 											tone: "red"
 										}),
-										/* @__PURE__ */ (0, W.jsx)(qp, {
+										/* @__PURE__ */ (0, W.jsx)(Jp, {
 											label: "Chưa xác định",
 											value: d.UNKNOWN
 										})
@@ -40214,22 +40326,22 @@ function $p() {
 								/* @__PURE__ */ (0, W.jsxs)("div", {
 									className: "mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4",
 									children: [
-										/* @__PURE__ */ (0, W.jsx)(qp, {
+										/* @__PURE__ */ (0, W.jsx)(Jp, {
 											label: "Đã phân bổ",
 											value: f.ALLOCATED,
 											tone: "green"
 										}),
-										/* @__PURE__ */ (0, W.jsx)(qp, {
+										/* @__PURE__ */ (0, W.jsx)(Jp, {
 											label: "Một phần",
 											value: f.PARTIAL,
 											tone: "amber"
 										}),
-										/* @__PURE__ */ (0, W.jsx)(qp, {
+										/* @__PURE__ */ (0, W.jsx)(Jp, {
 											label: "Chưa phân bổ",
 											value: f.UNALLOCATED,
 											tone: "red"
 										}),
-										/* @__PURE__ */ (0, W.jsx)(qp, {
+										/* @__PURE__ */ (0, W.jsx)(Jp, {
 											label: "Chưa xác định",
 											value: f.UNKNOWN
 										})
@@ -40289,19 +40401,19 @@ function $p() {
 }
 //#endregion
 //#region src/pages/OperationsControlTower.tsx
-var em = {
+var tm = {
 	BLOCKING: "Chặn",
 	OVERDUE: "Quá hạn",
 	DUE_SOON: "Sắp hạn",
 	ACTION: "Cần làm",
 	INFO: "Thông tin"
-}, tm = {
+}, nm = {
 	TASK: "Việc được giao",
 	PRIMARY_ACTION: "Việc chính",
 	ALERT: "Cảnh báo",
 	WORK_MODULE: "Quy trình phát sinh"
 };
-function nm(e) {
+function rm(e) {
 	return e.unknown ? {
 		label: "Chưa rõ",
 		cls: "border-slate-300 bg-slate-100 text-slate-700"
@@ -40309,18 +40421,18 @@ function nm(e) {
 		label: "Gấp",
 		cls: "border-red-200 bg-red-50 text-red-800"
 	} : e.band === "BLOCKING" || e.band === "OVERDUE" ? {
-		label: em[e.band],
+		label: tm[e.band],
 		cls: "border-red-200 bg-red-50 text-red-800"
 	} : e.band === "DUE_SOON" ? {
 		label: "Sắp hạn",
 		cls: "border-amber-200 bg-amber-50 text-amber-900"
 	} : {
-		label: em[e.band] ?? e.band,
+		label: tm[e.band] ?? e.band,
 		cls: "border-blue-200 bg-blue-50 text-blue-800"
 	};
 }
-function rm({ item: e }) {
-	let t = nm(e);
+function im({ item: e }) {
+	let t = rm(e);
 	return /* @__PURE__ */ (0, W.jsx)(U, {
 		to: e.route,
 		"data-testid": "control-intervention-row",
@@ -40379,7 +40491,7 @@ function rm({ item: e }) {
 								})] }) : null,
 								/* @__PURE__ */ (0, W.jsxs)("span", { children: ["Nguồn: ", /* @__PURE__ */ (0, W.jsx)("b", {
 									className: "text-slate-700",
-									children: tm[e.sourceType] ?? e.sourceType
+									children: nm[e.sourceType] ?? e.sourceType
 								})] })
 							]
 						})
@@ -40393,7 +40505,7 @@ function rm({ item: e }) {
 		})
 	});
 }
-function im({ title: e, rows: t, onSelect: n, testId: r }) {
+function am({ title: e, rows: t, onSelect: n, testId: r }) {
 	return /* @__PURE__ */ (0, W.jsxs)("div", {
 		className: "rounded-xl border border-slate-200 bg-slate-50/70 p-3",
 		"data-testid": r,
@@ -40431,7 +40543,7 @@ function im({ title: e, rows: t, onSelect: n, testId: r }) {
 		})]
 	});
 }
-function am({ row: e, selectOwner: t, selectBand: n }) {
+function om({ row: e, selectOwner: t, selectBand: n }) {
 	let r = [
 		[
 			"BLOCKING",
@@ -40494,7 +40606,7 @@ function am({ row: e, selectOwner: t, selectBand: n }) {
 		]
 	});
 }
-function om() {
+function sm() {
 	let { operationsControl: e } = Wn(), [t, n] = Pn();
 	if (!e) return /* @__PURE__ */ (0, W.jsxs)("div", {
 		className: "max-w-[1000px] rounded-2xl border border-slate-200 bg-white p-5",
@@ -40629,7 +40741,7 @@ function om() {
 						children: c.length === 0 ? /* @__PURE__ */ (0, W.jsx)("div", {
 							className: "rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4 text-[13.5px] text-slate-500",
 							children: "Không có mục phù hợp với bộ lọc hiện tại. Đây không phải chứng nhận “mọi lô đều ổn”."
-						}) : c.slice(0, 12).map((e) => /* @__PURE__ */ (0, W.jsx)(rm, { item: e }, e.id))
+						}) : c.slice(0, 12).map((e) => /* @__PURE__ */ (0, W.jsx)(im, { item: e }, e.id))
 					}),
 					c.length > 12 ? /* @__PURE__ */ (0, W.jsxs)("p", {
 						className: "mt-2 text-[12px] text-slate-500",
@@ -40693,7 +40805,7 @@ function om() {
 					children: "Chưa có manager-grade Attention để nhóm theo trách nhiệm."
 				}) : /* @__PURE__ */ (0, W.jsx)("div", {
 					className: "grid gap-2.5 lg:grid-cols-2",
-					children: e.workload.map((e) => /* @__PURE__ */ (0, W.jsx)(am, {
+					children: e.workload.map((e) => /* @__PURE__ */ (0, W.jsx)(om, {
 						row: e,
 						selectOwner: u,
 						selectBand: d
@@ -40710,19 +40822,19 @@ function om() {
 				}), /* @__PURE__ */ (0, W.jsxs)("div", {
 					className: "grid gap-3 lg:grid-cols-3",
 					children: [
-						/* @__PURE__ */ (0, W.jsx)(im, {
+						/* @__PURE__ */ (0, W.jsx)(am, {
 							title: "Theo khách hàng",
 							rows: e.concentration.customers,
 							testId: "control-concentration-customers",
 							onSelect: (e) => l({ customer: e.key })
 						}),
-						/* @__PURE__ */ (0, W.jsx)(im, {
+						/* @__PURE__ */ (0, W.jsx)(am, {
 							title: "Theo cổng đang chặn",
 							rows: e.concentration.gates,
 							testId: "control-concentration-gates",
 							onSelect: (e) => l({ gate: e.key })
 						}),
-						/* @__PURE__ */ (0, W.jsx)(im, {
+						/* @__PURE__ */ (0, W.jsx)(am, {
 							title: "Theo quy trình phát sinh",
 							rows: e.concentration.modules,
 							testId: "control-concentration-modules",
@@ -40753,7 +40865,7 @@ function om() {
 }
 //#endregion
 //#region src/pages/Notebook.tsx
-function sm(e, t) {
+function cm(e, t) {
 	let n = t.table ? t.table.rows.flat().join(" ") : "";
 	return [
 		e.label,
@@ -40764,10 +40876,10 @@ function sm(e, t) {
 		n
 	].join(" ").toLowerCase();
 }
-function cm(e) {
+function lm(e) {
 	return /^https:\/\//i.test(e.trim());
 }
-function lm({ provenance: e }) {
+function um({ provenance: e }) {
 	return /* @__PURE__ */ (0, W.jsxs)("div", {
 		"data-testid": "handbook-provenance",
 		className: "rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-2.5 text-[12.5px] leading-relaxed text-slate-600",
@@ -40816,8 +40928,8 @@ function lm({ provenance: e }) {
 		]
 	});
 }
-function um({ table: e }) {
-	let t = e.columns.length <= 2 || e.columns.some((e) => /url|link/i.test(e)), n = (e) => t && cm(e) ? /* @__PURE__ */ (0, W.jsxs)("a", {
+function dm({ table: e }) {
+	let t = e.columns.length <= 2 || e.columns.some((e) => /url|link/i.test(e)), n = (e) => t && lm(e) ? /* @__PURE__ */ (0, W.jsxs)("a", {
 		href: e,
 		target: "_blank",
 		rel: "noreferrer",
@@ -40874,7 +40986,7 @@ function um({ table: e }) {
 		]
 	});
 }
-function dm({ section: e, entry: t, onBack: n }) {
+function fm({ section: e, entry: t, onBack: n }) {
 	let r = ws[e.icon] ?? Or;
 	return /* @__PURE__ */ (0, W.jsxs)("article", {
 		className: "space-y-3",
@@ -40923,7 +41035,7 @@ function dm({ section: e, entry: t, onBack: n }) {
 							})]
 						}, t))
 					}) : null,
-					t.table ? /* @__PURE__ */ (0, W.jsx)(um, { table: t.table }) : null,
+					t.table ? /* @__PURE__ */ (0, W.jsx)(dm, { table: t.table }) : null,
 					t.tags.length > 0 ? /* @__PURE__ */ (0, W.jsx)("p", {
 						className: "mt-3 flex flex-wrap gap-1.5",
 						children: t.tags.map((e) => /* @__PURE__ */ (0, W.jsxs)("span", {
@@ -40945,11 +41057,11 @@ function dm({ section: e, entry: t, onBack: n }) {
 					}) : null
 				]
 			}),
-			/* @__PURE__ */ (0, W.jsx)(lm, { provenance: t.provenance ?? e.provenance })
+			/* @__PURE__ */ (0, W.jsx)(um, { provenance: t.provenance ?? e.provenance })
 		]
 	});
 }
-function fm({ section: e, entry: t, onOpen: n }) {
+function pm({ section: e, entry: t, onOpen: n }) {
 	return /* @__PURE__ */ (0, W.jsxs)("button", {
 		type: "button",
 		onClick: n,
@@ -41006,7 +41118,7 @@ function fm({ section: e, entry: t, onOpen: n }) {
 		]
 	});
 }
-function pm({ reason: e }) {
+function mm({ reason: e }) {
 	return /* @__PURE__ */ (0, W.jsx)("div", {
 		className: "max-w-[760px]",
 		children: /* @__PURE__ */ (0, W.jsx)("div", {
@@ -41015,13 +41127,13 @@ function pm({ reason: e }) {
 		})
 	});
 }
-function mm() {
+function hm() {
 	let { handbook: e } = Wn(), [t, n] = (0, _.useState)(null), [r, i] = (0, _.useState)(null), [a, o] = (0, _.useState)(""), s = a.trim().toLowerCase(), c = (0, _.useMemo)(() => {
 		let t = [];
 		for (let n of e?.sections ?? []) for (let e of n.entries) t.push({
 			section: n,
 			entry: e,
-			hay: sm(n, e)
+			hay: cm(n, e)
 		});
 		return t;
 	}, [e]), l = (0, _.useMemo)(() => {
@@ -41032,9 +41144,9 @@ function mm() {
 		s,
 		t
 	]), u = (0, _.useMemo)(() => r ? c.find((e) => e.entry.id === r) ?? null : null, [c, r]);
-	if (!e) return /* @__PURE__ */ (0, W.jsx)(pm, { reason: "pending" });
+	if (!e) return /* @__PURE__ */ (0, W.jsx)(mm, { reason: "pending" });
 	let d = e;
-	if (d.counts.entryCount === 0 && !s) return /* @__PURE__ */ (0, W.jsx)(pm, { reason: "no-source" });
+	if (d.counts.entryCount === 0 && !s) return /* @__PURE__ */ (0, W.jsx)(mm, { reason: "no-source" });
 	let f = d.sections.find((e) => e.id === t) ?? null, p = d.sections.filter((e) => e.state && e.entries.length === 0), m = (e) => {
 		i(e), typeof window < "u" && window.scrollTo({
 			top: 0,
@@ -41140,7 +41252,7 @@ function mm() {
 					}, e.id))]
 				})
 			]
-		}), u ? /* @__PURE__ */ (0, W.jsx)(dm, {
+		}), u ? /* @__PURE__ */ (0, W.jsx)(fm, {
 			section: u.section,
 			entry: u.entry,
 			onBack: h
@@ -41167,7 +41279,7 @@ function mm() {
 						a,
 						"”. Sổ tay chỉ tìm trong nội dung đã có trong nguồn và không tạo bài mới."
 					]
-				}) : l.map(({ section: e, entry: t }) => /* @__PURE__ */ (0, W.jsx)(fm, {
+				}) : l.map(({ section: e, entry: t }) => /* @__PURE__ */ (0, W.jsx)(pm, {
 					section: e,
 					entry: t,
 					onOpen: () => m(t.id)
@@ -41175,7 +41287,7 @@ function mm() {
 			}), /* @__PURE__ */ (0, W.jsxs)("aside", {
 				className: "min-w-0 space-y-3",
 				children: [
-					f && !s ? /* @__PURE__ */ (0, W.jsx)(lm, { provenance: f.provenance }) : null,
+					f && !s ? /* @__PURE__ */ (0, W.jsx)(um, { provenance: f.provenance }) : null,
 					p.length > 0 ? /* @__PURE__ */ (0, W.jsxs)("div", {
 						className: "rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5",
 						"data-testid": "handbook-empty-sections",
@@ -41214,10 +41326,10 @@ function mm() {
 }
 //#endregion
 //#region src/pages/UserAccess.tsx
-function hm(e) {
+function gm(e) {
 	return qo[e.toUpperCase()] ?? e;
 }
-function gm(e) {
+function _m(e) {
 	switch (e.toLowerCase()) {
 		case "admin": return "red";
 		case "support": return "blue";
@@ -41225,20 +41337,20 @@ function gm(e) {
 		default: return "gray";
 	}
 }
-function _m(e) {
+function vm(e) {
 	return (e.trim().split(/\s+/).slice(0, 2).map((e) => [...e][0] ?? "").join("") || "?").toUpperCase();
 }
-function vm(e) {
+function ym(e) {
 	return `${e}-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
 }
-function ym({ name: e }) {
+function bm({ name: e }) {
 	return /* @__PURE__ */ (0, W.jsx)("span", {
 		className: "break-all rounded-md bg-slate-100 px-2 py-1 font-mono text-[11.5px] font-semibold text-slate-700",
 		"data-testid": "user-access-permission",
 		children: e
 	});
 }
-function bm({ assignableRoles: e, onClose: t, lastWrites: n, onSuccess: r }) {
+function xm({ assignableRoles: e, onClose: t, lastWrites: n, onSuccess: r }) {
 	let [i, a] = (0, _.useState)(""), [o, s] = (0, _.useState)(""), [c, l] = (0, _.useState)(""), [u, d] = (0, _.useState)(e[0] ?? ""), [f, p] = (0, _.useState)(""), [m, h] = (0, _.useState)(""), [g, v] = (0, _.useState)(""), [y, b] = (0, _.useState)(""), [x, S] = (0, _.useState)(null);
 	return (0, _.useEffect)(() => {
 		if (!x) return;
@@ -41304,7 +41416,7 @@ function bm({ assignableRoles: e, onClose: t, lastWrites: n, onSuccess: r }) {
 								className: Z(),
 								children: e.map((e) => /* @__PURE__ */ (0, W.jsx)("option", {
 									value: e,
-									children: hm(e)
+									children: gm(e)
 								}, e))
 							})
 						}),
@@ -41371,7 +41483,7 @@ function bm({ assignableRoles: e, onClose: t, lastWrites: n, onSuccess: r }) {
 								v("Mật khẩu xác nhận không khớp.");
 								return;
 							}
-							let t = vm("USER-CREATE-REQ");
+							let t = ym("USER-CREATE-REQ");
 							if (!j("user_create", {
 								username: e,
 								displayName: o.trim(),
@@ -41403,7 +41515,7 @@ function bm({ assignableRoles: e, onClose: t, lastWrites: n, onSuccess: r }) {
 		})]
 	});
 }
-function xm({ account: e, assignableRoles: t, onClose: n, lastWrites: r, onSuccess: i }) {
+function Sm({ account: e, assignableRoles: t, onClose: n, lastWrites: r, onSuccess: i }) {
 	let [a, o] = (0, _.useState)(e.role), [s, c] = (0, _.useState)(""), [l, u] = (0, _.useState)(null);
 	return (0, _.useEffect)(() => {
 		if (!l) return;
@@ -41441,7 +41553,7 @@ function xm({ account: e, assignableRoles: t, onClose: n, lastWrites: r, onSucce
 							className: Z(),
 							children: t.map((e) => /* @__PURE__ */ (0, W.jsx)("option", {
 								value: e,
-								children: hm(e)
+								children: gm(e)
 							}, e))
 						})
 					})
@@ -41463,7 +41575,7 @@ function xm({ account: e, assignableRoles: t, onClose: n, lastWrites: r, onSucce
 					children: [/* @__PURE__ */ (0, W.jsx)(Q, {
 						onClick: () => {
 							if (l) return;
-							let t = vm("USER-ROLE-REQ");
+							let t = ym("USER-ROLE-REQ");
 							if (!j("user_role_set", {
 								username: e.username,
 								role: a,
@@ -41487,7 +41599,7 @@ function xm({ account: e, assignableRoles: t, onClose: n, lastWrites: r, onSucce
 		})]
 	});
 }
-function Sm({ account: e, onClose: t, lastWrites: n, onSuccess: r }) {
+function Cm({ account: e, onClose: t, lastWrites: n, onSuccess: r }) {
 	let i = !e.active, [a, o] = (0, _.useState)(""), [s, c] = (0, _.useState)(null);
 	return (0, _.useEffect)(() => {
 		if (!s) return;
@@ -41533,7 +41645,7 @@ function Sm({ account: e, onClose: t, lastWrites: n, onSuccess: r }) {
 					children: [/* @__PURE__ */ (0, W.jsx)(Q, {
 						onClick: () => {
 							if (s) return;
-							let t = vm("USER-ACTIVE-REQ");
+							let t = ym("USER-ACTIVE-REQ");
 							if (!j("user_active_set", {
 								username: e.username,
 								active: i,
@@ -41557,7 +41669,7 @@ function Sm({ account: e, onClose: t, lastWrites: n, onSuccess: r }) {
 		})]
 	});
 }
-function Cm({ account: e, onClose: t, lastWrites: n, onSuccess: r }) {
+function wm({ account: e, onClose: t, lastWrites: n, onSuccess: r }) {
 	let [i, a] = (0, _.useState)(""), [o, s] = (0, _.useState)(""), [c, l] = (0, _.useState)(""), [u, d] = (0, _.useState)(""), [f, p] = (0, _.useState)(null);
 	return (0, _.useEffect)(() => {
 		if (!f) return;
@@ -41638,7 +41750,7 @@ function Cm({ account: e, onClose: t, lastWrites: n, onSuccess: r }) {
 								l("Mật khẩu xác nhận không khớp.");
 								return;
 							}
-							let t = vm("USER-PWD-REQ");
+							let t = ym("USER-PWD-REQ");
 							if (!j("user_password_reset", {
 								username: e.username,
 								newPassword: i,
@@ -41663,7 +41775,7 @@ function Cm({ account: e, onClose: t, lastWrites: n, onSuccess: r }) {
 		})]
 	});
 }
-function wm({ account: e, canManage: t, onManageRole: n, onManageActive: r, onManagePassword: i }) {
+function Tm({ account: e, canManage: t, onManageRole: n, onManageActive: r, onManagePassword: i }) {
 	let a = e.display_name || e.username;
 	return /* @__PURE__ */ (0, W.jsx)("div", {
 		"data-testid": "user-access-account",
@@ -41675,7 +41787,7 @@ function wm({ account: e, canManage: t, onManageRole: n, onManageActive: r, onMa
 			children: [/* @__PURE__ */ (0, W.jsx)("span", {
 				className: q("grid h-10 w-10 shrink-0 place-items-center rounded-xl text-[14px] font-extrabold", e.active ? "bg-blue-100 text-blue-800" : "bg-slate-100 text-slate-400"),
 				"aria-hidden": !0,
-				children: _m(a)
+				children: vm(a)
 			}), /* @__PURE__ */ (0, W.jsxs)("div", {
 				className: "min-w-0 flex-1",
 				children: [
@@ -41687,9 +41799,9 @@ function wm({ account: e, canManage: t, onManageRole: n, onManageActive: r, onMa
 								children: a
 							}),
 							/* @__PURE__ */ (0, W.jsx)(Y, {
-								tone: gm(e.role),
+								tone: _m(e.role),
 								size: "sm",
-								children: hm(e.role)
+								children: gm(e.role)
 							}),
 							e.active ? /* @__PURE__ */ (0, W.jsxs)("span", {
 								className: "inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-0.5 text-[11.5px] font-bold text-emerald-800",
@@ -41741,7 +41853,7 @@ function wm({ account: e, canManage: t, onManageRole: n, onManageActive: r, onMa
 		})
 	});
 }
-function Tm({ row: e, assignable: t }) {
+function Em({ row: e, assignable: t }) {
 	return /* @__PURE__ */ (0, W.jsxs)("div", {
 		"data-testid": "user-access-role-row",
 		"data-role": e.role,
@@ -41750,9 +41862,9 @@ function Tm({ row: e, assignable: t }) {
 			className: "flex flex-wrap items-center gap-2",
 			children: [
 				/* @__PURE__ */ (0, W.jsx)(Y, {
-					tone: gm(e.role),
+					tone: _m(e.role),
 					size: "sm",
-					children: hm(e.role)
+					children: gm(e.role)
 				}),
 				e.wildcard ? /* @__PURE__ */ (0, W.jsxs)("span", {
 					className: "inline-flex items-center gap-1 rounded-md bg-violet-50 px-2 py-0.5 text-[11.5px] font-bold text-violet-800",
@@ -41776,18 +41888,18 @@ function Tm({ row: e, assignable: t }) {
 			children: e.wildcard ? /* @__PURE__ */ (0, W.jsx)("span", {
 				className: "break-words text-[12.5px] leading-relaxed text-slate-500",
 				children: "Toàn quyền trên mọi thao tác của hệ thống (dấu * trong ma trận nguyên bản của core.auth)."
-			}) : e.permissions.map((e) => /* @__PURE__ */ (0, W.jsx)(ym, { name: e }, e))
+			}) : e.permissions.map((e) => /* @__PURE__ */ (0, W.jsx)(bm, { name: e }, e))
 		})]
 	});
 }
-function Em() {
+function Dm() {
 	return /* @__PURE__ */ (0, W.jsx)("div", {
 		"data-testid": "user-access-empty",
 		className: "rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50/60 px-4 py-5 text-[14px] leading-relaxed text-slate-600",
 		children: "Nguồn tài khoản của bản dựng này chưa có người dùng nào (hoặc chưa cấu hình). Trang hiển thị đúng trạng thái trống và không tự bịa tài khoản, vai trò hay quyền nào thay thế."
 	});
 }
-function Dm() {
+function Om() {
 	let e = T(), { toast: t } = Wn(), n = (0, _.useSyncExternalStore)(C, S, S), r = (0, _.useMemo)(() => (n?.lastWrites ?? []).filter((e) => e.event === "user_create" || e.event === "user_role_set" || e.event === "user_active_set" || e.event === "user_password_reset"), [n]), { assignableSet: i, activeCount: a } = (0, _.useMemo)(() => ({
 		assignableSet: new Set(e?.roles.assignable ?? []),
 		activeCount: (e?.users ?? []).filter((e) => e.active).length
@@ -41892,7 +42004,7 @@ function Dm() {
 									}),
 									" ",
 									"· ",
-									hm(e.currentUser.role),
+									gm(e.currentUser.role),
 									e.currentUser.wildcard ? " · toàn quyền (*)" : ` · ${e.currentUser.permissions.length} quyền`
 								]
 							}) : /* @__PURE__ */ (0, W.jsx)("p", {
@@ -41914,7 +42026,7 @@ function Dm() {
 							icon: /* @__PURE__ */ (0, W.jsx)(Io, { size: 18 }),
 							title: "Tài khoản",
 							sub: "Trường công khai chuẩn của tài khoản (tên hiển thị, tài khoản đăng nhập, vai trò, trạng thái). Không có mật khẩu hay hash."
-						}), e.users.length === 0 ? /* @__PURE__ */ (0, W.jsx)(Em, {}) : e.users.map((e) => /* @__PURE__ */ (0, W.jsx)(wm, {
+						}), e.users.length === 0 ? /* @__PURE__ */ (0, W.jsx)(Dm, {}) : e.users.map((e) => /* @__PURE__ */ (0, W.jsx)(Tm, {
 							account: e,
 							canManage: m,
 							onManageRole: () => l(e),
@@ -41930,7 +42042,7 @@ function Dm() {
 								title: "Ma trận phân quyền",
 								sub: "Nguyên văn ROLE_PERMISSIONS của core.auth — nguồn quyền duy nhất của ứng dụng. Tên quyền giữ nguyên bản, không dịch, không thêm."
 							}),
-							e.permissionMatrix.map((e) => /* @__PURE__ */ (0, W.jsx)(Tm, {
+							e.permissionMatrix.map((e) => /* @__PURE__ */ (0, W.jsx)(Em, {
 								row: e,
 								assignable: i.has(e.role)
 							}, e.role)),
@@ -41941,9 +42053,9 @@ function Dm() {
 									e.roles.source,
 									". Vai trò gán được cho tài khoản:",
 									" ",
-									e.roles.assignable.map((e) => hm(e)).join(", "),
+									e.roles.assignable.map((e) => gm(e)).join(", "),
 									".",
-									e.roles.legacy.length > 0 ? ` Các vai trò còn lại (${e.roles.legacy.map((e) => hm(e)).join(", ")}) chỉ còn trong ma trận để tương thích dữ liệu cũ.` : ""
+									e.roles.legacy.length > 0 ? ` Các vai trò còn lại (${e.roles.legacy.map((e) => gm(e)).join(", ")}) chỉ còn trong ma trận để tương thích dữ liệu cũ.` : ""
 								]
 							})
 						]
@@ -41982,7 +42094,7 @@ function Dm() {
 					})]
 				})]
 			}),
-			m && o && /* @__PURE__ */ (0, W.jsx)(bm, {
+			m && o && /* @__PURE__ */ (0, W.jsx)(xm, {
 				assignableRoles: h,
 				onClose: () => s(!1),
 				lastWrites: g,
@@ -41990,7 +42102,7 @@ function Dm() {
 					s(!1), t("Đã tạo tài khoản " + e, "Ghi qua core.database.save_user, có audit.", "green");
 				}
 			}),
-			m && c && /* @__PURE__ */ (0, W.jsx)(xm, {
+			m && c && /* @__PURE__ */ (0, W.jsx)(Sm, {
 				account: c,
 				assignableRoles: h,
 				onClose: () => l(null),
@@ -42000,7 +42112,7 @@ function Dm() {
 					l(null), t("Đã đổi vai trò " + e, "Vai trò mới có hiệu lực từ dữ liệu mới nhất.", "green");
 				}
 			}),
-			m && u && /* @__PURE__ */ (0, W.jsx)(Sm, {
+			m && u && /* @__PURE__ */ (0, W.jsx)(Cm, {
 				account: u,
 				onClose: () => d(null),
 				lastWrites: g,
@@ -42009,7 +42121,7 @@ function Dm() {
 					d(null), t((n ? "Đã kích hoạt lại " : "Đã vô hiệu hóa ") + e, "Trạng thái mới có hiệu lực từ dữ liệu mới nhất.", "green");
 				}
 			}),
-			m && f && /* @__PURE__ */ (0, W.jsx)(Cm, {
+			m && f && /* @__PURE__ */ (0, W.jsx)(wm, {
 				account: f,
 				onClose: () => p(null),
 				lastWrites: g,
@@ -42023,7 +42135,7 @@ function Dm() {
 }
 //#endregion
 //#region src/components/IntlPaymentComparator.tsx
-var Om = [
+var km = [
 	{
 		key: "usdCny",
 		label: "Tỷ giá USD→CNY",
@@ -42094,68 +42206,68 @@ var Om = [
 		rule: "percent",
 		standard: "0.15"
 	}
-], km = Object.fromEntries(Om.map((e) => [e.key, e])), Am = {
+], Am = Object.fromEntries(km.map((e) => [e.key, e])), jm = {
 	usdCny: "Bank of China",
 	agriSell: "Agribank",
 	bidvSell: "BIDV"
-}, jm = {
+}, Mm = {
 	positive: "phải lớn hơn 0",
 	nonNegative: "không được âm (0 là hợp lệ)",
 	percent: "từ 0 đến dưới 100"
 };
-function Mm(e) {
+function Nm(e) {
 	if (e == null || e === "") return null;
 	let t = String(e).replace(/,/g, "").replace(/\s/g, "").trim();
 	if (!t) return null;
 	let n = Number(t);
 	return Number.isFinite(n) ? n : null;
 }
-function Nm(e) {
-	let t = typeof e == "number" ? e : typeof e == "string" ? Mm(e) : null;
+function Pm(e) {
+	let t = typeof e == "number" ? e : typeof e == "string" ? Nm(e) : null;
 	return t != null && Number.isFinite(t) && t > 0 ? t : null;
 }
-function Pm(e) {
+function Fm(e) {
 	return e.toLocaleString("en-US", {
 		minimumFractionDigits: 2,
 		maximumFractionDigits: 2
 	});
 }
-function Fm(e) {
+function Im(e) {
 	return Math.round(e).toLocaleString("vi-VN");
 }
-function Im(e) {
+function Lm(e) {
 	return e.toLocaleString("en-US", { maximumFractionDigits: 4 });
 }
-function Lm(e) {
+function Rm(e) {
 	return e.toLocaleString("vi-VN", { maximumFractionDigits: 2 });
 }
-function Rm(e, t) {
-	return e === "agriSell" || e === "bidvSell" || e === "outsideRate" ? `${Lm(t)} ${km[e].unit}` : e === "usdCny" ? `${Im(t)} ${km[e].unit}` : km[e].unit === "%" ? `${t.toLocaleString("en-US", { maximumFractionDigits: 4 })}%` : `${t.toLocaleString("en-US", { maximumFractionDigits: 2 })} ${km[e].unit}`;
+function zm(e, t) {
+	return e === "agriSell" || e === "bidvSell" || e === "outsideRate" ? `${Rm(t)} ${Am[e].unit}` : e === "usdCny" ? `${Lm(t)} ${Am[e].unit}` : Am[e].unit === "%" ? `${t.toLocaleString("en-US", { maximumFractionDigits: 4 })}%` : `${t.toLocaleString("en-US", { maximumFractionDigits: 2 })} ${Am[e].unit}`;
 }
-function zm(e) {
+function Bm(e) {
 	let t = e?.boc, n = e?.agribank, r = e?.bidv;
 	return {
-		usdCny: t?.status === "OK" ? Nm(t.usd_to_cny) : null,
-		agriSell: n?.status === "OK" ? Nm(n.usd_sell_vnd ?? n.sell) : null,
-		bidvSell: r?.status === "OK" && r.bidv_rate_status !== "UNAVAILABLE" ? Nm(r.usd_sell_vnd ?? r.sell) : null
+		usdCny: t?.status === "OK" ? Pm(t.usd_to_cny) : null,
+		agriSell: n?.status === "OK" ? Pm(n.usd_sell_vnd ?? n.sell) : null,
+		bidvSell: r?.status === "OK" && r.bidv_rate_status !== "UNAVAILABLE" ? Pm(r.usd_sell_vnd ?? r.sell) : null
 	};
 }
-function Bm(e, t) {
+function Vm(e, t) {
 	let n = t === "usdCny" ? e?.boc : t === "agriSell" ? e?.agribank : e?.bidv;
 	return n?.pub_time ? String(n.pub_time) : null;
 }
-function Vm(e, t) {
+function Hm(e, t) {
 	return e.rule === "positive" ? t > 0 : e.rule === "nonNegative" ? t >= 0 : t >= 0 && t < 100;
 }
-function Hm(e, t) {
+function Um(e, t) {
 	let n = {};
-	for (let r of Om) if (e) {
-		let t = e[r.key].trim(), i = Mm(t);
+	for (let r of km) if (e) {
+		let t = e[r.key].trim(), i = Nm(t);
 		n[r.key] = t === "" ? {
 			value: null,
 			source: "MANUAL",
 			problem: "missing"
-		} : i == null || !Vm(r, i) ? {
+		} : i == null || !Hm(r, i) ? {
 			value: null,
 			source: "MANUAL",
 			problem: "invalid"
@@ -42183,12 +42295,12 @@ function Hm(e, t) {
 	}
 	return n;
 }
-function Um(e, t, n = []) {
+function Wm(e, t, n = []) {
 	let r = [...n], i = !1;
 	for (let n of e) {
 		let e = t[n];
 		if (e.value != null) continue;
-		let a = `${km[n].label} (${km[n].unit})`;
+		let a = `${Am[n].label} (${Am[n].unit})`;
 		e.problem === "unavailable" ? (i = !0, r.push(`${a}: UNAVAILABLE`)) : e.problem === "invalid" ? r.push(`${a} không hợp lệ`) : r.push(`Thiếu ${a}`);
 	}
 	return {
@@ -42196,10 +42308,10 @@ function Um(e, t, n = []) {
 		unavailable: i
 	};
 }
-function Wm(e, t) {
+function Gm(e, t) {
 	return t == null ? [`Thiếu ${e}`] : t <= 0 ? [`${e} phải lớn hơn 0`] : [];
 }
-function Gm(e, t, n, r, i) {
+function Km(e, t, n, r, i) {
 	let a = e <= 0 ? 0 : Math.ceil(e / i), o = a * r, s = e - n, c = s * t;
 	return {
 		afterBank: s,
@@ -42209,7 +42321,7 @@ function Gm(e, t, n, r, i) {
 		trancheCount: a
 	};
 }
-function Km(e, t, n, r) {
+function qm(e, t, n, r) {
 	let i = e - r, a = i * n, o = i - a;
 	return {
 		afterBank: i,
@@ -42218,7 +42330,7 @@ function Km(e, t, n, r) {
 		net: o * t
 	};
 }
-function qm(e, t, n, r) {
+function Jm(e, t, n, r) {
 	let i = e * t, a = n * t, o = i * r;
 	return {
 		principal: i,
@@ -42227,7 +42339,7 @@ function qm(e, t, n, r) {
 		total: i + a + o
 	};
 }
-function Jm(e, t, n, r, i) {
+function Ym(e, t, n, r, i) {
 	let a = r, o = (e + a) / t + n;
 	for (let s = 0; s < 10; s++) {
 		let s = Math.ceil(o / i), c = s * r;
@@ -42247,11 +42359,11 @@ function Jm(e, t, n, r, i) {
 		chinaFee: s * r
 	};
 }
-function Ym(e, t, n, r) {
+function Xm(e, t, n, r) {
 	return e / (t * (1 - n)) + r;
 }
-var Xm = (e) => q("w-full rounded-xl border-2 bg-white px-3.5 min-h-[48px] py-2.5 text-[16px] font-semibold tabular-nums placeholder:font-normal placeholder:text-slate-400 transition-colors focus:outline-none", e === "missing" && "border-amber-400 bg-amber-50/60", e === "invalid" && "border-red-400 bg-red-50/60", !e && "border-slate-200 focus:border-[#1e5aa8]");
-function Zm({ source: e }) {
+var Zm = (e) => q("w-full rounded-xl border-2 bg-white px-3.5 min-h-[48px] py-2.5 text-[16px] font-semibold tabular-nums placeholder:font-normal placeholder:text-slate-400 transition-colors focus:outline-none", e === "missing" && "border-amber-400 bg-amber-50/60", e === "invalid" && "border-red-400 bg-red-50/60", !e && "border-slate-200 focus:border-[#1e5aa8]");
+function Qm({ source: e }) {
 	return /* @__PURE__ */ (0, W.jsx)("span", {
 		"data-source-badge": e,
 		className: q("inline-flex items-center rounded-full border px-2 py-0.5 text-[11.5px] font-extrabold whitespace-nowrap", {
@@ -42263,7 +42375,7 @@ function Zm({ source: e }) {
 		children: e === "DEFAULT" ? "PHÍ CHUẨN" : e
 	});
 }
-function Qm({ value: e, options: t, onChange: n, testIdPrefix: r, label: i }) {
+function $m({ value: e, options: t, onChange: n, testIdPrefix: r, label: i }) {
 	return /* @__PURE__ */ (0, W.jsx)("div", {
 		role: "group",
 		"aria-label": i,
@@ -42278,8 +42390,8 @@ function Qm({ value: e, options: t, onChange: n, testIdPrefix: r, label: i }) {
 		}, t.id))
 	});
 }
-function $m({ testId: e, title: t, caption: n, value: r, unit: i, hints: a = [], needsManual: o, footnote: s, cheapest: c, size: l = "lg" }) {
-	let u = r == null ? null : i === "VND" ? Fm(r) : Pm(r);
+function eh({ testId: e, title: t, caption: n, value: r, unit: i, hints: a = [], needsManual: o, footnote: s, cheapest: c, size: l = "lg" }) {
+	let u = r == null ? null : i === "VND" ? Im(r) : Fm(r);
 	return /* @__PURE__ */ (0, W.jsxs)("div", {
 		"data-testid": e,
 		"data-value": r == null ? "" : String(r),
@@ -42329,7 +42441,7 @@ function $m({ testId: e, title: t, caption: n, value: r, unit: i, hints: a = [],
 		]
 	});
 }
-function eh({ label: e, value: t, strong: n }) {
+function th({ label: e, value: t, strong: n }) {
 	return /* @__PURE__ */ (0, W.jsxs)("div", {
 		className: q("flex items-baseline justify-between gap-3", n && "font-extrabold text-[#0f2a4a] border-t border-slate-200 pt-1.5"),
 		children: [/* @__PURE__ */ (0, W.jsx)("span", {
@@ -42341,14 +42453,14 @@ function eh({ label: e, value: t, strong: n }) {
 		})]
 	});
 }
-function th({ fxRates: e }) {
-	let [t, n] = (0, _.useState)("A"), [r, i] = (0, _.useState)(null), [a, o] = (0, _.useState)(null), [s, c] = (0, _.useState)(""), [l, u] = (0, _.useState)("CHINA"), [d, f] = (0, _.useState)("AGRIBANK"), [p, m] = (0, _.useState)(""), h = zm(e), g = r != null, v = Hm(r, h), y = (e) => {
+function nh({ fxRates: e }) {
+	let [t, n] = (0, _.useState)("A"), [r, i] = (0, _.useState)(null), [a, o] = (0, _.useState)(null), [s, c] = (0, _.useState)(""), [l, u] = (0, _.useState)("CHINA"), [d, f] = (0, _.useState)("AGRIBANK"), [p, m] = (0, _.useState)(""), h = Bm(e), g = r != null, v = Um(r, h), y = (e) => {
 		if (!e) {
 			o(r), i(null);
 			return;
 		}
 		let t = {};
-		for (let e of Om) {
+		for (let e of km) {
 			let n = e.key in h ? h[e.key] : null;
 			t[e.key] = e.standard ?? (n == null ? "" : String(n));
 		}
@@ -42356,7 +42468,7 @@ function th({ fxRates: e }) {
 	}, b = (e, t) => i((n) => n && {
 		...n,
 		[e]: t
-	}), x = Mm(s), S = Wm("Số USD cần chuyển", x), C = l === "CHINA" ? [
+	}), x = Nm(s), S = Gm("Số USD cần chuyển", x), C = l === "CHINA" ? [
 		"usdCny",
 		"recipientFee",
 		"chinaFee",
@@ -42365,42 +42477,42 @@ function th({ fxRates: e }) {
 		"usdCny",
 		"recipientFee",
 		"hkPct"
-	], w = d === "BIDV" ? "bidvSell" : "agriSell", T = Um(C, v, S), E = null, D = null, O = null;
+	], w = d === "BIDV" ? "bidvSell" : "agriSell", T = Wm(C, v, S), E = null, D = null, O = null;
 	if (t === "A" && T.hints.length === 0 && x != null) {
 		let e = v.usdCny.value, t = v.recipientFee.value;
-		x <= t ? T.hints.push("Số USD cần chuyển phải lớn hơn Phí ngân hàng người nhận") : l === "CHINA" ? (D = Gm(x, e, t, v.chinaFee.value, v.trancheSize.value), D.net < 0 ? T.hints.push("Phí lớn hơn số tiền chuyển — CNY thực nhận sẽ âm") : E = D.net) : (O = Km(x, e, v.hkPct.value / 100, t), E = O.net);
+		x <= t ? T.hints.push("Số USD cần chuyển phải lớn hơn Phí ngân hàng người nhận") : l === "CHINA" ? (D = Km(x, e, t, v.chinaFee.value, v.trancheSize.value), D.net < 0 ? T.hints.push("Phí lớn hơn số tiền chuyển — CNY thực nhận sẽ âm") : E = D.net) : (O = qm(x, e, v.hkPct.value / 100, t), E = O.net);
 	}
-	let k = Um([
+	let k = Wm([
 		w,
 		"vnSwift",
 		"vnPct"
-	], v, S), A = t === "A" && k.hints.length === 0 && x != null ? qm(x, v[w].value, v.vnSwift.value, v.vnPct.value / 100) : null, j = Mm(p), M = Wm("Số CNY đại lý cần nhận", j), N = Um([
+	], v, S), A = t === "A" && k.hints.length === 0 && x != null ? Jm(x, v[w].value, v.vnSwift.value, v.vnPct.value / 100) : null, j = Nm(p), M = Gm("Số CNY đại lý cần nhận", j), N = Wm([
 		"usdCny",
 		"recipientFee",
 		"chinaFee",
 		"trancheSize"
-	], v, M), P = Um([
+	], v, M), P = Wm([
 		"usdCny",
 		"recipientFee",
 		"hkPct"
-	], v, M), F = t === "B" && N.hints.length === 0 && j != null ? Jm(j, v.usdCny.value, v.recipientFee.value, v.chinaFee.value, v.trancheSize.value) : null, I = t === "B" && P.hints.length === 0 && j != null ? Ym(j, v.usdCny.value, v.hkPct.value / 100, v.recipientFee.value) : null, L = Um(["outsideRate"], v, M), R = t === "B" && L.hints.length === 0 && j != null ? j * v.outsideRate.value : null, ee = [
+	], v, M), F = t === "B" && N.hints.length === 0 && j != null ? Ym(j, v.usdCny.value, v.recipientFee.value, v.chinaFee.value, v.trancheSize.value) : null, I = t === "B" && P.hints.length === 0 && j != null ? Xm(j, v.usdCny.value, v.hkPct.value / 100, v.recipientFee.value) : null, L = Wm(["outsideRate"], v, M), R = t === "B" && L.hints.length === 0 && j != null ? j * v.outsideRate.value : null, ee = [
 		["CHINA", "AGRIBANK"],
 		["CHINA", "BIDV"],
 		["HONG_KONG", "AGRIBANK"],
 		["HONG_KONG", "BIDV"]
 	].map(([e, t]) => {
-		let n = e === "CHINA" ? N : P, r = t === "BIDV" ? "bidvSell" : "agriSell", i = Um([
+		let n = e === "CHINA" ? N : P, r = t === "BIDV" ? "bidvSell" : "agriSell", i = Wm([
 			r,
 			"vnSwift",
 			"vnPct"
-		], v), a = [.../* @__PURE__ */ new Set([...n.hints, ...i.hints])], o = e === "CHINA" ? F?.gross ?? null : I, s = a.length === 0 && o != null ? qm(o, v[r].value, v.vnSwift.value, v.vnPct.value / 100).total : null, c = o == null ? void 0 : e === "CHINA" && F ? `Cần gửi ${Pm(o)} USD · ${F.trancheCount} tranche × ${Pm(v.chinaFee.value)} CNY` : `Cần gửi ${Pm(o)} USD · phí Hong Kong ${Rm("hkPct", v.hkPct.value)}`, l = s != null && R != null ? s - R : null;
+		], v), a = [.../* @__PURE__ */ new Set([...n.hints, ...i.hints])], o = e === "CHINA" ? F?.gross ?? null : I, s = a.length === 0 && o != null ? Jm(o, v[r].value, v.vnSwift.value, v.vnPct.value / 100).total : null, c = o == null ? void 0 : e === "CHINA" && F ? `Cần gửi ${Fm(o)} USD · ${F.trancheCount} tranche × ${Fm(v.chinaFee.value)} CNY` : `Cần gửi ${Fm(o)} USD · phí Hong Kong ${zm("hkPct", v.hkPct.value)}`, l = s != null && R != null ? s - R : null;
 		return {
 			id: `${e}-${t}`,
 			title: `${e === "CHINA" ? "Trung Quốc" : "Hong Kong"} · ${t === "BIDV" ? "BIDV" : "Agribank"}`,
 			total: s,
 			hints: a,
 			unavailable: n.unavailable || i.unavailable,
-			footnote: [c, l == null ? null : `Chênh so với tệ ngoài: ${l > 0 ? "+" : ""}${Fm(l)} VND`].filter(Boolean).join(" · ") || void 0
+			footnote: [c, l == null ? null : `Chênh so với tệ ngoài: ${l > 0 ? "+" : ""}${Im(l)} VND`].filter(Boolean).join(" · ") || void 0
 		};
 	}), te = [...ee.map((e) => e.total), R].filter((e) => e != null), ne = te.length ? Math.min(...te) : null, re = (e) => !g && e.unavailable;
 	return /* @__PURE__ */ (0, W.jsxs)("div", {
@@ -42411,7 +42523,7 @@ function th({ fxRates: e }) {
 				className: "rounded-2xl bg-white border border-slate-200 p-4 md:p-5 space-y-4 min-w-0 lg:col-start-1 lg:row-start-1",
 				"aria-label": "Đầu vào",
 				children: [
-					/* @__PURE__ */ (0, W.jsx)(Qm, {
+					/* @__PURE__ */ (0, W.jsx)($m, {
 						label: "Chế độ tính",
 						testIdPrefix: "intl-mode",
 						value: t,
@@ -42459,13 +42571,13 @@ function th({ fxRates: e }) {
 									inputMode: "decimal",
 									autoComplete: "off",
 									placeholder: "VD: 14000",
-									className: Xm(null)
+									className: Zm(null)
 								})]
 							}),
 							/* @__PURE__ */ (0, W.jsxs)("div", { children: [/* @__PURE__ */ (0, W.jsx)("p", {
 								className: "text-[14px] font-semibold text-slate-700 mb-1.5",
 								children: "Đại lý nhận"
-							}), /* @__PURE__ */ (0, W.jsx)(Qm, {
+							}), /* @__PURE__ */ (0, W.jsx)($m, {
 								label: "Đại lý nhận",
 								testIdPrefix: "intl-route",
 								value: l,
@@ -42481,7 +42593,7 @@ function th({ fxRates: e }) {
 							/* @__PURE__ */ (0, W.jsxs)("div", { children: [/* @__PURE__ */ (0, W.jsx)("p", {
 								className: "text-[14px] font-semibold text-slate-700 mb-1.5",
 								children: "Ngân hàng Việt Nam"
-							}), /* @__PURE__ */ (0, W.jsx)(Qm, {
+							}), /* @__PURE__ */ (0, W.jsx)($m, {
 								label: "Ngân hàng Việt Nam",
 								testIdPrefix: "intl-bank",
 								value: d,
@@ -42507,7 +42619,7 @@ function th({ fxRates: e }) {
 							inputMode: "decimal",
 							autoComplete: "off",
 							placeholder: "VD: 100000",
-							className: Xm(null)
+							className: Zm(null)
 						})]
 					})
 				]
@@ -42526,7 +42638,7 @@ function th({ fxRates: e }) {
 						children: "Số tham khảo — không phải báo giá cam kết của ngân hàng."
 					})]
 				}), t === "A" ? /* @__PURE__ */ (0, W.jsxs)(W.Fragment, { children: [
-					/* @__PURE__ */ (0, W.jsx)($m, {
+					/* @__PURE__ */ (0, W.jsx)(eh, {
 						testId: "intl-result-cny",
 						title: "CNY thực nhận",
 						caption: l === "CHINA" ? "Đại lý Trung Quốc nhận" : "Đại lý Hong Kong nhận",
@@ -42534,9 +42646,9 @@ function th({ fxRates: e }) {
 						unit: "CNY",
 						hints: T.hints,
 						needsManual: re(T),
-						footnote: v.usdCny.value == null ? void 0 : `USD→CNY ${Im(v.usdCny.value)} (${v.usdCny.source})`
+						footnote: v.usdCny.value == null ? void 0 : `USD→CNY ${Lm(v.usdCny.value)} (${v.usdCny.source})`
 					}),
-					/* @__PURE__ */ (0, W.jsx)($m, {
+					/* @__PURE__ */ (0, W.jsx)(eh, {
 						testId: "intl-result-vnd",
 						title: "Tổng VND cần trả",
 						caption: `Chuyển qua ${d === "BIDV" ? "BIDV" : "Agribank"}`,
@@ -42544,7 +42656,7 @@ function th({ fxRates: e }) {
 						unit: "VND",
 						hints: k.hints,
 						needsManual: re(k),
-						footnote: v[w].value == null ? void 0 : `${d === "BIDV" ? "BIDV" : "Agribank"} bán USD ${Rm(w, v[w].value)} (${v[w].source})`
+						footnote: v[w].value == null ? void 0 : `${d === "BIDV" ? "BIDV" : "Agribank"} bán USD ${zm(w, v[w].value)} (${v[w].source})`
 					}),
 					(D || O || A) && /* @__PURE__ */ (0, W.jsxs)("details", {
 						className: "rounded-2xl border border-slate-200 bg-white px-4 py-1.5",
@@ -42555,62 +42667,62 @@ function th({ fxRates: e }) {
 						}), /* @__PURE__ */ (0, W.jsxs)("div", {
 							className: "mb-2.5 space-y-1.5 text-[13.5px]",
 							children: [
-								x != null && (D || O) && /* @__PURE__ */ (0, W.jsxs)(W.Fragment, { children: [/* @__PURE__ */ (0, W.jsx)(eh, {
+								x != null && (D || O) && /* @__PURE__ */ (0, W.jsxs)(W.Fragment, { children: [/* @__PURE__ */ (0, W.jsx)(th, {
 									label: "Số USD cần chuyển",
-									value: `${Pm(x)} USD`
-								}), /* @__PURE__ */ (0, W.jsx)(eh, {
-									label: `Sau phí ngân hàng người nhận (${Rm("recipientFee", v.recipientFee.value)})`,
-									value: `${Pm((D ?? O).afterBank)} USD`
+									value: `${Fm(x)} USD`
+								}), /* @__PURE__ */ (0, W.jsx)(th, {
+									label: `Sau phí ngân hàng người nhận (${zm("recipientFee", v.recipientFee.value)})`,
+									value: `${Fm((D ?? O).afterBank)} USD`
 								})] }),
 								D && /* @__PURE__ */ (0, W.jsxs)(W.Fragment, { children: [
-									/* @__PURE__ */ (0, W.jsx)(eh, {
-										label: `CNY trước phí đại lý (× ${Im(v.usdCny.value)})`,
-										value: `${Pm(D.grossCny)} CNY`
+									/* @__PURE__ */ (0, W.jsx)(th, {
+										label: `CNY trước phí đại lý (× ${Lm(v.usdCny.value)})`,
+										value: `${Fm(D.grossCny)} CNY`
 									}),
-									/* @__PURE__ */ (0, W.jsx)(eh, {
-										label: `Phí đại lý Trung Quốc (${D.trancheCount} tranche × ${Pm(v.chinaFee.value)} CNY)`,
-										value: `${Pm(D.chinaFee)} CNY`
+									/* @__PURE__ */ (0, W.jsx)(th, {
+										label: `Phí đại lý Trung Quốc (${D.trancheCount} tranche × ${Fm(v.chinaFee.value)} CNY)`,
+										value: `${Fm(D.chinaFee)} CNY`
 									}),
-									E != null && /* @__PURE__ */ (0, W.jsx)(eh, {
+									E != null && /* @__PURE__ */ (0, W.jsx)(th, {
 										strong: !0,
 										label: "CNY thực nhận",
-										value: `${Pm(E)} CNY`
+										value: `${Fm(E)} CNY`
 									})
 								] }),
 								O && /* @__PURE__ */ (0, W.jsxs)(W.Fragment, { children: [
-									/* @__PURE__ */ (0, W.jsx)(eh, {
-										label: `Phí Hong Kong (${Rm("hkPct", v.hkPct.value)})`,
-										value: `${Pm(O.hkFee)} USD`
+									/* @__PURE__ */ (0, W.jsx)(th, {
+										label: `Phí Hong Kong (${zm("hkPct", v.hkPct.value)})`,
+										value: `${Fm(O.hkFee)} USD`
 									}),
-									/* @__PURE__ */ (0, W.jsx)(eh, {
-										label: `USD quy đổi (× ${Im(v.usdCny.value)})`,
-										value: `${Pm(O.forConv)} USD`
+									/* @__PURE__ */ (0, W.jsx)(th, {
+										label: `USD quy đổi (× ${Lm(v.usdCny.value)})`,
+										value: `${Fm(O.forConv)} USD`
 									}),
-									/* @__PURE__ */ (0, W.jsx)(eh, {
+									/* @__PURE__ */ (0, W.jsx)(th, {
 										strong: !0,
 										label: "CNY thực nhận",
-										value: `${Pm(O.net)} CNY`
+										value: `${Fm(O.net)} CNY`
 									})
 								] }),
 								A && /* @__PURE__ */ (0, W.jsxs)("div", {
 									className: "pt-2 space-y-1.5",
 									children: [
-										/* @__PURE__ */ (0, W.jsx)(eh, {
+										/* @__PURE__ */ (0, W.jsx)(th, {
 											label: "Gốc (USD × tỷ giá bán)",
-											value: `${Fm(A.principal)} VND`
+											value: `${Im(A.principal)} VND`
 										}),
-										/* @__PURE__ */ (0, W.jsx)(eh, {
-											label: `Phí SWIFT Việt Nam (${Rm("vnSwift", v.vnSwift.value)})`,
-											value: `${Fm(A.swift)} VND`
+										/* @__PURE__ */ (0, W.jsx)(th, {
+											label: `Phí SWIFT Việt Nam (${zm("vnSwift", v.vnSwift.value)})`,
+											value: `${Im(A.swift)} VND`
 										}),
-										/* @__PURE__ */ (0, W.jsx)(eh, {
-											label: `Phí ngân hàng Việt Nam (${Rm("vnPct", v.vnPct.value)})`,
-											value: `${Fm(A.pctFee)} VND`
+										/* @__PURE__ */ (0, W.jsx)(th, {
+											label: `Phí ngân hàng Việt Nam (${zm("vnPct", v.vnPct.value)})`,
+											value: `${Im(A.pctFee)} VND`
 										}),
-										/* @__PURE__ */ (0, W.jsx)(eh, {
+										/* @__PURE__ */ (0, W.jsx)(th, {
 											strong: !0,
 											label: "Tổng VND cần trả",
-											value: `${Fm(A.total)} VND`
+											value: `${Im(A.total)} VND`
 										})
 									]
 								})
@@ -42622,7 +42734,7 @@ function th({ fxRates: e }) {
 					children: "Tổng VND cần trả cho từng kênh. “Rẻ nhất” chỉ so trong các kênh tính được."
 				}), /* @__PURE__ */ (0, W.jsxs)("div", {
 					className: "grid gap-3 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2",
-					children: [ee.map((e) => /* @__PURE__ */ (0, W.jsx)($m, {
+					children: [ee.map((e) => /* @__PURE__ */ (0, W.jsx)(eh, {
 						testId: `intl-result-b-${e.id}`,
 						size: "md",
 						title: e.title,
@@ -42633,7 +42745,7 @@ function th({ fxRates: e }) {
 						needsManual: !g && e.unavailable,
 						footnote: e.footnote,
 						cheapest: e.total != null && e.total === ne
-					}, e.id)), /* @__PURE__ */ (0, W.jsx)($m, {
+					}, e.id)), /* @__PURE__ */ (0, W.jsx)(eh, {
 						testId: "intl-result-b-OUTSIDE",
 						size: "md",
 						title: "Tệ ngoài",
@@ -42642,7 +42754,7 @@ function th({ fxRates: e }) {
 						unit: "VND",
 						hints: L.hints,
 						needsManual: !g && L.unavailable,
-						footnote: R != null && j != null ? `${Pm(j)} CNY × ${Rm("outsideRate", v.outsideRate.value)}` : void 0,
+						footnote: R != null && j != null ? `${Fm(j)} CNY × ${zm("outsideRate", v.outsideRate.value)}` : void 0,
 						cheapest: R != null && R === ne
 					})]
 				})] })]
@@ -42658,7 +42770,7 @@ function th({ fxRates: e }) {
 						children: [/* @__PURE__ */ (0, W.jsx)("h2", {
 							className: "font-extrabold text-[16px] text-[#0f2a4a]",
 							children: "Thông số tự nhập"
-						}), /* @__PURE__ */ (0, W.jsx)(Zm, { source: "MANUAL" })]
+						}), /* @__PURE__ */ (0, W.jsx)(Qm, { source: "MANUAL" })]
 					}),
 					/* @__PURE__ */ (0, W.jsx)("p", {
 						className: "text-[13px] text-slate-600 mt-1",
@@ -42666,7 +42778,7 @@ function th({ fxRates: e }) {
 					}),
 					/* @__PURE__ */ (0, W.jsx)("div", {
 						className: "grid gap-3 sm:grid-cols-2 mt-3",
-						children: Om.map((e) => {
+						children: km.map((e) => {
 							let t = v[e.key], n = e.key in h ? h[e.key] : void 0;
 							return /* @__PURE__ */ (0, W.jsxs)("label", {
 								className: "block min-w-0",
@@ -42687,7 +42799,7 @@ function th({ fxRates: e }) {
 										inputMode: "decimal",
 										autoComplete: "off",
 										"aria-invalid": t.problem === "invalid" || void 0,
-										className: Xm(t.problem)
+										className: Zm(t.problem)
 									}),
 									t.problem === "missing" && /* @__PURE__ */ (0, W.jsx)("span", {
 										className: "block text-[12.5px] font-medium text-amber-800 mt-1",
@@ -42697,13 +42809,13 @@ function th({ fxRates: e }) {
 										className: "block text-[12.5px] font-medium text-red-700 mt-1",
 										children: [
 											"Không hợp lệ — ",
-											jm[e.rule],
+											Mm[e.rule],
 											"."
 										]
 									}),
 									n !== void 0 && /* @__PURE__ */ (0, W.jsx)("span", {
 										className: "block text-[12px] text-slate-500 mt-1",
-										children: n == null ? `${Am[e.key]}: không có giá LIVE` : `Tham khảo LIVE ${Am[e.key]}: ${Rm(e.key, n)}`
+										children: n == null ? `${jm[e.key]}: không có giá LIVE` : `Tham khảo LIVE ${jm[e.key]}: ${zm(e.key, n)}`
 									}),
 									e.note && /* @__PURE__ */ (0, W.jsx)("span", {
 										className: "block text-[12px] text-slate-500 mt-0.5",
@@ -42726,7 +42838,7 @@ function th({ fxRates: e }) {
 							"bidvSell",
 							"outsideRate"
 						].map((t) => {
-							let n = v[t], r = t === "outsideRate" ? null : Bm(e, t);
+							let n = v[t], r = t === "outsideRate" ? null : Vm(e, t);
 							return /* @__PURE__ */ (0, W.jsxs)("li", {
 								"data-testid": `intl-rate-${t}`,
 								"data-source": n.source,
@@ -42736,9 +42848,9 @@ function th({ fxRates: e }) {
 									children: [
 										/* @__PURE__ */ (0, W.jsxs)("span", {
 											className: "block font-semibold text-[14px] text-slate-700",
-											children: [km[t].label, t === "usdCny" && /* @__PURE__ */ (0, W.jsxs)("span", {
+											children: [Am[t].label, t === "usdCny" && /* @__PURE__ */ (0, W.jsxs)("span", {
 												className: "font-normal text-slate-500",
-												children: [" · ", Am.usdCny]
+												children: [" · ", jm.usdCny]
 											})]
 										}),
 										n.source === "LIVE" && r && /* @__PURE__ */ (0, W.jsxs)("span", {
@@ -42754,8 +42866,8 @@ function th({ fxRates: e }) {
 									className: "flex shrink-0 items-center gap-2",
 									children: [/* @__PURE__ */ (0, W.jsx)("span", {
 										className: "font-bold text-[14.5px] tabular-nums text-[#0f2a4a]",
-										children: n.value == null ? "—" : Rm(t, n.value)
-									}), /* @__PURE__ */ (0, W.jsx)(Zm, { source: n.source })]
+										children: n.value == null ? "—" : zm(t, n.value)
+									}), /* @__PURE__ */ (0, W.jsx)(Qm, { source: n.source })]
 								})]
 							}, t);
 						})
@@ -42768,14 +42880,14 @@ function th({ fxRates: e }) {
 							children: "Phí chuẩn đang dùng"
 						}), /* @__PURE__ */ (0, W.jsx)("ul", {
 							className: "mt-1 grid gap-x-4 gap-y-0.5 text-[13px] text-slate-600 sm:grid-cols-2",
-							children: Om.filter((e) => e.standard != null).map((e) => /* @__PURE__ */ (0, W.jsxs)("li", {
+							children: km.filter((e) => e.standard != null).map((e) => /* @__PURE__ */ (0, W.jsxs)("li", {
 								className: "flex justify-between gap-2",
 								children: [/* @__PURE__ */ (0, W.jsx)("span", {
 									className: "min-w-0",
 									children: e.label
 								}), /* @__PURE__ */ (0, W.jsx)("span", {
 									className: "shrink-0 font-semibold tabular-nums text-slate-800",
-									children: Rm(e.key, Number(e.standard))
+									children: zm(e.key, Number(e.standard))
 								})]
 							}, e.key))
 						})]
@@ -42791,7 +42903,7 @@ function th({ fxRates: e }) {
 }
 //#endregion
 //#region src/pages/IntlPaymentTool.tsx
-function nh() {
+function rh() {
 	let { intlFxRates: e } = Wn();
 	return /* @__PURE__ */ (0, W.jsxs)("div", {
 		className: "space-y-4 max-w-[1300px]",
@@ -42802,12 +42914,12 @@ function nh() {
 		}), /* @__PURE__ */ (0, W.jsx)("p", {
 			className: "text-[13.5px] text-slate-500 mt-1",
 			children: "Công cụ tính tham khảo. Không thực hiện chuyển tiền và không lưu dữ liệu."
-		})] }), /* @__PURE__ */ (0, W.jsx)(th, { fxRates: e })]
+		})] }), /* @__PURE__ */ (0, W.jsx)(nh, { fxRates: e })]
 	});
 }
 //#endregion
 //#region src/pages/NotFound.tsx
-function rh() {
+function ih() {
 	return /* @__PURE__ */ (0, W.jsxs)("section", {
 		className: "rounded-2xl bg-white border border-slate-200 p-6",
 		"data-testid": "not-found",
@@ -42835,7 +42947,7 @@ function rh() {
 }
 //#endregion
 //#region src/App.tsx
-function ih() {
+function ah() {
 	return /* @__PURE__ */ (0, W.jsx)("div", {
 		className: "min-h-[40vh] grid place-items-center",
 		children: /* @__PURE__ */ (0, W.jsx)("p", {
@@ -42844,9 +42956,9 @@ function ih() {
 		})
 	});
 }
-function ah() {
+function oh() {
 	let { id: e } = gt(), { pathname: t } = dt(), n = Kn(t, e), { shipments: r } = Wn();
-	return r.some((e) => e.id === n) ? /* @__PURE__ */ (0, W.jsx)(hd, {}, n) : /* @__PURE__ */ (0, W.jsxs)("div", {
+	return r.some((e) => e.id === n) ? /* @__PURE__ */ (0, W.jsx)(gd, {}, n) : /* @__PURE__ */ (0, W.jsxs)("div", {
 		className: "rounded-2xl bg-white border p-10 text-center max-w-[600px] mx-auto",
 		children: [
 			/* @__PURE__ */ (0, W.jsxs)("p", {
@@ -42865,7 +42977,7 @@ function ah() {
 		]
 	});
 }
-function oh() {
+function sh() {
 	let e = (0, _.useSyncExternalStore)(C, S, S);
 	return /* @__PURE__ */ (0, W.jsx)(Un, { children: /* @__PURE__ */ (0, W.jsx)(Rt, { children: /* @__PURE__ */ (0, W.jsx)(Ys, { children: e ? /* @__PURE__ */ (0, W.jsxs)(Ht, { children: [
 		/* @__PURE__ */ (0, W.jsx)(Bt, {
@@ -42881,15 +42993,15 @@ function oh() {
 		}),
 		/* @__PURE__ */ (0, W.jsx)(Bt, {
 			path: "/lo-hang",
-			element: /* @__PURE__ */ (0, W.jsx)(Gc, {})
+			element: /* @__PURE__ */ (0, W.jsx)(Kc, {})
 		}),
 		/* @__PURE__ */ (0, W.jsx)(Bt, {
 			path: "/lo-hang/:id",
-			element: /* @__PURE__ */ (0, W.jsx)(ah, {})
+			element: /* @__PURE__ */ (0, W.jsx)(oh, {})
 		}),
 		/* @__PURE__ */ (0, W.jsx)(Bt, {
 			path: "/tao-lo-moi",
-			element: /* @__PURE__ */ (0, W.jsx)(gd, {})
+			element: /* @__PURE__ */ (0, W.jsx)(_d, {})
 		}),
 		/* @__PURE__ */ (0, W.jsx)(Bt, {
 			path: "/theo-doi",
@@ -42900,23 +43012,23 @@ function oh() {
 		}),
 		/* @__PURE__ */ (0, W.jsx)(Bt, {
 			path: "/khach-hang",
-			element: /* @__PURE__ */ (0, W.jsx)(xd, {})
+			element: /* @__PURE__ */ (0, W.jsx)(Sd, {})
 		}),
 		/* @__PURE__ */ (0, W.jsx)(Bt, {
 			path: "/khach-hang/:id",
-			element: /* @__PURE__ */ (0, W.jsx)(Td, {})
+			element: /* @__PURE__ */ (0, W.jsx)(Ed, {})
 		}),
 		/* @__PURE__ */ (0, W.jsx)(Bt, {
 			path: "/tai-chinh/thu-tien",
-			element: /* @__PURE__ */ (0, W.jsx)(_d, {})
+			element: /* @__PURE__ */ (0, W.jsx)(vd, {})
 		}),
 		/* @__PURE__ */ (0, W.jsx)(Bt, {
 			path: "/tai-chinh/cong-no-doi-tac",
-			element: /* @__PURE__ */ (0, W.jsx)(yd, {})
+			element: /* @__PURE__ */ (0, W.jsx)(bd, {})
 		}),
 		/* @__PURE__ */ (0, W.jsx)(Bt, {
 			path: "/kinh-doanh-bao-gia",
-			element: /* @__PURE__ */ (0, W.jsx)(Vf, {})
+			element: /* @__PURE__ */ (0, W.jsx)(Hf, {})
 		}),
 		/* @__PURE__ */ (0, W.jsx)(Bt, {
 			path: "/thoa-thuan-ban-giao",
@@ -42927,77 +43039,77 @@ function oh() {
 		}),
 		/* @__PURE__ */ (0, W.jsx)(Bt, {
 			path: "/hop-dong",
-			element: /* @__PURE__ */ (0, W.jsx)(Hf, {})
+			element: /* @__PURE__ */ (0, W.jsx)(Uf, {})
 		}),
 		/* @__PURE__ */ (0, W.jsx)(Bt, {
 			path: "/hop-dong/moi",
-			element: /* @__PURE__ */ (0, W.jsx)(Yf, {})
+			element: /* @__PURE__ */ (0, W.jsx)(Xf, {})
 		}),
 		/* @__PURE__ */ (0, W.jsx)(Bt, {
 			path: "/hop-dong/:id",
-			element: /* @__PURE__ */ (0, W.jsx)(qf, {})
+			element: /* @__PURE__ */ (0, W.jsx)(Jf, {})
 		}),
 		/* @__PURE__ */ (0, W.jsx)(Bt, {
 			path: "/tra-cuu-thue",
-			element: /* @__PURE__ */ (0, W.jsx)(tp, {})
+			element: /* @__PURE__ */ (0, W.jsx)(np, {})
 		}),
 		/* @__PURE__ */ (0, W.jsx)(Bt, {
 			path: "/tra-cuu-chinh-sach",
-			element: /* @__PURE__ */ (0, W.jsx)(ip, {})
+			element: /* @__PURE__ */ (0, W.jsx)(ap, {})
 		}),
 		/* @__PURE__ */ (0, W.jsx)(Bt, {
 			path: "/dich-thuat",
-			element: /* @__PURE__ */ (0, W.jsx)(wp, {})
+			element: /* @__PURE__ */ (0, W.jsx)(Tp, {})
 		}),
 		/* @__PURE__ */ (0, W.jsx)(Bt, {
 			path: "/ngu-canh-doi-tac",
-			element: /* @__PURE__ */ (0, W.jsx)(Mp, {})
+			element: /* @__PURE__ */ (0, W.jsx)(Np, {})
 		}),
 		/* @__PURE__ */ (0, W.jsx)(Bt, {
 			path: "/tai-chinh/doi-soat",
-			element: /* @__PURE__ */ (0, W.jsx)(Wp, {})
+			element: /* @__PURE__ */ (0, W.jsx)(Gp, {})
 		}),
 		/* @__PURE__ */ (0, W.jsx)(Bt, {
 			path: "/bao-cao-ceo",
-			element: /* @__PURE__ */ (0, W.jsx)($p, {})
+			element: /* @__PURE__ */ (0, W.jsx)(em, {})
 		}),
 		/* @__PURE__ */ (0, W.jsx)(Bt, {
 			path: "/dieu-hanh",
-			element: /* @__PURE__ */ (0, W.jsx)(om, {})
+			element: /* @__PURE__ */ (0, W.jsx)(sm, {})
 		}),
 		/* @__PURE__ */ (0, W.jsx)(Bt, {
 			path: "/so-tay",
-			element: /* @__PURE__ */ (0, W.jsx)(mm, {})
+			element: /* @__PURE__ */ (0, W.jsx)(hm, {})
 		}),
 		/* @__PURE__ */ (0, W.jsx)(Bt, {
 			path: "/be-thong-tin",
-			element: /* @__PURE__ */ (0, W.jsx)(Yl, {})
+			element: /* @__PURE__ */ (0, W.jsx)(Xl, {})
 		}),
 		/* @__PURE__ */ (0, W.jsx)(Bt, {
 			path: "/thanh-toan-quoc-te",
-			element: /* @__PURE__ */ (0, W.jsx)(nh, {})
+			element: /* @__PURE__ */ (0, W.jsx)(rh, {})
 		}),
 		/* @__PURE__ */ (0, W.jsx)(Bt, {
 			path: "/nguoi-dung",
-			element: /* @__PURE__ */ (0, W.jsx)(Dm, {})
+			element: /* @__PURE__ */ (0, W.jsx)(Om, {})
 		}),
 		/* @__PURE__ */ (0, W.jsx)(Bt, {
 			path: "/quy-trinh",
-			element: /* @__PURE__ */ (0, W.jsx)(dp, {})
+			element: /* @__PURE__ */ (0, W.jsx)(fp, {})
 		}),
 		/* @__PURE__ */ (0, W.jsx)(Bt, {
 			path: "/bieu-mau",
-			element: /* @__PURE__ */ (0, W.jsx)(gp, {})
+			element: /* @__PURE__ */ (0, W.jsx)(_p, {})
 		}),
 		/* @__PURE__ */ (0, W.jsx)(Bt, {
 			path: "*",
-			element: /* @__PURE__ */ (0, W.jsx)(rh, {})
+			element: /* @__PURE__ */ (0, W.jsx)(ih, {})
 		})
-	] }) : /* @__PURE__ */ (0, W.jsx)(ih, {}) }) }) });
+	] }) : /* @__PURE__ */ (0, W.jsx)(ah, {}) }) }) });
 }
 //#endregion
 //#region src/component-entry.tsx
-var sh = class extends _.Component {
+var ch = class extends _.Component {
 	constructor(...e) {
 		super(...e), gs(this, "state", { error: null });
 	}
@@ -43041,23 +43153,23 @@ var sh = class extends _.Component {
 			})
 		}) : this.props.children;
 	}
-}, ch = null, lh = null;
-function uh(e) {
-	return lh && e.contains(lh) ? lh : (lh = document.createElement("div"), lh.className = "logi-shell", e.appendChild(lh), lh);
-}
+}, lh = null, uh = null;
 function dh(e) {
+	return uh && e.contains(uh) ? uh : (uh = document.createElement("div"), uh.className = "logi-shell", e.appendChild(uh), uh);
+}
+function fh(e) {
 	A(e.setTriggerValue ?? null);
-	let t = uh(e.parentElement);
-	return ch || (ch = (0, v.createRoot)(t), ch.render(/* @__PURE__ */ (0, W.jsx)(sh, { children: /* @__PURE__ */ (0, W.jsx)(oh, {}) }))), e.data && typeof e.data == "object" && x(e.data), () => {
+	let t = dh(e.parentElement);
+	return lh || (lh = (0, v.createRoot)(t), lh.render(/* @__PURE__ */ (0, W.jsx)(ch, { children: /* @__PURE__ */ (0, W.jsx)(sh, {}) }))), e.data && typeof e.data == "object" && x(e.data), () => {
 		try {
-			ch?.unmount();
+			lh?.unmount();
 		} catch {}
-		ch = null;
+		lh = null;
 		try {
-			lh?.remove();
+			uh?.remove();
 		} catch {}
-		lh = null, A(null);
+		uh = null, A(null);
 	};
 }
 //#endregion
-export { dh as default };
+export { fh as default };

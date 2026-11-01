@@ -571,6 +571,7 @@ def finance_projection(
     *,
     ledger: Mapping[str, Any] | None = None,
     agents: Mapping[str, Any] | None = None,
+    allow_finance_view: bool | None = None,
 ) -> dict[str, Any]:
     """Finance Actual from the canonical snapshot; AR/AP from core.logic.
 
@@ -580,13 +581,55 @@ def finance_projection(
     ``ledger`` / ``agents`` are the render-local snapshot the component build
     path already read (see ``_partner_projection``); passing them down costs
     zero additional reads and leaves the derived figures identical.
+
+    Issue #254 — server-side ``finance_view`` boundary: actors without
+    ``finance_view`` (e.g. ``sale``, ``operations``) receive ``canView=False``
+    with zero Finance Actual / AR / AP / payment / profit / partner figures.
     """
+    from core.auth import has_permission
     from core.logic import calculate_from_shipment
 
+    if allow_finance_view is None:
+        allow_finance_view = bool(has_permission("finance_view"))
+
     finance = _section(shipment, "3.4")
+    currency = text(shipment.get("currency") or finance.get("currency") or "VND")
+
+    if not allow_finance_view:
+        allow_commercial = bool(has_permission("commercial_view"))
+        return {
+            "canView": False,
+            "quote": _quote_lines(shipment, quotes) if allow_commercial else [],
+            "actual": [],
+            "currency": currency,
+            "hasActualLines": False,
+            "receivable": UNKNOWN,
+            "received": UNKNOWN,
+            "receivableNet": UNKNOWN,
+            "outputVat": UNKNOWN,
+            "outstanding": UNKNOWN,
+            "payable": UNKNOWN,
+            "paid": UNKNOWN,
+            "commission": UNKNOWN,
+            "profit": UNKNOWN,
+            "profitMargin": UNKNOWN,
+            "payments": [],
+            "partner": {
+                "partnerId": None,
+                "partnerName": None,
+                "suggested": False,
+                "status": "RESTRICTED",
+                "payable": UNKNOWN,
+                "paid": UNKNOWN,
+                "remaining": UNKNOWN,
+                "currency": None,
+                "payments": [],
+            },
+            "source": "restricted:finance_view",
+        }
+
     details = finance.get("details") if isinstance(finance.get("details"), list) else []
     summary = calculate_from_shipment(shipment)
-    currency = text(shipment.get("currency") or finance.get("currency") or "VND")
 
     actual = [
         {
@@ -656,6 +699,7 @@ def finance_projection(
     # != settled balance: the book stays UNKNOWN while received reads 0.
     money_known = has_actual_lines
     return {
+        "canView": True,
         "quote": _quote_lines(shipment, quotes),
         "actual": actual,
         "currency": currency,
@@ -683,7 +727,11 @@ def finance_projection(
     }
 
 
-def receivables_projection(rows: list[dict[str, Any]]) -> dict[str, Any]:
+def receivables_projection(
+    rows: list[dict[str, Any]],
+    *,
+    allow_finance_view: bool | None = None,
+) -> dict[str, Any]:
     """Global customer-receivable worklist over real shipment finance truth.
 
     One row per shipment. ``receivable`` / ``outstanding`` come from the
@@ -697,11 +745,20 @@ def receivables_projection(rows: list[dict[str, Any]]) -> dict[str, Any]:
     Totals are grouped by currency and never summed across currencies
     (no FX engine, no fake "grand total").
     """
+    if allow_finance_view is None:
+        from core.auth import has_permission
+
+        allow_finance_view = bool(has_permission("finance_view"))
+    if not allow_finance_view:
+        return {"rows": [], "totals": {}}
+
     out_rows: list[dict[str, Any]] = []
     totals: dict[str, dict[str, float | None]] = {}
 
     for row in rows:
         fin = row.get("finance") if isinstance(row.get("finance"), Mapping) else {}
+        if fin.get("canView") is False:
+            continue
         currency = (text(fin.get("currency")) or "VND").upper()
         has_actual = bool(fin.get("hasActualLines"))
         receivable = num(fin.get("receivable")) if has_actual else None
@@ -1373,6 +1430,7 @@ def shipment_projection(
     # evidence Node 00 is allowed to read; omitting it keeps every standalone
     # caller truthful at "chưa xác minh".
     agreements: Mapping[str, Any] | Sequence[Any] | None = None,
+    allow_finance_view: bool | None = None,
 ) -> dict[str, Any]:
     """Project one canonical shipment document into the frozen UI shape.
 
@@ -1502,7 +1560,18 @@ def shipment_projection(
         docgen_documents=docgen_documents,
         grouped_attachments=attachments,
     )
-    finance_view = finance_projection(shipment, quotes, ledger=ledger, agents=agents)
+    if allow_finance_view is None:
+        from core.auth import has_permission  # noqa: PLC0415
+
+        allow_finance_view = bool(has_permission("finance_view"))
+
+    finance_view = finance_projection(
+        shipment,
+        quotes,
+        ledger=ledger,
+        agents=agents,
+        allow_finance_view=allow_finance_view,
+    )
     pxk_view = pxk_projection(
         shipment,
         contracts,
@@ -1757,12 +1826,14 @@ def shipment_projection(
         "timeline": list(history or []),
         # Dashboard/readiness evidence (canonical projection, read-only).
         "ops": {
-            "financialFlag": text(view.get("financial_flag")),
-            "financialLabel": text(view.get("financial_label")),
+            "financialFlag": text(view.get("financial_flag")) if allow_finance_view else "",
+            "financialLabel": text(view.get("financial_label")) if allow_finance_view else "",
             "alerts": [
                 {"code": text(a.get("code")), "severity": text(a.get("severity")),
                  "title": text(a.get("label")), "message": text(a.get("detail"))}
-                for a in (view.get("alerts") or []) if isinstance(a, Mapping)
+                for a in (view.get("alerts") or [])
+                if isinstance(a, Mapping)
+                and (allow_finance_view or not text(a.get("code")).startswith("FINANCE_"))
             ],
             "arrivalDateLabel": text(view.get("arrival_date_label")),
             "freeTimeExpiryLabel": text(view.get("free_time_expiry_label")),

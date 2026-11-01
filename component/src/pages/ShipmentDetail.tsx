@@ -2051,7 +2051,18 @@ export default function ShipmentDetail() {
       )}
 
       {/* ============ TAB: FINANCE ============ */}
-      {showExistingWork && tab === "tai-chinh" && (
+      {showExistingWork && tab === "tai-chinh" && s.finance.canView === false && (
+        <section
+          data-testid="finance-view-restricted"
+          className="rounded-2xl bg-white border border-slate-200 p-5 space-y-1.5"
+        >
+          <h3 className="font-extrabold text-[16px] text-[#0f2a4a]">Không có quyền xem Tài chính / Công nợ</h3>
+          <p className="text-[13.5px] text-slate-600">
+            Vai trò hiện tại không có quyền <code className="rounded bg-slate-100 px-1.5 py-0.5 text-[12px]">finance_view</code>; dữ liệu công nợ dịch vụ và lịch sử thu/chi đã được chặn từ server.
+          </p>
+        </section>
+      )}
+      {showExistingWork && tab === "tai-chinh" && s.finance.canView !== false && (
         <div className="space-y-4" id="missing-anchor">
           {/* 1 — DỊCH VỤ & CHI PHÍ THỰC TẾ: what Sale/Support really enter first. */}
           <FinanceActualEntry

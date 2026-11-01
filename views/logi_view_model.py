@@ -457,13 +457,37 @@ def _users_reader(*, db: Any = _UNSET_DB) -> list[dict[str, Any]]:
         return []
 
 
-def _dashboard_views(shipments: Mapping[str, Any]) -> dict[str, Any]:
+def _redact_dashboard_finance(view: Mapping[str, Any] | None) -> dict[str, Any]:
+    """Strip finance-derived flags and alerts when actor lacks ``finance_view``."""
+    if not isinstance(view, Mapping) or not view:
+        return {}
+    cleaned = dict(view)
+    alerts = [
+        item
+        for item in (cleaned.get("alerts") or [])
+        if isinstance(item, Mapping) and not rd.text(item.get("code")).startswith("FINANCE_")
+    ]
+    cleaned["alerts"] = alerts
+    cleaned["top_alert"] = alerts[0] if alerts else None
+    next_act = cleaned.get("next_action")
+    if isinstance(next_act, Mapping) and rd.text(next_act.get("code")).startswith("FINANCE_"):
+        cleaned["next_action"] = alerts[0] if alerts else None
+    cleaned["has_alert"] = bool(alerts)
+    cleaned["financial_status"] = ""
+    cleaned["financial_flag"] = ""
+    cleaned["financial_label"] = ""
+    cleaned["financial_projection"] = {}
+    return cleaned
+
+
+def _dashboard_views(shipments: Mapping[str, Any], *, allow_finance_view: bool = True) -> dict[str, Any]:
     from core.shipment_dashboard import build_shipment_dashboard_view
 
     views: dict[str, Any] = {}
     for sid, ship in shipments.items():
         try:
-            views[sid] = build_shipment_dashboard_view(ship)
+            row_view = build_shipment_dashboard_view(ship)
+            views[sid] = row_view if allow_finance_view else _redact_dashboard_finance(row_view)
         except Exception:  # noqa: BLE001 - one bad row must not blank the desk
             views[sid] = {}
     return views
@@ -853,12 +877,14 @@ def _work_module_library(templates: list[dict[str, Any]], user: Mapping[str, Any
 
 def build_view_model() -> dict:
     """Assemble the JSON payload for the component `data` channel."""
-    from core.auth import current_user
+    from core.auth import current_user, has_permission
     from core.config import DISPLAY_COMPANY_NAME
     from core.cost_intelligence import json_safe as _cost_json_safe
     from core.shipment_dashboard import build_dashboard_summary
 
     transport = logi_sandbox.ensure_backend()
+    user = current_user() or {}
+    can_view_finance = bool(has_permission("finance_view"))
     # LOGI_INTERACTION_LATENCY_FINALIZE_02 — every Streamlit-owned resource this
     # render needs is resolved HERE, on the script thread (the database handle
     # below; the session values inside _attachment_download_state), and only the
@@ -872,7 +898,7 @@ def build_view_model() -> dict:
         "references": lambda: _load_references(db=db),
     })
     shipments, references = loaded["shipments"], loaded["references"]
-    views = _dashboard_views(shipments)
+    views = _dashboard_views(shipments, allow_finance_view=can_view_finance)
     sources = _read_sources(shipments, references, db=db)
 
     # Issue #195 — the effective document catalog (code-owned V1 entries +
@@ -912,6 +938,7 @@ def build_view_model() -> dict:
             # Issue #244 — Node 00 Kế hoạch signature evidence, from the SAME
             # render-local agreements read C1 already performs.
             agreements=sources["agreements"],
+            allow_finance_view=can_view_finance,
         )
         for sid, ship in shipments.items()
     ]
@@ -933,7 +960,6 @@ def build_view_model() -> dict:
     )
 
     summary = build_dashboard_summary(views.values())
-    user = current_user() or {}
     # The contract→shipment links read the SAME shipment map this render already
     # loaded, so C1 adds no second full shipments read.
     # LOGI_INTERACTION_LATENCY_FINALIZE_02: the same rule now covers the other
@@ -951,14 +977,15 @@ def build_view_model() -> dict:
         docgen_documents=sources["docgenDocumentsRaw"],
     )
 
+    empty_ledger = {"obligations": [], "transactions": [], "allocations": []}
     # C2D is read ONCE per render and shared by both the global worklist and the
     # /ngu-canh-doi-tac partner-context slice — one payable truth, no second
     # derivation of a partner's financial position. It derives from the SAME
     # render-local ledger snapshot the per-shipment C2B block used.
     payables = rd.partner_payables_projection(
-        records=sources["ledger"],
-        shipment_ids=sources["shipmentIds"],
-        agents=sources["agents"],
+        records=sources["ledger"] if can_view_finance else empty_ledger,
+        shipment_ids=sources["shipmentIds"] if can_view_finance else [],
+        agents=sources["agents"] if can_view_finance else {},
     )
     tasks = _task_projection(rows, references)
     # One business-calendar boundary for all date-sensitive projections.
@@ -978,14 +1005,14 @@ def build_view_model() -> dict:
         attention,
         today=business_today,
     )
-    receivables = rd.receivables_projection(rows)
+    receivables = rd.receivables_projection(rows, allow_finance_view=can_view_finance)
     # The reconciliation desk derives from the SAME render-local snapshot (ids +
     # ledger rows) instead of re-reading both collections once per shipment.
     reconciliation = logi_reconciliation.reconciliation_view(
         st.session_state.get(RECONCILIATION_FILTER_KEY),
-        known_shipment_ids=list(shipments.keys()),
-        shipment_ids=sources["shipmentIds"],
-        records=sources["ledger"],
+        known_shipment_ids=list(shipments.keys()) if can_view_finance else [],
+        shipment_ids=sources["shipmentIds"] if can_view_finance else [],
+        records=sources["ledger"] if can_view_finance else empty_ledger,
     )
     # LOGI_CEO_REPORT_01 — one bounded READ-ONLY presentation adapter over
     # projections already built above. It does not open a second reader, create
@@ -1017,6 +1044,7 @@ def build_view_model() -> dict:
             "name": rd.text(user.get("full_name") or user.get("username")) or "Chưa đăng nhập",
             "role": rd.text(user.get("role")).upper() or "VIEWER",
             "username": rd.text(user.get("username")),
+            "canViewFinance": can_view_finance,
             # Display only. Authorization is enforced by core.auth on the server.
             "displayOnly": True,
         },
@@ -2366,6 +2394,7 @@ def _attachment_download_state() -> dict[str, Any]:
 
 def _projection_for(shipment: Mapping[str, Any], *, db: Any = _UNSET_DB) -> dict[str, Any]:
     """Project one canonical shipment for the post-write readback payload."""
+    from core.auth import has_permission
     from core.database import (
         _load_contracts_impl,
         _load_customers_impl,
@@ -2378,9 +2407,11 @@ def _projection_for(shipment: Mapping[str, Any], *, db: Any = _UNSET_DB) -> dict
     from core.shipment_dashboard import build_shipment_dashboard_view
 
     sid = rd.text(shipment.get("id"))
+    can_view_finance = bool(has_permission("finance_view"))
     db = _resolve_db(db)
     try:
-        view = build_shipment_dashboard_view(shipment)
+        raw_view = build_shipment_dashboard_view(shipment)
+        view = raw_view if can_view_finance else _redact_dashboard_finance(raw_view)
     except Exception:  # noqa: BLE001
         view = {}
     # LOGI_INTERACTION_LATENCY_FINALIZE_02 — the readback's five reference /
@@ -2420,6 +2451,7 @@ def _projection_for(shipment: Mapping[str, Any], *, db: Any = _UNSET_DB) -> dict
         # Issue #244 — Node 00 reads recorded signature evidence from the SAME
         # render-local agreements snapshot C1 already consumes.
         agreements=loaded["agreements"],
+        allow_finance_view=can_view_finance,
     )
 
 
