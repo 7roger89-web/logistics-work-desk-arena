@@ -130,7 +130,7 @@ This applies to NEW_CHAT and SAME_CHAT prompts for Arena, Codex, Manus, reviewer
 
 ## Quyền (ma trận duy nhất: core/auth.py ROLE_PERMISSIONS)
 
-admin=`*`, sale=sales_write + commercial_write + shipment_create + ops + knowledge + customers + tracking + tariff + commercial_view..., support=commercial_view + ops + finance_view + customers + tracking..., viewer=fallback read-only. `ROLE_PERMISSIONS` liệt kê đủ **7 role**: admin, sale, support, accounting, operations, sales, viewer — trong đó accounting/operations/sales là tên role cũ giữ tương thích ngược (entry secrets.toml cũ + test fixture cũ); role lạ luôn rơi về viewer.
+admin=`*`, sale=sales_write + commercial_write + shipment_create + ops + knowledge + customers + tracking + tariff + commercial_view..., support=commercial_view + ops + finance_view + customers + tracking..., viewer=read-only. `ROLE_PERMISSIONS` liệt kê đủ **7 role**: admin, sale, support, accounting, operations, sales, viewer — trong đó accounting/operations/sales là tên role cũ giữ tương thích ngược (entry secrets.toml cũ + test fixture cũ); **Policy role lạ** (Owner decision `2026-11-01`, `TASK_ID=LOGI-254-RBAC-POLICY-CLOSURE-20261101`): tài khoản **đã xác thực** (session có `username`) mà `role` thiếu, `None`, trống, hoặc không nằm trong `ROLE_PERMISSIONS` bị từ chối **toàn bộ** quyền — `has_permission()` fail-closed, không tự chuyển thành `viewer`/`support`; fallback `viewer` chỉ còn cho ngữ cảnh **chưa xác thực** (AUTH_REQUIRED tắt, fixture/legacy caller không có `username`). Role hợp lệ giữ nguyên đúng quyền trong ma trận.
 
 ## Bootstrap
 
