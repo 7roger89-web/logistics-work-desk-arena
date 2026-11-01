@@ -1,0 +1,20 @@
+# RAW PROBE (pre-change) 2026-11-01T15:46:23Z
+## DNS/HTTP tiers
+URL=https://raw.githubusercontent.com/7roger89-web/logistics-work-desk-arena/main/ops/arena-control/05-TRANG-THAI.md
+curl: (35) OpenSSL SSL_connect: SSL_ERROR_SYSCALL in connection to raw.githubusercontent.com:443 
+HTTP=000
+curl_exit=35
+URL=https://github.com/7roger89-web/logistics-work-desk-arena/blob/main/ops/arena-control/05-TRANG-THAI.md
+HTTP=200
+curl_exit=0
+URL=https://api.github.com/repos/7roger89-web/logistics-work-desk-arena/contents/ops/arena-control/05-TRANG-THAI.md?ref=main
+HTTP=200
+curl_exit=0
+## gh api (authenticated)
+66e59226fe5dab40d6bfa2044074404d24726811
+gh_exit=0
+## git
+cd57bb804deda3f34b3e7bc93ad69efc3b32d58e	refs/heads/main
+ls_remote_exit=0
+## connector
+list_connector_tools(github)=unsupported

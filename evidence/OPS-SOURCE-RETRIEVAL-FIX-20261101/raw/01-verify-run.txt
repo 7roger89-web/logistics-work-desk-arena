@@ -1,0 +1,34 @@
+== LIVE: nguồn GitHub thật
+gh commits/main sha=cd57bb804deda3f34b3e7bc93ad69efc3b32d58e
+origin/main sha=cd57bb804deda3f34b3e7bc93ad69efc3b32d58e
+PASS  READ_REF verified: origin/main == gh main
+ops/arena-control/00-LUAT.md gh_rc=0 git_rc=0 gh_sha256=c749ce24a41acadd8f385ecdec41bf3df9e3759e1d6a19216bef2bfba8dde537 git_sha256=c749ce24a41acadd8f385ecdec41bf3df9e3759e1d6a19216bef2bfba8dde537 bytes=1700
+PASS  content match gh<->git: ops/arena-control/00-LUAT.md
+ops/arena-control/05-TRANG-THAI.md gh_rc=0 git_rc=0 gh_sha256=bb618a748731527dd043bc877e607ca77c18b850b04e901e52e22bd62d067737 git_sha256=bb618a748731527dd043bc877e607ca77c18b850b04e901e52e22bd62d067737 bytes=514
+PASS  content match gh<->git: ops/arena-control/05-TRANG-THAI.md
+ops/arena-control/06-NHAT-KY.md gh_rc=0 git_rc=0 gh_sha256=0b6d88dc9c9d4e4ec1635535927a5a54c3e43b4e2536dd6f079c930e33865498 git_sha256=0b6d88dc9c9d4e4ec1635535927a5a54c3e43b4e2536dd6f079c930e33865498 bytes=3442
+PASS  content match gh<->git: ops/arena-control/06-NHAT-KY.md
+STATE_PREFIX(dynamic)=[# TRẠN]
+PASS  STATE_PREFIX computed dynamically (6 Unicode chars)
+== LIVE: phân loại lỗi thật (negative)
+PASS  missing file on readable repo => NOT_FOUND (HTTP 404, rc=1)
+PASS  git show missing path fails (rc=128) => NOT_FOUND
+raw.githubusercontent.com curl_rc=35
+PASS  raw host failing (rc=35) classified NETWORK_FAILURE, not NOT_FOUND
+== SIM: ma trận quyết định theo 00-LUAT (không phải chạy ChatGPT thật)
+A(connector ok, web fail)  => GITHUB_CONNECTOR SUCCESS
+B(no connector, gh ok)     => GH_API SUCCESS
+C(all sources fail)        => NONE BLOCKED
+PASS  Acceptance A (sim)
+PASS  Acceptance B (sim)
+PASS  Acceptance C (sim)
+== RECEIPT
+# SOURCE_RECEIPT — OPS-SOURCE-RETRIEVAL-FIX-20261101
+READ_SOURCE=GH_API
+READ_REF=cd57bb804deda3f34b3e7bc93ad69efc3b32d58e
+READ_FILES=ops/arena-control/00-LUAT.md ops/arena-control/05-TRANG-THAI.md ops/arena-control/06-NHAT-KY.md
+STATE_PREFIX=# TRẠN
+READ_STATUS=SUCCESS
+NOTE=GitHub connector không có trong Arena (list_connector_tools=unsupported). Kịch bản A chỉ mô phỏng.
+== RESULT: fails=0
+exit=0
