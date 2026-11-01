@@ -1,0 +1,723 @@
+{
+  "actor_after": "support B (other account, same tab, no logout)",
+  "lastWrites": [
+    {
+      "event": "payment_record",
+      "shipmentId": "LO-0308",
+      "ok": true,
+      "error": "Đã ghi nhận khoản thu.",
+      "readback": {
+        "id": "LO-0308",
+        "journey": {
+          "nodes": [
+            {
+              "id": "delivery",
+              "label": "Giao hàng",
+              "family": "DELIVERY",
+              "targetTab": "nhap",
+              "completed": false,
+              "state": "UPCOMING",
+              "factState": "UNKNOWN",
+              "evidence": "",
+              "deadline": "",
+              "owned": false,
+              "current": false,
+              "blockers": [],
+              "dependencies": [],
+              "documentCategories": [
+                "transport"
+              ],
+              "documentIds": []
+            }
+          ],
+          "edges": [],
+          "currentStageId": "",
+          "owner": "Chưa phân công",
+          "primaryAction": {
+            "text": "Quá hạn khách",
+            "detail": "Hạn khách 12/09/2026 đã quá 50 ngày.",
+            "priority": "Khan",
+            "route": "/lo-hang/LO-0308?tab=nhap"
+          },
+          "seaFacts": {
+            "gate_in_at": "",
+            "vgm_status": "UNKNOWN",
+            "vgm_cutoff": "",
+            "si_status": "UNKNOWN",
+            "export_declaration_no": "",
+            "si_cutoff": ""
+          },
+          "positionNote": "Chưa đủ mốc thực tế để xác định vị trí vận hành."
+        },
+        "customer": "Minh Đức JSC",
+        "customerMST": "0102345678",
+        "customerId": "CUST-MINHDUC",
+        "contract": "",
+        "selectedDocumentTemplateIds": [],
+        "route": "Đông Bằng (Quảng Tây) → Hữu Nghị (Lạng Sơn)",
+        "borderVN": "Hữu Nghị (Lạng Sơn)",
+        "sale": "Chưa phân công",
+        "support": "qa.review.s255",
+        "status": "Chờ thông quan",
+        "statusTone": "amber",
+        "priority": "Khan",
+        "nextAction": "Quá hạn khách",
+        "nextActionDetail": "Hạn khách 12/09/2026 đã quá 50 ngày.",
+        "nextLabel": "XỬ LÝ NGAY",
+        "nextRoute": "/lo-hang/LO-0308?tab=nhap",
+        "updated": "01/11/2026 15:30",
+        "missingDocs": [
+          "Số tờ khai nhập khẩu",
+          "Đã thông quan",
+          "Xe giao VN + tài xế",
+          "Xác nhận đã giao hàng"
+        ],
+        "docs": [
+          {
+            "name": "Số tờ khai nhập khẩu",
+            "ok": false,
+            "note": "Chưa đăng ký tờ khai"
+          },
+          {
+            "name": "Đã thông quan",
+            "ok": false,
+            "note": "Chờ số tờ khai"
+          },
+          {
+            "name": "Xe giao VN + tài xế",
+            "ok": false,
+            "note": "Chưa đặt xe giao"
+          },
+          {
+            "name": "Xác nhận đã giao hàng",
+            "ok": false,
+            "note": "Chưa xác nhận"
+          }
+        ],
+        "commercialFlow": {
+          "mode": "",
+          "modeLabel": "Chưa xác nhận hình thức nhập khẩu",
+          "confirmed": false,
+          "companyId": "",
+          "subAgentId": "",
+          "subAgentName": "",
+          "legalImporterKind": "",
+          "legalImporterId": "",
+          "legalImporterName": "",
+          "legalImporterTaxCode": "",
+          "missing": [
+            "Chưa xác nhận hình thức nhập khẩu."
+          ],
+          "ready": false
+        },
+        "documentWorkflow": {
+          "steps": [
+            {
+              "id": "quotation",
+              "label": "Báo giá",
+              "state": "PENDING_DOCUMENT",
+              "stateLabel": "Cần chứng từ",
+              "reason": "Lô chưa gắn báo giá.",
+              "targetTab": "",
+              "targetRoute": "/kinh-doanh-bao-gia",
+              "actionLabel": "Mở báo giá"
+            },
+            {
+              "id": "customer_contract",
+              "label": "Hợp đồng với khách hàng",
+              "state": "BLOCKED",
+              "stateLabel": "Đang bị chặn",
+              "reason": "Xác nhận hình thức nhập khẩu trước để hệ thống chọn đúng bộ chứng từ.",
+              "targetTab": "",
+              "targetRoute": "",
+              "actionLabel": ""
+            },
+            {
+              "id": "sub_entrust_contract",
+              "label": "Hợp đồng Trường Thành ↔ đơn vị nhập khẩu hộ",
+              "state": "BLOCKED",
+              "stateLabel": "Đang bị chặn",
+              "reason": "Xác nhận hình thức nhập khẩu trước để hệ thống chọn đúng bộ chứng từ.",
+              "targetTab": "",
+              "targetRoute": "",
+              "actionLabel": ""
+            },
+            {
+              "id": "customer_advance_request",
+              "label": "Đề nghị khách hàng tạm ứng",
+              "state": "BLOCKED",
+              "stateLabel": "Đang bị chặn",
+              "reason": "Xác nhận hình thức nhập khẩu trước để hệ thống chọn đúng bộ chứng từ.",
+              "targetTab": "",
+              "targetRoute": "",
+              "actionLabel": ""
+            },
+            {
+              "id": "tax_payment",
+              "label": "Giấy nộp thuế",
+              "state": "BLOCKED",
+              "stateLabel": "Đang bị chặn",
+              "reason": "Xác nhận hình thức nhập khẩu trước để hệ thống chọn đúng bộ chứng từ.",
+              "targetTab": "nhap",
+              "targetRoute": "",
+              "actionLabel": ""
+            },
+            {
+              "id": "vn_agent_payment_request",
+              "label": "Đề nghị thanh toán đại lý Việt Nam",
+              "state": "BLOCKED",
+              "stateLabel": "Đang bị chặn",
+              "reason": "Xác nhận hình thức nhập khẩu trước để hệ thống chọn đúng bộ chứng từ.",
+              "targetTab": "tai-chinh",
+              "targetRoute": "",
+              "actionLabel": ""
+            },
+            {
+              "id": "foreign_agent_payment_request",
+              "label": "Đề nghị thanh toán đại lý nước ngoài",
+              "state": "BLOCKED",
+              "stateLabel": "Đang bị chặn",
+              "reason": "Xác nhận hình thức nhập khẩu trước để hệ thống chọn đúng bộ chứng từ.",
+              "targetTab": "tai-chinh",
+              "targetRoute": "",
+              "actionLabel": ""
+            },
+            {
+              "id": "delivery_note",
+              "label": "Phiếu giao hàng",
+              "state": "BLOCKED",
+              "stateLabel": "Đang bị chặn",
+              "reason": "Xác nhận hình thức nhập khẩu trước để hệ thống chọn đúng bộ chứng từ.",
+              "targetTab": "nhap",
+              "targetRoute": "",
+              "actionLabel": ""
+            },
+            {
+              "id": "warehouse_issue",
+              "label": "Phiếu xuất kho",
+              "state": "BLOCKED",
+              "stateLabel": "Đang bị chặn",
+              "reason": "Xác nhận hình thức nhập khẩu trước để hệ thống chọn đúng bộ chứng từ.",
+              "targetTab": "chung-tu",
+              "targetRoute": "",
+              "actionLabel": ""
+            },
+            {
+              "id": "customer_final_request",
+              "label": "Đề nghị khách hàng thanh toán còn lại",
+              "state": "BLOCKED",
+              "stateLabel": "Đang bị chặn",
+              "reason": "Xác nhận hình thức nhập khẩu trước để hệ thống chọn đúng bộ chứng từ.",
+              "targetTab": "tai-chinh",
+              "targetRoute": "",
+              "actionLabel": ""
+            }
+          ],
+          "summary": {
+            "complete": 0,
+            "total": 10,
+            "ready": 0,
+            "attention": 10,
+            "notApplicable": 0
+          }
+        },
+        "plan": {
+          "id": "plan",
+          "label": "KẾ HOẠCH",
+          "state": "PROBLEM",
+          "evidence": "Chưa gắn báo giá cho lô.",
+          "items": [
+            {
+              "id": "quotation",
+              "label": "Báo giá",
+              "state": "MISSING",
+              "stateLabel": "Chưa gắn báo giá",
+              "detail": "Lô chưa được gắn báo giá nào. Không dùng báo giá khác của cùng khách.",
+              "quoteId": "",
+              "quoteNo": "",
+              "quoteStatus": "",
+              "targetRoute": "/kinh-doanh-bao-gia",
+              "actionLabel": "Mở báo giá"
+            },
+            {
+              "id": "customer_contract",
+              "label": "Hợp đồng với khách",
+              "state": "MISSING",
+              "stateLabel": "Chưa có hợp đồng với khách",
+              "detail": "Lô chưa gắn hợp đồng khách hàng nào.",
+              "contractId": "",
+              "contractNo": "",
+              "signature": "UNVERIFIED",
+              "signatureLabel": "Chưa xác minh",
+              "targetRoute": "/hop-dong",
+              "actionLabel": "Mở hợp đồng"
+            },
+            {
+              "id": "customer_advance",
+              "label": "Tạm ứng tiền hàng cho TT",
+              "state": "MODE_UNKNOWN",
+              "stateLabel": "Chưa xác nhận hình thức nhập khẩu",
+              "applicable": null,
+              "received": false,
+              "detail": "Chưa xác nhận hình thức nhập khẩu nên chưa xác định khoản tạm ứng tiền hàng có áp dụng hay không.",
+              "reconcileCount": 0,
+              "targetTab": "tai-chinh",
+              "actionLabel": "Mở tài chính"
+            }
+          ],
+          "nextActions": [
+            "Gắn báo giá cho lô trước khi lấy hàng.",
+            "Chưa có hợp đồng với khách cho lô này.",
+            "Xác nhận hình thức nhập khẩu để biết khoản tạm ứng tiền hàng có áp dụng."
+          ],
+          "summary": {
+            "problem": 2,
+            "waiting": 1
+          }
+        },
+        "attachments": [],
+        "version": 2,
+        "rawStatus": "wait",
+        "mode": "Truck",
+        "incoterm": "DAP",
+        "executionProfile": {
+          "mode": "ROAD",
+          "storedMode": "Truck",
+          "modeLabel": "Đường bộ",
+          "incoterm": "DAP",
+          "incotermVersion": "",
+          "incotermVersionLabel": "",
+          "incotermNamedPlace": "",
+          "incotermPlaceSource": "",
+          "incotermRawLabel": "",
+          "incotermAliasNote": "",
+          "incotermRuleScope": "ANY_MODE",
+          "loadModel": "",
+          "loadModelLabel": "",
+          "serviceScope": [],
+          "serviceScopeLabels": [],
+          "serviceScopeSummary": "",
+          "serviceScopeConfirmed": false,
+          "insurance": {
+            "obligation": "NOT_REQUIRED_BY_INCOTERM",
+            "clause": "",
+            "clauseLabel": "",
+            "note": "Incoterm không bắt buộc người bán thu xếp bảo hiểm.",
+            "versionSpecific": false,
+            "actualStatus": "UNKNOWN",
+            "actualStatusLabel": "Chưa xác nhận",
+            "actualStatusStated": false,
+            "evidence": {
+              "arrangedBy": "",
+              "insurerName": "",
+              "policyNo": "",
+              "coverageNote": ""
+            }
+          },
+          "truck": {
+            "pickupTruckType": "",
+            "unitTypes": [],
+            "known": false,
+            "preset": "",
+            "presetLabel": ""
+          },
+          "equipment": {
+            "units": [],
+            "count": 0,
+            "presets": [],
+            "otherCount": 0,
+            "known": false
+          },
+          "issues": [
+            {
+              "code": "MISSING_VERSION",
+              "message": "Chưa xác nhận phiên bản Incoterms của lô (2010 / 2020 / legacy 2000)."
+            },
+            {
+              "code": "MISSING_PLACE",
+              "message": "DAP chưa có địa điểm/cảng/điểm giao cụ thể."
+            }
+          ],
+          "state": "PROFILE_INCOMPLETE",
+          "stateLabel": "Hồ sơ lô còn thiếu",
+          "stages": [
+            {
+              "code": "DELIVERY",
+              "label": "Giao hàng tận nơi",
+              "reason": "PERSISTED_FACT_DEPENDENCY",
+              "reasonLabel": "Theo dữ liệu đã ghi của lô",
+              "detail": "Lô đã có dữ liệu giao hàng.",
+              "done": false,
+              "missing": "",
+              "mismatch": false
+            }
+          ],
+          "persisted": {
+            "structuredTransport": true,
+            "bookingNo": "",
+            "carrier": "",
+            "mbl": "",
+            "hbl": "",
+            "vessel": "",
+            "etd": "2026-09-12",
+            "pol": "Đông Bằng (Quảng Tây)",
+            "pod": "Hữu Nghị (Lạng Sơn)",
+            "qtyPkg": "",
+            "containerNo": "",
+            "containers": [],
+            "containerCount": 0,
+            "containerTypes": [],
+            "trucks": [],
+            "pickupTruckType": "",
+            "customsDeclarationNo": "",
+            "customsDeclarationDate": "",
+            "customsStatus": false,
+            "delivered": false,
+            "deliveredAt": "",
+            "deliveryLocation": "Kho Minh Đức — KCN Yên Phong, Bắc Ninh"
+          },
+          "nextAction": {
+            "code": "PROFILE_INCOMPLETE",
+            "label": "Bổ sung hồ sơ thực hiện lô",
+            "detail": "Chưa xác nhận phiên bản Incoterms của lô (2010 / 2020 / legacy 2000).",
+            "reason": "PERSISTED_FACT_DEPENDENCY",
+            "reasonLabel": "Theo dữ liệu đã ghi của lô",
+            "tone": "amber"
+          },
+          "summaryLines": [
+            "DAP",
+            "Đường bộ",
+            "Phạm vi TT: chưa xác nhận",
+            "Bảo hiểm hàng hóa: Chưa xác nhận"
+          ]
+        },
+        "createdAt": "06/09/2026",
+        "transportLegs": [
+          {
+            "id": "legacy-primary-leg",
+            "sequence": 1,
+            "mode": "Truck",
+            "origin": "Đông Bằng (Quảng Tây)",
+            "destination": "Hữu Nghị (Lạng Sơn)",
+            "carrier": "",
+            "etd": "2026-09-12",
+            "eta": "2026-09-12",
+            "atd": "",
+            "ata": "",
+            "bookingNo": "",
+            "mbl": "",
+            "hbl": "",
+            "vessel": "",
+            "voyage": "",
+            "mawb": "",
+            "hawb": "",
+            "flightNo": "",
+            "units": []
+          }
+        ],
+        "transportLegsStructured": false,
+        "cargoStructured": false,
+        "pickup": {
+          "factory": "",
+          "address": "Đông Bằng (Quảng Tây)",
+          "contact": "",
+          "phone": "",
+          "pickupTime": "12/09/2026",
+          "truckType": "",
+          "plate": "",
+          "driver": "",
+          "driverPhone": "",
+          "eta": "12/09/2026",
+          "ata": ""
+        },
+        "transport": {
+          "bookingNo": "",
+          "carrier": "",
+          "mbl": "",
+          "hbl": "",
+          "vessel": "",
+          "etd": "12/09/2026",
+          "pol": "Đông Bằng (Quảng Tây)",
+          "pod": "Hữu Nghị (Lạng Sơn)",
+          "containerNo": "",
+          "qtyPkg": ""
+        },
+        "cargo": {
+          "goodsDescription": "",
+          "packs": null,
+          "weight": null,
+          "cbm": null,
+          "dims": "",
+          "type": "",
+          "note": "",
+          "qtyPkg": ""
+        },
+        "exportInfo": {
+          "border": "Đông Bằng (Quảng Tây)",
+          "declarant": "",
+          "eta": "12/09/2026",
+          "ata": "",
+          "state": "",
+          "chinaDeclNo": ""
+        },
+        "importInfo": {
+          "borderVN": "Hữu Nghị (Lạng Sơn)",
+          "declarationNo": "",
+          "regDate": "",
+          "clearDate": "",
+          "tax": null,
+          "vat": null,
+          "inspection": "",
+          "customsStatus": false,
+          "license": "",
+          "gnt": {
+            "payer": "",
+            "taxCode": "",
+            "address": "",
+            "customsOffice": "",
+            "customerHint": "Minh Đức JSC",
+            "customerTaxHint": "0102345678",
+            "ready": false,
+            "noPayable": false,
+            "missing": [
+              "Số tờ khai (TK)",
+              "Ngày tờ khai",
+              "Thuế nhập khẩu",
+              "VAT hàng nhập khẩu",
+              "Người nộp thuế",
+              "Mã số thuế"
+            ],
+            "done": false,
+            "document": null,
+            "documentHistory": [],
+            "readiness": {
+              "state": "MISSING_INFO",
+              "gate": "COMMERCIAL_FLOW_REQUIRED",
+              "reason": "Xác nhận hình thức nhập khẩu trước khi tạo Giấy nộp thuế.",
+              "missing": [
+                "Số tờ khai (TK)",
+                "Ngày tờ khai",
+                "Thuế nhập khẩu (số tiền)",
+                "Thuế GTGT hàng NK (số tiền)",
+                "Tên người nộp thuế",
+                "Mã số thuế (MST)",
+                "Xác nhận hình thức nhập khẩu trước khi tạo Giấy nộp thuế."
+              ]
+            }
+          },
+          "arrivalDate": "12/09/2026",
+          "freeTime": 14.0,
+          "truckVN": "",
+          "plateVN": "",
+          "driverVN": "",
+          "schedule": "",
+          "deliveryAddr": "Kho Minh Đức — KCN Yên Phong, Bắc Ninh",
+          "receiver": "",
+          "receiverPhone": "",
+          "receiverTitle": "",
+          "deliveryLocation": "",
+          "delivered": false,
+          "actualDelivery": ""
+        },
+        "finance": {
+          "canView": true,
+          "quote": [
+            {
+              "label": "Cước vận chuyển trọn gói",
+              "amount": 28450000.0,
+              "ccy": "VND",
+              "kind": "quote"
+            }
+          ],
+          "actual": [
+            {
+              "id": "b2e89099-2882-4dad-aab3-d1d93a20388b",
+              "label": "Cước xe TQ Đông Bằng → Hữu Nghị",
+              "name": "Cước xe TQ Đông Bằng → Hữu Nghị",
+              "code": "DV-VC-TQ",
+              "unit": "Lần",
+              "note": "",
+              "journeyStage": "",
+              "amount": 62000000.0,
+              "price": 62000000.0,
+              "cost": 57000000.0,
+              "qty": 1.0,
+              "vat": 8.0,
+              "ccy": "VND",
+              "kind": "actual"
+            }
+          ],
+          "currency": "VND",
+          "hasActualLines": true,
+          "receivable": 66960000.0,
+          "received": 35000000.0,
+          "receivableNet": 62000000.0,
+          "outputVat": 4960000.0,
+          "outstanding": 31960000.0,
+          "payable": 57000000.0,
+          "paid": null,
+          "commission": 0.0,
+          "profit": 5000000.0,
+          "profitMargin": 8.06,
+          "payments": [
+            {
+              "id": "PAY-D017267B9B484B26947E870D8295A04C",
+              "requestId": "PAY-REVIEW-LEGACY-B",
+              "date": "01/11/2026",
+              "kind": "Thu tien dich vu (review legacy)",
+              "amount": 35000000.0,
+              "ccy": "VND",
+              "by": "qa.review.s255",
+              "note": "Thu tien dich vu (review legacy)",
+              "reversed": false
+            }
+          ],
+          "partner": {
+            "partnerId": "AGT-PHUANH",
+            "partnerName": "CÔNG TY TNHH PHÚ ANH LOGISTICS",
+            "suggested": true,
+            "status": "UNKNOWN",
+            "payable": null,
+            "paid": null,
+            "remaining": null,
+            "currency": null,
+            "payments": []
+          },
+          "source": "core.logic.calculate_from_shipment over data.3.4"
+        },
+        "pxk": {
+          "source": "",
+          "sourceName": "",
+          "delivered": false,
+          "gateOpen": false,
+          "missingDeliveryFacts": [],
+          "number": "",
+          "date": "",
+          "place": "Kho Minh Đức — KCN Yên Phong, Bắc Ninh",
+          "receiver": "",
+          "role": "",
+          "done": false,
+          "document": null,
+          "documentHistory": [],
+          "readiness": {
+            "state": "MISSING_INFO",
+            "gate": "COMMERCIAL_FLOW_REQUIRED",
+            "reason": "Xác nhận hình thức nhập khẩu trước khi tạo Phiếu xuất kho.",
+            "missing": [
+              "Xác nhận hình thức nhập khẩu trước khi tạo Phiếu xuất kho."
+            ]
+          }
+        },
+        "form07": {
+          "source": "",
+          "sourceName": "",
+          "delivered": false,
+          "missingDeliveryFacts": [],
+          "number": "",
+          "orderDate": "",
+          "place": "Kho Minh Đức — KCN Yên Phong, Bắc Ninh",
+          "receiver": "",
+          "role": "",
+          "done": false,
+          "document": null,
+          "documentHistory": [],
+          "readiness": {
+            "state": "BLOCKED",
+            "gate": "BLOCKED_NOT_DELIVERED",
+            "reason": "Biên bản giao nhận chỉ được tạo sau khi lô hàng được xác nhận giao.",
+            "missing": [
+              "Xác nhận đã giao hàng"
+            ]
+          }
+        },
+        "timeline": [
+          {
+            "time": "01/11 15:30",
+            "title": "create",
+            "desc": "staging.support",
+            "tone": "green"
+          },
+          {
+            "time": "01/11 15:30",
+            "title": "direct_payment_created",
+            "desc": "qa.review.s255",
+            "tone": "green"
+          }
+        ],
+        "ops": {
+          "financialFlag": "open",
+          "financialLabel": "Đang mở",
+          "alerts": [
+            {
+              "code": "CUSTOMER_DEADLINE_OVERDUE",
+              "severity": "critical",
+              "title": "Quá hạn khách",
+              "message": "Hạn khách 12/09/2026 đã quá 50 ngày."
+            },
+            {
+              "code": "FREE_TIME_OVERDUE",
+              "severity": "critical",
+              "title": "Quá free time",
+              "message": "Hạn free time 26/09/2026 đã quá 36 ngày."
+            },
+            {
+              "code": "FINANCE_ATTENTION",
+              "severity": "warning",
+              "title": "Tài chính cần theo dõi",
+              "message": "CHỜ THU"
+            }
+          ],
+          "arrivalDateLabel": "12/09/2026",
+          "freeTimeExpiryLabel": "26/09/2026",
+          "daysRemaining": -36
+        },
+        "tracking": {
+          "status": "Chờ thông quan",
+          "statusTone": "amber",
+          "carrier": "",
+          "reference": "",
+          "trackingUrl": "",
+          "hasLivePosition": false,
+          "positionNote": "Không có dữ liệu vị trí thời gian thực — chỉ hiển hiện trạng thái và mốc vận chuyển có thật.",
+          "milestones": [
+            {
+              "time": "12/09/2026",
+              "title": "ETD — rời nơi lấy hàng",
+              "desc": "Đông Bằng (Quảng Tây)",
+              "done": true,
+              "tone": "green"
+            },
+            {
+              "time": "12/09/2026",
+              "title": "ETA — về cửa khẩu/kho đích",
+              "desc": "Hữu Nghị (Lạng Sơn)",
+              "done": false,
+              "tone": "blue"
+            }
+          ]
+        }
+      },
+      "requestId": "PAY-REVIEW-LEGACY-B",
+      "paymentId": "PAY-D017267B9B484B26947E870D8295A04C",
+      "persisted": {
+        "paymentId": "PAY-D017267B9B484B26947E870D8295A04C",
+        "amount": 35000000.0,
+        "derivedPaid": 35000000.0,
+        "derivedDebt": 31960000.0,
+        "version": 2
+      },
+      "audit": [
+        {
+          "action": "create",
+          "actor": "staging.support",
+          "createdAt": "2026-11-01 15:30:17"
+        },
+        {
+          "action": "direct_payment_created",
+          "actor": "qa.review.s255",
+          "createdAt": "2026-11-01 15:30:17"
+        }
+      ]
+    }
+  ]
+}

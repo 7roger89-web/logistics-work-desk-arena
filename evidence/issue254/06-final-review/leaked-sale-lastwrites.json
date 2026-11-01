@@ -1,0 +1,65 @@
+{
+  "actor_after": "sale (demoted same account)",
+  "lastWrites": [
+    {
+      "event": "cost_rate_save",
+      "id": "COST-REVIEW-LEGACY-1",
+      "ok": true,
+      "error": "",
+      "readback": {
+        "id": "COST-REVIEW-LEGACY-1",
+        "record_type": "SUPPLIER_RATE_SNAPSHOT",
+        "status": "ACTIVE",
+        "received_at": "2026-11-01T15:30:16Z",
+        "supplier": "Hang tau REVIEW",
+        "source_channel": "PASTE",
+        "raw_text": "SHANGHAI -> HANOI 4.250 USD/40HC",
+        "parser_version": "cost-rate-parser/2",
+        "rows": [
+          {
+            "id": "line-1",
+            "kind": "OCEAN_FREIGHT",
+            "status": "QUOTED",
+            "amount": 4250.0,
+            "currency": "USD",
+            "unit": "40HC",
+            "carrier": {
+              "id": "CARR-R",
+              "name": "Hang tau REVIEW",
+              "state": "CONFIRMED"
+            },
+            "origin": {
+              "id": "SHA",
+              "name": "Shanghai",
+              "state": "UNKNOWN"
+            },
+            "destination": {
+              "id": "HAN",
+              "name": "Hanoi",
+              "state": "UNKNOWN"
+            },
+            "rawLine": "SHANGHAI -> HANOI 4.250 USD/40HC",
+            "confidence": "CONFIRMED"
+          }
+        ],
+        "warnings": [],
+        "created_by": "qa.review.s255",
+        "request_id": "COST-REVIEW-LEGACY-1",
+        "is_deleted": false,
+        "_fingerprint": "d60de137bc7c17532860d86fc39d5a88d00c2251898317b399820e9301558a50"
+      },
+      "requestId": "COST-REVIEW-LEGACY-1",
+      "persisted": {
+        "id": "COST-REVIEW-LEGACY-1",
+        "status": "ACTIVE"
+      },
+      "audit": [
+        {
+          "action": "create",
+          "actor": "qa.review.s255",
+          "createdAt": "2026-11-01 15:30:16"
+        }
+      ]
+    }
+  ]
+}

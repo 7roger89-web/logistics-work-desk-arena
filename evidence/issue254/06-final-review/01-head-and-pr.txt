@@ -1,0 +1,18 @@
+== date ==
+2026-11-01T15:30:00Z
+== local HEAD ==
+911f3174596245fc8ec4d68daef634fa07032f90
+== branch ==
+arena/94e8df82-logistics-work-desk-arena
+== status --porcelain (clean expected) ==
+== git diff --exit-code (code vs HEAD) ==
+git diff exit=0
+== git diff --cached --exit-code ==
+git diff cached exit=0
+== untracked non-ignored ==
+== gh pr view ==
+{"baseRefName":"arena/ae5f9f47-logistics-work-desk-arena","headRefName":"arena/0d73ca3b-logistics-work-desk-arena","headRefOid":"911f3174596245fc8ec4d68daef634fa07032f90","mergeStateStatus":"CLEAN","mergeable":"MERGEABLE","number":255,"state":"OPEN","updatedAt":"2026-11-01T15:10:51Z","url":"https://github.com/7roger89-web/logistics-work-desk-arena/pull/255"}
+== gh pr checks ==
+contract-shape	pass	4s	https://github.com/7roger89-web/logistics-work-desk-arena/actions/runs/41319902544/job/124887669599
+== gh issue 254 state ==
+{"number":254,"state":"OPEN","title":"LOGI — Lô Hàng: công nợ dịch vụ Phải thu / Đã thu / Còn lại ngay tại danh sách (desktop + mobile)"}

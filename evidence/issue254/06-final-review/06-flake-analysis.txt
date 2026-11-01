@@ -1,0 +1,31 @@
+== FLAKE ANALYSIS: tests/test_gnt_and_docgen_reality_check.py::test_gnt_revision_comes_from_durable_docgen_metadata_after_session_clear ==
+Reviewer container, exact PR HEAD 911f317 vs BASE 05b6553 (the commit immediately before it).
+
+1. Observed while re-running the full suite (reviewer run, NOT the implementer receipt):
+   - run A (15:21-15:24): 7 failed / 2367 passed / 45 skipped  -> 2 failures were `Cannot find module 'jsdom'`
+     (component/node_modules was being installed concurrently by the reviewer -> environment artifact, not code).
+   - run B (15:22-15:25): 3 failed / 2372 passed / 44 skipped -> same 2 jsdom failures + this GNT test
+     (`assert second["persisted"]["attachmentDuplicate"] is True` -> `False`).
+   - run C (clean, node_modules already installed, nothing else touching the tree): 2375 passed / 44 skipped / EXIT=0.
+     See 02-full-suite-run.txt.
+
+2. Is the GNT failure caused by PR #255?
+   Isolated, repeated: HEAD 1 failure / 8 runs, BASE 0 / 8  -> inconclusive.
+   Interleaved control (10 BASE + 10 HEAD, alternating, same machine/venv):
+       BASE fails: 1/10      HEAD fails: 1/10
+   -> identical rate on both sides: PRE-EXISTING timing flake, not introduced by the diff 05b6553..911f317
+      (that diff touches only views/logi_view_model.py lastWrites plumbing + tests + evidence; no GNT/docgen code).
+
+3. Mechanism (proved directly, no app modification):
+   core/gnt_builder.py::build_gnt_workbook -> openpyxl writes docProps/core.xml with second-granularity
+   `dcterms:created` / `dcterms:modified`. Two generations in the SAME second are byte-identical (sha equal ->
+   duplicate=True); crossing a second boundary changes the bytes, so the (shipment_id, sha256) duplicate guard
+   reports duplicate=False. Probe output:
+       same call, no delay : identical = True
+       after 1.2s delay    : identical = False
+       DIFFERS: docProps/core.xml   created 2026-11-01T15:32:07Z  vs  2026-11-01T15:32:08Z
+
+4. Consequence for this review: the "0 FAILED / 0 ERROR, no new SKIP" requirement IS satisfied on a clean
+   replay at this HEAD (run C: 2375 passed / 44 skipped / 0 failed / 0 error). The GNT test is a known
+   wall-clock flake in a module untouched by this PR — reported as an observation for Issue #247, NOT as the
+   acceptance blocker of PR #255.

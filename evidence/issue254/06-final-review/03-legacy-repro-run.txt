@@ -1,0 +1,167 @@
+2026-11-01 15:30:16.567 WARNING streamlit.runtime.caching.cache_data_api: No runtime found, using MemoryCacheStorageManager
+2026-11-01 15:30:16.639 WARNING streamlit.runtime.state.session_state_proxy: Session state does not function when running a script without `streamlit run`
+
+=== SALE lastWrites sau khi bi ha quyen (row legacy) ===
+[
+  {
+    "event": "cost_rate_save",
+    "id": "COST-REVIEW-LEGACY-1",
+    "ok": true,
+    "error": "",
+    "readback": {
+      "id": "COST-REVIEW-LEGACY-1",
+      "record_type": "SUPPLIER_RATE_SNAPSHOT",
+      "status": "ACTIVE",
+      "received_at": "2026-11-01T15:30:16Z",
+      "supplier": "Hang tau REVIEW",
+      "source_channel": "PASTE",
+      "raw_text": "SHANGHAI -> HANOI 4.250 USD/40HC",
+      "parser_version": "cost-rate-parser/2",
+      "rows": [
+        {
+          "id": "line-1",
+          "kind": "OCEAN_FREIGHT",
+          "status": "QUOTED",
+          "amount": 4250.0,
+          "currency": "USD",
+          "unit": "40HC",
+          "carrier": {
+            "id": "CARR-R",
+            "name": "Hang tau REVIEW",
+            "state": "CONFIRMED"
+          },
+          "origin": {
+            "id": "SHA",
+            "name": "Shanghai",
+            "state": "UNKNOWN"
+          },
+          "destination": {
+            "id": "HAN",
+            "name": "Hanoi",
+            "state": "UNKNOWN"
+          },
+          "rawLine": "SHANGHAI -> HANOI 4.250 USD/40HC",
+          "confidence": "CONFIRMED"
+        }
+      ],
+      "warnings": [],
+      "created_by": "qa.review.s255",
+      "request_id": "COST-REVIEW-LEGACY-1",
+      "is_deleted": false,
+      "_fingerprint": "d60de137bc7c17532860d86fc39d5a88d00c2251898317b399820e9301558a50"
+    },
+    "requestId": "COST-REVIEW-LEGACY-1",
+    "persisted": {
+      "id": "COST-REVIEW-LEGACY-1",
+      "status": "ACTIVE"
+    },
+    "audit": [
+      {
+        "action": "create",
+        "actor": "qa.review.s255",
+        "createdAt": "2026-11-01 15:30:16"
+      }
+    ]
+  }
+]
+=== fresh identity === {'user_id': 'ca85a2eff53e4ab4', 'username': 'qa.review.s255', 'display_name': 'Review S255', 'email': '', 'role': 'sale'}
+
+=== session key con lai sau khi doi actor (khong logout) === ['current_user', 'logi_last_writes', 'logi_seq', 'logi_state']
+=== SUPPORT B lastWrites ===
+[
+  {
+    "event": "payment_record",
+    "shipmentId": "LO-0308",
+    "ok": true,
+    "error": "Đã ghi nhận khoản thu.",
+    "readback": {
+      "id": "LO-0308",
+      "journey": {
+        "nodes": [
+          {
+            "id": "delivery",
+            "label": "Giao hàng",
+            "family": "DELIVERY",
+            "targetTab": "nhap",
+            "completed": false,
+            "state": "UPCOMING",
+            "factState": "UNKNOWN",
+            "evidence": "",
+            "deadline": "",
+            "owned": false,
+            "current": false,
+            "blockers": [],
+            "dependencies": [],
+            "documentCategories": [
+              "transport"
+            ],
+            "documentIds": []
+          }
+        ],
+        "edges": [],
+        "currentStageId": "",
+        "owner": "Chưa phân công",
+        "primaryAction": {
+          "text": "Quá hạn khách",
+          "detail": "Hạn khách 12/09/2026 đã quá 50 ngày.",
+          "priority": "Khan",
+          "route": "/lo-hang/LO-0308?tab=nhap"
+        },
+        "seaFacts": {
+          "gate_in_at": "",
+          "vgm_status": "UNKNOWN",
+          "vgm_cutoff": "",
+          "si_status": "UNKNOWN",
+          "export_declaration_no": "",
+          "si_cutoff": ""
+        },
+        "positionNote": "Chưa đủ mốc thực tế để xác định vị trí vận hành."
+      },
+      "customer": "Minh Đức JSC",
+      "customerMST": "0102345678",
+      "customerId": "CUST-MINHDUC",
+      "contract": "",
+      "selectedDocumentTemplateIds": [],
+      "route": "Đông Bằng (Quảng Tây) → Hữu Nghị (Lạng Sơn)",
+      "borderVN": "Hữu Nghị (Lạng Sơn)",
+      "sale": "Chưa phân công",
+      "support": "qa.review.s255",
+      "status": "Chờ thông quan",
+      "statusTone": "amber",
+      "priority": "Khan",
+      "nextAction": "Quá hạn khách",
+      "nextActionDetail": "Hạn khách 12/09/2026 đã quá 50 ngày.",
+      "nextLabel": "XỬ LÝ NGAY",
+      "nextRoute": "/lo-hang/LO-0308?tab=nhap",
+      "updated": "01/11/2026 15:30",
+      "missingDocs": [
+        "Số tờ khai nhập khẩu",
+        "Đã thông quan",
+        "Xe giao VN + tài xế",
+        "Xác nhận đã giao hàng"
+      ],
+      "docs": [
+        {
+          "name": "Số tờ khai nhập khẩu",
+          "ok": false,
+          "note": "Chưa đăng ký tờ khai"
+        },
+        {
+          "name": "Đã thông quan",
+          "ok": false,
+          "note": "Chờ số tờ khai"
+        },
+        {
+          "name": "Xe giao VN + tài xế",
+          "ok": false,
+          "note": 
+
+=============================== warnings summary ===============================
+evidence/issue254/06-final-review/legacy-repro/test_legacy_lastwrites_repro.py::test_legacy_row_delivered_to_demoted_sale
+  /home/user/.venv-review/lib/python3.11/site-packages/_pytest/python.py:191: PytestReturnNotNoneWarning: Test functions should return None, but evidence/issue254/06-final-review/legacy-repro/test_legacy_lastwrites_repro.py::test_legacy_row_delivered_to_demoted_sale returned <class 'list'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+3 passed, 1 warning in 2.10s

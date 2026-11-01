@@ -1,0 +1,29 @@
+== Cross-check committed browser artifacts (reviewer CANNOT re-run Chromium) ==
+
+-- PNG viewport dimensions (claim: desktop 1440x900, mobile 390x844) --
+  desktop-sale-shipments-gated.png: 1440x900
+  desktop-support-after-payment.png: 1440x900
+  desktop-support-after-reversal.png: 1440x900
+  desktop-support-shipments-initial.png: 1440x900
+  mobile-sale-shipments-gated.png: 390x844
+  mobile-support-shipments.png: 390x844
+
+-- Backend truth (seed-truth.json, computed by core.logic) vs support payload --
+  receivable: seed=66960000.0  payload=66960000.0
+  received: seed=0.0  payload=0.0
+  outstanding: seed=66960000.0  payload=66960000.0
+  quote-only lot: {'hasActualLines': False, 'quoteAmount': 28450000, 'receivable': None, 'received': 0.0, 'outstanding': None} -> payload canView/actual: None False
+
+-- Browser claim vs payload (payment recorded then reversed) --
+   desktop_payment_record_updates_shipments_list {'currency': 'VND', 'receivable': '66.960.000 VND', 'received': '35.000.000 VND', 'outstanding': '31.960.000 VND'}
+   desktop_payment_reversal_updates_shipments_list_no_stale_balance {'currency': 'VND', 'receivable': '66.960.000 VND', 'received': '0 VND', 'outstanding': '66.960.000 VND'}
+
+-- Sale payload: any money field outside finance? --
+  finance_view_permission: False
+  LO-0308: canView=False source=restricted:finance_view receivable=None received=None outstanding=None payments=0
+  LO-254-CNY: canView=False source=restricted:finance_view receivable=None received=None outstanding=None payments=0
+  LO-254-QUOTE: canView=False source=restricted:finance_view receivable=None received=None outstanding=None payments=0
+  LO-254-USD: canView=False source=restricted:finance_view receivable=None received=None outstanding=None payments=0
+
+NOTE: these artifacts were produced by the IMPLEMENTER (Chromium 153). Reviewer verified
+internal consistency + dimensions only; NOT an independent in-browser execution.
