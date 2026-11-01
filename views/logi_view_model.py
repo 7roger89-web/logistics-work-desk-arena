@@ -717,17 +717,78 @@ FINANCE_WRITE_EVENTS = {
 }
 
 
+#: Provenance stamp carried INSIDE every outcome from the moment ``dispatch()``
+#: stores it: WHO wrote it (username + user_id) and WHICH role authority was in
+#: force. ``_last_writes_for_actor`` re-checks it against the session's CURRENT
+#: actor before the outcome enters the view-model, so an outcome can never be
+#: handed to a different actor of the same session, nor to the same account
+#: after its role/authority changed. The stamp is stripped before delivery.
+LAST_WRITES_PROVENANCE = "_provenance"
+
+
+def _actor_provenance() -> dict[str, str]:
+    """Danh tinh + quyen luc dang co hieu luc NGAY BAY GIO (da chuan hoa)."""
+    from core.auth import current_user
+
+    user = current_user() or {}
+    if not isinstance(user, Mapping):
+        user = {}
+    return {
+        "actor": str(user.get("username") or "").strip().lower(),
+        "userId": str(user.get("user_id") or "").strip().lower(),
+        "role": str(user.get("role") or "").strip().lower(),
+    }
+
+
+def _stamp_last_writes(outcomes: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Gan provenance cua actor vua ghi len TUNG outcome truoc khi luu.
+
+    Mot cho duy nhat (dispatch) va khong doi hinh dang outcome khac — chi them
+    mot key noi bo da duoc loc bo khi tra ve component.
+    """
+    provenance = _actor_provenance()
+    for outcome in outcomes:
+        if isinstance(outcome, dict):
+            outcome[LAST_WRITES_PROVENANCE] = dict(provenance)
+    return outcomes
+
+
+def _provenance_matches(written: Mapping[str, Any], current: Mapping[str, Any]) -> bool:
+    """Outcome chi thuoc ve actor dang dung session khi ca danh tinh va role khop."""
+    return all(
+        str(written.get(field) or "").strip().lower() == str(current.get(field) or "").strip().lower()
+        for field in ("actor", "userId", "role")
+    )
+
+
 def _last_writes_for_actor(can_view_finance: bool) -> list[dict[str, Any]]:
     """Tra lastWrites duoc phep xem cua actor hien tai.
 
-    Actor co finance_view nhan duoc toan bo ket qua ghi (giai quyet duoc tai
-    server authority boundary). Actor khong co quyen bi bo loc het cac su
-    kien ghi tien — khong bao gio duoc so tien ngoai quyen qua lastWrites.
+    Hai lop, giu nguyen lop cu va them lop provenance:
+
+    1. ``finance_view`` — actor khong co quyen khong bao gio nhan su kien ghi
+       tien (amount, da thu, cong no) qua lastWrites.
+    2. Provenance actor/role — outcome chi duoc tra cho DUNG actor va DUNG role
+       da tao ra no. Row cu khong co provenance (chi con trong session dang mo
+       khi nang cap code, hoac do script fixture ghi thang) giu nguyen hanh vi
+       truoc day: van qua lop 1. Nho vay khong phu thuoc vao danh sach ten su
+       kien, cac su kien anh em mang tien (cost_rate_save, cost_catalog_save,
+       contract_intl_snapshot_save...) cung khong bi ro ri khi doi actor/role.
     """
     rows = _last_writes_readback()
-    if can_view_finance:
-        return rows
-    return [row for row in rows if row.get("event") not in FINANCE_WRITE_EVENTS]
+    if not can_view_finance:
+        rows = [row for row in rows if row.get("event") not in FINANCE_WRITE_EVENTS]
+    current = _actor_provenance()
+    delivered: list[dict[str, Any]] = []
+    for row in rows:
+        written = row.pop(LAST_WRITES_PROVENANCE, None)
+        if not isinstance(written, Mapping):
+            # Row khong co provenance: giu hanh vi cu (lop 1 o tren).
+            delivered.append(row)
+            continue
+        if _provenance_matches(written, current):
+            delivered.append(row)
+    return delivered
 
 
 def _read_sources(shipments: Mapping[str, Any], references: Mapping[str, Any], *, db: Any = _UNSET_DB) -> dict[str, Any]:
@@ -6465,8 +6526,10 @@ def dispatch(
     # Store the outcomes BEFORE any rerun so the fresh view-model built on the
     # rerun embeds them (``_last_writes_readback``) — the rerun restarts the
     # script and anything assigned afterwards would be lost.
+    # LOGI-255 — moi outcome mang provenance actor/role cua CHINH actor vua ghi;
+    # ``_last_writes_for_actor`` chi tra lai cho dung actor/role do.
     if outcomes:
-        st.session_state[LAST_WRITES_KEY] = outcomes
+        st.session_state[LAST_WRITES_KEY] = _stamp_last_writes(outcomes)
 
     needs_rerun = (
         # A material write was just handled (success OR refusal): ONE rerun
