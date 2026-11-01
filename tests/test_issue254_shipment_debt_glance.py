@@ -290,6 +290,96 @@ def test_server_side_finance_view_boundary_blocks_sale_and_allows_support(stagin
         assert readback["finance"]["payments"] == []
 
 
+def test_authenticated_unrecognized_or_missing_role_fails_closed_for_finance_view(staging):
+    """PR #255 Blocker 2 — authenticated account with unrecognized/blank/None/missing role must NOT fall back to viewer/support finance_view."""
+    import streamlit as st
+    from core.auth import hash_password
+    from core.users import authenticate, public_identity
+    import views.user_access as ua
+
+    ids = _seed_issue254_scenarios()
+    secret = "ValidContractorPass254!"
+    pw_hash = hash_password(secret)
+
+    corrupt_docs = [
+        {
+            "user_id": "u-contractor-254",
+            "username": "legacy.contractor",
+            "display_name": "Legacy Contractor",
+            "email": "contractor@example.test",
+            "role": "contractor",
+            "active": True,
+            "password_hash": pw_hash,
+        },
+        {
+            "user_id": "u-blank-254",
+            "username": "legacy.blankrole",
+            "display_name": "Blank Role",
+            "email": "blank@example.test",
+            "role": "   ",
+            "active": True,
+            "password_hash": pw_hash,
+        },
+        {
+            "user_id": "u-none-254",
+            "username": "legacy.nonerole",
+            "display_name": "None Role",
+            "email": "none@example.test",
+            "role": None,
+            "active": True,
+            "password_hash": pw_hash,
+        },
+        {
+            "user_id": "u-missing-254",
+            "username": "legacy.missingrole",
+            "display_name": "Missing Role",
+            "email": "missing@example.test",
+            "active": True,
+            "password_hash": pw_hash,
+        },
+    ]
+
+    for doc in corrupt_docs:
+        auth_identity = authenticate(doc, secret)
+        assert auth_identity is not None, f"valid active credentials should authenticate {doc['username']}"
+        pub_identity = public_identity(doc)
+
+        for session_identity in (
+            auth_identity,
+            pub_identity,
+            {"user_id": doc["user_id"], "username": doc["username"]},
+        ):
+            st.session_state["current_user"] = dict(session_identity)
+            assert has_permission("finance_view") is False, (
+                f"authenticated unsupported role {session_identity!r} must NOT inherit viewer/support finance_view"
+            )
+            denied_vm = vm.build_view_model()
+            assert denied_vm["user"]["canViewFinance"] is False
+            assert denied_vm["home"]["outstandingTotal"] is None
+            assert denied_vm["receivables"] == {"rows": [], "totals": {}}
+            assert denied_vm["payables"]["rows"] == []
+            assert denied_vm["reconciliation"]["rows"] == []
+
+            for row in denied_vm["shipments"]:
+                fin = row["finance"]
+                assert fin["canView"] is False
+                assert fin["hasActualLines"] is False
+                assert fin["receivable"] is None
+                assert fin["received"] is None
+                assert fin["outstanding"] is None
+                assert fin["actual"] == []
+                assert fin["payments"] == []
+
+            readback = vm._projection_for(vm.read_shipment(ids["vndActual"]))
+            assert readback["finance"]["canView"] is False
+            assert readback["finance"]["receivable"] is None
+            assert readback["finance"]["received"] is None
+            assert readback["finance"]["outstanding"] is None
+
+            access_proj = ua.user_access_projection(users=[doc], current_user=session_identity)
+            assert "finance_view" not in access_proj["currentUser"]["permissions"]
+
+
 def test_payment_record_and_reversal_update_projection_without_stale_balance(staging):
     """Recording then reversing a receipt via canonical writers updates received & outstanding."""
     ids = _seed_issue254_scenarios()

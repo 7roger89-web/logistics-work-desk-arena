@@ -122,22 +122,31 @@ ROLE_PERMISSIONS: dict[str, set[str]] = {
 
 
 def _role_permissions(role: str) -> set[str]:
-    normalized = str(role or "viewer").lower()
-    return ROLE_PERMISSIONS.get(normalized, ROLE_PERMISSIONS["viewer"])
+    normalized = str(role or "").strip().lower()
+    if not normalized:
+        return set()
+    return ROLE_PERMISSIONS.get(normalized, set())
 
 
 def has_permission(permission: str) -> bool:
     """Kiểm tra quyền của người dùng hiện tại trong session."""
     user = current_user()
-    role = str(user.get("role", "viewer")).lower()
-    permissions = _role_permissions(role)
+    if user.get("username"):
+        raw_role = user.get("role")
+        role = raw_role.strip().lower() if isinstance(raw_role, str) else ""
+        if not role or role not in ROLE_PERMISSIONS:
+            return False
+        permissions = ROLE_PERMISSIONS[role]
+        return "*" in permissions or permission in permissions
+
+    raw_role = user.get("role")
+    fallback_role = raw_role.strip().lower() if isinstance(raw_role, str) and raw_role.strip() else "viewer"
+    permissions = ROLE_PERMISSIONS.get(fallback_role, ROLE_PERMISSIONS["viewer"])
     if "*" in permissions:
         return True
     if permission in permissions:
         return True
-    if not user.get("username"):
-        return permission in _role_permissions("anonymous")
-    return False
+    return permission in _role_permissions("anonymous")
 
 
 def has_write_permission(permission: str) -> bool:
