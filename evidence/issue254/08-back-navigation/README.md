@@ -32,8 +32,8 @@ No new store, no sessionStorage, no `BrowserRouter` migration, no change to
 | Focused + new together | `pytest tests/test_issue254_shipment_debt_glance.py tests/test_logi255_return_to_list.py` | **8 passed** |
 | Navigation/route regressions | `pytest tests/test_phase_a_component.py tests/test_logi_shipment_primary_action_unify_01.py tests/test_logi_scope_aware_missing_info_01.py tests/test_contract_route_contract.py` | **59 passed** |
 | Slash-route + real-use regressions | `pytest tests/test_shipment_slash_route_repair_01.py tests/test_logi_uat_real_use_repair_02.py` | **34 passed** |
-| Full suite (fixed tree) | `pytest tests -q -rs` | **2386 passed, 44 skipped, 10 subtests passed** (`logs/full-pytest-fixed.log`) |
-| Full suite (pristine `6934f4b1`) | same | **2385 passed, 44 skipped, 10 subtests passed** (`logs/full-pytest-baseline.log`) |
+| Full suite (fixed tree) | `pytest tests -q -rs` | **2386 passed, 44 skipped, 10 subtests passed** (`logs/full-pytest-fixed.txt`) |
+| Full suite (pristine `6934f4b1`) | same | **2385 passed, 44 skipped, 10 subtests passed** (`logs/full-pytest-baseline.txt`) |
 
 `+1 passed` is exactly the new test. **Skipped count unchanged (44 = 44), 0 xfail in
 both logs, 0 failures in both.**
