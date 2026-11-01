@@ -23,7 +23,6 @@ from tests.test_issue254_shipment_debt_glance import (  # noqa: E402
     OPERATIONS_ACTOR,
     SALE_ACTOR,
     SUPPORT_ACTOR,
-    _dispatch,
     _seed_issue254_scenarios,
 )
 
@@ -46,14 +45,26 @@ def staging255():
     logi_sandbox.reset_backend()
 
 
-def _write_payment(seq, request_id="PAY-255-1", amount=AMOUNT):
-    return _dispatch(seq, PAYMENT_EVENT, {
-        "shipmentId": SID,
-        "amount": amount,
-        "requestId": request_id,
-        "date": "2026-11-01",
-        "note": "Thu tien dich vu",
-    })
+def _write_payment_via_dispatch(seq, request_id="PAY-255-1", amount=AMOUNT):
+    """Gui payment qua boundary THAT ``vm.dispatch()`` (gan provenance khi luu).
+
+    LOGI-255-LEGACY-FAILCLOSED: fixture cu ghi thang outcome vao
+    ``LAST_WRITES_KEY`` khong co ``_provenance`` — dung cai duong fail-open vua
+    dong. Test nay phai di qua boundary that, khong tu che outcome.
+    """
+    seq["n"] += 1
+    outcomes = vm.dispatch(
+        {PAYMENT_EVENT: {"seq": seq["n"], "event": PAYMENT_EVENT, "payload": {
+            "shipmentId": SID,
+            "amount": amount,
+            "requestId": request_id,
+            "date": "2026-11-01",
+            "note": "Thu tien dich vu",
+        }}},
+        allow_rerun=False,
+    )
+    assert len(outcomes) == 1, outcomes
+    return outcomes[0]
 
 
 def test_logout_clears_current_user_and_lastwrites(staging255):
@@ -81,9 +92,10 @@ def test_support_finance_write_kept_in_lastwrites(staging255):
     _seed_issue254_scenarios()
     seq = {"n": 0}
     st.session_state["current_user"] = dict(SUPPORT_ACTOR)
-    pay_out = _write_payment(seq, "PAY-255-1")
+    pay_out = _write_payment_via_dispatch(seq, "PAY-255-1")
     assert pay_out["ok"] is True
-    st.session_state[LAST_WRITES_KEY] = [pay_out]  # nhu dispatch() luu truoc rerun
+    # dispatch() da luu outcome KEM provenance cua actor vua ghi; khong ghi tay.
+    assert st.session_state[LAST_WRITES_KEY]
 
     model = vm.build_view_model()
     assert model["user"]["canViewFinance"] is True
@@ -107,9 +119,10 @@ def test_lastwrites_finance_not_leaked_to_sale_same_session(staging255):
     _seed_issue254_scenarios()
     seq = {"n": 0}
     st.session_state["current_user"] = dict(SUPPORT_ACTOR)
-    pay_out = _write_payment(seq, "PAY-255-1")
+    pay_out = _write_payment_via_dispatch(seq, "PAY-255-1")
     assert pay_out["ok"] is True
-    st.session_state[LAST_WRITES_KEY] = [pay_out]  # session cua Support con ke
+    # Dispatch that luu outcome kem provenance; session cua Support van giu ket qua.
+    assert st.session_state[LAST_WRITES_KEY]
 
     # Support hop le van doc lai dung (requestId/idempotency/thong bao duoc giu)
     support_model = vm.build_view_model()

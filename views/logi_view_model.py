@@ -754,9 +754,22 @@ def _stamp_last_writes(outcomes: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
 
 def _provenance_matches(written: Mapping[str, Any], current: Mapping[str, Any]) -> bool:
-    """Outcome chi thuoc ve actor dang dung session khi ca danh tinh va role khop."""
+    """Outcome chi thuoc ve actor dang dung session khi danh tinh VA role khop.
+
+    Fail-closed: ``username``/``role`` rong khong phai bang chung danh tinh/quyen
+    (rong == rong khong duoc coi la "cung nguoi"), va ``user_id`` van phai bang
+    nhau. Nho vay mot row thieu/sai quyen khong the "khop" voi session khong xac
+    dinh duoc danh tinh.
+    """
+    def _norm(value: Any) -> str:
+        return str(value or "").strip().lower()
+
+    written_actor, written_role = _norm(written.get("actor")), _norm(written.get("role"))
+    current_actor, current_role = _norm(current.get("actor")), _norm(current.get("role"))
+    if not written_actor or not written_role or not current_actor or not current_role:
+        return False
     return all(
-        str(written.get(field) or "").strip().lower() == str(current.get(field) or "").strip().lower()
+        _norm(written.get(field)) == _norm(current.get(field))
         for field in ("actor", "userId", "role")
     )
 
@@ -769,11 +782,13 @@ def _last_writes_for_actor(can_view_finance: bool) -> list[dict[str, Any]]:
     1. ``finance_view`` — actor khong co quyen khong bao gio nhan su kien ghi
        tien (amount, da thu, cong no) qua lastWrites.
     2. Provenance actor/role — outcome chi duoc tra cho DUNG actor va DUNG role
-       da tao ra no. Row cu khong co provenance (chi con trong session dang mo
-       khi nang cap code, hoac do script fixture ghi thang) giu nguyen hanh vi
-       truoc day: van qua lop 1. Nho vay khong phu thuoc vao danh sach ten su
-       kien, cac su kien anh em mang tien (cost_rate_save, cost_catalog_save,
-       contract_intl_snapshot_save...) cung khong bi ro ri khi doi actor/role.
+       da tao ra no. Lop nay fail-closed: row KHONG co provenance, provenance
+       khong hop le (khong phai mapping / thieu field / rong), hoac danh tinh —
+       role khong khop deu KHONG duoc giao. Mot row legacy con trong session
+       khong chung minh duoc ai da tao no thi khong phai bang chung quyen.
+       Nho vay khong phu thuoc vao danh sach ten su kien: cac su kien anh em
+       mang tien (cost_rate_save, cost_catalog_save, contract_intl_snapshot_save
+       ...) cung khong bi ro ri khi doi actor/role.
     """
     rows = _last_writes_readback()
     if not can_view_finance:
@@ -783,8 +798,7 @@ def _last_writes_for_actor(can_view_finance: bool) -> list[dict[str, Any]]:
     for row in rows:
         written = row.pop(LAST_WRITES_PROVENANCE, None)
         if not isinstance(written, Mapping):
-            # Row khong co provenance: giu hanh vi cu (lop 1 o tren).
-            delivered.append(row)
+            # Khong co provenance: khong chung minh duoc danh tinh/quyen -> khong giao.
             continue
         if _provenance_matches(written, current):
             delivered.append(row)
