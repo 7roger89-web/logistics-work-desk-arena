@@ -1,8 +1,9 @@
 import { contractPath } from "../lib/contractRoute";
 import { shipmentIdFromPath } from "../lib/shipmentRoute";
+import { listReturnFromState } from "../lib/listReturn";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { ArrowRight, Building2, CheckCircle2, ChevronDown, CircleAlert, Download, Eye, FileText, Lock, MapPin, PenLine, Phone, Truck, Wallet, FileDown, FileSpreadsheet } from "lucide-react";
+import { ArrowLeft, ArrowRight, Building2, CheckCircle2, ChevronDown, CircleAlert, Download, Eye, FileText, Lock, MapPin, PenLine, Phone, Truck, Wallet, FileDown, FileSpreadsheet } from "lucide-react";
 import { Field, GhostBtn, MissingBox, PrimaryBtn, SearchPicker, SectionTitle, SheetDialog, StateRow, SuccessBtn, ToneBadge, inputCls } from "../components/ui";
 import ShipmentOperations from "../components/ShipmentOperations";
 import ShipmentExecutionProfile from "../components/ShipmentExecutionProfile";
@@ -118,8 +119,16 @@ export default function ShipmentDetail() {
   // stays the fallback for any location that is not this route. The adjacent
   // contract detail has used this same bounded mechanism since Issue #59.
   const { id: paramId } = useParams();
-  const { pathname } = useLocation();
+  const { pathname, state: locationState } = useLocation();
   const id = shipmentIdFromPath(pathname, paramId);
+  // LOGI-255-RETURN-TO-LIST — the list screen hands its exact location
+  // (q/status/period/from/to/archive) through router state. A direct entry
+  // (Home card, Inbox, Receivables, deep link) carries no such state and falls
+  // back to the plain list, so "return" can never land on a blank screen.
+  const listReturn = listReturnFromState(locationState);
+  const cameFromList = listReturn !== "/lo-hang" || Boolean(
+    locationState && typeof locationState === "object" && "listReturn" in (locationState as Record<string, unknown>)
+  );
   const [sp, setSp] = useSearchParams();
   const tab = sp.get("tab") || "van-tai";
   const { shipments, attention, updateShipment, toast, contracts, customers, dispatch, financeServices, environment } = useStore();
@@ -1459,6 +1468,25 @@ export default function ShipmentDetail() {
             <span className="grid h-10 w-10 place-items-center rounded-full bg-[#0f2a4a] text-white text-[13px] font-extrabold" title={operatorTitle} aria-label={operatorTitle}>{operatorInitials}</span>
           </div>
         </div>
+      </div>
+
+      {/* LOGI-255-RETURN-TO-LIST — ONE explicit way back to the list, carrying
+          the operator's exact filters. It sits on its own row so it stays
+          readable at 390x844 without competing with the identity bar's
+          right-hand actions. The label states what it preserves. */}
+      <div className="flex flex-wrap items-center gap-2" data-testid="shipment-back-row">
+        <Link
+          to={listReturn}
+          data-testid="shipment-back-to-list"
+          data-return-to={listReturn}
+          aria-label={cameFromList ? "Về danh sách lô, giữ nguyên bộ lọc" : "Về danh sách lô"}
+          className="btn-press touch-target inline-flex items-center gap-1.5 rounded-xl border-2 border-slate-200 bg-white px-3.5 min-h-[44px] text-[14px] font-bold text-[#0f2a4a] hover:border-[#1e5aa8]"
+        >
+          <ArrowLeft size={17} aria-hidden="true" /> Về danh sách lô
+        </Link>
+        {cameFromList && (
+          <span className="hidden sm:inline text-[12.5px] text-slate-500">giữ nguyên bộ lọc đang xem</span>
+        )}
       </div>
         {/* OWNER_RUNTIME_UAT_REPAIR — the duplicated "HỒ SƠ THỰC HIỆN LÔ ·
             Hồ sơ lô còn thiếu…" yellow band is GONE from the top path: the

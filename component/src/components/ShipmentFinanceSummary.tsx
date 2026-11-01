@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { shipmentPath } from "../lib/shipmentRoute";
+import { listReturnState } from "../lib/listReturn";
 import { UNKNOWN, cx, fmtCcy, isUnknown } from "../lib/format";
 import type { Shipment } from "../lib/viewmodel";
 
@@ -18,9 +19,15 @@ import type { Shipment } from "../lib/viewmodel";
 export function ShipmentFinanceSummary({
   shipment,
   variant = "desktop",
+  listReturn,
 }: {
   shipment: Shipment;
   variant?: "desktop" | "mobile";
+  /** LOGI-255-RETURN-TO-LIST — the /lo-hang location this cluster was opened
+   *  from, so the detail screen can return to the SAME filters. Omitted by
+   *  every non-list caller (Receivables, PartnerPayables, …), which therefore
+   *  keep the plain-list fallback instead of inventing a context. */
+  listReturn?: string;
 }) {
   const fin = shipment.finance;
   if (!fin || fin.canView === false) return null;
@@ -67,6 +74,7 @@ export function ShipmentFinanceSummary({
   return (
     <Link
       to={detailHref}
+      state={listReturn ? listReturnState(listReturn) : undefined}
       data-testid="shipment-finance-summary"
       data-shipment-id={shipment.id}
       data-currency={ccy}

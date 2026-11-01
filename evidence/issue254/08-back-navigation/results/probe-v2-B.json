@@ -1,0 +1,100 @@
+{
+  "baseUrl": "http://127.0.0.1:9521/",
+  "tag": "after",
+  "tests": {
+    "B": {
+      "tag": "after",
+      "statusApplied": true,
+      "filter_before": {
+        "q": "",
+        "periodPressed": [
+          "Thời gian khác"
+        ],
+        "archivePressed": [
+          "Tất cả"
+        ],
+        "statusChips": [
+          "Thêm",
+          "NHẬP GETFLY DSDH",
+          "Lọc"
+        ],
+        "from": "",
+        "to": "2030-12-31",
+        "rows": [
+          "LO-0306",
+          "LO-0307",
+          "LO-0308",
+          "LO-R255-QUOTE",
+          "LO-R255-USD"
+        ],
+        "cards": [
+          "LO-0306",
+          "LO-0307",
+          "LO-0308",
+          "LO-R255-QUOTE",
+          "LO-R255-USD"
+        ],
+        "summary": "Tìm thấy 5 lô · Mỗi lô: hiện trạng → Incoterm · phương thức · loại hàng · ETD/ETA → việc tiếp theo → nút xử lý."
+      },
+      "detailOpened": true,
+      "backControl": {
+        "present": true,
+        "tag": "A",
+        "href": "/lo-hang?status=Ch%E1%BB%9D+th%C3%B4ng+quan&period=khac&to=2030-12-31&archive=tat-ca",
+        "dataReturnTo": "/lo-hang?status=Ch%E1%BB%9D+th%C3%B4ng+quan&period=khac&to=2030-12-31&archive=tat-ca",
+        "text": "Về danh sách lô",
+        "aria": "Về danh sách lô, giữ nguyên bộ lọc",
+        "rect": {
+          "x": 97,
+          "y": 201,
+          "w": 176,
+          "h": 44
+        },
+        "fontSize": 14,
+        "visible": true
+      },
+      "filter_after": {
+        "q": "",
+        "periodPressed": [
+          "Thời gian khác"
+        ],
+        "archivePressed": [
+          "Tất cả"
+        ],
+        "statusChips": [
+          "Thêm",
+          "NHẬP GETFLY DSDH",
+          "Lọc"
+        ],
+        "from": "",
+        "to": "2030-12-31",
+        "rows": [
+          "LO-0306",
+          "LO-0307",
+          "LO-0308",
+          "LO-R255-QUOTE",
+          "LO-R255-USD"
+        ],
+        "cards": [
+          "LO-0306",
+          "LO-0307",
+          "LO-0308",
+          "LO-R255-QUOTE",
+          "LO-R255-USD"
+        ],
+        "summary": "Tìm thấy 5 lô · Mỗi lô: hiện trạng → Incoterm · phương thức · loại hàng · ETD/ETA → việc tiếp theo → nút xử lý."
+      },
+      "sameParams": true,
+      "sameRows": true,
+      "returnPathUsed": "in_app_button",
+      "verdict": "PASS"
+    }
+  },
+  "browser": {
+    "version": "153.0.8010.0",
+    "executable": "/tmp/chromium"
+  },
+  "summary": {
+    "B": "PASS"
+  }
+}

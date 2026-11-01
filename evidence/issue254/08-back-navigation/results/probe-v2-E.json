@@ -1,0 +1,74 @@
+{
+  "baseUrl": "http://127.0.0.1:9521/",
+  "tag": "after",
+  "tests": {
+    "E": {
+      "desktop": {
+        "viewport": 1440,
+        "opened": true,
+        "backControl": {
+          "present": true,
+          "tag": "A",
+          "href": "/lo-hang?period=tat-ca",
+          "dataReturnTo": "/lo-hang?period=tat-ca",
+          "text": "Về danh sách lô",
+          "aria": "Về danh sách lô, giữ nguyên bộ lọc",
+          "rect": {
+            "x": 97,
+            "y": 115,
+            "w": 176,
+            "h": 44
+          },
+          "fontSize": 14,
+          "visible": true
+        },
+        "controlRectInViewport": {
+          "x": 97,
+          "y": 201,
+          "w": 176,
+          "h": 44,
+          "inViewport": true
+        },
+        "docOverflowPx": 0,
+        "rootOverflowPx": 0
+      },
+      "mobile": {
+        "viewport": 390,
+        "opened": true,
+        "backControl": {
+          "present": true,
+          "tag": "A",
+          "href": "/lo-hang?period=tat-ca",
+          "dataReturnTo": "/lo-hang?period=tat-ca",
+          "text": "Về danh sách lô",
+          "aria": "Về danh sách lô, giữ nguyên bộ lọc",
+          "rect": {
+            "x": 28,
+            "y": -614,
+            "w": 176,
+            "h": 44
+          },
+          "fontSize": 14,
+          "visible": true
+        },
+        "controlRectInViewport": {
+          "x": 28,
+          "y": 283,
+          "w": 176,
+          "h": 44,
+          "inViewport": true
+        },
+        "docOverflowPx": 0,
+        "rootOverflowPx": 0
+      },
+      "verdict": "PASS"
+    }
+  },
+  "browser": {
+    "version": "153.0.8010.0",
+    "executable": "/tmp/chromium"
+  },
+  "summary": {
+    "E": "PASS"
+  }
+}
