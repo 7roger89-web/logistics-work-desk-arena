@@ -1,0 +1,4 @@
+-r requirements.txt
+pytest>=8
+pytest-subtests>=0.13
+ruff>=0.6

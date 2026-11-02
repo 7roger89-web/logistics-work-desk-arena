@@ -180,27 +180,24 @@ này (`roles.assignable` vs `roles.legacy`).
 
 ## 8. Kiểm tra
 
-```bash
-python -m pytest tests -q
+CI chạy tự động mỗi khi mở pull request (.github/workflows/gate.yml): ruff,
+kiểm tra router, rồi bộ test.
+
+Bộ test có tập lỗi đã biết ở tests/BASELINE_FAILED.txt — nợ cũ, không phải
+lỗi mới. CI chỉ đỏ khi xuất hiện lỗi CHƯA có trong file đó.
+
+Chạy tại máy:
+```
+python -m pytest tests -q --continue-on-collection-errors --junitxml=out.xml
+python scripts/compare_baseline.py out.xml
 ```
 
-Sự thật hiện trạng của bộ test (đừng tin tài liệu cũ, đừng tin con số hard-code):
+Sửa xong một lỗi cũ thì cập nhật baseline:
+```
+python scripts/compare_baseline.py out.xml --update
+```
 
-- Bộ test có ~130+ file (`test_*.py`, hiện tại là 144 file — con số trôi theo thời
-  gian) và suite **ĐANG ĐỎ CÓ CHỦ Ý**: một tập FAILED/ERROR đã biết được giữ
-  nguyên như backlog sống. **Không hard-code số test pass vào tài liệu.**
-- Quy trình bắt buộc khi sửa bất cứ thứ gì: chạy **full suite 1 lần TRƯỚC** khi
-  sửa để lấy baseline danh sách FAILED/ERROR, rồi chạy lại **SAU** khi sửa và so
-  sánh — một thay đổi đúng phải **giữ nguyên tập FAILED/ERROR cũ** và chỉ thêm
-  test mới (pass). Số pass tăng mà tập fail đổi shape = có regression.
-- Lịch sử đã biết để đối chiếu: ~**1492–1541 passed / 24 failed** (xem
-  `CHANGELOG.md`); tập failed thực tế có thể đã lớn hơn ở HEAD hiện tại — luôn
-  báo con số của lần chạy kèm commit.
-- Test cần Streamlit/MongoDB **thật** được **skip theo thiết kế** khi chạy ở chế
-  độ thuần (pure) — không cố sửa chúng thành chạy được.
-- Một số file test có thể lỗi ngay ở bước collection trên HEAD hiện tại (ví dụ
-  import symbol không còn tồn tại); khi lấy baseline dùng
-  `--continue-on-collection-errors` để phần còn lại của suite vẫn chạy.
+Test cần Streamlit/Mongo thật được skip theo thiết kế.
 
 ---
 
