@@ -1,134 +1,70 @@
 # AGENTS.md — Logistics Work Desk
 
-## P2P Supreme Law bootstrap (mandatory)
+## Đọc gì trước
 
-Before substantive P2P-managed analysis, planning, prompt writing, implementation, review, testing, or merge decisions, the current actor must establish its own valid law source.
+Đọc hết file này là đủ để bắt đầu. Có `.p2p/portable/` thì đọc thêm
+`P2P-OPERATIONS-NOTEBOOK.md` trong đó; thiếu không được dừng.
+In `LAW_SOURCE=<file|NONE>` theo file thực sự đã đọc, hoặc `NONE` khi không có.
+Áp dụng hướng dẫn ngắn này cho giao diện và tài liệu; giữ nghi thức P2P cho tiền,
+chứng từ và danh tính database theo `docs/PROCESS.md`.
 
-Use this operational order:
+## Luật nhánh
 
-1. `CANONICAL_AUTHENTICATED` — use the canonical P2P notebook only when this same actor/session has already successfully reached `7roger89-web/P2P-upgrade-github-1@main:docs/p2p-development/P2P-OPERATIONS-NOTEBOOK.md`.
-2. `LOCAL_INSTALLED` — otherwise use a valid, not-known-stale installed projection under `.p2p/system` when present.
-3. `LOCAL_PORTABLE` — in a repo-scoped remote clone, use `.p2p/portable/P2P-OPERATIONS-NOTEBOOK.md` directly when it carries `P2P_PORTABLE_LAW_PROJECTION=YES`, canonical provenance, and a valid source identity.
-4. `INLINE_CAPSULE` — otherwise use only a fresh explicit `SUPREME_LAW_CAPSULE` from the current Control Tower handoff.
-5. If none is valid, stop at `P2P_LAW_SOURCE=LAW_CONTEXT_BLOCKED`.
+Một task một nhánh: `task/<số-issue>-<mô-tả>`. Không đẩy thẳng `main`.
+Gộp xong xoá nhánh ngay; nhánh quá 30 ngày chưa gộp thì xoá.
+Giữ mục tiêu dưới 20 nhánh mở. Đây là luật cho việc mới, không phải lệnh xoá nhánh hàng loạt.
 
-`TARGET_REPO_AUTH != CANONICAL_CROSS_REPO_REACHABILITY`. Authentication to this project does not prove that the private canonical P2P repository is readable. A repo-scoped executor with valid portable law must not issue a cross-repository `gh`/API request solely to manufacture a 404 before fallback. If canonical is already successfully reachable in that same session, canonical wins.
+## Bằng chứng
 
-Never claim a law source was read when it was not. `TASK_BRANCH != LAW_AUTHORITY`. `TARGET_PROJECT != LAW_SOURCE`.
+Lời tự khai không tính. Đưa test đã chạy, ảnh chụp, log hoặc số đo có thể kiểm tra.
+Kết luận cuối chỉ chọn một: `XONG` / `CHƯA XONG` / `HỎNG`.
 
-At task start report exactly one:
-`P2P_LAW_SOURCE=CANONICAL_AUTHENTICATED|LOCAL_INSTALLED|LOCAL_PORTABLE|INLINE_CAPSULE|LAW_CONTEXT_BLOCKED`.
+## Kiểm tra trước khi mở PR
 
-## Evidence-first verification (P2P)
+Chạy `ruff check .`, `python scripts/check_router.py`, rồi pytest theo README mục 8.
+`tests/BASELINE_FAILED.txt` là nợ cũ; chỉ chịu trách nhiệm lỗi mới trong phạm vi task.
+Sửa được lỗi cũ thì xoá dòng đó khỏi baseline. Không cập nhật baseline để che lỗi mới.
 
-For non-trivial implementation, repair, review, testing, or any correctness/readiness claim, apply `P2P_EVIDENCE_FIRST_VERIFICATION_V1`. When canonical cross-repository access is available, read:
-`7roger89-web/P2P-upgrade-github-1@main:docs/p2p-development/P2P-EVIDENCE-FIRST-VERIFICATION.md`.
+## Định nghĩa xong
 
-If that profile cannot be read, apply this minimum capsule:
-- `AGENT_CLAIM_IS_NOT_EVIDENCE`: worker self-report is never acceptance authority.
-- `TEST_PASS_PROVES_ONLY_CHALLENGED_BEHAVIOR`: a passing test/build/lint/coverage/static check proves only the boundary/property it actually exercised.
-- Reuse existing execution lanes `FAST|STANDARD|STRICT|CRITICAL`; do not create a second risk classifier.
-- Non-trivial changes carry recoverable intent, behavior/regression proof, relevant environment/risk proof, provenance, and a truthful `PROVEN|INCOMPLETE|FAILED` verdict using existing P2P evidence stores.
-- `STRICT`/`CRITICAL` require an independent challenge appropriate to the changed surface. Targeted mutation, adversarial, negative, or property checks are tools, not rituals.
-- UI/API/provider/deployment/migration claims require representative real-path evidence when practical; otherwise downgrade the claim to the strongest truthful unverified/incomplete state.
-- Stop once bounded acceptance is proven; do not run broad mutation campaigns, extra reviewers, or full-suite ceremonies without decision value.
+Dùng đúng 5 điều trong [docs/DONE.md](docs/DONE.md). Không tự thêm điều kiện.
+Việc ngoài phạm vi đưa sang issue riêng; không kéo dài task đang làm.
 
-## Mandatory prompt serialization contract
+## Quyền
 
-Every P2P-generated operational prompt handed to another executor must explicitly serialize both gates below. Do not leave them implicit merely because the current chat already read the law.
+Ma trận duy nhất: `core/auth.py::ROLE_PERMISSIONS`. Có 7 role: `admin`, `sale`,
+`support`, `accounting`, `operations`, `sales`, `viewer`. Chỉ 3 role tạo/gán được
+qua UI: `admin`, `sale`, `support` (`core/users.py::SUPPORTED_ROLES`).
+Role lạ rơi về `viewer`; không dựng ma trận quyền thứ hai.
 
-`P2P_LAW_PREFLIGHT` must tell the executor to read repository-root `AGENTS.md`, use canonical only if already successfully reachable; otherwise installed > valid portable > inline capsule > blocked; repo-scoped portable requires no cross-repo probe solely for fallback, and report exactly one `P2P_LAW_SOURCE=<actual source>`.
+## Cấm
 
-`OE_GATE` must ask exactly `Không bị over engineering chứ?`, evaluate `SIMPLER_PATH`, `MATERIAL_PROGRESS`, `NECESSITY`, `CORE_BEFORE_SUPPORT`, and `SMALLER_VERIFIABLE_SLICE`, then return `OE_VERDICT=DO_IT|SKIP_IT|DEFER_UNTIL_NEEDED` with one concrete reason. A weak/negative answer means reduce, remove, or defer the step; never return a ceremonial PASS.
+Không deploy production khi chưa có lệnh Owner; không chạm `logistics_db`.
+Không in URI, khoá hoặc mật khẩu. Không thêm thư viện khi thư viện hiện có làm được.
+Không đổi stack.
 
-This applies to NEW_CHAT and SAME_CHAT prompts for Arena, Codex, Manus, reviewers, supervisors, and other delegated executors. Do not repeat the whole law body when a valid law source is readable.
+## Skill
 
-## Baseline hiện tại
+Gọi thẳng tên skill có sẵn trong `.agents/skills/`: `security-audit`,
+`frontend-code-review`, `react-doctor`, `qa`, `debugging`, `p2p-uiux`,
+`scope-reality-check`.
 
-- `main` là baseline tích hợp hiện tại. Việc mới đi qua nhánh task + Pull Request vào `main`; lineage các đợt LOG-C13/C14/C15 chỉ còn ý nghĩa lịch sử (xem `docs/LOG_C15_HANDOFF.md` khi cần truy vết).
-- KHÔNG deploy production khi chưa có Owner gate tường minh cho chính task đó.
+Các skill khác đã có trong repo: `baseline-ui`, `composition-patterns`,
+`frontend-design`, `frontend-development`, `react-best-practices`,
+`UI-animation-design`, `mcp-management`. Skill nghiệp vụ có tại
+`skills/logistics/`: `business_context`, `customer_intake`, `payment_scenario`,
+`quote_builder`, `sales_enablement`.
 
-## Quy ước quan trọng
-
-- **Credential:** chỉ trong `.streamlit/secrets.toml` hoặc `.env` local (đều gitignored). Không bao giờ in/hardcode URI/mật khẩu trong code. Tên biến/section chuẩn: `core/config.py` + `.env.example` + `.streamlit/secrets.toml.example` (env thắng secrets).
-- **App chạy trên máy Owner:** 2 instance production Streamlit (port 8501, 8510). Trước khi test UI, mở port khác (vd 9501), tắt sau khi xong. *(Chỉ máy Owner.)*
-- **Git credential helper (máy Owner):** `git config --global credential.helper manager` (helper cũ chỉ đường dẫn exe trực tiếp bị lỗi word-split trên máy này).
-- **Database:** danh tính DB được chặn fail-closed bởi `core/config.py::validate_mongo_identity` — bắt buộc `MONGO_URI` + `MONGO_DB_NAME` tường minh và nằm trong allowlist (`MONGO_ALLOWED_DB_NAMES`; mặc định có `logistics_workdesk_logc14`). `ENV_IDENTITY=PRODUCTION` chỉ được dùng `logistics_db` khi `MONGO_RELEASE_MODE=true` (chỉ Owner bật); `STAGING`/`PREVIEW` bị chặn ghi vào DB production. Thiếu `MONGO_URI`, tầng UI chạy transport staging `mongomock` — dữ liệu giả, mất khi tắt tiến trình (README mục 7). DB test tạo riêng và TỰ DỌN sau khi chạy; không dùng DB app cho test.
-- **Atlas:** không giả định quyền admin; thao tác phá hủy (drop database/user) cần Owner gate tường minh.
-- **Production untouched:** không drop/tạo database app, không thay đổi instance production.
-
-## Testing
-
-- Full suite: `python -m pytest tests -q`. Bộ test có ~130+ file (`test_*.py`, hiện tại 144 file) và suite **ĐANG ĐỎ CÓ CHỦ Ý** — một tập FAILED/ERROR đã biết được giữ làm backlog sống. Không hard-code số pass vào tài liệu; báo con số thực tế của lần chạy kèm commit, không dẫn số cũ.
-- Quy trình bắt buộc: chạy full suite 1 lần TRƯỚC khi sửa để lấy baseline tập FAILED/ERROR, chạy lại SAU khi sửa và so — thay đổi đúng phải giữ nguyên tập FAILED/ERROR cũ và chỉ thêm test mới. Tham chiếu lịch sử đã biết: ~1492–1541 passed / 24 failed, xem `CHANGELOG.md`. Nếu HEAD có file lỗi ngay khi collection, dùng `--continue-on-collection-errors` để lấy baseline trọn suite.
-- Tests runtime cần Streamlit/Mongo thực được skip theo thiết kế — không cố sửa chúng thành chạy được.
-- Auth/RBAC: `tests/test_logc15_auth_rbac.py` (pure, mock streamlit).
-- DB users: `scripts/logc15_db_users_test.py` + runner — chạy trên DB test riêng, tự dọn.
-
-## Quyền (ma trận duy nhất: core/auth.py ROLE_PERMISSIONS)
-
-admin=`*`, sale=sales_write + commercial_write + shipment_create + ops + knowledge + customers + tracking + tariff + commercial_view..., support=commercial_view + ops + finance_view + customers + tracking..., viewer=fallback read-only. `ROLE_PERMISSIONS` liệt kê đủ **7 role**: admin, sale, support, accounting, operations, sales, viewer — trong đó accounting/operations/sales là tên role cũ giữ tương thích ngược (entry secrets.toml cũ + test fixture cũ); role lạ luôn rơi về viewer.
-
-## Bootstrap
-
-Chưa có user → app render form tạo Admin đầu tiên (không default credential). CLI: `python scripts/setup_first_user.py` (tương tác, mật khẩu không qua args).
+Skill ngoài đã cài trong môi trường executor như `coder`, `supervisor`,
+`imagegen`, `docx`, `pdf`, `xlsx` được gọi thẳng tên khi có trong danh sách
+skill của phiên; chúng không thuộc danh sách P2P và không phải phụ thuộc bắt buộc của repo.
+Chỉ đọc skill cần cho việc đang làm. Cài thêm phải báo Owner. Không cài gói lớn.
 
 ## Tài liệu
 
-- Cài đặt/cấu hình/chạy app: `README.md` là tài liệu DUY NHẤT — file này không lặp hướng dẫn cài đặt.
-- Kiến trúc và policy: `docs/ARCHITECTURE-PRINCIPLES.md`. Các `README_*_*.md`, `ROUTER_HOTFIX.md`, `BUILD_REPORT.md` ở gốc repo là hồ sơ lịch sử.
-
-## Native long-running goal bridge (P2P)
-
-For a clear long-running task on a host that supports native `/goal`, use `/goal` only as a session-continuation primitive. Canonical P2P GoalPlan/TaskPlan, durable task state, evidence, and verifier remain authoritative.
-
-- Prefer `.p2p/system/p2p_capabilities/native_goal_bridge.py` when an installed P2P runtime is present.
-- If installed runtime is absent in a fresh clone, derive the `/goal` completion condition directly from the active P2P goal/task contract. Do not create a second roadmap, state machine, memory authority, router, ledger, daemon, or scheduler.
-- Do not conflate host semantics. Only claim automatic continuation or evaluator behavior that is documented or directly verified for that host; do not assume Codex CLI has Claude Code's evaluator semantics.
-- Recovery remains failure-class adaptive. Never introduce a fixed retry-count hard stop such as `three strikes => BLOCKED`.
-- Before completion, compare the exact original baseline with the complete worktree: committed-after-baseline, staged, unstaged, deleted tracked, and untracked files. Prefer `.p2p/system/p2p_capabilities/worktree_evidence.py` when installed; otherwise use equivalent read-only Git inspection.
-- Before claiming done, replay the original task contract and re-check acceptance requirements and evidence. Host-native `/goal` evaluation and executor self-report are never P2P acceptance authority.
-- If the host has no native `/goal`, continue with the normal P2P execution path; do not add a substitute control plane just to imitate `/goal`.
-
-## Native `/goal` auto-activation (P2P)
-
-After law preflight and after durable P2P GoalPlan/TaskPlan state exists, but before the first substantive execution turn for that goal, decide native `/goal` activation automatically. Do not ask the Owner whether to use `/goal`.
-
-- If installed runtime contains `.p2p/system/p2p_capabilities/native_goal_activation.py`, run `python .p2p/system/p2p_capabilities/native_goal_activation.py --host <claude_code|codex_cli> --format json`. Host identity comes from the current executor; Claude Code may use its stable in-session markers, while Codex passes `codex_cli` from known executor identity and must not infer it from `CODEX_HOME` alone.
-- `decision=ACTIVATE_NATIVE_GOAL` -> if this same goal is not already active in the current host session, immediately invoke the returned `command` once, then continue the same P2P task.
-- `decision=NORMAL_P2P_PATH` -> continue the normal P2P path.
-- helper `status=BLOCKED` -> treat it as a durable-state/control-plane blocker; never fabricate a `/goal` condition.
-- If the helper is absent, apply the exact same deterministic rule directly from authoritative durable state: activate only for Goal `APPROVED|IN_PROGRESS` + TaskPlan `ACTIVE` + at least two tasks + unfinished work; otherwise use the normal P2P path. Do not create another detector, state machine, router, ledger, daemon, or scheduler.
-- Native `/goal` remains session continuation only. P2P task state, Owner Gates, evidence and independent verifier remain authoritative.
-
-## Prompt authoring discipline (P2P)
-
-`PROMPT_AUTHORING_DISCIPLINE_V1` applies only when the active task writes, improves, revises, or delegates a prompt. Reuse the existing P2P task contract, destination, durable state, evidence, Owner Gates, and stop conditions. This is not a second prompt framework.
-
-- Internally classify supplied material as `READY_PROMPT`, `PARTIAL_DRAFT`, `CLEAR_SIMPLE_REQUEST`, or `AMBIGUOUS_HIGH_IMPACT`; narrate the classification only when useful.
-- Preserve known task/output/constraints for ready prompts; fill only material gaps in partial drafts; compose clear simple requests immediately with the smallest reasonable assumptions; ask questions for ambiguous/high-impact requests only when answers can materially change correctness, authority, acceptance, risk, or destination execution.
-- Never re-ask facts already explicit in the Owner request, durable project state, or active task contract. Group genuinely blocking questions compactly, normally 2–4 at a time. After one useful clarification round, state reasonable assumptions and proceed for non-blocking gaps instead of creating an interview loop.
-- Resolve the destination/model/executor from the Owner request and fresh durable routing state when already known. Ask only when the destination is truly unknown and materially changes execution.
-- Adapt structure and transport to verified/current destination capabilities or authoritative instructions. Do not hard-code model-specific prompting stereotypes as law; fresh capability evidence outranks stale prompting folklore.
-- Keep prompt complexity proportional to task complexity. Simple task -> concise executable prompt. Multi-part/high-risk task -> add only structure that materially improves acceptance or recovery. No decorative roles, duplicated constraints, or checklist inflation.
-- Never request private chain-of-thought, hidden scratchpad, or step-by-step internal reasoning. Request concise rationale, assumptions, evidence, calculations, verification results, or an auditable action summary when needed.
-- When revising an existing prompt, edit that prompt instead of restarting requirements collection. Preserve unaffected constraints and return the complete revised prompt unless the Owner explicitly asks for only a diff or fragment.
-- Use the output surface that fits the destination and workflow; do not force Markdown, files, XML, JSON, tables, or another wrapper unless the task contract, destination capability, machine parsing, or copy/paste workflow materially benefits.
-- Stop when the prompt is executable and aligned to outcome, destination, scope, acceptance, evidence, authority boundaries, and stop condition. Do not append optional prompt theory, examples, or future-proofing unless requested.
-
-## P2P portable Supreme Law entrypoint
-
-Bản portable law đầy đủ nằm trong khối managed P2P PORTABLE LAW
-ở cuối file này (entrypoint, actor separation, handoff freshness, experience,
-skill handoff, prompt serialization, native `/goal`). Không duy trì bản sao thứ
-hai ở phần này — khi cần, đọc thẳng khối managed và
-`.p2p/portable/P2P-OPERATIONS-NOTEBOOK.md`.
-
-### Repo-native required skill handoff — phần prompt-writer (bổ sung ngoài khối managed)
-
-- `PROMPT_WRITER_SKILL_ROUTING_V1=YES`: before any P2P-generated delegated repository-work prompt, the prompt writer must inspect the target repo's supported skill metadata/projection and select the smallest relevant set (max 3). Reuse the existing Skill Consumption Wire when available; do not create a second router.
-- Explicit Owner `@skill` / `$skill` / `REQUIRED_SKILLS` wins when valid. No relevant match => serialize `SKILL_CHECK=NO_MATCH` and continue normally; unknown/missing/ambiguous/hash-mismatched required skill => fail closed before delegation.
-- For every selected skill, bind exact repo-local `SKILL.md` path + SHA-256 into the handoff, require executor read/apply before substantive work, and require one exact `p2p-skill-consumption-receipt/1`. A downstream `@skill` token alone is not consumption evidence.
+`README.md` là tài liệu cài DUY NHẤT. Kiến trúc ở
+`docs/ARCHITECTURE-PRINCIPLES.md`; việc tiếp theo ở `docs/NEXT.md`.
+Các `README_*` ở gốc là hồ sơ lịch sử, không dùng làm hướng dẫn cài.
 
 <!-- BEGIN P2P FRONTEND CAPABILITY PACK -->
 ## P2P project-local frontend capability pack

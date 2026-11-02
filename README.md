@@ -180,27 +180,30 @@ này (`roles.assignable` vs `roles.legacy`).
 
 ## 8. Kiểm tra
 
+CI chạy tự động khi mở pull request. `tests/BASELINE_FAILED.txt` là danh sách
+nợ cũ có version: cổng so baseline chỉ đỏ khi có node lỗi mới ngoài danh sách.
+CI vẫn có thể đỏ nếu kiểm tra tĩnh hoặc môi trường chạy bị lỗi.
+
+Các lệnh dưới cần bộ gate gồm `requirements-dev.txt`,
+`scripts/compare_baseline.py`, `tests/BASELINE_FAILED.txt` và workflow CI.
+Nếu thiếu, báo thiếu bộ gate; không coi là đã kiểm tra thành công.
+Sau khi cài dependency kiểm tra bằng `requirements-dev.txt`, chạy hai lệnh tại máy:
+
 ```bash
-python -m pytest tests -q
+python -m pytest tests -q --continue-on-collection-errors --junitxml=out.xml
+python scripts/compare_baseline.py out.xml
 ```
 
-Sự thật hiện trạng của bộ test (đừng tin tài liệu cũ, đừng tin con số hard-code):
+Pytest có thể trả mã lỗi vì nợ cũ; vẫn chạy lệnh so baseline để biết có lỗi mới không.
+Sửa được lỗi cũ thì xoá node tương ứng khỏi baseline.
+Chỉ ghi lại baseline sau khi đã xác nhận từng lỗi là nợ cũ được chấp nhận:
 
-- Bộ test có ~130+ file (`test_*.py`, hiện tại là 144 file — con số trôi theo thời
-  gian) và suite **ĐANG ĐỎ CÓ CHỦ Ý**: một tập FAILED/ERROR đã biết được giữ
-  nguyên như backlog sống. **Không hard-code số test pass vào tài liệu.**
-- Quy trình bắt buộc khi sửa bất cứ thứ gì: chạy **full suite 1 lần TRƯỚC** khi
-  sửa để lấy baseline danh sách FAILED/ERROR, rồi chạy lại **SAU** khi sửa và so
-  sánh — một thay đổi đúng phải **giữ nguyên tập FAILED/ERROR cũ** và chỉ thêm
-  test mới (pass). Số pass tăng mà tập fail đổi shape = có regression.
-- Lịch sử đã biết để đối chiếu: ~**1492–1541 passed / 24 failed** (xem
-  `CHANGELOG.md`); tập failed thực tế có thể đã lớn hơn ở HEAD hiện tại — luôn
-  báo con số của lần chạy kèm commit.
-- Test cần Streamlit/MongoDB **thật** được **skip theo thiết kế** khi chạy ở chế
-  độ thuần (pure) — không cố sửa chúng thành chạy được.
-- Một số file test có thể lỗi ngay ở bước collection trên HEAD hiện tại (ví dụ
-  import symbol không còn tồn tại); khi lấy baseline dùng
-  `--continue-on-collection-errors` để phần còn lại của suite vẫn chạy.
+```bash
+python scripts/compare_baseline.py out.xml --update
+```
+
+Không dùng `--update` để hợp thức hoá regression. Test cần Streamlit/Mongo thật
+được skip theo thiết kế; không ép chạy chúng bằng database production.
 
 ---
 
