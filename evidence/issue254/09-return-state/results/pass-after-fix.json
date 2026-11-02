@@ -1,0 +1,355 @@
+{
+  "tag": "pass-after",
+  "base": "http://127.0.0.1:9532/",
+  "head": "cb1870f95358be3b9e8c6278ac898fc1c9fa2cba",
+  "A": {
+    "tag": "pass-after",
+    "filter_before": {
+      "q": "LO-03",
+      "periodPressed": [
+        "Thời gian khác"
+      ],
+      "archivePressed": [
+        "Tất cả"
+      ],
+      "statusChips": [
+        "Chờ thông quan"
+      ],
+      "from": "2020-01-01",
+      "to": "2030-12-31",
+      "rows": [
+        "LO-0306",
+        "LO-0307",
+        "LO-0308"
+      ],
+      "cards": [
+        "LO-0306",
+        "LO-0307",
+        "LO-0308"
+      ],
+      "summary": "Tìm thấy 3 lô cho “LO-03” · Mỗi lô: hiện trạng → Incoterm · phương thức · loại hàng · ETD/ETA → việc tiếp theo → nút xử lý.",
+      "_statusApplied": true,
+      "_fromApplied": true,
+      "_toApplied": true
+    },
+    "detailOpened": true,
+    "routerStateOnDetail": {
+      "browserUrl": "http://127.0.0.1:9532/",
+      "historyLength": 2,
+      "backControl": {
+        "present": true,
+        "tag": "A",
+        "href": "/lo-hang?status=Ch%E1%BB%9D+th%C3%B4ng+quan&period=khac&from=2020-01-01&to=2030-12-31&archive=tat-ca&q=LO-03",
+        "dataReturnTo": "/lo-hang?status=Ch%E1%BB%9D+th%C3%B4ng+quan&period=khac&from=2020-01-01&to=2030-12-31&archive=tat-ca&q=LO-03",
+        "text": "Về danh sách lô",
+        "aria": "Về danh sách lô, giữ nguyên bộ lọc",
+        "rect": {
+          "x": 97,
+          "y": -673,
+          "w": 176,
+          "h": 44
+        },
+        "visible": true
+      },
+      "globalWorkspaceOpen": true,
+      "pressedTab": "Tài chính",
+      "detailOpen": true
+    },
+    "backClicked": true,
+    "filter_after": {
+      "q": "LO-03",
+      "periodPressed": [
+        "Thời gian khác"
+      ],
+      "archivePressed": [
+        "Tất cả"
+      ],
+      "statusChips": [
+        "Chờ thông quan"
+      ],
+      "from": "2020-01-01",
+      "to": "2030-12-31",
+      "rows": [
+        "LO-0306",
+        "LO-0307",
+        "LO-0308"
+      ],
+      "cards": [
+        "LO-0306",
+        "LO-0307",
+        "LO-0308"
+      ],
+      "summary": "Tìm thấy 3 lô cho “LO-03” · Mỗi lô: hiện trạng → Incoterm · phương thức · loại hàng · ETD/ETA → việc tiếp theo → nút xử lý."
+    },
+    "sameParams": true,
+    "sameRows": true,
+    "verdict": "PASS"
+  },
+  "B": {
+    "tag": "pass-after",
+    "openedLot": "LO-0308",
+    "detailOpened": true,
+    "pressedTabOnOpen": "Tài chính",
+    "tabSwitchClicked": true,
+    "pressedTabAfterSwitch": "Lịch sử",
+    "routerStateBeforeTabSwitch": {
+      "browserUrl": "http://127.0.0.1:9532/",
+      "historyLength": 2,
+      "backControl": {
+        "present": true,
+        "tag": "A",
+        "href": "/lo-hang?status=Ch%E1%BB%9D+th%C3%B4ng+quan&period=khac&from=2020-01-01&to=2030-12-31&archive=tat-ca&q=LO-03",
+        "dataReturnTo": "/lo-hang?status=Ch%E1%BB%9D+th%C3%B4ng+quan&period=khac&from=2020-01-01&to=2030-12-31&archive=tat-ca&q=LO-03",
+        "text": "Về danh sách lô",
+        "aria": "Về danh sách lô, giữ nguyên bộ lọc",
+        "rect": {
+          "x": 97,
+          "y": -673,
+          "w": 176,
+          "h": 44
+        },
+        "visible": true
+      },
+      "globalWorkspaceOpen": true,
+      "pressedTab": "Tài chính",
+      "detailOpen": true
+    },
+    "routerStateAfterTabSwitch": {
+      "browserUrl": "http://127.0.0.1:9532/",
+      "historyLength": 2,
+      "backControl": {
+        "present": true,
+        "tag": "A",
+        "href": "/lo-hang?status=Ch%E1%BB%9D+th%C3%B4ng+quan&period=khac&from=2020-01-01&to=2030-12-31&archive=tat-ca&q=LO-03",
+        "dataReturnTo": "/lo-hang?status=Ch%E1%BB%9D+th%C3%B4ng+quan&period=khac&from=2020-01-01&to=2030-12-31&archive=tat-ca&q=LO-03",
+        "text": "Về danh sách lô",
+        "aria": "Về danh sách lô, giữ nguyên bộ lọc",
+        "rect": {
+          "x": 97,
+          "y": 111,
+          "w": 176,
+          "h": 44
+        },
+        "visible": true
+      },
+      "globalWorkspaceOpen": true,
+      "pressedTab": "Lịch sử",
+      "detailOpen": true
+    },
+    "stateKeptAfterTabSwitch": true,
+    "backClicked": true,
+    "filter_before": {
+      "q": "LO-03",
+      "periodPressed": [
+        "Thời gian khác"
+      ],
+      "archivePressed": [
+        "Tất cả"
+      ],
+      "statusChips": [
+        "Chờ thông quan"
+      ],
+      "from": "2020-01-01",
+      "to": "2030-12-31",
+      "rows": [
+        "LO-0306",
+        "LO-0307",
+        "LO-0308"
+      ],
+      "cards": [
+        "LO-0306",
+        "LO-0307",
+        "LO-0308"
+      ],
+      "summary": "Tìm thấy 3 lô cho “LO-03” · Mỗi lô: hiện trạng → Incoterm · phương thức · loại hàng · ETD/ETA → việc tiếp theo → nút xử lý.",
+      "_statusApplied": true,
+      "_fromApplied": true,
+      "_toApplied": true
+    },
+    "filter_after": {
+      "q": "LO-03",
+      "periodPressed": [
+        "Thời gian khác"
+      ],
+      "archivePressed": [
+        "Tất cả"
+      ],
+      "statusChips": [
+        "Chờ thông quan"
+      ],
+      "from": "2020-01-01",
+      "to": "2030-12-31",
+      "rows": [
+        "LO-0306",
+        "LO-0307",
+        "LO-0308"
+      ],
+      "cards": [
+        "LO-0306",
+        "LO-0307",
+        "LO-0308"
+      ],
+      "summary": "Tìm thấy 3 lô cho “LO-03” · Mỗi lô: hiện trạng → Incoterm · phương thức · loại hàng · ETD/ETA → việc tiếp theo → nút xử lý."
+    },
+    "sameParams": true,
+    "sameRows": true,
+    "verdict": "PASS"
+  },
+  "C": {
+    "tag": "pass-after",
+    "homeButton": "Mở LO-0306",
+    "detailOpened": true,
+    "backControl": {
+      "present": true,
+      "tag": "A",
+      "href": "/lo-hang",
+      "dataReturnTo": "/lo-hang",
+      "text": "Về danh sách lô",
+      "aria": "Về danh sách lô",
+      "rect": {
+        "x": 97,
+        "y": 201,
+        "w": 176,
+        "h": 44
+      },
+      "visible": true
+    },
+    "routerState": {
+      "browserUrl": "http://127.0.0.1:9532/",
+      "historyLength": 2,
+      "backControl": {
+        "present": true,
+        "tag": "A",
+        "href": "/lo-hang",
+        "dataReturnTo": "/lo-hang",
+        "text": "Về danh sách lô",
+        "aria": "Về danh sách lô",
+        "rect": {
+          "x": 97,
+          "y": 201,
+          "w": 176,
+          "h": 44
+        },
+        "visible": true
+      },
+      "globalWorkspaceOpen": false,
+      "pressedTab": null,
+      "detailOpen": true
+    },
+    "backClicked": true,
+    "fallbackIsPlainList": true,
+    "landedOnList": true,
+    "landedFilters": {
+      "q": "",
+      "periodPressed": [
+        "Tháng này"
+      ],
+      "archivePressed": [
+        "Đang làm"
+      ],
+      "statusChips": [],
+      "from": null,
+      "to": null,
+      "rows": [],
+      "cards": [],
+      "summary": "Tìm thấy 0 lô · Mỗi lô: hiện trạng → Incoterm · phương thức · loại hàng · ETD/ETA → việc tiếp theo → nút xử lý."
+    },
+    "verdict": "PASS"
+  },
+  "E": {
+    "tag": "pass-after",
+    "detailOpened": true,
+    "urlBefore": "http://127.0.0.1:9532/",
+    "urlOnDetail": "http://127.0.0.1:9532/",
+    "urlAfterNativeBack": "about:blank",
+    "historyBefore": 2,
+    "historyOnDetail": 2,
+    "shellPresentAfterBack": false,
+    "blankPage": true,
+    "filterAfterNativeBack": null,
+    "verdict": "FAIL (native back; MemoryRouter — reported separately)"
+  },
+  "D": {
+    "tag": "pass-after",
+    "desktop": {
+      "viewport": [
+        1440,
+        900
+      ],
+      "detailOpened": true,
+      "backControl": {
+        "present": true,
+        "tag": "A",
+        "href": "/lo-hang?status=Ch%E1%BB%9D+th%C3%B4ng+quan&period=khac&from=2020-01-01&to=2030-12-31&archive=tat-ca&q=LO-03",
+        "dataReturnTo": "/lo-hang?status=Ch%E1%BB%9D+th%C3%B4ng+quan&period=khac&from=2020-01-01&to=2030-12-31&archive=tat-ca&q=LO-03",
+        "text": "Về danh sách lô",
+        "aria": "Về danh sách lô, giữ nguyên bộ lọc",
+        "rect": {
+          "x": 97,
+          "y": -673,
+          "w": 176,
+          "h": 44
+        },
+        "visible": true
+      },
+      "overflow": {
+        "viewport": 1440,
+        "docScrollWidth": 1440,
+        "bodyScrollWidth": 1440,
+        "pageOverflows": false,
+        "backControlRect": {
+          "right": 273,
+          "bottom": -629,
+          "w": 176,
+          "h": 44
+        },
+        "backControlInsideViewport": true
+      },
+      "verdict": "PASS"
+    },
+    "mobile": {
+      "viewport": [
+        390,
+        844
+      ],
+      "detailOpened": true,
+      "backControl": {
+        "present": true,
+        "tag": "A",
+        "href": "/lo-hang?status=Ch%E1%BB%9D+th%C3%B4ng+quan&period=khac&from=2020-01-01&to=2030-12-31&archive=tat-ca&q=LO-03",
+        "dataReturnTo": "/lo-hang?status=Ch%E1%BB%9D+th%C3%B4ng+quan&period=khac&from=2020-01-01&to=2030-12-31&archive=tat-ca&q=LO-03",
+        "text": "Về danh sách lô",
+        "aria": "Về danh sách lô, giữ nguyên bộ lọc",
+        "rect": {
+          "x": 28,
+          "y": -324,
+          "w": 176,
+          "h": 44
+        },
+        "visible": true
+      },
+      "overflow": {
+        "viewport": 390,
+        "docScrollWidth": 390,
+        "bodyScrollWidth": 390,
+        "pageOverflows": false,
+        "backControlRect": {
+          "right": 204,
+          "bottom": -280,
+          "w": 176,
+          "h": 44
+        },
+        "backControlInsideViewport": true
+      },
+      "verdict": "PASS"
+    },
+    "verdict": "PASS"
+  },
+  "FINAL": {
+    "A": "PASS",
+    "B": "PASS",
+    "C": "PASS",
+    "D": "PASS",
+    "E_native_back_separate": "FAIL (native back; MemoryRouter — reported separately)"
+  }
+}

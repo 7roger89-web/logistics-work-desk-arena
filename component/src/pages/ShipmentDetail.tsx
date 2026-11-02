@@ -1,7 +1,7 @@
 import { contractPath } from "../lib/contractRoute";
 import { shipmentIdFromPath } from "../lib/shipmentRoute";
 import { listReturnFromState } from "../lib/listReturn";
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { ArrowLeft, ArrowRight, Building2, CheckCircle2, ChevronDown, CircleAlert, Download, Eye, FileText, Lock, MapPin, PenLine, Phone, Truck, Wallet, FileDown, FileSpreadsheet } from "lucide-react";
 import { Field, GhostBtn, MissingBox, PrimaryBtn, SearchPicker, SectionTitle, SheetDialog, StateRow, SuccessBtn, ToneBadge, inputCls } from "../components/ui";
@@ -129,7 +129,21 @@ export default function ShipmentDetail() {
   const cameFromList = listReturn !== "/lo-hang" || Boolean(
     locationState && typeof locationState === "object" && "listReturn" in (locationState as Record<string, unknown>)
   );
-  const [sp, setSp] = useSearchParams();
+  const [sp, setSpRaw] = useSearchParams();
+  // LOGI-255-RETURN-STATE-PRESERVATION (Issue #254 / PR #255): setSearchParams
+  // IS a navigation — `navigate("?" + params, opts)` — and without an explicit
+  // `state` in its NavigateOptions the new location's state becomes null. Every
+  // tab switch in this screen therefore wiped `location.state`, so the
+  // remembered list location (`state.listReturn`) was lost and "Về danh sách lô"
+  // fell back to the plain /lo-hang (measured with real Chromium at cb1870f:
+  // data-return-to dropped from the full filtered URL to "/lo-hang" after one
+  // setSp tab switch). Keeping the CURRENT location state on every in-detail
+  // search-param write is the smallest change that preserves it; all existing
+  // setSp({ tab, ... }) call sites below use this wrapped binding unchanged.
+  const setSp: typeof setSpRaw = useCallback(
+    (next, opts) => setSpRaw(next, { ...opts, state: locationState }),
+    [setSpRaw, locationState]
+  );
   const tab = sp.get("tab") || "van-tai";
   const { shipments, attention, updateShipment, toast, contracts, customers, dispatch, financeServices, environment } = useStore();
   // The authoritative outcome of a saved actual line comes back in the NEXT

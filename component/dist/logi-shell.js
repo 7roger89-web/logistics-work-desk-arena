@@ -1021,7 +1021,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 	function Je(e, t) {
 		e.pendingLanes |= t, t !== 268435456 && (e.suspendedLanes = 0, e.pingedLanes = 0, e.warmLanes = 0);
 	}
-	function V(e, t, n, r, i, a) {
+	function Ye(e, t, n, r, i, a) {
 		var o = e.pendingLanes;
 		e.pendingLanes = n, e.suspendedLanes = 0, e.pingedLanes = 0, e.warmLanes = 0, e.expiredLanes &= n, e.entangledLanes &= n, e.errorRecoveryDisabledLanes &= n, e.shellSuspendCounter = 0;
 		var s = e.entanglements, c = e.expirationTimes, l = e.hiddenUpdates;
@@ -1035,9 +1035,9 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 			}
 			n &= ~d;
 		}
-		r !== 0 && Ye(e, r, 0), a !== 0 && i === 0 && e.tag !== 0 && (e.suspendedLanes |= a & ~(o & ~t));
+		r !== 0 && V(e, r, 0), a !== 0 && i === 0 && e.tag !== 0 && (e.suspendedLanes |= a & ~(o & ~t));
 	}
-	function Ye(e, t, n) {
+	function V(e, t, n) {
 		e.pendingLanes |= t, e.suspendedLanes &= ~t;
 		var r = 31 - Fe(t);
 		e.entangledLanes |= t, e.entanglements[r] = e.entanglements[r] | 1073741824 | n & 261930;
@@ -5604,7 +5604,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 			var a = 31 - Fe(i), o = 1 << a;
 			r[a] = -1, i &= ~o;
 		}
-		n !== 0 && Ye(e, n, t);
+		n !== 0 && V(e, n, t);
 	}
 	function _u() {
 		return jl & 6 ? !0 : (nd(0, !1), !1);
@@ -5835,7 +5835,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 		if (jl & 6) throw Error(i(327));
 		if (t !== null) {
 			if (t === e.current) throw Error(i(177));
-			if (o = t.lanes | t.childLanes, o |= qr, V(e, n, o, s, c, l), e === Ml && (Nl = Ml = null, Pl = 0), ru = t, nu = e, iu = n, au = o, ou = a, su = r, t.subtreeFlags & 10256 || t.flags & 10256 ? (e.callbackNode = null, e.callbackPriority = 0, Ju(De, function() {
+			if (o = t.lanes | t.childLanes, o |= qr, Ye(e, n, o, s, c, l), e === Ml && (Nl = Ml = null, Pl = 0), ru = t, nu = e, iu = n, au = o, ou = a, su = r, t.subtreeFlags & 10256 || t.flags & 10256 ? (e.callbackNode = null, e.callbackPriority = 0, Ju(De, function() {
 				return Bu(), null;
 			})) : (e.callbackNode = null, e.callbackPriority = 0), r = !!(t.flags & 13878), t.subtreeFlags & 13878 || r) {
 				r = I.T, I.T = null, a = L.p, L.p = 2, s = jl, jl |= 4;
@@ -8488,10 +8488,10 @@ function Je(e) {
 		return !1;
 	}
 }
-var V = _.createContext(null);
-V.displayName = "DataRouter";
 var Ye = _.createContext(null);
-Ye.displayName = "DataRouterState";
+Ye.displayName = "DataRouter";
+var V = _.createContext(null);
+V.displayName = "DataRouterState";
 var Xe = _.createContext(!1);
 function Ze() {
 	return _.useContext(Xe);
@@ -8552,7 +8552,7 @@ function ht() {
 }
 function gt() {
 	L(dt(), "useNavigate() may be used only in the context of a <Router> component.");
-	let e = _.useContext(V), { basename: t, navigator: n } = _.useContext(tt), { matches: r } = _.useContext(rt), { pathname: i } = ft(), a = JSON.stringify(De(r)), o = _.useRef(!1);
+	let e = _.useContext(Ye), { basename: t, navigator: n } = _.useContext(tt), { matches: r } = _.useContext(rt), { pathname: i } = ft(), a = JSON.stringify(De(r)), o = _.useRef(!1);
 	return mt(() => {
 		o.current = !0;
 	}), _.useCallback((r, s = {}) => {
@@ -8702,7 +8702,7 @@ function Tt({ children: e, error: t }) {
 	return e;
 }
 function Et({ routeContext: e, match: t, children: n }) {
-	let r = _.useContext(V);
+	let r = _.useContext(Ye);
 	return r && r.static && r.staticContext && (t.route.errorElement || t.route.ErrorBoundary) && (r.staticContext._deepestRenderedBoundaryId = t.route.id), /* @__PURE__ */ _.createElement(rt.Provider, { value: e }, n);
 }
 function Dt(e, t = [], n) {
@@ -8774,11 +8774,11 @@ function Ot(e) {
 	return `${e} must be used within a data router.  See https://reactrouter.com/en/main/routers/picking-a-router.`;
 }
 function kt(e) {
-	let t = _.useContext(V);
+	let t = _.useContext(Ye);
 	return L(t, Ot(e)), t;
 }
 function At(e) {
-	let t = _.useContext(Ye);
+	let t = _.useContext(V);
 	return L(t, Ot(e)), t;
 }
 function jt(e) {
@@ -9113,11 +9113,11 @@ function _n(e, t) {
 	}, []);
 }
 function vn() {
-	let e = _.useContext(V);
+	let e = _.useContext(Ye);
 	return sn(e, "You must render this element inside a <DataRouterContext.Provider> element"), e;
 }
 function yn() {
-	let e = _.useContext(Ye);
+	let e = _.useContext(V);
 	return sn(e, "You must render this element inside a <DataRouterStateContext.Provider> element"), e;
 }
 var bn = _.createContext(void 0);
@@ -9332,7 +9332,7 @@ var H = _.forwardRef(function({ onClick: e, discover: t = "render", prefetch: n 
 });
 H.displayName = "Link";
 var An = _.forwardRef(function({ "aria-current": e = "page", caseSensitive: t = !1, className: n = "", end: r = !1, style: i, to: a, viewTransition: o, children: s, ...c }, l) {
-	let u = vt(a, { relative: c.relative }), d = ft(), f = _.useContext(Ye), { navigator: p, basename: m } = _.useContext(tt), h = f != null && Bn(u) && o === !0, g = p.encodeLocation ? p.encodeLocation(u).pathname : u.pathname, v = d.pathname, y = f && f.navigation && f.navigation.location ? f.navigation.location.pathname : null;
+	let u = vt(a, { relative: c.relative }), d = ft(), f = _.useContext(V), { navigator: p, basename: m } = _.useContext(tt), h = f != null && Bn(u) && o === !0, g = p.encodeLocation ? p.encodeLocation(u).pathname : u.pathname, v = d.pathname, y = f && f.navigation && f.navigation.location ? f.navigation.location.pathname : null;
 	t || (v = v.toLowerCase(), y = y ? y.toLowerCase() : null, g = g.toLowerCase()), y && m && (y = Se(y, m) || y);
 	let b = g !== "/" && g.endsWith("/") ? g.length - 1 : g.length, x = v === g || !r && v.startsWith(g) && v.charAt(b) === "/", S = y != null && (y === g || !r && y.startsWith(g) && y.charAt(g.length) === "/"), C = {
 		isActive: x,
@@ -9388,7 +9388,7 @@ function Mn(e) {
 	return `${e} must be used within a data router.  See https://reactrouter.com/en/main/routers/picking-a-router.`;
 }
 function Nn(e) {
-	let t = _.useContext(V);
+	let t = _.useContext(Ye);
 	return L(t, Mn(e)), t;
 }
 function Pn(e, { target: t, replace: n, mask: r, state: i, preventScrollReset: a, relative: o, viewTransition: s, defaultShouldRevalidate: c, useTransitions: l } = {}) {
@@ -23792,160 +23792,163 @@ function bd(e) {
 	}), e === "fld-tk" && n instanceof HTMLElement && n.focus({ preventScroll: !0 });
 }
 function xd() {
-	let { id: e } = _t(), { pathname: t, state: n } = ft(), r = qn(t, e), i = sc(n), a = i !== "/lo-hang" || !!(n && typeof n == "object" && "listReturn" in n), [o, s] = Fn(), c = o.get("tab") || "van-tai", { shipments: l, attention: u, updateShipment: d, toast: f, contracts: p, customers: m, dispatch: h, financeServices: g, environment: v } = Gn(), y = (0, _.useSyncExternalStore)(C, S, S), b = ht(), x = l.find((e) => e.id === r), [w, T] = (0, _.useState)(!1), [E, D] = (0, _.useState)(!1), [O, k] = (0, _.useState)(!1), [A, j] = (0, _.useState)(null), M = (0, _.useRef)(!1), [N, P] = (0, _.useState)(""), [F, I] = (0, _.useState)(0), [L, R] = (0, _.useState)(0), [ee, te] = (0, _.useState)(!1), [ne, re] = (0, _.useState)(!1), [z, ie] = (0, _.useState)(!1), [ae, oe] = (0, _.useState)(!1), [se, ce] = (0, _.useState)(""), [B, le] = (0, _.useState)("Thu tiền khách"), [ue, de] = (0, _.useState)(""), [fe, pe] = (0, _.useState)({}), [me, he] = (0, _.useState)(0), [ge, _e] = (0, _.useState)(""), [ve, ye] = (0, _.useState)(""), [be, xe] = (0, _.useState)(""), [Se, Ce] = (0, _.useState)(""), [we, Te] = (0, _.useState)(""), [Ee, De] = (0, _.useState)(""), [Oe, ke] = (0, _.useState)(null), [Ae, je] = (0, _.useState)(""), [Me, Ne] = (0, _.useState)(null), [Pe, Fe] = (0, _.useState)(""), [Ie, Le] = (0, _.useState)(!1), [Re, ze] = (0, _.useState)([]), [Be, Ve] = (0, _.useState)(""), [He, Ue] = (0, _.useState)(""), [We, Ge] = (0, _.useState)("");
+	let { id: e } = _t(), { pathname: t, state: n } = ft(), r = qn(t, e), i = sc(n), a = i !== "/lo-hang" || !!(n && typeof n == "object" && "listReturn" in n), [o, s] = Fn(), c = (0, _.useCallback)((e, t) => s(e, {
+		...t,
+		state: n
+	}), [s, n]), l = o.get("tab") || "van-tai", { shipments: u, attention: d, updateShipment: f, toast: p, contracts: m, customers: h, dispatch: g, financeServices: v, environment: y } = Gn(), b = (0, _.useSyncExternalStore)(C, S, S), x = ht(), w = u.find((e) => e.id === r), [T, E] = (0, _.useState)(!1), [D, O] = (0, _.useState)(!1), [k, A] = (0, _.useState)(!1), [j, M] = (0, _.useState)(null), N = (0, _.useRef)(!1), [P, F] = (0, _.useState)(""), [I, L] = (0, _.useState)(0), [R, ee] = (0, _.useState)(0), [te, ne] = (0, _.useState)(!1), [re, z] = (0, _.useState)(!1), [ie, ae] = (0, _.useState)(!1), [oe, se] = (0, _.useState)(!1), [ce, B] = (0, _.useState)(""), [le, ue] = (0, _.useState)("Thu tiền khách"), [de, fe] = (0, _.useState)(""), [pe, me] = (0, _.useState)({}), [he, ge] = (0, _.useState)(0), [_e, ve] = (0, _.useState)(""), [ye, be] = (0, _.useState)(""), [xe, Se] = (0, _.useState)(""), [Ce, we] = (0, _.useState)(""), [Te, Ee] = (0, _.useState)(""), [De, Oe] = (0, _.useState)(""), [ke, Ae] = (0, _.useState)(null), [je, Me] = (0, _.useState)(""), [Ne, Pe] = (0, _.useState)(null), [Fe, Ie] = (0, _.useState)(""), [Le, Re] = (0, _.useState)(!1), [ze, Be] = (0, _.useState)([]), [Ve, He] = (0, _.useState)(""), [Ue, We] = (0, _.useState)(""), [Ge, Ke] = (0, _.useState)("");
 	(0, _.useEffect)(() => {
-		pe({}), de("");
-	}, [r, c]), (0, _.useEffect)(() => {
-		let e = x?.commercialFlow;
-		_e(String(e?.mode || "")), ye(e?.subAgentId || "");
-		let t = y?.authority?.companies ?? [];
-		xe(e?.companyId || (t.length === 1 ? t[0].id : "")), Te("");
+		me({}), fe("");
+	}, [r, l]), (0, _.useEffect)(() => {
+		let e = w?.commercialFlow;
+		ve(String(e?.mode || "")), be(e?.subAgentId || "");
+		let t = b?.authority?.companies ?? [];
+		Se(e?.companyId || (t.length === 1 ? t[0].id : "")), Ee("");
 	}, [
 		r,
-		x?.commercialFlow?.mode,
-		x?.commercialFlow?.subAgentId,
-		x?.commercialFlow?.companyId,
-		y?.authority?.companies?.length
+		w?.commercialFlow?.mode,
+		w?.commercialFlow?.subAgentId,
+		w?.commercialFlow?.companyId,
+		b?.authority?.companies?.length
 	]), (0, _.useEffect)(() => {
-		if (!Se) return;
-		let e = y?.lastWrites?.find((e) => e.event === "shipment_commercial_flow_save" && e.requestId === Se);
+		if (!Ce) return;
+		let e = b?.lastWrites?.find((e) => e.event === "shipment_commercial_flow_save" && e.requestId === Ce);
 		if (e) {
-			if (Ce(""), e.ok) Te(""), f("Đã xác nhận hình thức nhập khẩu", "Workflow chứng từ đã được tính lại từ dữ liệu thật của lô.", "green");
+			if (we(""), e.ok) Ee(""), p("Đã xác nhận hình thức nhập khẩu", "Workflow chứng từ đã được tính lại từ dữ liệu thật của lô.", "green");
 			else {
 				let t = String(e.error || "Backend từ chối hình thức nhập khẩu này.");
-				Te(t), f("Chưa lưu được hình thức nhập khẩu", t, "red");
+				Ee(t), p("Chưa lưu được hình thức nhập khẩu", t, "red");
 			}
 		}
 	}, [
-		y?.lastWrites,
-		Se,
-		f
+		b?.lastWrites,
+		Ce,
+		p
 	]), (0, _.useEffect)(() => {
-		if (!Oe) return;
-		let e = y?.lastWrites?.find((e) => e.event === "shipment_customer_save" && e.requestId === Oe.requestId);
+		if (!ke) return;
+		let e = b?.lastWrites?.find((e) => e.event === "shipment_customer_save" && e.requestId === ke.requestId);
 		if (!e) return;
-		let t = Oe.customerId;
-		if (ke(null), !e.ok) {
+		let t = ke.customerId;
+		if (Ae(null), !e.ok) {
 			let t = String(e.error || "Backend từ chối gán khách hàng.");
-			je(t), f("Chưa gán được khách hàng", t, "red");
+			Me(t), p("Chưa gán được khách hàng", t, "red");
 			return;
 		}
 		let n = e.readback && typeof e.readback == "object" ? e.readback : null, r = typeof n?.customerId == "string" ? n.customerId.trim() : "";
-		if ((x?.customerId ?? "").trim() !== t || r && r !== t) {
+		if ((w?.customerId ?? "").trim() !== t || r && r !== t) {
 			let e = "Backend báo đã xử lý nhưng dữ liệu đọc lại chưa khớp mã khách hàng đã chọn.";
-			je(e), f("Chưa gán được khách hàng", e, "red");
+			Me(e), p("Chưa gán được khách hàng", e, "red");
 			return;
 		}
-		De(""), je(""), f("Đã gắn khách hàng cho lô", "Backend đã xác nhận qua đọc lại; bây giờ có thể xác nhận hình thức nhập khẩu.", "green");
+		Oe(""), Me(""), p("Đã gắn khách hàng cho lô", "Backend đã xác nhận qua đọc lại; bây giờ có thể xác nhận hình thức nhập khẩu.", "green");
 	}, [
-		y?.lastWrites,
-		Oe,
-		x?.customerId,
-		f
+		b?.lastWrites,
+		ke,
+		w?.customerId,
+		p
 	]), (0, _.useEffect)(() => {
-		Ne(null), Fe(""), ke(null), je("");
+		Pe(null), Ie(""), Ae(null), Me("");
 	}, [r]), (0, _.useEffect)(() => {
-		if (!Me) return;
-		let e = y?.lastWrites?.find((e) => e.event === "shipment_customer_save" && e.requestId === Me.requestId);
+		if (!Ne) return;
+		let e = b?.lastWrites?.find((e) => e.event === "shipment_customer_save" && e.requestId === Ne.requestId);
 		if (!e) return;
-		let t = Me.customerId;
-		if (Ne(null), !e.ok) {
+		let t = Ne.customerId;
+		if (Pe(null), !e.ok) {
 			let t = String(e.error || "Không cập nhật được khách hàng của lô.");
-			Fe(t), f("Không lưu được khách hàng của lô", t, "red");
+			Ie(t), p("Không lưu được khách hàng của lô", t, "red");
 			return;
 		}
 		let n = e.readback && typeof e.readback == "object" ? e.readback : null, r = typeof n?.customerId == "string" ? n.customerId.trim() : "";
-		if ((x?.customerId ?? "").trim() !== t || r && r !== t) {
+		if ((w?.customerId ?? "").trim() !== t || r && r !== t) {
 			let e = "Backend báo đã xử lý nhưng dữ liệu đọc lại chưa khớp mã khách hàng đã chọn.";
-			Fe(e), f("Không xác nhận được khách hàng của lô", e, "red");
+			Ie(e), p("Không xác nhận được khách hàng của lô", e, "red");
 			return;
 		}
-		Fe(""), pe((e) => ({
+		Ie(""), me((e) => ({
 			...e,
 			lotCustomer: ""
-		})), f("Đã lưu khách hàng của lô", `${x?.id ?? ""} · ${x?.customer || t}`, "green");
+		})), p("Đã lưu khách hàng của lô", `${w?.id ?? ""} · ${w?.customer || t}`, "green");
 	}, [
-		y?.lastWrites,
-		Me,
-		x?.id,
-		x?.customerId,
-		x?.customer,
-		f
+		b?.lastWrites,
+		Ne,
+		w?.id,
+		w?.customerId,
+		w?.customer,
+		p
 	]);
-	let Ke = x?.selectedDocumentTemplateIds ?? [], qe = Ke.join("\0");
+	let qe = w?.selectedDocumentTemplateIds ?? [], Je = qe.join("\0");
 	(0, _.useEffect)(() => {
-		ze(Ke);
-	}, [r, qe]), (0, _.useEffect)(() => {
-		Le(!1), Ve(""), Ue(""), Ge("");
+		Be(qe);
+	}, [r, Je]), (0, _.useEffect)(() => {
+		Re(!1), He(""), We(""), Ke("");
 	}, [r]), (0, _.useEffect)(() => {
-		if (!Be) return;
-		let e = y?.lastWrites?.find((e) => e.event === "shipment_document_selection_save" && e.requestId === Be);
+		if (!Ve) return;
+		let e = b?.lastWrites?.find((e) => e.event === "shipment_document_selection_save" && e.requestId === Ve);
 		if (e) {
-			if (Ve(""), e.ok) {
+			if (He(""), e.ok) {
 				let t = e.readback && typeof e.readback == "object" ? e.readback : {};
-				Array.isArray(t.selectedDocumentTemplateIds) && ze(t.selectedDocumentTemplateIds.filter((e) => typeof e == "string")), Ue(""), Le(!1), f("Đã lưu biểu mẫu cho lô", "Danh sách đã được xác nhận bằng readback mới từ backend.", "green");
+				Array.isArray(t.selectedDocumentTemplateIds) && Be(t.selectedDocumentTemplateIds.filter((e) => typeof e == "string")), We(""), Re(!1), p("Đã lưu biểu mẫu cho lô", "Danh sách đã được xác nhận bằng readback mới từ backend.", "green");
 			} else {
 				let t = String(e.error || "Backend từ chối lưu lựa chọn biểu mẫu.");
-				Ue(t), f("Chưa lưu được lựa chọn", t, "red");
+				We(t), p("Chưa lưu được lựa chọn", t, "red");
 			}
 		}
 	}, [
-		y?.lastWrites,
-		Be,
-		f
+		b?.lastWrites,
+		Ve,
+		p
 	]), (0, _.useEffect)(() => {
-		if (!We) return;
-		let e = y?.lastWrites?.find((e) => e.event === "attachment_download" && e.requestId === We);
-		e && (Ge(""), e.ok || f("Chưa tải được tệp chứng từ", String(e.error || "Backend từ chối yêu cầu đọc tệp."), "red"));
+		if (!Ge) return;
+		let e = b?.lastWrites?.find((e) => e.event === "attachment_download" && e.requestId === Ge);
+		e && (Ke(""), e.ok || p("Chưa tải được tệp chứng từ", String(e.error || "Backend từ chối yêu cầu đọc tệp."), "red"));
 	}, [
-		y?.lastWrites,
-		We,
-		f
+		b?.lastWrites,
+		Ge,
+		p
 	]), (0, _.useEffect)(() => {
 		let e = window.location.hash.replace(/^#/, "");
 		if (e !== "fld-tk" && e !== "shipment-execution-profile") return;
 		let t = setTimeout(() => bd(e), 200);
 		return () => clearTimeout(t);
 	}, []);
-	let Je = (e, t) => pe((n) => ({
+	let Ye = (e, t) => me((n) => ({
 		...n,
 		[e]: t
-	})), V = (e, t) => fe[e] ?? t, Ye = (0, _.useMemo)(() => p.find((e) => e.id === x?.contract), [p, x]), Xe = (0, _.useMemo)(() => {
-		let e = x?.id.toUpperCase(), t = x?.contract.toUpperCase(), n = p.filter((n) => n.id.toUpperCase() === t || (n.linkedShipments ?? []).some((t) => t.id.toUpperCase() === e));
+	})), V = (e, t) => pe[e] ?? t, Xe = (0, _.useMemo)(() => m.find((e) => e.id === w?.contract), [m, w]), Ze = (0, _.useMemo)(() => {
+		let e = w?.id.toUpperCase(), t = w?.contract.toUpperCase(), n = m.filter((n) => n.id.toUpperCase() === t || (n.linkedShipments ?? []).some((t) => t.id.toUpperCase() === e));
 		return Array.from(new Map(n.map((e) => [e.id, e])).values());
 	}, [
-		p,
-		x?.contract,
-		x?.id
-	]), Ze = Ye ?? (Xe.length === 1 ? Xe[0] : null), Qe = y?.shipmentDocumentPicker, $e = (0, _.useMemo)(() => x ? md({
-		catalog: Qe?.catalog ?? [],
-		selectedIds: Ke,
-		shipment: x,
-		linkedContract: Ze,
-		linkedContractCount: Xe.length,
-		canGenerate: Qe?.canGenerate === !0,
-		storageConfigured: Qe?.storageConfigured === !0,
+		m,
+		w?.contract,
+		w?.id
+	]), Qe = Xe ?? (Ze.length === 1 ? Ze[0] : null), $e = b?.shipmentDocumentPicker, et = (0, _.useMemo)(() => w ? md({
+		catalog: $e?.catalog ?? [],
+		selectedIds: qe,
+		shipment: w,
+		linkedContract: Qe,
+		linkedContractCount: Ze.length,
+		canGenerate: $e?.canGenerate === !0,
+		storageConfigured: $e?.storageConfigured === !0,
 		pxkDraft: {
-			number: V("pxkNo", x.pxk.number ?? ""),
-			date: V("pxkDate", x.pxk.date ?? "")
+			number: V("pxkNo", w.pxk.number ?? ""),
+			date: V("pxkDate", w.pxk.date ?? "")
 		},
 		form07Draft: {
-			number: V("form07No", x.form07?.number ?? ""),
-			orderDate: V("form07OrderDate", x.form07?.orderDate ?? "")
+			number: V("form07No", w.form07?.number ?? ""),
+			orderDate: V("form07OrderDate", w.form07?.orderDate ?? "")
 		}
 	}) : [], [
-		x,
+		w,
+		$e,
+		Je,
 		Qe,
-		qe,
-		Ze,
-		Xe.length,
-		fe.pxkNo,
-		fe.pxkDate,
-		fe.form07No,
-		fe.form07OrderDate
-	]), et = (0, _.useMemo)(() => {
-		let e = x?.uploadedTemplates ?? {}, t = y?.shipmentDocumentPicker?.catalog ?? [];
-		return Ke.map((n) => {
+		Ze.length,
+		pe.pxkNo,
+		pe.pxkDate,
+		pe.form07No,
+		pe.form07OrderDate
+	]), tt = (0, _.useMemo)(() => {
+		let e = w?.uploadedTemplates ?? {}, t = b?.shipmentDocumentPicker?.catalog ?? [];
+		return qe.map((n) => {
 			let r = e[n], i = t.find((e) => e.id === n);
 			return !r || !i ? null : {
 				id: n,
@@ -23955,403 +23958,403 @@ function xd() {
 			};
 		}).filter((e) => e !== null);
 	}, [
-		x?.uploadedTemplates,
-		y?.shipmentDocumentPicker?.catalog,
-		Ke
-	]), tt = y?.authority?.agents ?? [], nt = y?.authority?.companies ?? [], rt = tt.find((e) => e.id === ve), it = nt.find((e) => e.id === be), at = (0, _.useMemo)(() => u.filter((e) => e.shipmentId === r).slice(0, 5), [u, r]), ot = x.finance.currency || "VND", st = x.journey?.nodes.find((e) => e.id === o.get("stage")), ct = o.get("work") || "info", lt = st?.moduleId ? st : void 0, ut = !st || ct !== "overview" && (ct !== "info" || !["si-vgm", "gate-in"].includes(st.id) && !lt), dt = (e, t) => {
+		w?.uploadedTemplates,
+		b?.shipmentDocumentPicker?.catalog,
+		qe
+	]), nt = b?.authority?.agents ?? [], rt = b?.authority?.companies ?? [], it = nt.find((e) => e.id === ye), at = rt.find((e) => e.id === xe), ot = (0, _.useMemo)(() => d.filter((e) => e.shipmentId === r).slice(0, 5), [d, r]), st = w.finance.currency || "VND", ct = w.journey?.nodes.find((e) => e.id === o.get("stage")), lt = o.get("work") || "info", ut = ct?.moduleId ? ct : void 0, dt = !ct || lt !== "overview" && (lt !== "info" || !["si-vgm", "gate-in"].includes(ct.id) && !ut), pt = (e, t) => {
 		let n = t === "docs" ? "chung-tu" : t === "costs" ? "tai-chinh" : t === "history" ? "lich-su" : e.targetTab;
-		return n === "lay-hang" && jn ? (oe(!0), !1) : (s({
+		return n === "lay-hang" && Mn ? (se(!0), !1) : (c({
 			tab: n,
 			stage: e.id,
 			work: t
 		}), !0);
-	}, pt = () => {
-		if (!x) return;
-		let e = Ee.trim();
+	}, mt = () => {
+		if (!w) return;
+		let e = De.trim();
 		if (!e) {
-			je("Chọn một khách hàng trong danh bạ trước khi gán — hệ thống không đoán theo tên.");
+			Me("Chọn một khách hàng trong danh bạ trước khi gán — hệ thống không đoán theo tên.");
 			return;
 		}
 		let t = gd("FLOWC");
-		je(""), ke({
+		Me(""), Ae({
 			requestId: t,
 			customerId: e
-		}), h("shipment_customer_save", {
-			shipmentId: x.id,
+		}), g("shipment_customer_save", {
+			shipmentId: w.id,
 			customerId: e,
 			requestId: t
-		}) || (ke(null), je("Component chưa kết nối backend."));
-	}, mt = () => {
-		if (!ge) {
-			Te("Chọn một hình thức nhập khẩu trước khi lưu.");
+		}) || (Ae(null), Me("Component chưa kết nối backend."));
+	}, gt = () => {
+		if (!_e) {
+			Ee("Chọn một hình thức nhập khẩu trước khi lưu.");
 			return;
 		}
-		if (ge === "CUSTOMER_SELF" && !x?.customerId) {
-			Te("Gán khách hàng cho lô ở bước trên trước khi xác nhận hình thức nhập khẩu.");
+		if (_e === "CUSTOMER_SELF" && !w?.customerId) {
+			Ee("Gán khách hàng cho lô ở bước trên trước khi xác nhận hình thức nhập khẩu.");
 			return;
 		}
-		if (ge === "TT_ENTRUSTED_SUB" && !ve) {
-			Te("Chọn đơn vị đứng nhập khẩu hộ từ danh mục đối tác.");
+		if (_e === "TT_ENTRUSTED_SUB" && !ye) {
+			Ee("Chọn đơn vị đứng nhập khẩu hộ từ danh mục đối tác.");
 			return;
 		}
-		let e = be || (nt.length === 1 ? nt[0].id : "");
-		if ((ge === "TT_ENTRUSTED_DIRECT" || ge === "TT_ENTRUSTED_SUB") && !e) {
-			Te(ge === "TT_ENTRUSTED_SUB" ? "Chọn pháp nhân Trường Thành sẽ ký với đơn vị nhập khẩu hộ." : "Chọn pháp nhân Trường Thành sẽ đứng tên nhập khẩu.");
+		let e = xe || (rt.length === 1 ? rt[0].id : "");
+		if ((_e === "TT_ENTRUSTED_DIRECT" || _e === "TT_ENTRUSTED_SUB") && !e) {
+			Ee(_e === "TT_ENTRUSTED_SUB" ? "Chọn pháp nhân Trường Thành sẽ ký với đơn vị nhập khẩu hộ." : "Chọn pháp nhân Trường Thành sẽ đứng tên nhập khẩu.");
 			return;
 		}
 		let t = gd("FLOW");
-		Te(""), Ce(t), h("shipment_commercial_flow_save", {
-			shipmentId: x.id,
+		Ee(""), we(t), g("shipment_commercial_flow_save", {
+			shipmentId: w.id,
 			requestId: t,
-			mode: ge,
+			mode: _e,
 			companyId: e,
-			subAgentId: ge === "TT_ENTRUSTED_SUB" ? ve : ""
-		}) || (Ce(""), Te("Component chưa kết nối backend."));
-	}, gt = () => {
-		ze(Ke), Ue(""), Le(!0);
+			subAgentId: _e === "TT_ENTRUSTED_SUB" ? ye : ""
+		}) || (we(""), Ee("Component chưa kết nối backend."));
 	}, vt = () => {
-		Be || (Le(!1), Ue(""), ze(Ke));
+		Be(qe), We(""), Re(!0);
 	}, yt = () => {
-		if (!x || !Qe?.canSaveSelection) {
-			Ue("Tài khoản hiện không có quyền lưu lựa chọn biểu mẫu.");
+		Ve || (Re(!1), We(""), Be(qe));
+	}, bt = () => {
+		if (!w || !$e?.canSaveSelection) {
+			We("Tài khoản hiện không có quyền lưu lựa chọn biểu mẫu.");
 			return;
 		}
 		let e = gd("SDOC");
-		Ue(""), Ve(e), h("shipment_document_selection_save", {
-			shipmentId: x.id,
+		We(""), He(e), g("shipment_document_selection_save", {
+			shipmentId: w.id,
 			requestId: e,
-			expectedVersion: Number.isInteger(x.version) ? x.version : 0,
-			selectedTemplateIds: Re
-		}) || (Ve(""), Ue("Component chưa kết nối backend."));
-	}, bt = (e) => {
+			expectedVersion: Number.isInteger(w.version) ? w.version : 0,
+			selectedTemplateIds: ze
+		}) || (He(""), We("Component chưa kết nối backend."));
+	}, xt = (e) => {
 		let t = {};
 		for (let [n, r] of Object.entries(e)) {
 			let e = (r ?? "").trim();
 			e.length > 0 && (t[n] = e);
 		}
 		return t;
-	}, xt = (e, t = []) => {
-		pe((e) => {
+	}, St = (e, t = []) => {
+		me((e) => {
 			if (t.length === 0) return {};
 			let n = {};
 			for (let r of t) e[r] != null && (n[r] = e[r]);
 			return n;
-		}), he(Date.now()), f(e, "Đã gửi tới backend. Dữ liệu sẽ được đọc lại từ Logistics sau khi ghi.", "green");
-	}, St = () => {
-		let e = V("tk", x.importInfo.declarationNo);
+		}), ge(Date.now()), p(e, "Đã gửi tới backend. Dữ liệu sẽ được đọc lại từ Logistics sau khi ghi.", "green");
+	}, Ct = () => {
+		let e = V("tk", w.importInfo.declarationNo);
 		if (!e) {
-			f("Chưa thể lưu thông quan", "Thiếu: Số tờ khai nhập khẩu — nhập số TK (12 số) rồi bấm Lưu.", "red");
+			p("Chưa thể lưu thông quan", "Thiếu: Số tờ khai nhập khẩu — nhập số TK (12 số) rồi bấm Lưu.", "red");
 			return;
 		}
 		let t = {};
-		fe.tkDate != null && (t.tk_date = fe.tkDate.trim()), fe.importDuty != null && (t.import_duty_amount = fe.importDuty.trim()), fe.importVat != null && (t.import_vat_amount = fe.importVat.trim());
+		pe.tkDate != null && (t.tk_date = pe.tkDate.trim()), pe.importDuty != null && (t.import_duty_amount = pe.importDuty.trim()), pe.importVat != null && (t.import_vat_amount = pe.importVat.trim());
 		let n = {
 			tk_no: e,
-			...bt({
-				phan_luong: V("inspection", x.importInfo.inspection),
-				arrival_date: V("arrivalDate", x.importInfo.arrivalDate ?? ""),
-				free_time: V("freeTime", x.importInfo.freeTime == null ? "" : String(x.importInfo.freeTime)),
-				delivery_date: V("schedule", x.importInfo.schedule)
+			...xt({
+				phan_luong: V("inspection", w.importInfo.inspection),
+				arrival_date: V("arrivalDate", w.importInfo.arrivalDate ?? ""),
+				free_time: V("freeTime", w.importInfo.freeTime == null ? "" : String(w.importInfo.freeTime)),
+				delivery_date: V("schedule", w.importInfo.schedule)
 			}),
 			...t
 		};
-		h("shipment_field_save", {
-			shipmentId: x.id,
+		g("shipment_field_save", {
+			shipmentId: w.id,
 			fields: n
-		}), xt("Đã lưu tờ khai " + e);
-	}, Ct = () => {
-		if (M.current) return;
-		let e = fe.createdAt == null ? null : fe.createdAt.trim();
+		}), St("Đã lưu tờ khai " + e);
+	}, wt = () => {
+		if (N.current) return;
+		let e = pe.createdAt == null ? null : pe.createdAt.trim();
 		if (e === null) {
-			f("Chưa sửa ngày", "Chọn/ghi Ngày tạo rồi bấm Lưu — app không tự điền hôm nay.", "amber");
+			p("Chưa sửa ngày", "Chọn/ghi Ngày tạo rồi bấm Lưu — app không tự điền hôm nay.", "amber");
 			return;
 		}
 		let t = gd("HDRD");
-		M.current = !0, P(""), j({
+		N.current = !0, F(""), M({
 			requestId: t,
 			date: e
-		}), h("shipment_field_save", {
-			shipmentId: x.id,
+		}), g("shipment_field_save", {
+			shipmentId: w.id,
 			fields: { created_at: e },
 			requestId: t
-		}) || (M.current = !1, j(null), P("Component chưa kết nối backend."));
+		}) || (N.current = !1, M(null), F("Component chưa kết nối backend."));
 	};
 	(0, _.useEffect)(() => {
-		if (!A) return;
-		let e = y?.lastWrites?.find((e) => e.event === "shipment_field_save" && e.shipmentId === r && e.requestId === A.requestId);
+		if (!j) return;
+		let e = b?.lastWrites?.find((e) => e.event === "shipment_field_save" && e.shipmentId === r && e.requestId === j.requestId);
 		if (!e) return;
-		if (M.current = !1, j(null), !e.ok) {
-			P(String(e.error || "Không lưu được ngày tạo lô."));
+		if (N.current = !1, M(null), !e.ok) {
+			F(String(e.error || "Không lưu được ngày tạo lô."));
 			return;
 		}
 		let t = (e) => e.trim().replace(/^(\d{2})\/(\d{2})\/(\d{4})$/, "$3-$2-$1"), n = e.persisted;
-		if (typeof n?.created_at != "string" || t(n.created_at) !== t(A.date) || t(x.createdAt ?? "") !== t(A.date)) {
-			P("Backend đã xử lý nhưng ngày tạo đọc lại chưa khớp. Kiểm tra dữ liệu trước khi lưu lại.");
+		if (typeof n?.created_at != "string" || t(n.created_at) !== t(j.date) || t(w.createdAt ?? "") !== t(j.date)) {
+			F("Backend đã xử lý nhưng ngày tạo đọc lại chưa khớp. Kiểm tra dữ liệu trước khi lưu lại.");
 			return;
 		}
-		pe((e) => {
+		me((e) => {
 			let t = { ...e };
 			return delete t.createdAt, t;
-		}), he(Date.now()), f(A.date ? "Đã lưu ngày tạo " + A.date : "Đã xoá ngày tạo (để trống = chưa biết)", "Backend đã xác nhận và dữ liệu đọc lại khớp.", "green");
+		}), ge(Date.now()), p(j.date ? "Đã lưu ngày tạo " + j.date : "Đã xoá ngày tạo (để trống = chưa biết)", "Backend đã xác nhận và dữ liệu đọc lại khớp.", "green");
 	}, [
-		y?.lastWrites,
-		A,
+		b?.lastWrites,
+		j,
 		r,
-		x.createdAt,
-		f
+		w.createdAt,
+		p
 	]), (0, _.useEffect)(() => {
-		M.current = !1, j(null), P("");
+		N.current = !1, M(null), F("");
 	}, [r]);
-	let wt = () => {
-		let e = (fe.lotCustomer ?? "").trim();
-		if (!e || e === (x.customerId ?? "")) {
-			f("Chưa đổi khách hàng", "Bấm “Tìm / đổi”, chọn khách trong danh bạ rồi bấm Lưu.", "amber");
+	let Tt = () => {
+		let e = (pe.lotCustomer ?? "").trim();
+		if (!e || e === (w.customerId ?? "")) {
+			p("Chưa đổi khách hàng", "Bấm “Tìm / đổi”, chọn khách trong danh bạ rồi bấm Lưu.", "amber");
 			return;
 		}
 		let t = gd("HDRC");
-		if (Fe(""), Ne({
+		if (Ie(""), Pe({
 			requestId: t,
 			customerId: e
-		}), !h("shipment_customer_save", {
-			shipmentId: x.id,
+		}), !g("shipment_customer_save", {
+			shipmentId: w.id,
 			customerId: e,
 			requestId: t
 		})) {
-			Ne(null);
+			Pe(null);
 			let e = "Component chưa kết nối backend.";
-			Fe(e), f("Không lưu được khách hàng của lô", e, "red");
+			Ie(e), p("Không lưu được khách hàng của lô", e, "red");
 		}
-	}, Tt = () => {
-		let e = h("delivery_confirm", {
-			shipmentId: x.id,
+	}, Et = () => {
+		let e = g("delivery_confirm", {
+			shipmentId: w.id,
 			deliveredAt: (/* @__PURE__ */ new Date()).toISOString().slice(0, 10),
-			receiverName: x.importInfo.receiver,
-			receiverTitle: x.importInfo.receiverTitle ?? "",
-			receiverPhone: x.importInfo.receiverPhone,
-			deliveryLocation: x.importInfo.deliveryLocation || x.importInfo.deliveryAddr
+			receiverName: w.importInfo.receiver,
+			receiverTitle: w.importInfo.receiverTitle ?? "",
+			receiverPhone: w.importInfo.receiverPhone,
+			deliveryLocation: w.importInfo.deliveryLocation || w.importInfo.deliveryAddr
 		});
-		D(!1), e ? f("Đã gửi xác nhận giao hàng " + x.id, "Backend ghi nhận + audit; PXK sẽ mở ở tab Chứng từ.", "green") : f("Không gửi được", "Component chưa kết nối backend.", "red");
-	}, Et = (0, _.useRef)(""), [Dt, Ot] = (0, _.useState)(""), kt = (0, _.useRef)(""), [At, jt] = (0, _.useState)(""), Mt = () => {
-		Et.current = gd("PAY"), kt.current = "", Ot(""), jt(""), T(!0);
-	}, Nt = () => {
-		kt.current = "", Ot("");
+		O(!1), e ? p("Đã gửi xác nhận giao hàng " + w.id, "Backend ghi nhận + audit; PXK sẽ mở ở tab Chứng từ.", "green") : p("Không gửi được", "Component chưa kết nối backend.", "red");
+	}, Dt = (0, _.useRef)(""), [Ot, kt] = (0, _.useState)(""), At = (0, _.useRef)(""), [jt, Mt] = (0, _.useState)(""), Nt = () => {
+		Dt.current = gd("PAY"), At.current = "", kt(""), Mt(""), E(!0);
 	}, Pt = () => {
-		if (kt.current) return;
-		let e = se.trim(), t = ls(e);
+		At.current = "", kt("");
+	}, Ft = () => {
+		if (At.current) return;
+		let e = ce.trim(), t = ls(e);
 		if (t == null || t <= 0) {
-			f("Chưa nhập số tiền", `Nhập số tiền ${ot} rồi bấm Lưu — ví dụ 50.000.000.`, "red");
+			p("Chưa nhập số tiền", `Nhập số tiền ${st} rồi bấm Lưu — ví dụ 50.000.000.`, "red");
 			return;
 		}
-		if (!h("payment_record", {
-			shipmentId: x.id,
+		if (!g("payment_record", {
+			shipmentId: w.id,
 			amount: e,
-			requestId: Et.current,
+			requestId: Dt.current,
 			date: (/* @__PURE__ */ new Date()).toISOString().slice(0, 10),
-			note: B
+			note: le
 		})) {
-			f("Không gửi được", "Component chưa kết nối backend.", "red");
+			p("Không gửi được", "Component chưa kết nối backend.", "red");
 			return;
 		}
-		jt(""), kt.current = Et.current, Ot(Et.current);
+		Mt(""), At.current = Dt.current, kt(Dt.current);
 	};
 	(0, _.useEffect)(() => {
-		if (!Dt) return;
-		let e = (y?.lastWrites ?? []).find((e) => e.event === "payment_record" && e.requestId === Dt);
+		if (!Ot) return;
+		let e = (b?.lastWrites ?? []).find((e) => e.event === "payment_record" && e.requestId === Ot);
 		if (e) {
 			if (e.ok) {
-				if (!(y?.shipments ?? []).find((e) => e.id === x.id)?.finance?.payments?.some((e) => e.requestId === Dt)) return;
-				T(!1), ce(""), jt(""), Nt(), f("Đã ghi nhận khoản thu " + x.id, "Backend đã xác nhận ghi sổ — khoản thu với mã yêu cầu này đã hiển thị trong sổ tài chính đọc lại.", "green");
-			} else Nt(), jt(e.error || "Backend từ chối khoản thu này."), Et.current = gd("PAY"), f("Chưa ghi nhận được", e.error || "Backend từ chối khoản thu.", "red");
+				if (!(b?.shipments ?? []).find((e) => e.id === w.id)?.finance?.payments?.some((e) => e.requestId === Ot)) return;
+				E(!1), B(""), Mt(""), Pt(), p("Đã ghi nhận khoản thu " + w.id, "Backend đã xác nhận ghi sổ — khoản thu với mã yêu cầu này đã hiển thị trong sổ tài chính đọc lại.", "green");
+			} else Pt(), Mt(e.error || "Backend từ chối khoản thu này."), Dt.current = gd("PAY"), p("Chưa ghi nhận được", e.error || "Backend từ chối khoản thu.", "red");
 		}
-	}, [y?.lastWrites, Dt]);
-	let [Ft, It] = (0, _.useState)(null), [Lt, Rt] = (0, _.useState)(""), [zt, Bt] = (0, _.useState)(""), [Vt, Ht] = (0, _.useState)(""), [Ut, Wt] = (0, _.useState)(""), [Gt, Kt] = (0, _.useState)(""), [qt, Jt] = (0, _.useState)(""), Yt = (0, _.useRef)(""), Xt = (0, _.useRef)(""), Zt = (e) => {
-		Yt.current = gd("CORR"), Xt.current = "", It(e), Rt(""), Bt(""), Ht(""), Wt(""), Kt(""), Jt("");
-	}, Qt = () => {
-		It(null), Xt.current = "", Jt("");
+	}, [b?.lastWrites, Ot]);
+	let [It, Lt] = (0, _.useState)(null), [Rt, zt] = (0, _.useState)(""), [Bt, Vt] = (0, _.useState)(""), [Ht, Ut] = (0, _.useState)(""), [Wt, Gt] = (0, _.useState)(""), [Kt, qt] = (0, _.useState)(""), [Jt, Yt] = (0, _.useState)(""), Xt = (0, _.useRef)(""), Zt = (0, _.useRef)(""), Qt = (e) => {
+		Xt.current = gd("CORR"), Zt.current = "", Lt(e), zt(""), Vt(""), Ut(""), Gt(""), qt(""), Yt("");
 	}, $t = () => {
-		if (!Ft || Xt.current) return;
-		let e = Lt.trim();
+		Lt(null), Zt.current = "", Yt("");
+	}, en = () => {
+		if (!It || Zt.current) return;
+		let e = Rt.trim();
 		if (!e) {
-			Kt("LÝ DO ĐIỀU CHỈNH là bắt buộc — backend từ chối correction không có lý do.");
+			qt("LÝ DO ĐIỀU CHỈNH là bắt buộc — backend từ chối correction không có lý do.");
 			return;
 		}
-		let t = zt.trim();
+		let t = Bt.trim();
 		if (t && ls(t) == null) {
-			Kt("Số tiền bằng chứng không phải số hợp lệ — sửa lại hoặc để trống (không tự thành 0).");
+			qt("Số tiền bằng chứng không phải số hợp lệ — sửa lại hoặc để trống (không tự thành 0).");
 			return;
 		}
-		if (!h("payment_correction", {
-			shipmentId: x.id,
-			paymentId: Ft.id,
-			correctionRequestId: Yt.current,
+		if (!g("payment_correction", {
+			shipmentId: w.id,
+			paymentId: It.id,
+			correctionRequestId: Xt.current,
 			reason: e,
 			...t ? { amount: t } : {},
-			...Vt.trim() ? { date: Vt.trim() } : {},
-			...Ut.trim() ? { note: Ut.trim() } : {}
+			...Ht.trim() ? { date: Ht.trim() } : {},
+			...Wt.trim() ? { note: Wt.trim() } : {}
 		})) {
-			Kt("Component chưa kết nối backend — yêu cầu chưa được gửi đi.");
+			qt("Component chưa kết nối backend — yêu cầu chưa được gửi đi.");
 			return;
 		}
-		Kt(""), Xt.current = Yt.current, Jt(Yt.current);
+		qt(""), Zt.current = Xt.current, Yt(Xt.current);
 	};
 	(0, _.useEffect)(() => {
-		if (!qt) return;
-		let e = (y?.lastWrites ?? []).find((e) => e.event === "payment_correction" && e.correctionRequestId === qt);
-		e && (e.ok ? (Qt(), f("Đã ghi bút toán hoàn tác có liên kết", "financial_corrections + audit payment_reversed; khoản thu gốc vẫn ở lại lịch sử với trạng thái Đã hoàn tác, số liệu đọc lại từ backend.", "green")) : (Xt.current = "", Jt(""), Kt(e.error || "Backend từ chối bút toán điều chỉnh này."), Yt.current = gd("CORR"), f("Chưa điều chỉnh được", e.error || "Backend từ chối.", "red")));
-	}, [y?.lastWrites, qt]);
-	let en = (0, _.useRef)(""), tn = (0, _.useRef)(""), [nn, rn] = (0, _.useState)({}), an = (0, _.useRef)({}), [on, sn] = (0, _.useState)({}), cn = (e) => gd(e), ln = () => {
-		en.current = cn("POBL");
-	}, un = () => {
-		tn.current = cn("PPAY");
-	}, dn = (e, t, n) => {
-		an.current = {
-			...an.current,
+		if (!Jt) return;
+		let e = (b?.lastWrites ?? []).find((e) => e.event === "payment_correction" && e.correctionRequestId === Jt);
+		e && (e.ok ? ($t(), p("Đã ghi bút toán hoàn tác có liên kết", "financial_corrections + audit payment_reversed; khoản thu gốc vẫn ở lại lịch sử với trạng thái Đã hoàn tác, số liệu đọc lại từ backend.", "green")) : (Zt.current = "", Yt(""), qt(e.error || "Backend từ chối bút toán điều chỉnh này."), Xt.current = gd("CORR"), p("Chưa điều chỉnh được", e.error || "Backend từ chối.", "red")));
+	}, [b?.lastWrites, Jt]);
+	let tn = (0, _.useRef)(""), nn = (0, _.useRef)(""), [rn, an] = (0, _.useState)({}), on = (0, _.useRef)({}), [sn, cn] = (0, _.useState)({}), ln = (e) => gd(e), un = () => {
+		tn.current = ln("POBL");
+	}, dn = () => {
+		nn.current = ln("PPAY");
+	}, fn = (e, t, n) => {
+		on.current = {
+			...on.current,
 			[e]: t
-		}, rn((n) => ({
+		}, an((n) => ({
 			...n,
 			[e]: t
-		})), sn((t) => ({
+		})), cn((t) => ({
 			...t,
 			[e]: n
 		}));
-	}, fn = () => {
-		if (an.current.obl) return;
-		let e = x.finance.partner;
+	}, pn = () => {
+		if (on.current.obl) return;
+		let e = w.finance.partner;
 		if (!e?.partnerId) {
-			f("Chưa chọn đối tác", "Chưa có đối tác trong danh mục để ghi nhận phải trả.", "red");
+			p("Chưa chọn đối tác", "Chưa có đối tác trong danh mục để ghi nhận phải trả.", "red");
 			return;
 		}
-		let t = ue.trim(), n = ls(t);
+		let t = de.trim(), n = ls(t);
 		if (n == null || n <= 0) {
-			f("Chưa nhập số tiền", `Nhập số tiền phải trả ${ot} — ví dụ 57.000.000.`, "red");
+			p("Chưa nhập số tiền", `Nhập số tiền phải trả ${st} — ví dụ 57.000.000.`, "red");
 			return;
 		}
-		if (en.current || ln(), !h("partner_payable_record", {
-			shipmentId: x.id,
+		if (tn.current || un(), !g("partner_payable_record", {
+			shipmentId: w.id,
 			partnerId: e.partnerId,
 			amount: t,
-			currency: ot,
-			requestId: en.current,
+			currency: st,
+			requestId: tn.current,
 			note: "Phải trả chi phí đối tác theo thực tế lô"
 		})) {
-			f("Không gửi được", "Component chưa kết nối backend.", "red");
+			p("Không gửi được", "Component chưa kết nối backend.", "red");
 			return;
 		}
-		dn("obl", en.current, "");
-	}, pn = () => {
-		if (an.current.pay) return;
-		let e = x.finance.partner;
+		fn("obl", tn.current, "");
+	}, mn = () => {
+		if (on.current.pay) return;
+		let e = w.finance.partner;
 		if (!e?.partnerId) {
-			f("Chưa chọn đối tác", "Chưa có đối tác để thanh toán — ghi nhận phải trả trước.", "red");
+			p("Chưa chọn đối tác", "Chưa có đối tác để thanh toán — ghi nhận phải trả trước.", "red");
 			return;
 		}
-		let t = ue.trim(), n = ls(t);
+		let t = de.trim(), n = ls(t);
 		if (n == null || n <= 0) {
-			f("Chưa nhập số tiền", `Nhập số tiền thanh toán ${ot} — ví dụ 20.000.000.`, "red");
+			p("Chưa nhập số tiền", `Nhập số tiền thanh toán ${st} — ví dụ 20.000.000.`, "red");
 			return;
 		}
-		if (tn.current || un(), !h("partner_payment_record", {
-			shipmentId: x.id,
+		if (nn.current || dn(), !g("partner_payment_record", {
+			shipmentId: w.id,
 			partnerId: e.partnerId,
 			amount: t,
-			currency: ot,
-			requestId: tn.current,
+			currency: st,
+			requestId: nn.current,
 			date: (/* @__PURE__ */ new Date()).toISOString().slice(0, 10),
 			note: "Chuyển khoản thanh toán đối tác"
 		})) {
-			f("Không gửi được", "Component chưa kết nối backend.", "red");
+			p("Không gửi được", "Component chưa kết nối backend.", "red");
 			return;
 		}
-		dn("pay", tn.current, "");
+		fn("pay", nn.current, "");
 	};
 	(0, _.useEffect)(() => {
-		let e = y?.lastWrites ?? [];
+		let e = b?.lastWrites ?? [];
 		if (e.length !== 0) for (let t of ["obl", "pay"]) {
-			let n = an.current[t];
+			let n = on.current[t];
 			if (!n) continue;
 			let r = t === "obl" ? "partner_payable_record" : "partner_payment_record", i = e.find((e) => e.event === r && e.requestId === n);
 			if (i) {
 				if (i.ok) {
-					if (!(t === "obl" ? i.position : (y?.shipments ?? []).find((e) => e.id === (i.shipmentId || x.id))?.finance?.partner?.payments?.some((e) => e.requestId === n))) continue;
-					dn(t, "", ""), de(""), f(t === "obl" ? "Đã ghi nhận phải trả đối tác" : "Đã ghi nhận thanh toán đối tác", "Backend đã xác nhận ghi sổ — bút toán với mã yêu cầu này đã hiển thị trong sổ tài chính đọc lại.", "green");
-				} else dn(t, "", i.error || "Backend từ chối bút toán này."), t === "obl" ? ln() : un(), f("Chưa ghi nhận được", i.error || "Backend từ chối.", "red");
+					if (!(t === "obl" ? i.position : (b?.shipments ?? []).find((e) => e.id === (i.shipmentId || w.id))?.finance?.partner?.payments?.some((e) => e.requestId === n))) continue;
+					fn(t, "", ""), fe(""), p(t === "obl" ? "Đã ghi nhận phải trả đối tác" : "Đã ghi nhận thanh toán đối tác", "Backend đã xác nhận ghi sổ — bút toán với mã yêu cầu này đã hiển thị trong sổ tài chính đọc lại.", "green");
+				} else fn(t, "", i.error || "Backend từ chối bút toán này."), t === "obl" ? un() : dn(), p("Chưa ghi nhận được", i.error || "Backend từ chối.", "red");
 			}
 		}
-	}, [y?.lastWrites]);
-	let mn = () => {
-		let e = V("pxkNo", x?.pxk.number ?? "").trim(), t = V("pxkDate", x?.pxk.date ?? "").trim();
-		if (x) {
+	}, [b?.lastWrites]);
+	let hn = () => {
+		let e = V("pxkNo", w?.pxk.number ?? "").trim(), t = V("pxkDate", w?.pxk.date ?? "").trim();
+		if (w) {
 			if (!e || !t) {
-				f("Chưa xuất được PXK", "core.docgen từ chối khi thiếu Số PXK hoặc Ngày PXK — nhập 2 ô ở tab Chứng từ rồi bấm lại.", "red");
+				p("Chưa xuất được PXK", "core.docgen từ chối khi thiếu Số PXK hoặc Ngày PXK — nhập 2 ô ở tab Chứng từ rồi bấm lại.", "red");
 				return;
 			}
-			h("pxk_generate", {
-				shipmentId: x.id,
+			g("pxk_generate", {
+				shipmentId: w.id,
 				pxkNo: e,
 				pxkDate: t
-			}) ? f("Đã gửi yêu cầu xuất PXK " + e, "core.docgen kiểm tra gate giao hàng, sinh file Office thật và lưu metadata chứng từ.", "blue") : f("Không gửi được", "Component chưa kết nối backend.", "red");
-		}
-	}, hn = () => {
-		let e = V("form07No", x?.form07?.number ?? "").trim(), t = V("form07OrderDate", x?.form07?.orderDate ?? "").trim();
-		if (x) {
-			if (!e || !t) {
-				f("Chưa tạo được biên bản giao nhận", "core.docgen.form07 từ chối khi thiếu Số biên bản hoặc Ngày đơn đặt hàng — nhập 2 ô ở tab Chứng từ rồi bấm lại.", "red");
-				return;
-			}
-			h("form07_generate", {
-				shipmentId: x.id,
-				form07No: e,
-				orderDate: t
-			}) ? f("Đã gửi yêu cầu tạo Biên bản giao nhận " + e, "Backend kiểm tra gate giao hàng + hợp đồng nguồn, sinh DOCX từ mẫu Owner đã làm sạch và lưu vào kho chứng từ.", "blue") : f("Không gửi được", "Component chưa kết nối backend.", "red");
+			}) ? p("Đã gửi yêu cầu xuất PXK " + e, "core.docgen kiểm tra gate giao hàng, sinh file Office thật và lưu metadata chứng từ.", "blue") : p("Không gửi được", "Component chưa kết nối backend.", "red");
 		}
 	}, gn = () => {
-		let e = x?.form07?.document;
+		let e = V("form07No", w?.form07?.number ?? "").trim(), t = V("form07OrderDate", w?.form07?.orderDate ?? "").trim();
+		if (w) {
+			if (!e || !t) {
+				p("Chưa tạo được biên bản giao nhận", "core.docgen.form07 từ chối khi thiếu Số biên bản hoặc Ngày đơn đặt hàng — nhập 2 ô ở tab Chứng từ rồi bấm lại.", "red");
+				return;
+			}
+			g("form07_generate", {
+				shipmentId: w.id,
+				form07No: e,
+				orderDate: t
+			}) ? p("Đã gửi yêu cầu tạo Biên bản giao nhận " + e, "Backend kiểm tra gate giao hàng + hợp đồng nguồn, sinh DOCX từ mẫu Owner đã làm sạch và lưu vào kho chứng từ.", "blue") : p("Không gửi được", "Component chưa kết nối backend.", "red");
+		}
+	}, _n = () => {
+		let e = w?.form07?.document;
 		if (!e || !e.downloadBase64) {
-			f("File không còn trong phiên này", "Metadata FORM_07 " + (x?.form07?.number || x?.id || "") + " vẫn còn trên backend; tải bản đã lưu qua danh sách lịch sử của thẻ biểu mẫu.", "amber");
+			p("File không còn trong phiên này", "Metadata FORM_07 " + (w?.form07?.number || w?.id || "") + " vẫn còn trên backend; tải bản đã lưu qua danh sách lịch sử của thẻ biểu mẫu.", "amber");
 			return;
 		}
-		ps(e.fileName || "FORM07_" + (x?.form07?.number || x?.id) + ".docx", e.downloadBase64, e.mime || "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
-	}, _n = (e, t, n) => {
-		if (!x) return;
+		ps(e.fileName || "FORM07_" + (w?.form07?.number || w?.id) + ".docx", e.downloadBase64, e.mime || "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+	}, vn = (e, t, n) => {
+		if (!w) return;
 		let r = {}, i = [];
 		for (let t of n) {
 			let n = V(`up_${e}_${t}`, "").trim();
 			n ? r[t] = n : i.push(t);
 		}
 		if (i.length) {
-			f("Chưa tạo được " + t, "Backend từ chối khi thiếu thông tin nhập tay: " + i.join(", ") + " — nhập đủ ở tab Chứng từ rồi bấm lại. Không có giá trị nào được tự đặt.", "red");
+			p("Chưa tạo được " + t, "Backend từ chối khi thiếu thông tin nhập tay: " + i.join(", ") + " — nhập đủ ở tab Chứng từ rồi bấm lại. Không có giá trị nào được tự đặt.", "red");
 			return;
 		}
-		h("uploaded_template_generate", {
-			shipmentId: x.id,
+		g("uploaded_template_generate", {
+			shipmentId: w.id,
 			templateId: e,
 			manualValues: r
-		}) ? f("Đã gửi yêu cầu tạo " + t, "Backend kiểm tra mapping đã xác nhận + dữ liệu canonical, điền không phá vỡ bố cục và lưu vào kho chứng từ.", "blue") : f("Không gửi được", "Component chưa kết nối backend.", "red");
-	}, vn = () => {
-		let e = bt({
-			delivery_location: V("pxPlace", x.pxk.place || x.importInfo.deliveryAddr || ""),
-			receiver_name: V("pxReceiver", x.pxk.receiver || x.importInfo.receiver || ""),
-			receiver_title: V("pxRole", x.pxk.role ?? ""),
-			delivery_date: V("pxDate", x.importInfo.schedule ?? "")
+		}) ? p("Đã gửi yêu cầu tạo " + t, "Backend kiểm tra mapping đã xác nhận + dữ liệu canonical, điền không phá vỡ bố cục và lưu vào kho chứng từ.", "blue") : p("Không gửi được", "Component chưa kết nối backend.", "red");
+	}, yn = () => {
+		let e = xt({
+			delivery_location: V("pxPlace", w.pxk.place || w.importInfo.deliveryAddr || ""),
+			receiver_name: V("pxReceiver", w.pxk.receiver || w.importInfo.receiver || ""),
+			receiver_title: V("pxRole", w.pxk.role ?? ""),
+			delivery_date: V("pxDate", w.importInfo.schedule ?? "")
 		});
 		if (Object.keys(e).length === 0) {
-			f("Chưa có gì để lưu", "Nhập ít nhất một trường người nhận / địa điểm / ngày giao.", "red");
+			p("Chưa có gì để lưu", "Nhập ít nhất một trường người nhận / địa điểm / ngày giao.", "red");
 			return;
 		}
-		h("shipment_field_save", {
-			shipmentId: x.id,
+		g("shipment_field_save", {
+			shipmentId: w.id,
 			fields: e
-		}), xt("Đã lưu thông tin giao nhận " + x.id, ["pxkNo", "pxkDate"]);
-	}, yn = () => {
-		let e = x.pxk.document;
+		}), St("Đã lưu thông tin giao nhận " + w.id, ["pxkNo", "pxkDate"]);
+	}, bn = () => {
+		let e = w.pxk.document;
 		if (!e || !e.downloadBase64) {
-			f("File không còn trong phiên này", "Metadata PXK " + (x.pxk.number || x.id) + " vẫn còn trên backend; bytes chỉ được giữ trong phiên đã sinh. Bấm sinh lại để có file tải.", "amber");
+			p("File không còn trong phiên này", "Metadata PXK " + (w.pxk.number || w.id) + " vẫn còn trên backend; bytes chỉ được giữ trong phiên đã sinh. Bấm sinh lại để có file tải.", "amber");
 			return;
 		}
-		ps(e.fileName || "PXK_" + (x.pxk.number || x.id) + ".xlsx", e.downloadBase64, e.mime || "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-	}, bn = () => {
-		if (!x) return;
-		let e = x.importInfo.gnt || {
+		ps(e.fileName || "PXK_" + (w.pxk.number || w.id) + ".xlsx", e.downloadBase64, e.mime || "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+	}, xn = () => {
+		if (!w) return;
+		let e = w.importInfo.gnt || {
 			payer: "",
 			taxCode: "",
 			address: ""
@@ -24360,93 +24363,93 @@ function xd() {
 			gnt_taxpayer_tax_code: V("gntTaxCode", e.taxCode || ""),
 			gnt_taxpayer_address: V("gntAddress", e.address || "")
 		};
-		h("shipment_field_save", {
-			shipmentId: x.id,
+		g("shipment_field_save", {
+			shipmentId: w.id,
 			fields: t
-		}) ? f("Đã gửi thông tin Người nộp thuế", "Backend ghi nhận vào hồ sơ hải quan của lô.", "blue") : f("Không gửi được", "Component chưa kết nối backend.", "red");
-	}, xn = () => {
-		x && (h("gnt_generate", { shipmentId: x.id }) ? f("Đã gửi yêu cầu tạo Giấy Nộp Thuế", "Hệ thống kiểm tra thông tin tờ khai/thuế và sinh file Excel Mẫu C1-02/NS.", "blue") : f("Không gửi được", "Component chưa kết nối backend.", "red"));
+		}) ? p("Đã gửi thông tin Người nộp thuế", "Backend ghi nhận vào hồ sơ hải quan của lô.", "blue") : p("Không gửi được", "Component chưa kết nối backend.", "red");
 	}, Sn = () => {
-		let e = x?.importInfo.gnt?.document;
+		w && (g("gnt_generate", { shipmentId: w.id }) ? p("Đã gửi yêu cầu tạo Giấy Nộp Thuế", "Hệ thống kiểm tra thông tin tờ khai/thuế và sinh file Excel Mẫu C1-02/NS.", "blue") : p("Không gửi được", "Component chưa kết nối backend.", "red"));
+	}, Cn = () => {
+		let e = w?.importInfo.gnt?.document;
 		if (!e || !e.downloadBase64) {
-			f("File không còn trong phiên này", "Bytes chỉ được giữ trong phiên đã sinh. Bấm 'Tạo lại XLSX' để sinh và tải file.", "amber");
+			p("File không còn trong phiên này", "Bytes chỉ được giữ trong phiên đã sinh. Bấm 'Tạo lại XLSX' để sinh và tải file.", "amber");
 			return;
 		}
-		ps(e.fileName || "GNT_" + x.id + ".xlsx", e.downloadBase64, e.mime || "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-	}, Cn = (e, t) => {
-		s({ tab: e }), window.setTimeout(() => {
+		ps(e.fileName || "GNT_" + w.id + ".xlsx", e.downloadBase64, e.mime || "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+	}, wn = (e, t) => {
+		c({ tab: e }), window.setTimeout(() => {
 			let e = document.getElementById(t);
 			e?.scrollIntoView({
 				behavior: "smooth",
 				block: "center"
 			}), e instanceof HTMLElement && e.focus({ preventScroll: !0 });
 		}, 160);
-	}, wn = (e, t) => {
+	}, Tn = (e, t) => {
 		switch (t) {
 			case "GENERATE_CONTRACT":
 			case "OPEN_CONTRACT":
-				b(Ze ? `${Jn(Ze.id)}?tab=chung-tu` : "/hop-dong");
+				x(Qe ? `${Jn(Qe.id)}?tab=chung-tu` : "/hop-dong");
 				return;
 			case "GENERATE_PXK":
-				mn();
-				return;
-			case "GENERATE_GNT":
-				xn();
-				return;
-			case "GENERATE_FORM07":
 				hn();
 				return;
+			case "GENERATE_GNT":
+				Sn();
+				return;
+			case "GENERATE_FORM07":
+				gn();
+				return;
 			case "OPEN_CONTRACT_LIST":
-				b("/hop-dong");
+				x("/hop-dong");
 				return;
 			case "OPEN_COMMERCIAL_FLOW":
-				Cn("chung-tu", "shipment-commercial-flow");
+				wn("chung-tu", "shipment-commercial-flow");
 				return;
 			case "OPEN_IMPORT":
-				Cn("nhap", "fld-gnt-payer");
+				wn("nhap", "fld-gnt-payer");
 				return;
 			case "OPEN_DELIVERY":
-				s({ tab: "nhap" }), D(!0);
+				c({ tab: "nhap" }), O(!0);
 				return;
 			case "OPEN_PXK":
-				Cn("chung-tu", "fld-pxkno");
+				wn("chung-tu", "fld-pxkno");
 				return;
 			case "OPEN_FORM07":
-				Cn("chung-tu", "fld-form07no");
+				wn("chung-tu", "fld-form07no");
 				return;
 			case "GENERATE_UPLOADED": {
-				let t = x?.uploadedTemplates?.[e.id];
-				_n(e.id, e.label, t?.manualFields ?? []);
+				let t = w?.uploadedTemplates?.[e.id];
+				vn(e.id, e.label, t?.manualFields ?? []);
 				return;
 			}
 			case "OPEN_UPLOADED":
-				Cn("chung-tu", "shipment-uploaded-templates");
+				wn("chung-tu", "shipment-uploaded-templates");
 				return;
 		}
-	}, Tn = (e, t) => {
+	}, En = (e, t) => {
 		if (t.downloadBase64) {
-			ps(t.fileName || `${e.id}_R${t.revision}`, t.downloadBase64, t.mime || "application/octet-stream"), f("Đã tải " + (t.fileName || e.label), "Tệp được mở từ đầu ra hiện có của bộ tạo.", "green");
+			ps(t.fileName || `${e.id}_R${t.revision}`, t.downloadBase64, t.mime || "application/octet-stream"), p("Đã tải " + (t.fileName || e.label), "Tệp được mở từ đầu ra hiện có của bộ tạo.", "green");
 			return;
 		}
 		if (!t.attachmentId) {
-			f("Chưa thể tải tệp", "Bản lịch sử chỉ có metadata; không có bytes phiên này hoặc tệp đính kèm đã liên kết.", "amber");
+			p("Chưa thể tải tệp", "Bản lịch sử chỉ có metadata; không có bytes phiên này hoặc tệp đính kèm đã liên kết.", "amber");
 			return;
 		}
-		if (We) return;
+		if (Ge) return;
 		let n = gd("DOCDOWN");
-		Ge(n), h("attachment_download", {
-			shipmentId: x.id,
+		Ke(n), g("attachment_download", {
+			shipmentId: w.id,
 			attachmentId: t.attachmentId,
 			requestId: n
-		}) || (Ge(""), f("Chưa tải được tệp chứng từ", "Component chưa kết nối backend.", "red"));
-	}, En = (e) => /xe giao/i.test(e) ? "van-tai" : /tờ khai|thông quan|giao hàng/i.test(e) ? "nhap" : /xe TQ|biển số|packing|container|lấy hàng/i.test(e) ? "van-tai" : /chứng từ|PXK|HDMB|PL$/i.test(e) ? "chung-tu" : "nhap", Dn = x.missingDocs.length, On = /* @__PURE__ */ new Set([
+		}) || (Ke(""), p("Chưa tải được tệp chứng từ", "Component chưa kết nối backend.", "red"));
+	}, Dn = (e) => /xe giao/i.test(e) ? "van-tai" : /tờ khai|thông quan|giao hàng/i.test(e) ? "nhap" : /xe TQ|biển số|packing|container|lấy hàng/i.test(e) ? "van-tai" : /chứng từ|PXK|HDMB|PL$/i.test(e) ? "chung-tu" : "nhap", On = w.missingDocs.length, kn = /* @__PURE__ */ new Set([
 		"ORIGIN_PICKUP",
 		"EXPORT_HANDLING",
 		"EXPORT_CUSTOMS",
 		"ORIGIN_TERMINAL_OR_BORDER"
-	]), kn = (x.executionProfile?.incoterm || x.incoterm || "").trim().toUpperCase(), An = !!x.executionProfile?.serviceScopeConfirmed && (x.executionProfile?.serviceScope ?? []).some((e) => On.has(e)), jn = /^[FCD]/.test(kn) && !An && !z && c !== "lay-hang", Mn = () => {
-		ie(!0), oe(!1), s({ tab: "lay-hang" });
-	}, Nn = x.journey?.nodes?.find((e) => e.current), Pn = Nn ? `Vị trí theo mốc thực tế: ${Nn.label}` : x.journey?.positionNote || "", In = v?.displayName ? `${v.displayName} · Nội bộ` : "Nội bộ", Ln = x.commercialFlow?.modeLabel || "", Rn = (x.journey?.owner || "").trim() || (x.sale || "").trim(), zn = !!Rn && Rn !== "—", Bn = zn ? Rn.split(/\s+/).slice(0, 2).map((e) => e[0]).join("").toUpperCase() : "TT", Vn = zn ? `Phụ trách: ${Rn}` : "Trường Thành";
+	]), An = (w.executionProfile?.incoterm || w.incoterm || "").trim().toUpperCase(), jn = !!w.executionProfile?.serviceScopeConfirmed && (w.executionProfile?.serviceScope ?? []).some((e) => kn.has(e)), Mn = /^[FCD]/.test(An) && !jn && !ie && l !== "lay-hang", Nn = () => {
+		ae(!0), se(!1), c({ tab: "lay-hang" });
+	}, Pn = w.journey?.nodes?.find((e) => e.current), In = Pn ? `Vị trí theo mốc thực tế: ${Pn.label}` : w.journey?.positionNote || "", Ln = y?.displayName ? `${y.displayName} · Nội bộ` : "Nội bộ", Rn = w.commercialFlow?.modeLabel || "", zn = (w.journey?.owner || "").trim() || (w.sale || "").trim(), Bn = !!zn && zn !== "—", Vn = Bn ? zn.split(/\s+/).slice(0, 2).map((e) => e[0]).join("").toUpperCase() : "TT", Hn = Bn ? `Phụ trách: ${zn}` : "Trường Thành";
 	return /* @__PURE__ */ (0, U.jsxs)("div", {
 		className: "space-y-2.5 min-w-0",
 		children: [
@@ -24470,7 +24473,7 @@ function xd() {
 									children: "TRƯỜNG THÀNH"
 								}), /* @__PURE__ */ (0, U.jsx)("span", {
 									className: "block text-[11.5px] text-slate-500 font-medium",
-									children: In
+									children: Ln
 								})]
 							})]
 						}),
@@ -24484,24 +24487,24 @@ function xd() {
 								className: "flex flex-wrap items-center gap-x-2 gap-y-1",
 								children: [/* @__PURE__ */ (0, U.jsxs)("h1", {
 									className: "text-[19px] font-extrabold text-[#0f2a4a] whitespace-nowrap",
-									title: Pn || void 0,
-									children: ["Lô hàng ", x.id]
-								}), Ln && /* @__PURE__ */ (0, U.jsx)("span", {
+									title: In || void 0,
+									children: ["Lô hàng ", w.id]
+								}), Rn && /* @__PURE__ */ (0, U.jsx)("span", {
 									className: "rounded-md border border-red-200 bg-red-50 px-2 py-0.5 text-[12px] font-bold text-red-700 whitespace-nowrap",
-									children: Ln
+									children: Rn
 								})]
 							}), /* @__PURE__ */ (0, U.jsxs)("p", {
 								className: "mt-0.5 truncate text-[12.5px] text-slate-600",
 								children: [
 									/* @__PURE__ */ (0, U.jsx)("span", {
 										className: "font-semibold text-slate-800",
-										children: x.customer
+										children: w.customer
 									}),
 									/* @__PURE__ */ (0, U.jsx)("span", {
 										className: "text-slate-400",
 										children: " → "
 									}),
-									/* @__PURE__ */ (0, U.jsx)("span", { children: x.route })
+									/* @__PURE__ */ (0, U.jsx)("span", { children: w.route })
 								]
 							})]
 						}),
@@ -24509,15 +24512,15 @@ function xd() {
 							className: "ml-auto flex shrink-0 items-center gap-2.5",
 							children: [/* @__PURE__ */ (0, U.jsx)("button", {
 								type: "button",
-								onClick: () => I((e) => e + 1),
+								onClick: () => L((e) => e + 1),
 								"data-testid": "journey-global-page",
 								className: "touch-target inline-flex items-center rounded-xl border border-slate-200 bg-white px-4 min-h-[44px] text-[14px] font-bold text-[#0f2a4a] hover:border-[#1e5aa8]",
 								children: "Toàn bộ lô hàng"
 							}), /* @__PURE__ */ (0, U.jsx)("span", {
 								className: "grid h-10 w-10 place-items-center rounded-full bg-[#0f2a4a] text-white text-[13px] font-extrabold",
-								title: Vn,
-								"aria-label": Vn,
-								children: Bn
+								title: Hn,
+								"aria-label": Hn,
+								children: Vn
 							})]
 						})
 					]
@@ -24541,7 +24544,7 @@ function xd() {
 					children: "giữ nguyên bộ lọc đang xem"
 				})]
 			}),
-			ae && /* @__PURE__ */ (0, U.jsxs)("div", {
+			oe && /* @__PURE__ */ (0, U.jsxs)("div", {
 				role: "status",
 				"data-testid": "export-lock-notice",
 				className: "mx-3 md:mx-6 mb-3 flex flex-wrap items-center gap-2 rounded-xl border-2 border-slate-200 bg-slate-50 px-3 py-2",
@@ -24555,13 +24558,13 @@ function xd() {
 						className: "text-[13px] font-semibold text-slate-700 min-w-0 flex-1",
 						children: [
 							"Xuất khẩu đang được khóa theo điều kiện giao hàng ",
-							kn,
+							An,
 							" — ở các điều kiện F/C/D, dòng chảy nội bộ thường không cần bàn làm việc xuất khẩu. Điều kiện khách hoặc cách xử lý thực tế thay đổi? Mở khóa tay để làm việc trực tiếp."
 						]
 					}),
 					/* @__PURE__ */ (0, U.jsx)("button", {
 						type: "button",
-						onClick: Mn,
+						onClick: Nn,
 						"data-testid": "export-unlock",
 						className: "btn-press touch-target shrink-0 inline-flex items-center gap-1.5 rounded-lg border-2 border-[#0f2a4a] bg-white text-[#0f2a4a] text-[13px] font-bold px-3 min-h-[40px]",
 						children: "MỞ KHÓA XUẤT KHẨU"
@@ -24569,67 +24572,67 @@ function xd() {
 				]
 			}),
 			/* @__PURE__ */ (0, U.jsx)(Qs, {
-				items: at,
+				items: ot,
 				title: "Cần xử lý",
 				compact: !0
 			}),
 			/* @__PURE__ */ (0, U.jsxs)(qu, {
-				shipment: x,
-				activeStage: st?.id || "",
-				work: ct,
-				globalRequest: F,
-				attachRequest: L,
-				onOpen: dt,
-				onGlobal: (e = "van-tai") => e === "lay-hang" && jn ? (oe(!0), !1) : (s({ tab: e }), !0),
+				shipment: w,
+				activeStage: ct?.id || "",
+				work: lt,
+				globalRequest: I,
+				attachRequest: R,
+				onOpen: pt,
+				onGlobal: (e = "van-tai") => e === "lay-hang" && Mn ? (se(!0), !1) : (c({ tab: e }), !0),
 				runPrimary: () => {
-					if (x.nextRoute.startsWith("/lo-hang")) {
-						let e = vd(x.nextRoute), t = yd(x.nextRoute), n = x.nextRoute.split("?", 2)[1]?.split("#", 1)[0] || "", r = new URLSearchParams(n);
-						e && r.set("tab", e), s(r), t ? setTimeout(() => bd(t), 150) : bd(null);
-					} else b(x.nextRoute);
+					if (w.nextRoute.startsWith("/lo-hang")) {
+						let e = vd(w.nextRoute), t = yd(w.nextRoute), n = w.nextRoute.split("?", 2)[1]?.split("#", 1)[0] || "", r = new URLSearchParams(n);
+						e && r.set("tab", e), c(r), t ? setTimeout(() => bd(t), 150) : bd(null);
+					} else x(w.nextRoute);
 				},
-				globalActive: !!o.get("tab") && !st,
-				globalTab: c,
+				globalActive: !!o.get("tab") && !ct,
+				globalTab: l,
 				children: [
-					st && ct === "info" && !lt && [
+					ct && lt === "info" && !ut && [
 						"si-vgm",
 						"gate-in",
 						"customs-export"
-					].includes(st.id) && /* @__PURE__ */ (0, U.jsx)(Xu, {
-						shipment: x,
-						stageId: st.id
-					}, `${x.id}-${st.id}-${x.version}`),
-					st && lt && ct === "info" && /* @__PURE__ */ (0, U.jsx)(Yu, {
-						shipment: x,
-						node: st
-					}, `${x.id}-${st.id}`),
-					st && [
+					].includes(ct.id) && /* @__PURE__ */ (0, U.jsx)(Xu, {
+						shipment: w,
+						stageId: ct.id
+					}, `${w.id}-${ct.id}-${w.version}`),
+					ct && ut && lt === "info" && /* @__PURE__ */ (0, U.jsx)(Yu, {
+						shipment: w,
+						node: ct
+					}, `${w.id}-${ct.id}`),
+					ct && [
 						"docs",
 						"costs",
 						"history"
-					].includes(ct) && /* @__PURE__ */ (0, U.jsx)("p", {
+					].includes(lt) && /* @__PURE__ */ (0, U.jsx)("p", {
 						className: "rounded-xl bg-slate-50 border p-3 text-sm text-slate-600",
-						children: ct === "docs" ? "Tệp liên quan được lọc từ kho chứng từ toàn lô; quy trình chứng từ chung vẫn giữ nguyên." : ct === "costs" ? "Dòng chi phí theo công đoạn. Dòng cũ chưa phân công vẫn xem được trong nhóm chưa phân công; tổng tiền là tổng toàn lô do backend tính." : "Lịch sử toàn lô: dữ liệu cũ không có liên kết công đoạn nên được giữ nguyên, không tự đoán."
+						children: lt === "docs" ? "Tệp liên quan được lọc từ kho chứng từ toàn lô; quy trình chứng từ chung vẫn giữ nguyên." : lt === "costs" ? "Dòng chi phí theo công đoạn. Dòng cũ chưa phân công vẫn xem được trong nhóm chưa phân công; tổng tiền là tổng toàn lô do backend tính." : "Lịch sử toàn lô: dữ liệu cũ không có liên kết công đoạn nên được giữ nguyên, không tự đoán."
 					}),
-					!st && /* @__PURE__ */ (0, U.jsxs)("section", {
+					!ct && /* @__PURE__ */ (0, U.jsxs)("section", {
 						className: "rounded-2xl bg-white border border-slate-200 p-4 md:p-5",
 						"data-testid": "shipment-header-edit",
 						children: [/* @__PURE__ */ (0, U.jsxs)("div", {
 							className: "flex items-center justify-between gap-2",
 							children: [/* @__PURE__ */ (0, U.jsxs)("button", {
 								type: "button",
-								onClick: () => k((e) => !e),
-								"aria-expanded": O,
+								onClick: () => A((e) => !e),
+								"aria-expanded": k,
 								"data-testid": "shipment-header-edit-toggle",
-								className: K("btn-press touch-target inline-flex items-center gap-2 rounded-xl border-2 px-3.5 min-h-[44px] text-[14px] font-bold", O ? "border-[#0f2a4a] bg-[#0f2a4a] text-white" : "border-slate-200 bg-white text-[#0f2a4a]"),
+								className: K("btn-press touch-target inline-flex items-center gap-2 rounded-xl border-2 px-3.5 min-h-[44px] text-[14px] font-bold", k ? "border-[#0f2a4a] bg-[#0f2a4a] text-white" : "border-slate-200 bg-white text-[#0f2a4a]"),
 								children: [
 									/* @__PURE__ */ (0, U.jsx)(Ea, {
 										size: 17,
-										className: O ? "text-white" : "text-[#1e5aa8]"
+										className: k ? "text-white" : "text-[#1e5aa8]"
 									}),
 									" Sửa thông tin lô",
 									/* @__PURE__ */ (0, U.jsx)(Ur, {
 										size: 16,
-										className: K("transition-transform", O && "rotate-180")
+										className: K("transition-transform", k && "rotate-180")
 									})
 								]
 							}), /* @__PURE__ */ (0, U.jsxs)("span", {
@@ -24638,17 +24641,17 @@ function xd() {
 									"Tên lô = ",
 									/* @__PURE__ */ (0, U.jsx)("b", {
 										className: "text-[#0f2a4a]",
-										children: x.id
+										children: w.id
 									}),
 									" · ",
-									x.customer,
-									!O && /* @__PURE__ */ (0, U.jsxs)("span", {
+									w.customer,
+									!k && /* @__PURE__ */ (0, U.jsxs)("span", {
 										className: "hidden md:inline",
-										children: [" · tạo ", x.createdAt || "chưa biết"]
+										children: [" · tạo ", w.createdAt || "chưa biết"]
 									})
 								]
 							})]
-						}), O && /* @__PURE__ */ (0, U.jsxs)(U.Fragment, { children: [/* @__PURE__ */ (0, U.jsxs)("div", {
+						}), k && /* @__PURE__ */ (0, U.jsxs)(U.Fragment, { children: [/* @__PURE__ */ (0, U.jsxs)("div", {
 							className: "grid gap-3 lg:grid-cols-[1fr_300px] items-start mt-3",
 							children: [/* @__PURE__ */ (0, U.jsxs)("div", {
 								className: "space-y-2",
@@ -24656,42 +24659,42 @@ function xd() {
 									/* @__PURE__ */ (0, U.jsx)(js, {
 										label: "Khách hàng của lô",
 										testId: "shipment-customer-picker",
-										options: m.map((e) => ({
+										options: h.map((e) => ({
 											id: e.id,
 											label: e.name || e.id,
 											sub: e.mst || e.taxCode ? `MST ${e.mst || e.taxCode} · ${e.id}` : e.id
 										})),
-										selectedId: fe.lotCustomer || x.customerId || "",
-										selectedLabel: m.find((e) => e.id === (fe.lotCustomer || x.customerId))?.name || (fe.lotCustomer ? fe.lotCustomer : x.customer),
+										selectedId: pe.lotCustomer || w.customerId || "",
+										selectedLabel: h.find((e) => e.id === (pe.lotCustomer || w.customerId))?.name || (pe.lotCustomer ? pe.lotCustomer : w.customer),
 										placeholder: "Gõ tên khách hoặc mã khách để tìm…",
 										emptyHint: "Danh bạ khách hàng đang trống — thêm khách ở mục Khách Hàng trước.",
 										onSelect: (e) => {
-											Je("lotCustomer", e), Fe("");
+											Ye("lotCustomer", e), Ie("");
 										}
 									}),
-									Pe && /* @__PURE__ */ (0, U.jsx)("p", {
+									Fe && /* @__PURE__ */ (0, U.jsx)("p", {
 										role: "alert",
 										"data-testid": "shipment-header-customer-error",
 										className: "rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-[13px] font-semibold text-red-700",
-										children: Pe
+										children: Fe
 									}),
 									/* @__PURE__ */ (0, U.jsxs)("div", {
 										className: "flex flex-wrap items-center gap-2",
 										children: [/* @__PURE__ */ (0, U.jsx)(Q, {
-											onClick: wt,
-											disabled: !!Me,
+											onClick: Tt,
+											disabled: !!Ne,
 											className: "min-h-[44px] px-4 text-[13.5px]",
 											children: "💾 LƯU KHÁCH HÀNG CỦA LÔ"
-										}), (fe.lotCustomer ?? "") !== "" && (fe.lotCustomer ?? "") !== (x.customerId ?? "") && /* @__PURE__ */ (0, U.jsx)($, {
+										}), (pe.lotCustomer ?? "") !== "" && (pe.lotCustomer ?? "") !== (w.customerId ?? "") && /* @__PURE__ */ (0, U.jsx)($, {
 											onClick: () => {
-												Je("lotCustomer", ""), Fe("");
+												Ye("lotCustomer", ""), Ie("");
 											},
-											disabled: !!Me,
+											disabled: !!Ne,
 											className: "min-h-[44px]",
 											children: "Hủy chọn"
 										})]
 									}),
-									Me && /* @__PURE__ */ (0, U.jsx)("p", {
+									Ne && /* @__PURE__ */ (0, U.jsx)("p", {
 										className: "text-[12.5px] text-amber-800",
 										"data-testid": "shipment-header-customer-pending",
 										children: "Đang chờ backend xác nhận qua đọc lại…"
@@ -24704,8 +24707,8 @@ function xd() {
 									hint: "DD/MM/YYYY hoặc YYYY-MM-DD · để trống = chưa biết",
 									children: /* @__PURE__ */ (0, U.jsx)("input", {
 										id: "fld-created-at",
-										value: V("createdAt", x.createdAt ?? ""),
-										onChange: (e) => Je("createdAt", e.target.value),
+										value: V("createdAt", w.createdAt ?? ""),
+										onChange: (e) => Ye("createdAt", e.target.value),
 										placeholder: "VD: 03/09/2026",
 										className: Z()
 									})
@@ -24713,23 +24716,23 @@ function xd() {
 									className: "flex flex-wrap items-center gap-2",
 									children: [
 										/* @__PURE__ */ (0, U.jsx)(Q, {
-											onClick: Ct,
-											disabled: !!A,
+											onClick: wt,
+											disabled: !!j,
 											className: "min-h-[44px] px-4 text-[13.5px]",
 											children: "💾 LƯU NGÀY TẠO"
 										}),
-										A && /* @__PURE__ */ (0, U.jsx)("p", {
+										j && /* @__PURE__ */ (0, U.jsx)("p", {
 											role: "status",
 											"data-testid": "shipment-header-date-pending",
 											children: "Đang chờ backend xác nhận qua đọc lại…"
 										}),
-										N && /* @__PURE__ */ (0, U.jsx)("p", {
+										P && /* @__PURE__ */ (0, U.jsx)("p", {
 											role: "alert",
 											"data-testid": "shipment-header-date-error",
 											className: "text-red-700",
-											children: N
+											children: P
 										}),
-										fe.createdAt != null && fe.createdAt.trim() === "" && /* @__PURE__ */ (0, U.jsx)("span", {
+										pe.createdAt != null && pe.createdAt.trim() === "" && /* @__PURE__ */ (0, U.jsx)("span", {
 											className: "text-[12.5px] font-semibold text-amber-700",
 											children: "Đang lưu = để trống (chưa biết)"
 										})
@@ -24740,15 +24743,15 @@ function xd() {
 							className: "text-[12.5px] text-slate-500 mt-2.5",
 							children: [
 								"Mã lô ",
-								/* @__PURE__ */ (0, U.jsx)("b", { children: x.id }),
+								/* @__PURE__ */ (0, U.jsx)("b", { children: w.id }),
 								" là định danh và không đổi ở màn này — đổi mã lô sẽ làm lệch các liên kết hợp đồng đang trỏ vào mã cũ. Ngày tạo là ngày bộ phận vận hành mở lô, không tự suy ra từ ETD/ETA."
 							]
 						})] })]
 					}),
-					!st && c !== "van-tai" && /* @__PURE__ */ (0, U.jsxs)("div", {
+					!ct && l !== "van-tai" && /* @__PURE__ */ (0, U.jsxs)("div", {
 						"data-testid": "shipment-profile-compact",
-						"data-state": x.executionProfile?.state ?? "",
-						className: K("flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border-2 px-3 py-2", x.executionProfile?.state === "CONFIG_CHECK" ? "border-red-300 bg-red-50" : x.executionProfile?.state === "PROFILE_INCOMPLETE" ? "border-amber-200 bg-amber-50/60" : "border-slate-200 bg-white"),
+						"data-state": w.executionProfile?.state ?? "",
+						className: K("flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border-2 px-3 py-2", w.executionProfile?.state === "CONFIG_CHECK" ? "border-red-300 bg-red-50" : w.executionProfile?.state === "PROFILE_INCOMPLETE" ? "border-amber-200 bg-amber-50/60" : "border-slate-200 bg-white"),
 						children: [
 							/* @__PURE__ */ (0, U.jsx)("span", {
 								className: "text-[11px] font-extrabold uppercase tracking-wide text-slate-500 shrink-0",
@@ -24756,28 +24759,28 @@ function xd() {
 							}),
 							/* @__PURE__ */ (0, U.jsx)("span", {
 								className: "text-[13.5px] font-bold text-[#0f2a4a] min-w-0",
-								children: x.executionProfile?.stateLabel || "Chưa có dữ liệu hồ sơ"
+								children: w.executionProfile?.stateLabel || "Chưa có dữ liệu hồ sơ"
 							}),
 							/* @__PURE__ */ (0, U.jsx)("span", {
 								className: "text-[12.5px] text-slate-500 min-w-0 hidden sm:inline",
-								children: (x.executionProfile?.summaryLines ?? []).slice(0, 1).join("")
+								children: (w.executionProfile?.summaryLines ?? []).slice(0, 1).join("")
 							}),
 							/* @__PURE__ */ (0, U.jsx)("button", {
 								type: "button",
-								onClick: () => s({ tab: "van-tai" }),
+								onClick: () => c({ tab: "van-tai" }),
 								"data-testid": "shipment-profile-compact-edit",
 								className: "btn-press touch-target ml-auto shrink-0 inline-flex items-center gap-1.5 rounded-lg border-2 border-[#0f2a4a] bg-white text-[#0f2a4a] text-[13px] font-bold px-3 min-h-[40px]",
 								children: "Sửa hồ sơ thực hiện"
 							})
 						]
 					}),
-					Dn > 0 && c !== "chung-tu" && /* @__PURE__ */ (0, U.jsxs)("div", {
+					On > 0 && l !== "chung-tu" && /* @__PURE__ */ (0, U.jsxs)("div", {
 						className: "rounded-2xl bg-white border-2 border-red-200 p-3 md:p-3.5",
 						"data-testid": "missing-info",
 						children: [/* @__PURE__ */ (0, U.jsxs)("button", {
 							type: "button",
-							onClick: () => te((e) => !e),
-							"aria-expanded": ee,
+							onClick: () => ne((e) => !e),
+							"aria-expanded": te,
 							"data-testid": "missing-info-toggle",
 							className: "btn-press touch-target flex w-full items-center gap-2 text-left",
 							children: [
@@ -24789,26 +24792,26 @@ function xd() {
 									className: "font-extrabold text-[14px] text-red-800",
 									children: [
 										"Thiếu ",
-										Dn,
+										On,
 										" thông tin"
 									]
 								}),
 								/* @__PURE__ */ (0, U.jsx)(Ur, {
 									size: 16,
-									className: K("ml-auto shrink-0 text-red-700 transition-transform", ee && "rotate-180")
+									className: K("ml-auto shrink-0 text-red-700 transition-transform", te && "rotate-180")
 								})
 							]
-						}), ee && /* @__PURE__ */ (0, U.jsx)("div", {
+						}), te && /* @__PURE__ */ (0, U.jsx)("div", {
 							className: "grid gap-2 mt-2.5 md:grid-cols-2",
-							children: x.missingDocs.map((e) => /* @__PURE__ */ (0, U.jsx)(Os, {
+							children: w.missingDocs.map((e) => /* @__PURE__ */ (0, U.jsx)(Os, {
 								what: e,
 								actionLabel: "Bổ sung ngay",
 								onAction: () => {
-									if (/xe giao/i.test(e)) s({ tab: "van-tai" }), setTimeout(() => document.getElementById("missing-anchor")?.scrollIntoView({
+									if (/xe giao/i.test(e)) c({ tab: "van-tai" }), setTimeout(() => document.getElementById("missing-anchor")?.scrollIntoView({
 										behavior: "smooth",
 										block: "center"
 									}), 150);
-									else if (e.includes("tờ khai")) s({ tab: "nhap" }), setTimeout(() => {
+									else if (e.includes("tờ khai")) c({ tab: "nhap" }), setTimeout(() => {
 										let e = document.getElementById("fld-tk");
 										e ? (e.scrollIntoView({
 											behavior: "smooth",
@@ -24818,21 +24821,21 @@ function xd() {
 											block: "center"
 										});
 									}, 150);
-									else if (/xác nhận.*giao/i.test(e) || e.toLowerCase().includes("đã giao")) s({ tab: "nhap" }), setTimeout(() => {
-										x.importInfo.delivered ? document.getElementById("missing-anchor")?.scrollIntoView({
+									else if (/xác nhận.*giao/i.test(e) || e.toLowerCase().includes("đã giao")) c({ tab: "nhap" }), setTimeout(() => {
+										w.importInfo.delivered ? document.getElementById("missing-anchor")?.scrollIntoView({
 											behavior: "smooth",
 											block: "center"
-										}) : D(!0);
+										}) : O(!0);
 									}, 150);
-									else if (/thông quan/i.test(e)) s({ tab: "nhap" }), setTimeout(() => {
+									else if (/thông quan/i.test(e)) c({ tab: "nhap" }), setTimeout(() => {
 										(document.getElementById("import-customs-section") || document.getElementById("missing-anchor"))?.scrollIntoView({
 											behavior: "smooth",
 											block: "center"
 										});
 									}, 150);
 									else {
-										let t = En(e);
-										s({ tab: t }), setTimeout(() => document.getElementById("missing-anchor")?.scrollIntoView({
+										let t = Dn(e);
+										c({ tab: t }), setTimeout(() => document.getElementById("missing-anchor")?.scrollIntoView({
 											behavior: "smooth",
 											block: "center"
 										}), 150);
@@ -24841,17 +24844,17 @@ function xd() {
 							}, e))
 						})]
 					}),
-					ut && c === "van-tai" && /* @__PURE__ */ (0, U.jsxs)(U.Fragment, { children: [/* @__PURE__ */ (0, U.jsx)(vl, {
-						shipment: x,
-						dispatch: h,
-						toast: f,
-						onOpenTransportTab: () => s({ tab: "van-tai" })
+					dt && l === "van-tai" && /* @__PURE__ */ (0, U.jsxs)(U.Fragment, { children: [/* @__PURE__ */ (0, U.jsx)(vl, {
+						shipment: w,
+						dispatch: g,
+						toast: p,
+						onOpenTransportTab: () => c({ tab: "van-tai" })
 					}), /* @__PURE__ */ (0, U.jsx)(il, {
-						shipment: x,
-						dispatch: h,
-						toast: f
+						shipment: w,
+						dispatch: g,
+						toast: p
 					})] }),
-					ut && c === "lay-hang" && /* @__PURE__ */ (0, U.jsxs)("div", {
+					dt && l === "lay-hang" && /* @__PURE__ */ (0, U.jsxs)("div", {
 						className: "grid grid-cols-1 xl:grid-cols-2 gap-4",
 						id: "missing-anchor",
 						children: [/* @__PURE__ */ (0, U.jsxs)("section", {
@@ -24869,11 +24872,11 @@ function xd() {
 									children: [
 										/* @__PURE__ */ (0, U.jsx)("p", {
 											className: "font-bold text-[15px]",
-											children: x.pickup.factory || "Chưa có nhà máy"
+											children: w.pickup.factory || "Chưa có nhà máy"
 										}),
 										/* @__PURE__ */ (0, U.jsx)("p", {
 											className: "text-[13.5px] text-slate-500",
-											children: x.pickup.address || "Chưa có địa chỉ lấy hàng"
+											children: w.pickup.address || "Chưa có địa chỉ lấy hàng"
 										}),
 										/* @__PURE__ */ (0, U.jsxs)("p", {
 											className: "text-[14px] mt-1.5 flex items-center gap-1.5",
@@ -24883,9 +24886,9 @@ function xd() {
 													className: "text-slate-400"
 												}),
 												" ",
-												x.pickup.contact || "Chưa có liên hệ",
+												w.pickup.contact || "Chưa có liên hệ",
 												" · ",
-												x.pickup.phone || "—"
+												w.pickup.phone || "—"
 											]
 										})
 									]
@@ -24902,7 +24905,7 @@ function xd() {
 											children: "Không nhập biển số TQ và xe giao VN vào cùng một trường."
 										}),
 										/* @__PURE__ */ (0, U.jsx)("button", {
-											onClick: () => s({ tab: "van-tai" }),
+											onClick: () => c({ tab: "van-tai" }),
 											className: "touch-target mt-3 rounded-xl bg-[#1e5aa8] text-white font-bold px-4 min-h-[44px]",
 											children: "MỞ CÁC CHẶNG VẬN CHUYỂN"
 										})
@@ -24916,43 +24919,43 @@ function xd() {
 								children: [
 									/* @__PURE__ */ (0, U.jsxs)("h3", {
 										className: "font-extrabold text-[16.5px] text-[#0f2a4a] mb-3",
-										children: ["Xuất khẩu — ", x.exportInfo.border]
+										children: ["Xuất khẩu — ", w.exportInfo.border]
 									}),
 									/* @__PURE__ */ (0, U.jsx)(As, {
 										label: "Đơn vị khai",
-										value: x.exportInfo.declarant
+										value: w.exportInfo.declarant
 									}),
 									/* @__PURE__ */ (0, U.jsx)(As, {
 										label: "Ngày dự kiến / thực tế",
 										value: /* @__PURE__ */ (0, U.jsxs)("span", { children: [
-											x.exportInfo.eta || "—",
+											w.exportInfo.eta || "—",
 											" / ",
-											x.exportInfo.ata || "chưa có"
+											w.exportInfo.ata || "chưa có"
 										] })
 									}),
 									/* @__PURE__ */ (0, U.jsx)(As, {
 										label: "Trạng thái",
 										value: /* @__PURE__ */ (0, U.jsx)(J, {
-											tone: x.exportInfo.state.includes("Đã") ? "green" : "amber",
+											tone: w.exportInfo.state.includes("Đã") ? "green" : "amber",
 											size: "sm",
-											children: x.exportInfo.state
+											children: w.exportInfo.state
 										})
 									})
 								]
 							})
 						})]
 					}),
-					ut && c === "nhap" && /* @__PURE__ */ (0, U.jsxs)("div", {
+					dt && l === "nhap" && /* @__PURE__ */ (0, U.jsxs)("div", {
 						className: "space-y-4",
 						id: "missing-anchor",
-						children: [x.docs.length > 0 && /* @__PURE__ */ (0, U.jsxs)("section", {
+						children: [w.docs.length > 0 && /* @__PURE__ */ (0, U.jsxs)("section", {
 							className: "rounded-2xl bg-white border border-slate-200 p-3 md:p-3.5",
 							"data-testid": "import-delivery-checklist",
 							"aria-label": "Checklist nhập khẩu & giao hàng",
 							children: [/* @__PURE__ */ (0, U.jsxs)("button", {
 								type: "button",
-								onClick: () => re((e) => !e),
-								"aria-expanded": ne,
+								onClick: () => z((e) => !e),
+								"aria-expanded": re,
 								"data-testid": "import-delivery-checklist-toggle",
 								className: "btn-press touch-target flex w-full items-center gap-2 text-left",
 								children: [
@@ -24961,25 +24964,25 @@ function xd() {
 										children: "Checklist nhập khẩu & giao hàng"
 									}),
 									/* @__PURE__ */ (0, U.jsxs)("span", {
-										className: K("text-[12.5px] font-bold", x.docs.some((e) => !e.ok) ? "text-amber-700" : "text-emerald-700"),
+										className: K("text-[12.5px] font-bold", w.docs.some((e) => !e.ok) ? "text-amber-700" : "text-emerald-700"),
 										children: [
-											x.docs.filter((e) => !e.ok).length,
+											w.docs.filter((e) => !e.ok).length,
 											"/",
-											x.docs.length,
+											w.docs.length,
 											" cần bổ sung"
 										]
 									}),
 									/* @__PURE__ */ (0, U.jsx)(Ur, {
 										size: 16,
-										className: K("ml-auto shrink-0 text-slate-400 transition-transform", ne && "rotate-180")
+										className: K("ml-auto shrink-0 text-slate-400 transition-transform", re && "rotate-180")
 									})
 								]
-							}), ne && /* @__PURE__ */ (0, U.jsxs)(U.Fragment, { children: [/* @__PURE__ */ (0, U.jsx)("p", {
+							}), re && /* @__PURE__ */ (0, U.jsxs)(U.Fragment, { children: [/* @__PURE__ */ (0, U.jsx)("p", {
 								className: "text-[13px] text-slate-500 mt-1 mb-3",
 								children: "Thông tin vận hành cần bổ sung theo phạm vi Trường Thành đã xác nhận."
 							}), /* @__PURE__ */ (0, U.jsx)("div", {
 								className: "space-y-2",
-								children: x.docs.map((e) => /* @__PURE__ */ (0, U.jsxs)("div", {
+								children: w.docs.map((e) => /* @__PURE__ */ (0, U.jsxs)("div", {
 									className: K("flex items-center gap-3 rounded-xl border-2 p-3", e.ok ? "border-emerald-200 bg-emerald-50/60" : "border-amber-300 bg-amber-50"),
 									children: [
 										/* @__PURE__ */ (0, U.jsx)("span", {
@@ -25011,10 +25014,10 @@ function xd() {
 												e.name.includes("tờ khai") ? (document.getElementById("fld-tk")?.focus(), document.getElementById("fld-tk")?.scrollIntoView({
 													behavior: "smooth",
 													block: "center"
-												})) : /xe giao/i.test(e.name) ? s({ tab: "van-tai" }) : /xác nhận.*giao/i.test(e.name) || e.name.toLowerCase().includes("đã giao") ? x.importInfo.delivered ? document.getElementById("import-delivery-section")?.scrollIntoView({
+												})) : /xe giao/i.test(e.name) ? c({ tab: "van-tai" }) : /xác nhận.*giao/i.test(e.name) || e.name.toLowerCase().includes("đã giao") ? w.importInfo.delivered ? document.getElementById("import-delivery-section")?.scrollIntoView({
 													behavior: "smooth",
 													block: "center"
-												}) : D(!0) : /thông quan/i.test(e.name) ? (document.getElementById("import-customs-section") || document.getElementById("missing-anchor"))?.scrollIntoView({
+												}) : O(!0) : /thông quan/i.test(e.name) ? (document.getElementById("import-customs-section") || document.getElementById("missing-anchor"))?.scrollIntoView({
 													behavior: "smooth",
 													block: "center"
 												}) : document.getElementById("missing-anchor")?.scrollIntoView({
@@ -25038,9 +25041,9 @@ function xd() {
 									children: [
 										/* @__PURE__ */ (0, U.jsxs)("h3", {
 											className: "font-extrabold text-[16.5px] text-[#0f2a4a]",
-											children: ["Tờ khai & thuế nhập khẩu — ", x.importInfo.borderVN]
+											children: ["Tờ khai & thuế nhập khẩu — ", w.importInfo.borderVN]
 										}),
-										!V("tk", x.importInfo.declarationNo) && /* @__PURE__ */ (0, U.jsx)(Os, {
+										!V("tk", w.importInfo.declarationNo) && /* @__PURE__ */ (0, U.jsx)(Os, {
 											what: "số tờ khai nhập khẩu",
 											where: "Hàng đang chờ ở bãi VN — có số TK mới nộp thuế & phân luồng được",
 											actionLabel: "Nhập số TK",
@@ -25051,14 +25054,14 @@ function xd() {
 											children: [
 												/* @__PURE__ */ (0, U.jsx)(X, {
 													label: "Số tờ khai",
-													required: !x.importInfo.declarationNo,
-													error: V("tk", x.importInfo.declarationNo) ? void 0 : "Nhập 12 số tờ khai — VD: 105588421330",
+													required: !w.importInfo.declarationNo,
+													error: V("tk", w.importInfo.declarationNo) ? void 0 : "Nhập 12 số tờ khai — VD: 105588421330",
 													children: /* @__PURE__ */ (0, U.jsx)("input", {
 														id: "fld-tk",
-														value: V("tk", x.importInfo.declarationNo),
-														onChange: (e) => Je("tk", e.target.value),
+														value: V("tk", w.importInfo.declarationNo),
+														onChange: (e) => Ye("tk", e.target.value),
 														placeholder: "12 số tờ khai…",
-														className: Z(V("tk", x.importInfo.declarationNo) ? "ok" : "missing")
+														className: Z(V("tk", w.importInfo.declarationNo) ? "ok" : "missing")
 													})
 												}),
 												/* @__PURE__ */ (0, U.jsx)(X, {
@@ -25066,8 +25069,8 @@ function xd() {
 													hint: "Lưu vào ngày tờ khai (2.4.tk_date).",
 													children: /* @__PURE__ */ (0, U.jsx)("input", {
 														id: "fld-tkdate",
-														value: V("tkDate", x.importInfo.regDate),
-														onChange: (e) => Je("tkDate", e.target.value),
+														value: V("tkDate", w.importInfo.regDate),
+														onChange: (e) => Ye("tkDate", e.target.value),
 														placeholder: "VD: 15/08/2026",
 														className: Z()
 													})
@@ -25077,8 +25080,8 @@ function xd() {
 													hint: "Số thực tế trên thông báo thuế/GNT — app không tự tính.",
 													children: /* @__PURE__ */ (0, U.jsx)("input", {
 														id: "fld-duty",
-														value: V("importDuty", x.importInfo.tax == null ? "" : String(x.importInfo.tax)),
-														onChange: (e) => Je("importDuty", e.target.value),
+														value: V("importDuty", w.importInfo.tax == null ? "" : String(w.importInfo.tax)),
+														onChange: (e) => Ye("importDuty", e.target.value),
 														inputMode: "decimal",
 														placeholder: "Bỏ trống = chưa biết",
 														className: Z()
@@ -25089,8 +25092,8 @@ function xd() {
 													hint: "Số thực tế trên thông báo thuế/GNT — app không tự tính.",
 													children: /* @__PURE__ */ (0, U.jsx)("input", {
 														id: "fld-vat",
-														value: V("importVat", x.importInfo.vat == null ? "" : String(x.importInfo.vat)),
-														onChange: (e) => Je("importVat", e.target.value),
+														value: V("importVat", w.importInfo.vat == null ? "" : String(w.importInfo.vat)),
+														onChange: (e) => Ye("importVat", e.target.value),
 														inputMode: "decimal",
 														placeholder: "Bỏ trống = chưa biết",
 														className: Z()
@@ -25099,8 +25102,8 @@ function xd() {
 												/* @__PURE__ */ (0, U.jsx)(X, {
 													label: "Phân luồng / kiểm hóa",
 													children: /* @__PURE__ */ (0, U.jsx)("input", {
-														value: V("inspection", x.importInfo.inspection),
-														onChange: (e) => Je("inspection", e.target.value),
+														value: V("inspection", w.importInfo.inspection),
+														onChange: (e) => Ye("inspection", e.target.value),
 														className: Z()
 													})
 												}),
@@ -25108,7 +25111,7 @@ function xd() {
 													label: "Giấy phép chuyên ngành",
 													hint: "Chỉ đọc — chưa có trường dữ liệu trong lô.",
 													children: /* @__PURE__ */ (0, U.jsx)("input", {
-														value: x.importInfo.license,
+														value: w.importInfo.license,
 														readOnly: !0,
 														placeholder: "Chưa có trường dữ liệu",
 														className: Z()
@@ -25117,15 +25120,15 @@ function xd() {
 											]
 										}),
 										/* @__PURE__ */ (0, U.jsx)(Q, {
-											onClick: St,
+											onClick: Ct,
 											className: "w-full",
 											children: "💾 LƯU TỜ KHAI & THUẾ"
 										}),
-										V("tk", x.importInfo.declarationNo) && /* @__PURE__ */ (0, U.jsxs)("div", {
+										V("tk", w.importInfo.declarationNo) && /* @__PURE__ */ (0, U.jsxs)("div", {
 											className: "rounded-xl bg-blue-50 border border-blue-200 p-3 text-[13.5px] text-blue-900",
 											children: [
 												"✅ Đã có số TK ",
-												/* @__PURE__ */ (0, U.jsx)("b", { children: V("tk", x.importInfo.declarationNo) }),
+												/* @__PURE__ */ (0, U.jsx)("b", { children: V("tk", w.importInfo.declarationNo) }),
 												". Tiếp theo: nộp thuế rồi bấm “Thông quan” khi có kết quả phân luồng."
 											]
 										})
@@ -25141,7 +25144,7 @@ function xd() {
 													size: 18,
 													className: "text-[#1e5aa8]"
 												}), " GIẤY NỘP THUẾ (GNT) — Mẫu C1-02/NS"]
-											}), x.importInfo.gnt?.done && /* @__PURE__ */ (0, U.jsx)("span", {
+											}), w.importInfo.gnt?.done && /* @__PURE__ */ (0, U.jsx)("span", {
 												className: "rounded-full bg-emerald-100 text-emerald-800 text-[12px] font-bold px-2.5 py-0.5",
 												children: "✅ Đã tạo"
 											})]
@@ -25156,7 +25159,7 @@ function xd() {
 														children: "Số tờ khai"
 													}), /* @__PURE__ */ (0, U.jsx)("span", {
 														className: "font-bold text-[#0f2a4a]",
-														children: x.importInfo.declarationNo || /* @__PURE__ */ (0, U.jsx)("span", {
+														children: w.importInfo.declarationNo || /* @__PURE__ */ (0, U.jsx)("span", {
 															className: "text-amber-600 italic font-normal",
 															children: "Chưa có"
 														})
@@ -25169,7 +25172,7 @@ function xd() {
 														children: "Ngày tờ khai"
 													}), /* @__PURE__ */ (0, U.jsx)("span", {
 														className: "font-bold text-[#0f2a4a]",
-														children: x.importInfo.regDate || /* @__PURE__ */ (0, U.jsx)("span", {
+														children: w.importInfo.regDate || /* @__PURE__ */ (0, U.jsx)("span", {
 															className: "text-amber-600 italic font-normal",
 															children: "Chưa có"
 														})
@@ -25182,10 +25185,10 @@ function xd() {
 														children: "Thuế nhập khẩu"
 													}), /* @__PURE__ */ (0, U.jsx)("span", {
 														className: "font-bold text-[#0f2a4a]",
-														children: x.importInfo.tax == null ? /* @__PURE__ */ (0, U.jsx)("span", {
+														children: w.importInfo.tax == null ? /* @__PURE__ */ (0, U.jsx)("span", {
 															className: "text-amber-600 italic font-normal",
 															children: "Chưa có"
-														}) : is(x.importInfo.tax)
+														}) : is(w.importInfo.tax)
 													})]
 												}),
 												/* @__PURE__ */ (0, U.jsxs)("div", {
@@ -25195,10 +25198,10 @@ function xd() {
 														children: "VAT hàng nhập khẩu"
 													}), /* @__PURE__ */ (0, U.jsx)("span", {
 														className: "font-bold text-[#0f2a4a]",
-														children: x.importInfo.vat == null ? /* @__PURE__ */ (0, U.jsx)("span", {
+														children: w.importInfo.vat == null ? /* @__PURE__ */ (0, U.jsx)("span", {
 															className: "text-amber-600 italic font-normal",
 															children: "Chưa có"
-														}) : is(x.importInfo.vat)
+														}) : is(w.importInfo.vat)
 													})]
 												})
 											]
@@ -25211,9 +25214,9 @@ function xd() {
 													children: [/* @__PURE__ */ (0, U.jsx)("span", {
 														className: "font-bold text-[13.5px] text-[#0f2a4a]",
 														children: "Thông tin Người nộp thuế (Pháp nhân chịu thuế)"
-													}), x.importInfo.gnt?.customerHint && /* @__PURE__ */ (0, U.jsxs)("span", {
+													}), w.importInfo.gnt?.customerHint && /* @__PURE__ */ (0, U.jsxs)("span", {
 														className: "text-[11.5px] text-slate-500 italic",
-														children: ["Gợi ý khách hàng: ", /* @__PURE__ */ (0, U.jsx)("b", { children: x.importInfo.gnt.customerHint })]
+														children: ["Gợi ý khách hàng: ", /* @__PURE__ */ (0, U.jsx)("b", { children: w.importInfo.gnt.customerHint })]
 													})]
 												}),
 												/* @__PURE__ */ (0, U.jsxs)("div", {
@@ -25225,10 +25228,10 @@ function xd() {
 															children: /* @__PURE__ */ (0, U.jsx)("input", {
 																id: "fld-gnt-payer",
 																"data-field": "gnt-payer",
-																value: V("gntPayer", x.importInfo.gnt?.payer || ""),
-																onChange: (e) => Je("gntPayer", e.target.value),
+																value: V("gntPayer", w.importInfo.gnt?.payer || ""),
+																onChange: (e) => Ye("gntPayer", e.target.value),
 																placeholder: "VD: CÔNG TY TNHH ABC…",
-																className: Z(V("gntPayer", x.importInfo.gnt?.payer || "") ? "ok" : "missing")
+																className: Z(V("gntPayer", w.importInfo.gnt?.payer || "") ? "ok" : "missing")
 															})
 														}),
 														/* @__PURE__ */ (0, U.jsx)(X, {
@@ -25237,10 +25240,10 @@ function xd() {
 															children: /* @__PURE__ */ (0, U.jsx)("input", {
 																id: "fld-gnt-taxcode",
 																"data-field": "gnt-taxcode",
-																value: V("gntTaxCode", x.importInfo.gnt?.taxCode || ""),
-																onChange: (e) => Je("gntTaxCode", e.target.value),
+																value: V("gntTaxCode", w.importInfo.gnt?.taxCode || ""),
+																onChange: (e) => Ye("gntTaxCode", e.target.value),
 																placeholder: "VD: 0101234567",
-																className: Z(V("gntTaxCode", x.importInfo.gnt?.taxCode || "") ? "ok" : "missing")
+																className: Z(V("gntTaxCode", w.importInfo.gnt?.taxCode || "") ? "ok" : "missing")
 															})
 														}),
 														/* @__PURE__ */ (0, U.jsx)("div", {
@@ -25251,8 +25254,8 @@ function xd() {
 																children: /* @__PURE__ */ (0, U.jsx)("input", {
 																	id: "fld-gnt-address",
 																	"data-field": "gnt-address",
-																	value: V("gntAddress", x.importInfo.gnt?.address || ""),
-																	onChange: (e) => Je("gntAddress", e.target.value),
+																	value: V("gntAddress", w.importInfo.gnt?.address || ""),
+																	onChange: (e) => Ye("gntAddress", e.target.value),
 																	placeholder: "Địa chỉ doanh nghiệp nộp thuế…",
 																	className: Z()
 																})
@@ -25262,13 +25265,13 @@ function xd() {
 												}),
 												/* @__PURE__ */ (0, U.jsxs)("button", {
 													type: "button",
-													onClick: bn,
+													onClick: xn,
 													className: "btn-press touch-target inline-flex items-center gap-1.5 rounded-lg bg-[#0f2a4a] text-white font-semibold px-3.5 py-2 text-[13px] hover:bg-[#1e5aa8]",
 													children: [/* @__PURE__ */ (0, U.jsx)(Ea, { size: 14 }), " LƯU THÔNG TIN NGƯỜI NỘP THUẾ"]
 												})
 											]
 										}),
-										x.importInfo.gnt?.noPayable && /* @__PURE__ */ (0, U.jsxs)("div", {
+										w.importInfo.gnt?.noPayable && /* @__PURE__ */ (0, U.jsxs)("div", {
 											className: "rounded-xl bg-slate-100 border border-slate-300 p-3 text-[13px] text-slate-700",
 											children: [
 												"ℹ️ ",
@@ -25276,13 +25279,13 @@ function xd() {
 												" Thuế NK và VAT đều bằng 0 (không cần nộp qua GNT)."
 											]
 										}),
-										x.importInfo.gnt?.missing && x.importInfo.gnt.missing.length > 0 && !x.importInfo.gnt.noPayable && /* @__PURE__ */ (0, U.jsxs)("div", {
+										w.importInfo.gnt?.missing && w.importInfo.gnt.missing.length > 0 && !w.importInfo.gnt.noPayable && /* @__PURE__ */ (0, U.jsxs)("div", {
 											className: "rounded-xl bg-amber-50 border border-amber-200 p-3 text-[13px] text-amber-900",
 											children: [
 												"⚠️ ",
 												/* @__PURE__ */ (0, U.jsx)("b", { children: "Chưa đủ điều kiện tạo GNT:" }),
 												" Thiếu ",
-												x.importInfo.gnt.missing.join(", "),
+												w.importInfo.gnt.missing.join(", "),
 												". Vui lòng hoàn thiện và lưu ở trên."
 											]
 										}),
@@ -25290,40 +25293,40 @@ function xd() {
 											className: "rounded-xl bg-slate-50 border border-slate-200 p-2.5 text-[12.5px] text-slate-600",
 											children: ["ℹ️ ", /* @__PURE__ */ (0, U.jsx)("i", { children: "Cần kiểm tra/hoàn thiện các trường Kho bạc trước khi sử dụng để nộp." })]
 										}),
-										x.importInfo.gnt?.done && x.importInfo.gnt.document ? /* @__PURE__ */ (0, U.jsxs)("div", {
+										w.importInfo.gnt?.done && w.importInfo.gnt.document ? /* @__PURE__ */ (0, U.jsxs)("div", {
 											className: "rounded-xl bg-emerald-50 border border-emerald-300 p-3.5 space-y-2",
 											children: [/* @__PURE__ */ (0, U.jsx)("div", {
 												className: "flex items-center justify-between",
 												children: /* @__PURE__ */ (0, U.jsxs)("div", { children: [/* @__PURE__ */ (0, U.jsxs)("p", {
 													className: "font-bold text-emerald-900 text-[14px]",
-													children: ["✅ GNT đã tạo: ", x.importInfo.gnt.document.fileName]
+													children: ["✅ GNT đã tạo: ", w.importInfo.gnt.document.fileName]
 												}), /* @__PURE__ */ (0, U.jsxs)("p", {
 													className: "text-[12px] text-emerald-700",
-													children: ["Mẫu C1-02/NS (2 sheet) · ", x.importInfo.gnt.document.generatedAt ? new Date(x.importInfo.gnt.document.generatedAt).toLocaleTimeString("vi-VN", {
+													children: ["Mẫu C1-02/NS (2 sheet) · ", w.importInfo.gnt.document.generatedAt ? new Date(w.importInfo.gnt.document.generatedAt).toLocaleTimeString("vi-VN", {
 														hour: "2-digit",
 														minute: "2-digit"
 													}) : "Vừa tạo"]
 												})] })
 											}), /* @__PURE__ */ (0, U.jsxs)("div", {
 												className: "flex gap-2 pt-1",
-												children: [x.importInfo.gnt.document.downloadAvailable ? /* @__PURE__ */ (0, U.jsxs)("button", {
-													onClick: Sn,
+												children: [w.importInfo.gnt.document.downloadAvailable ? /* @__PURE__ */ (0, U.jsxs)("button", {
+													onClick: Cn,
 													className: "btn-press touch-target inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 text-white font-bold px-4 min-h-[44px] text-[13.5px]",
 													children: [/* @__PURE__ */ (0, U.jsx)(Ci, { size: 16 }), " TẢI XLSX"]
 												}) : /* @__PURE__ */ (0, U.jsx)("p", {
 													className: "text-[12.5px] text-emerald-800 self-center",
 													children: "Bytes trong phiên trước. Bấm “Tạo lại” để tải."
 												}), /* @__PURE__ */ (0, U.jsxs)("button", {
-													onClick: xn,
-													disabled: !x.importInfo.gnt?.ready,
+													onClick: Sn,
+													disabled: !w.importInfo.gnt?.ready,
 													className: "btn-press touch-target inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white font-semibold px-3 min-h-[44px] text-[13px]",
 													children: [/* @__PURE__ */ (0, U.jsx)(Ri, { size: 15 }), " Tạo lại XLSX"]
 												})]
 											})]
 										}) : /* @__PURE__ */ (0, U.jsxs)("button", {
-											onClick: xn,
-											disabled: !x.importInfo.gnt?.ready,
-											className: K("btn-press touch-target w-full rounded-xl font-bold py-2.5 min-h-[46px] flex items-center justify-center gap-2 text-[14.5px]", x.importInfo.gnt?.ready ? "bg-[#0f2a4a] text-white hover:bg-[#1e5aa8]" : "bg-slate-200 text-slate-400 cursor-not-allowed"),
+											onClick: Sn,
+											disabled: !w.importInfo.gnt?.ready,
+											className: K("btn-press touch-target w-full rounded-xl font-bold py-2.5 min-h-[46px] flex items-center justify-center gap-2 text-[14.5px]", w.importInfo.gnt?.ready ? "bg-[#0f2a4a] text-white hover:bg-[#1e5aa8]" : "bg-slate-200 text-slate-400 cursor-not-allowed"),
 											children: [/* @__PURE__ */ (0, U.jsx)(Ri, { size: 17 }), " TẠO GIẤY NỘP THUẾ XLSX"]
 										})
 									]
@@ -25339,11 +25342,11 @@ function xd() {
 											className: "text-[#1e5aa8]"
 										}), " Xe Việt Nam & giao hàng"]
 									}),
-									(!x.importInfo.driverVN || !x.importInfo.plateVN) && !x.importInfo.delivered && /* @__PURE__ */ (0, U.jsx)(Os, {
+									(!w.importInfo.driverVN || !w.importInfo.plateVN) && !w.importInfo.delivered && /* @__PURE__ */ (0, U.jsx)(Os, {
 										what: "chặng xe giao VN",
 										where: "Thêm một chặng Truck riêng; không dùng lại xe lấy hàng TQ",
 										actionLabel: "Mở chặng vận chuyển",
-										onAction: () => s({ tab: "van-tai" })
+										onAction: () => c({ tab: "van-tai" })
 									}),
 									/* @__PURE__ */ (0, U.jsxs)("div", {
 										className: "grid sm:grid-cols-2 gap-3",
@@ -25352,7 +25355,7 @@ function xd() {
 												label: "Loại xe VN",
 												hint: "Đọc từ xe đầu tiên của chặng Truck giao hàng.",
 												children: /* @__PURE__ */ (0, U.jsx)("input", {
-													value: x.importInfo.truckVN,
+													value: w.importInfo.truckVN,
 													readOnly: !0,
 													placeholder: "Chưa có chặng xe giao",
 													className: Z()
@@ -25362,7 +25365,7 @@ function xd() {
 												label: "Biển số VN",
 												hint: "Đọc từ chặng Truck giao hàng; sửa tại tab Vận chuyển.",
 												children: /* @__PURE__ */ (0, U.jsx)("input", {
-													value: x.importInfo.plateVN,
+													value: w.importInfo.plateVN,
 													readOnly: !0,
 													placeholder: "Chưa có chặng xe giao",
 													className: Z()
@@ -25372,7 +25375,7 @@ function xd() {
 												label: "Tài xế VN",
 												hint: "Đọc từ chặng Truck giao hàng; sửa tại tab Vận chuyển.",
 												children: /* @__PURE__ */ (0, U.jsx)("input", {
-													value: x.importInfo.driverVN,
+													value: w.importInfo.driverVN,
 													readOnly: !0,
 													placeholder: "Chưa có tài xế",
 													className: Z()
@@ -25383,8 +25386,8 @@ function xd() {
 												hint: "Lưu vào ngày giao (2.7.delivery_date) — PXK cần ngày này.",
 												children: /* @__PURE__ */ (0, U.jsx)("input", {
 													id: "fld-schedule",
-													value: V("schedule", x.importInfo.schedule),
-													onChange: (e) => Je("schedule", e.target.value),
+													value: V("schedule", w.importInfo.schedule),
+													onChange: (e) => Ye("schedule", e.target.value),
 													placeholder: "VD: 12/09/2026",
 													className: Z()
 												})
@@ -25400,24 +25403,24 @@ function xd() {
 											}),
 											/* @__PURE__ */ (0, U.jsx)("p", {
 												className: "font-bold text-[15px] mt-0.5",
-												children: x.importInfo.deliveryAddr
+												children: w.importInfo.deliveryAddr
 											}),
 											/* @__PURE__ */ (0, U.jsxs)("p", {
 												className: "text-[14px] text-slate-600 mt-1",
 												children: [
 													"Người nhận: ",
-													/* @__PURE__ */ (0, U.jsx)("b", { children: x.importInfo.receiver }),
+													/* @__PURE__ */ (0, U.jsx)("b", { children: w.importInfo.receiver }),
 													" · ",
-													x.importInfo.receiverPhone
+													w.importInfo.receiverPhone
 												]
 											}),
-											x.importInfo.actualDelivery && /* @__PURE__ */ (0, U.jsxs)("p", {
+											w.importInfo.actualDelivery && /* @__PURE__ */ (0, U.jsxs)("p", {
 												className: "text-[14px] text-emerald-700 font-bold mt-1",
-												children: ["✅ Đã giao: ", x.importInfo.actualDelivery]
+												children: ["✅ Đã giao: ", w.importInfo.actualDelivery]
 											})
 										]
 									}),
-									x.importInfo.delivered ? /* @__PURE__ */ (0, U.jsxs)("div", {
+									w.importInfo.delivered ? /* @__PURE__ */ (0, U.jsxs)("div", {
 										className: "rounded-xl bg-emerald-50 border-2 border-emerald-300 p-4 text-center",
 										children: [
 											/* @__PURE__ */ (0, U.jsx)("p", {
@@ -25426,16 +25429,16 @@ function xd() {
 											}),
 											/* @__PURE__ */ (0, U.jsxs)("p", {
 												className: "text-[13.5px] text-emerald-700",
-												children: [x.importInfo.actualDelivery, " · Sang tab Chứng từ để xuất PXK →"]
+												children: [w.importInfo.actualDelivery, " · Sang tab Chứng từ để xuất PXK →"]
 											}),
 											/* @__PURE__ */ (0, U.jsxs)("button", {
-												onClick: () => s({ tab: "chung-tu" }),
+												onClick: () => c({ tab: "chung-tu" }),
 												className: "btn-press touch-target mt-2.5 inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 text-white font-bold px-5 min-h-[48px]",
 												children: ["SANG XUẤT PHIẾU XUẤT KHO ", /* @__PURE__ */ (0, U.jsx)(hr, { size: 17 })]
 											})
 										]
 									}) : /* @__PURE__ */ (0, U.jsx)(Ds, {
-										onClick: () => D(!0),
+										onClick: () => O(!0),
 										className: "w-full text-[17px] min-h-[56px]",
 										children: "✅ XÁC NHẬN ĐÃ GIAO HÀNG"
 									})
@@ -25443,7 +25446,7 @@ function xd() {
 							})]
 						})]
 					}),
-					ut && c === "tai-chinh" && x.finance.canView === !1 && /* @__PURE__ */ (0, U.jsxs)("section", {
+					dt && l === "tai-chinh" && w.finance.canView === !1 && /* @__PURE__ */ (0, U.jsxs)("section", {
 						"data-testid": "finance-view-restricted",
 						className: "rounded-2xl bg-white border border-slate-200 p-5 space-y-1.5",
 						children: [/* @__PURE__ */ (0, U.jsx)("h3", {
@@ -25461,18 +25464,18 @@ function xd() {
 							]
 						})]
 					}),
-					ut && c === "tai-chinh" && x.finance.canView !== !1 && /* @__PURE__ */ (0, U.jsxs)("div", {
+					dt && l === "tai-chinh" && w.finance.canView !== !1 && /* @__PURE__ */ (0, U.jsxs)("div", {
 						className: "space-y-4",
 						id: "missing-anchor",
 						children: [
 							/* @__PURE__ */ (0, U.jsx)(Cl, {
-								stageContext: st?.id,
-								shipment: x,
-								services: g,
-								ccy: ot,
-								dispatch: h,
-								toast: f,
-								lastWrites: y?.lastWrites
+								stageContext: ct?.id,
+								shipment: w,
+								services: v,
+								ccy: st,
+								dispatch: g,
+								toast: p,
+								lastWrites: b?.lastWrites
 							}),
 							/* @__PURE__ */ (0, U.jsxs)("section", {
 								className: "rounded-2xl bg-white border-2 border-emerald-300 p-4 md:p-5",
@@ -25485,11 +25488,11 @@ function xd() {
 										className: "font-extrabold text-[16.5px] text-[#0f2a4a] mt-2 mb-2",
 										children: [
 											"Doanh thu & chi phí thực tế (",
-											ot,
+											st,
 											")"
 										]
 									}),
-									x.finance.actual.length === 0 && /* @__PURE__ */ (0, U.jsxs)("p", {
+									w.finance.actual.length === 0 && /* @__PURE__ */ (0, U.jsxs)("p", {
 										className: "text-[14px] text-slate-500",
 										children: [
 											"Chưa ghi nhận dòng thực tế nào — doanh thu / chi phí / lợi nhuận thực tế đang ",
@@ -25497,12 +25500,12 @@ function xd() {
 											", không phải 0."
 										]
 									}),
-									x.finance.actual.length > 0 && /* @__PURE__ */ (0, U.jsxs)("p", {
+									w.finance.actual.length > 0 && /* @__PURE__ */ (0, U.jsxs)("p", {
 										className: "text-[13.5px] text-slate-500 mb-1",
 										children: [
-											x.finance.actual.length,
+											w.finance.actual.length,
 											" dòng dịch vụ đã ghi nhận · tổng hợp theo ",
-											ot,
+											st,
 											":"
 										]
 									}),
@@ -25510,14 +25513,14 @@ function xd() {
 										label: "Doanh thu thực tế (chưa VAT)",
 										value: /* @__PURE__ */ (0, U.jsx)("span", {
 											className: "font-bold",
-											children: as(x.finance.receivableNet, ot)
+											children: as(w.finance.receivableNet, st)
 										})
 									}),
 									/* @__PURE__ */ (0, U.jsx)(As, {
 										label: "Chi phí thực tế",
 										value: /* @__PURE__ */ (0, U.jsx)("span", {
 											className: "font-bold",
-											children: as(x.finance.payable, ot)
+											children: as(w.finance.payable, st)
 										})
 									}),
 									/* @__PURE__ */ (0, U.jsxs)("div", {
@@ -25533,14 +25536,14 @@ function xd() {
 													className: "text-[12px] text-slate-500 font-semibold",
 													children: "Lãi / Lỗ thực tế"
 												}), /* @__PURE__ */ (0, U.jsx)("p", {
-													className: K("font-extrabold text-[17px]", x.finance.profit == null ? "text-slate-400" : x.finance.profit < 0 ? "text-red-700" : "text-emerald-700"),
-													children: as(x.finance.profit, ot)
+													className: K("font-extrabold text-[17px]", w.finance.profit == null ? "text-slate-400" : w.finance.profit < 0 ? "text-red-700" : "text-emerald-700"),
+													children: as(w.finance.profit, st)
 												})] }), /* @__PURE__ */ (0, U.jsxs)("div", { children: [/* @__PURE__ */ (0, U.jsx)("p", {
 													className: "text-[12px] text-slate-500 font-semibold",
 													children: "Biên lợi nhuận"
 												}), /* @__PURE__ */ (0, U.jsx)("p", {
-													className: K("font-extrabold text-[17px]", x.finance.profitMargin == null ? "text-slate-400" : x.finance.profitMargin < 0 ? "text-red-700" : "text-emerald-700"),
-													children: ss(x.finance.profitMargin)
+													className: K("font-extrabold text-[17px]", w.finance.profitMargin == null ? "text-slate-400" : w.finance.profitMargin < 0 ? "text-red-700" : "text-emerald-700"),
+													children: ss(w.finance.profitMargin)
 												})] })]
 											}),
 											/* @__PURE__ */ (0, U.jsx)("p", {
@@ -25568,7 +25571,7 @@ function xd() {
 													className: "text-emerald-600"
 												}),
 												" Phải thu khách hàng (",
-												ot,
+												st,
 												")"
 											]
 										}),
@@ -25582,7 +25585,7 @@ function xd() {
 														children: "Phải thu"
 													}), /* @__PURE__ */ (0, U.jsx)("p", {
 														className: "font-extrabold text-[16px] md:text-[18px]",
-														children: os(x.finance.receivable, ot)
+														children: os(w.finance.receivable, st)
 													})]
 												}),
 												/* @__PURE__ */ (0, U.jsxs)("div", {
@@ -25592,7 +25595,7 @@ function xd() {
 														children: "Đã thu"
 													}), /* @__PURE__ */ (0, U.jsx)("p", {
 														className: "font-extrabold text-[16px] md:text-[18px] text-emerald-700",
-														children: os(x.finance.received, ot)
+														children: os(w.finance.received, st)
 													})]
 												}),
 												/* @__PURE__ */ (0, U.jsxs)("div", {
@@ -25602,7 +25605,7 @@ function xd() {
 														children: "Còn phải thu"
 													}), /* @__PURE__ */ (0, U.jsx)("p", {
 														className: "font-extrabold text-[16px] md:text-[18px] text-red-700",
-														children: os(x.finance.outstanding, ot)
+														children: os(w.finance.outstanding, st)
 													})]
 												})
 											]
@@ -25612,7 +25615,7 @@ function xd() {
 											children: "Phải thu = doanh thu thực tế + VAT đầu ra. Còn phải thu = phải thu − đã thu, do backend tính."
 										}),
 										/* @__PURE__ */ (0, U.jsx)("button", {
-											onClick: Mt,
+											onClick: Nt,
 											className: "btn-press touch-target mt-3 w-full rounded-xl bg-emerald-600 text-white font-extrabold min-h-[52px]",
 											children: "＋ GHI NHẬN THANH TOÁN"
 										})
@@ -25624,12 +25627,12 @@ function xd() {
 											className: "font-extrabold text-[16.5px] text-[#0f2a4a] mb-2",
 											children: [
 												"Phải trả đối tác (",
-												ot,
+												st,
 												")"
 											]
 										}),
 										(() => {
-											let e = x.finance.partner, t = e?.partnerId ?? "", n = e?.partnerName, r = e?.suggested === !0;
+											let e = w.finance.partner, t = e?.partnerId ?? "", n = e?.partnerName, r = e?.suggested === !0;
 											return /* @__PURE__ */ (0, U.jsxs)(U.Fragment, { children: [/* @__PURE__ */ (0, U.jsxs)("div", {
 												className: "flex flex-wrap items-center gap-2 mb-2",
 												children: [/* @__PURE__ */ (0, U.jsx)("span", {
@@ -25667,7 +25670,7 @@ function xd() {
 															children: "Phải trả"
 														}), /* @__PURE__ */ (0, U.jsx)("p", {
 															className: "font-extrabold text-[16px] md:text-[18px]",
-															children: os(e?.payable ?? null, ot)
+															children: os(e?.payable ?? null, st)
 														})]
 													}),
 													/* @__PURE__ */ (0, U.jsxs)("div", {
@@ -25677,7 +25680,7 @@ function xd() {
 															children: "Đã trả"
 														}), /* @__PURE__ */ (0, U.jsx)("p", {
 															className: "font-extrabold text-[16px] md:text-[18px] text-blue-700",
-															children: os(e?.paid ?? null, ot)
+															children: os(e?.paid ?? null, st)
 														})]
 													}),
 													/* @__PURE__ */ (0, U.jsxs)("div", {
@@ -25687,7 +25690,7 @@ function xd() {
 															children: "Còn phải trả"
 														}), /* @__PURE__ */ (0, U.jsx)("p", {
 															className: "font-extrabold text-[16px] md:text-[18px] text-amber-800",
-															children: os(e?.remaining ?? null, ot)
+															children: os(e?.remaining ?? null, st)
 														})]
 													})
 												]
@@ -25697,18 +25700,18 @@ function xd() {
 											className: "text-[12.5px] text-slate-400 mt-2",
 											children: [
 												"Phải trả / đã trả / còn lại đọc từ sổ tài chính canonical (nghĩa vụ + thanh toán + phân bổ) theo lô này. Chưa có sổ ⇒ “—”, không suy ra 0. Đơn vị: ",
-												ot,
+												st,
 												" — không quy đổi."
 											]
 										}),
-										(x.finance.partner?.payments?.length ?? 0) > 0 && /* @__PURE__ */ (0, U.jsxs)("div", {
+										(w.finance.partner?.payments?.length ?? 0) > 0 && /* @__PURE__ */ (0, U.jsxs)("div", {
 											className: "mt-3",
 											children: [/* @__PURE__ */ (0, U.jsx)("p", {
 												className: "text-[12px] font-extrabold uppercase tracking-wider text-slate-500 mb-1.5",
 												children: "Lịch sử trả đối tác"
 											}), /* @__PURE__ */ (0, U.jsx)("div", {
 												className: "space-y-1.5",
-												children: x.finance.partner.payments.map((e, t) => /* @__PURE__ */ (0, U.jsxs)("div", {
+												children: w.finance.partner.payments.map((e, t) => /* @__PURE__ */ (0, U.jsxs)("div", {
 													className: "flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 p-2.5",
 													children: [
 														/* @__PURE__ */ (0, U.jsx)("span", {
@@ -25742,55 +25745,55 @@ function xd() {
 													children: "Ghi nhận phải trả & thanh toán đối tác"
 												}),
 												/* @__PURE__ */ (0, U.jsx)(X, {
-													label: `Số tiền (${ot})`,
+													label: `Số tiền (${st})`,
 													hint: "Ví dụ: 20.000.000 — để trống là UNKNOWN, không tự thành 0",
 													children: /* @__PURE__ */ (0, U.jsx)("input", {
-														value: ue,
-														disabled: !!nn.obl || !!nn.pay,
+														value: de,
+														disabled: !!rn.obl || !!rn.pay,
 														onChange: (e) => {
-															de(e.target.value), ln(), un();
+															fe(e.target.value), un(), dn();
 														},
 														inputMode: "numeric",
 														placeholder: "VD: 20000000",
 														className: Z()
 													})
 												}),
-												nn.obl && /* @__PURE__ */ (0, U.jsx)("p", {
+												rn.obl && /* @__PURE__ */ (0, U.jsx)("p", {
 													role: "status",
 													"data-testid": "partner-payable-pending",
 													className: "mt-2 rounded-lg bg-blue-50 border border-blue-200 px-3 py-2 text-[13px] font-semibold text-blue-800",
 													children: "⏳ ĐANG CHỜ BACKEND XÁC NHẬN (phải trả)…"
 												}),
-												nn.pay && /* @__PURE__ */ (0, U.jsx)("p", {
+												rn.pay && /* @__PURE__ */ (0, U.jsx)("p", {
 													role: "status",
 													"data-testid": "partner-payment-pending",
 													className: "mt-2 rounded-lg bg-blue-50 border border-blue-200 px-3 py-2 text-[13px] font-semibold text-blue-800",
 													children: "⏳ ĐANG CHỜ BACKEND XÁC NHẬN (thanh toán)…"
 												}),
-												on.obl && /* @__PURE__ */ (0, U.jsx)("p", {
+												sn.obl && /* @__PURE__ */ (0, U.jsx)("p", {
 													role: "alert",
 													className: "mt-2 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-[13px] font-semibold text-red-700",
-													children: on.obl
+													children: sn.obl
 												}),
-												on.pay && /* @__PURE__ */ (0, U.jsx)("p", {
+												sn.pay && /* @__PURE__ */ (0, U.jsx)("p", {
 													role: "alert",
 													className: "mt-2 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-[13px] font-semibold text-red-700",
-													children: on.pay
+													children: sn.pay
 												}),
 												/* @__PURE__ */ (0, U.jsxs)("div", {
 													className: "grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2.5",
 													children: [/* @__PURE__ */ (0, U.jsx)($, {
-														onClick: fn,
-														disabled: !!nn.obl,
+														onClick: pn,
+														disabled: !!rn.obl,
 														testId: "partner-payable-submit",
 														className: "min-h-[48px]",
-														children: nn.obl ? "⏳ ĐANG CHỜ…" : "📌 GHI NHẬN PHẢI TRẢ"
+														children: rn.obl ? "⏳ ĐANG CHỜ…" : "📌 GHI NHẬN PHẢI TRẢ"
 													}), /* @__PURE__ */ (0, U.jsx)(Q, {
-														onClick: pn,
-														disabled: !!nn.pay,
+														onClick: mn,
+														disabled: !!rn.pay,
 														testId: "partner-payment-submit",
 														className: "min-h-[48px]",
-														children: nn.pay ? "⏳ ĐANG CHỜ…" : "💸 TRẢ ĐỐI TÁC"
+														children: rn.pay ? "⏳ ĐANG CHỜ…" : "💸 TRẢ ĐỐI TÁC"
 													})]
 												})
 											]
@@ -25810,7 +25813,7 @@ function xd() {
 									children: "Lịch sử thu / chi — sửa bằng điều chỉnh, không xóa"
 								}), /* @__PURE__ */ (0, U.jsx)("div", {
 									className: "space-y-2",
-									children: x.finance.payments.map((e, t) => /* @__PURE__ */ (0, U.jsxs)("div", {
+									children: w.finance.payments.map((e, t) => /* @__PURE__ */ (0, U.jsxs)("div", {
 										"data-payment-row": e.id || void 0,
 										className: K("flex flex-wrap items-center gap-2 rounded-xl border p-3", e.reversed ? "border-slate-200 bg-slate-50/80" : "border-slate-200"),
 										children: [
@@ -25850,7 +25853,7 @@ function xd() {
 												className: "text-[12.5px] font-semibold text-slate-400 px-3",
 												children: "Đã điều chỉnh — khóa"
 											}) : e.id ? /* @__PURE__ */ (0, U.jsx)("button", {
-												onClick: () => Zt(e),
+												onClick: () => Qt(e),
 												className: "touch-target text-[13px] font-bold text-[#1e5aa8] border border-slate-200 rounded-lg px-3 min-h-[40px]",
 												"data-payment-id": e.id,
 												children: "Điều chỉnh"
@@ -25879,13 +25882,13 @@ function xd() {
 										}),
 										/* @__PURE__ */ (0, U.jsxs)("span", {
 											className: "text-[12.5px] text-slate-500",
-											children: [x.finance.quote.length > 0 ? `${x.finance.quote.length} dòng dự kiến` : "Chưa gắn báo giá", " · bấm để xem"]
+											children: [w.finance.quote.length > 0 ? `${w.finance.quote.length} dòng dự kiến` : "Chưa gắn báo giá", " · bấm để xem"]
 										})
 									]
 								}), /* @__PURE__ */ (0, U.jsxs)("div", {
 									className: "mt-2",
 									children: [
-										x.finance.quote.length === 0 && /* @__PURE__ */ (0, U.jsxs)("p", {
+										w.finance.quote.length === 0 && /* @__PURE__ */ (0, U.jsxs)("p", {
 											className: "text-[13px] text-slate-500",
 											children: ["Chưa gắn báo giá. ", /* @__PURE__ */ (0, U.jsx)(H, {
 												to: "/kinh-doanh-bao-gia",
@@ -25893,7 +25896,7 @@ function xd() {
 												children: "Mở báo giá →"
 											})]
 										}),
-										x.finance.quote.map((e) => /* @__PURE__ */ (0, U.jsx)(As, {
+										w.finance.quote.map((e) => /* @__PURE__ */ (0, U.jsx)(As, {
 											label: e.label,
 											value: /* @__PURE__ */ (0, U.jsxs)("span", {
 												className: "font-bold text-[14px]",
@@ -25916,7 +25919,7 @@ function xd() {
 							})
 						]
 					}),
-					ut && c === "chung-tu" && /* @__PURE__ */ (0, U.jsxs)("div", {
+					dt && l === "chung-tu" && /* @__PURE__ */ (0, U.jsxs)("div", {
 						className: "grid grid-cols-1 xl:grid-cols-2 gap-4",
 						children: [
 							/* @__PURE__ */ (0, U.jsxs)("section", {
@@ -25931,7 +25934,7 @@ function xd() {
 										}), /* @__PURE__ */ (0, U.jsx)("p", {
 											className: "text-[13px] text-slate-500 mt-0.5",
 											children: "Chọn đúng pháp nhân đứng nhập khẩu. Hệ thống dùng lựa chọn này để bật/tắt đúng bộ chứng từ; không tự đoán."
-										})] }), x.commercialFlow?.confirmed && /* @__PURE__ */ (0, U.jsx)("span", {
+										})] }), w.commercialFlow?.confirmed && /* @__PURE__ */ (0, U.jsx)("span", {
 											className: "rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 px-3 py-1 text-[12.5px] font-extrabold",
 											children: "✓ ĐÃ XÁC NHẬN"
 										})]
@@ -25955,15 +25958,15 @@ function xd() {
 												"Ví dụ Phú Anh đứng nhập khẩu hộ Trường Thành"
 											]
 										].map(([e, t, n]) => /* @__PURE__ */ (0, U.jsxs)("label", {
-											className: K("cursor-pointer rounded-xl border-2 p-3 min-h-[94px] flex gap-2.5", ge === e ? "border-[#1e5aa8] bg-blue-50/60" : "border-slate-200 bg-white"),
+											className: K("cursor-pointer rounded-xl border-2 p-3 min-h-[94px] flex gap-2.5", _e === e ? "border-[#1e5aa8] bg-blue-50/60" : "border-slate-200 bg-white"),
 											children: [/* @__PURE__ */ (0, U.jsx)("input", {
 												type: "radio",
 												name: "commercial-flow",
 												value: e,
-												checked: ge === e,
-												disabled: !!Se,
+												checked: _e === e,
+												disabled: !!Ce,
 												onChange: () => {
-													_e(e), Te(""), e !== "TT_ENTRUSTED_SUB" && ye("");
+													ve(e), Ee(""), e !== "TT_ENTRUSTED_SUB" && be("");
 												},
 												className: "mt-1 h-5 w-5 accent-[#0f2a4a] shrink-0"
 											}), /* @__PURE__ */ (0, U.jsxs)("span", { children: [/* @__PURE__ */ (0, U.jsx)("span", {
@@ -25975,7 +25978,7 @@ function xd() {
 											})] })]
 										}, e))
 									}),
-									ge === "CUSTOMER_SELF" && !x.customerId && /* @__PURE__ */ (0, U.jsxs)("div", {
+									_e === "CUSTOMER_SELF" && !w.customerId && /* @__PURE__ */ (0, U.jsxs)("div", {
 										className: "mt-3 rounded-xl border-2 border-amber-400 bg-amber-50 p-3.5",
 										"data-testid": "commercial-flow-customer-recovery",
 										children: [
@@ -25996,54 +25999,54 @@ function xd() {
 												children: /* @__PURE__ */ (0, U.jsx)(js, {
 													label: "Khách hàng đứng nhập khẩu",
 													testId: "commercial-flow-customer-picker",
-													options: m.map((e) => ({
+													options: h.map((e) => ({
 														id: e.id,
 														label: e.name || e.id,
 														sub: e.mst || e.taxCode ? `MST ${e.mst || e.taxCode} · ${e.id}` : e.id
 													})),
-													selectedId: Ee,
-													selectedLabel: m.find((e) => e.id === Ee)?.name || "",
+													selectedId: De,
+													selectedLabel: h.find((e) => e.id === De)?.name || "",
 													placeholder: "Gõ tên khách hoặc mã khách để tìm…",
 													emptyHint: "Danh bạ khách hàng đang trống — thêm khách ở mục Khách Hàng trước.",
 													onSelect: (e) => {
-														De(e), je("");
+														Oe(e), Me("");
 													}
 												})
 											}),
-											Ae && /* @__PURE__ */ (0, U.jsx)("p", {
+											je && /* @__PURE__ */ (0, U.jsx)("p", {
 												role: "alert",
 												className: "mt-2 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-[13px] font-semibold text-red-700",
-												children: Ae
+												children: je
 											}),
 											/* @__PURE__ */ (0, U.jsx)(Q, {
-												onClick: pt,
-												disabled: !!Oe || !Ee,
+												onClick: mt,
+												disabled: !!ke || !De,
 												className: "mt-2.5 min-w-[220px]",
 												testId: "commercial-flow-customer-save",
-												children: Oe ? "ĐANG GÁN…" : "GÁN KHÁCH HÀNG CHO LÔ NÀY"
+												children: ke ? "ĐANG GÁN…" : "GÁN KHÁCH HÀNG CHO LÔ NÀY"
 											}),
-											Oe && /* @__PURE__ */ (0, U.jsx)("p", {
+											ke && /* @__PURE__ */ (0, U.jsx)("p", {
 												className: "mt-1.5 text-[12.5px] text-amber-800",
 												children: "Đang chờ backend xác nhận qua đọc lại…"
 											})
 										]
 									}),
-									ge === "TT_ENTRUSTED_SUB" && /* @__PURE__ */ (0, U.jsxs)("div", {
+									_e === "TT_ENTRUSTED_SUB" && /* @__PURE__ */ (0, U.jsxs)("div", {
 										className: "mt-3 grid md:grid-cols-2 gap-3",
 										children: [/* @__PURE__ */ (0, U.jsx)(X, {
 											label: "Đơn vị đứng nhập khẩu hộ",
-											required: !ve,
+											required: !ye,
 											children: /* @__PURE__ */ (0, U.jsxs)("select", {
-												value: ve,
-												disabled: !!Se,
+												value: ye,
+												disabled: !!Ce,
 												onChange: (e) => {
-													ye(e.target.value), Te("");
+													be(e.target.value), Ee("");
 												},
-												className: Z(ve ? "ok" : "missing"),
+												className: Z(ye ? "ok" : "missing"),
 												children: [/* @__PURE__ */ (0, U.jsx)("option", {
 													value: "",
 													children: "— Chọn đối tác —"
-												}), tt.map((e) => /* @__PURE__ */ (0, U.jsx)("option", {
+												}), nt.map((e) => /* @__PURE__ */ (0, U.jsx)("option", {
 													value: e.id,
 													children: e.legalName || e.id
 												}, e.id))]
@@ -26057,38 +26060,38 @@ function xd() {
 												}),
 												/* @__PURE__ */ (0, U.jsx)("p", {
 													className: "font-extrabold text-[14.5px] text-[#0f2a4a] mt-1",
-													children: rt?.legalName || "Chưa chọn"
+													children: it?.legalName || "Chưa chọn"
 												}),
 												/* @__PURE__ */ (0, U.jsxs)("p", {
 													className: "text-[12.5px] text-slate-500",
-													children: ["MST: ", rt?.legalCode || "—"]
+													children: ["MST: ", it?.legalCode || "—"]
 												})
 											]
 										})]
 									}),
-									(ge === "TT_ENTRUSTED_DIRECT" || ge === "TT_ENTRUSTED_SUB") && nt.length > 1 && /* @__PURE__ */ (0, U.jsx)("div", {
+									(_e === "TT_ENTRUSTED_DIRECT" || _e === "TT_ENTRUSTED_SUB") && rt.length > 1 && /* @__PURE__ */ (0, U.jsx)("div", {
 										className: "mt-3 max-w-[560px]",
 										children: /* @__PURE__ */ (0, U.jsx)(X, {
-											label: ge === "TT_ENTRUSTED_SUB" ? "Pháp nhân Trường Thành ký với đối tác" : "Pháp nhân Trường Thành đứng nhập khẩu",
-											required: !be,
+											label: _e === "TT_ENTRUSTED_SUB" ? "Pháp nhân Trường Thành ký với đối tác" : "Pháp nhân Trường Thành đứng nhập khẩu",
+											required: !xe,
 											children: /* @__PURE__ */ (0, U.jsxs)("select", {
-												value: be,
-												disabled: !!Se,
+												value: xe,
+												disabled: !!Ce,
 												onChange: (e) => {
-													xe(e.target.value), Te("");
+													Se(e.target.value), Ee("");
 												},
-												className: Z(be ? "ok" : "missing"),
+												className: Z(xe ? "ok" : "missing"),
 												children: [/* @__PURE__ */ (0, U.jsx)("option", {
 													value: "",
 													children: "— Chọn pháp nhân —"
-												}), nt.map((e) => /* @__PURE__ */ (0, U.jsx)("option", {
+												}), rt.map((e) => /* @__PURE__ */ (0, U.jsx)("option", {
 													value: e.id,
 													children: e.legalName || e.id
 												}, e.id))]
 											})
 										})
 									}),
-									x.commercialFlow?.confirmed && /* @__PURE__ */ (0, U.jsxs)("div", {
+									w.commercialFlow?.confirmed && /* @__PURE__ */ (0, U.jsxs)("div", {
 										className: "mt-3 rounded-xl bg-emerald-50 border border-emerald-200 p-3",
 										children: [
 											/* @__PURE__ */ (0, U.jsx)("p", {
@@ -26097,58 +26100,58 @@ function xd() {
 											}),
 											/* @__PURE__ */ (0, U.jsx)("p", {
 												className: "font-extrabold text-[15px] text-emerald-900 mt-0.5",
-												children: x.commercialFlow.legalImporterName || "Thiếu hồ sơ pháp lý"
+												children: w.commercialFlow.legalImporterName || "Thiếu hồ sơ pháp lý"
 											}),
 											/* @__PURE__ */ (0, U.jsxs)("p", {
 												className: "text-[12.5px] text-emerald-800",
-												children: ["MST: ", x.commercialFlow.legalImporterTaxCode || "—"]
+												children: ["MST: ", w.commercialFlow.legalImporterTaxCode || "—"]
 											}),
-											(x.commercialFlow.missing ?? []).length > 0 && /* @__PURE__ */ (0, U.jsxs)("p", {
+											(w.commercialFlow.missing ?? []).length > 0 && /* @__PURE__ */ (0, U.jsxs)("p", {
 												className: "text-[12.5px] font-semibold text-amber-800 mt-1",
-												children: ["Cần bổ sung: ", (x.commercialFlow.missing ?? []).join(" · ")]
+												children: ["Cần bổ sung: ", (w.commercialFlow.missing ?? []).join(" · ")]
 											})
 										]
 									}),
-									(ge === "TT_ENTRUSTED_DIRECT" || ge === "TT_ENTRUSTED_SUB") && nt.length === 1 && /* @__PURE__ */ (0, U.jsxs)("p", {
+									(_e === "TT_ENTRUSTED_DIRECT" || _e === "TT_ENTRUSTED_SUB") && rt.length === 1 && /* @__PURE__ */ (0, U.jsxs)("p", {
 										className: "mt-2 text-[12.5px] text-slate-500",
-										children: ["Pháp nhân Trường Thành: ", /* @__PURE__ */ (0, U.jsx)("b", { children: it?.legalName || nt[0]?.legalName })]
+										children: ["Pháp nhân Trường Thành: ", /* @__PURE__ */ (0, U.jsx)("b", { children: at?.legalName || rt[0]?.legalName })]
 									}),
-									we && /* @__PURE__ */ (0, U.jsx)("p", {
+									Te && /* @__PURE__ */ (0, U.jsx)("p", {
 										role: "alert",
 										className: "mt-3 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-[13px] font-semibold text-red-700",
-										children: we
+										children: Te
 									}),
-									ge === "CUSTOMER_SELF" && !x.customerId && /* @__PURE__ */ (0, U.jsx)("p", {
+									_e === "CUSTOMER_SELF" && !w.customerId && /* @__PURE__ */ (0, U.jsx)("p", {
 										className: "mt-2 text-[12.5px] font-semibold text-amber-800",
 										children: "Hãy gán khách hàng cho lô ở bước trên trước khi xác nhận hình thức nhập khẩu."
 									}),
 									/* @__PURE__ */ (0, U.jsx)(Q, {
-										onClick: mt,
-										disabled: !!Se || ge === "CUSTOMER_SELF" && !x.customerId,
+										onClick: gt,
+										disabled: !!Ce || _e === "CUSTOMER_SELF" && !w.customerId,
 										className: "mt-3 min-w-[220px]",
-										children: Se ? "ĐANG LƯU…" : "XÁC NHẬN HÌNH THỨC NHẬP KHẨU"
+										children: Ce ? "ĐANG LƯU…" : "XÁC NHẬN HÌNH THỨC NHẬP KHẨU"
 									})
 								]
 							}),
-							Qe && /* @__PURE__ */ (0, U.jsx)(ou, {
-								shipmentId: x.id,
-								cards: $e,
+							$e && /* @__PURE__ */ (0, U.jsx)(ou, {
+								shipmentId: w.id,
+								cards: et,
 								selection: {
-									catalog: Qe.catalog ?? [],
-									savedIds: Ke,
-									draftIds: Re,
-									canEdit: Qe.canSaveSelection === !0,
-									storageConfigured: Qe.storageConfigured === !0,
-									open: Ie,
-									pending: !!Be,
-									error: He,
-									onOpen: gt,
-									onClose: vt,
-									onDraftChange: ze,
-									onSave: yt
+									catalog: $e.catalog ?? [],
+									savedIds: qe,
+									draftIds: ze,
+									canEdit: $e.canSaveSelection === !0,
+									storageConfigured: $e.storageConfigured === !0,
+									open: Le,
+									pending: !!Ve,
+									error: Ue,
+									onOpen: vt,
+									onClose: yt,
+									onDraftChange: Be,
+									onSave: bt
 								},
-								onAction: wn,
-								onDownload: Tn
+								onAction: Tn,
+								onDownload: En
 							}),
 							/* @__PURE__ */ (0, U.jsxs)("section", {
 								className: "xl:col-span-2 rounded-2xl bg-white border border-slate-200 p-4 md:p-5",
@@ -26161,31 +26164,31 @@ function xd() {
 									}), /* @__PURE__ */ (0, U.jsx)("p", {
 										className: "text-[13px] text-slate-500",
 										children: "Báo giá → hợp đồng → tiền/thuế → giao hàng → kho → quyết toán. Bước không áp dụng vẫn hiện để giải thích, nhưng không tính vào mẫu số tiến độ."
-									})] }), x.documentWorkflow && /* @__PURE__ */ (0, U.jsxs)("div", {
+									})] }), w.documentWorkflow && /* @__PURE__ */ (0, U.jsxs)("div", {
 										className: "flex flex-wrap gap-1.5 text-[12px] font-extrabold",
 										children: [
 											/* @__PURE__ */ (0, U.jsxs)("span", {
 												className: "rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 px-2.5 py-1",
 												children: [
-													x.documentWorkflow.summary.complete,
+													w.documentWorkflow.summary.complete,
 													"/",
-													x.documentWorkflow.summary.total,
+													w.documentWorkflow.summary.total,
 													" hoàn tất"
 												]
 											}),
 											/* @__PURE__ */ (0, U.jsxs)("span", {
 												className: "rounded-full bg-blue-50 border border-blue-200 text-blue-800 px-2.5 py-1",
-												children: [x.documentWorkflow.summary.ready, " sẵn sàng"]
+												children: [w.documentWorkflow.summary.ready, " sẵn sàng"]
 											}),
 											/* @__PURE__ */ (0, U.jsxs)("span", {
 												className: "rounded-full bg-amber-50 border border-amber-200 text-amber-900 px-2.5 py-1",
-												children: [x.documentWorkflow.summary.attention, " cần xử lý"]
+												children: [w.documentWorkflow.summary.attention, " cần xử lý"]
 											})
 										]
 									})]
 								}), /* @__PURE__ */ (0, U.jsxs)("div", {
 									className: "mt-4 space-y-2",
-									children: [(x.documentWorkflow?.steps ?? []).map((e, t) => /* @__PURE__ */ (0, U.jsxs)("div", {
+									children: [(w.documentWorkflow?.steps ?? []).map((e, t) => /* @__PURE__ */ (0, U.jsxs)("div", {
 										className: "rounded-xl border border-slate-200 p-3 flex flex-col md:flex-row md:items-center gap-2.5",
 										children: [/* @__PURE__ */ (0, U.jsxs)("div", {
 											className: "flex items-start gap-3 flex-1 min-w-0",
@@ -26214,11 +26217,11 @@ function xd() {
 											children: e.actionLabel
 										}) : e.targetTab && e.actionLabel ? /* @__PURE__ */ (0, U.jsx)("button", {
 											type: "button",
-											onClick: () => s({ tab: e.targetTab }),
+											onClick: () => c({ tab: e.targetTab }),
 											className: "btn-press touch-target shrink-0 rounded-lg border-2 border-slate-200 px-3 min-h-[44px] text-[13px] font-bold",
 											children: e.actionLabel
 										}) : null]
-									}, e.id)), !x.documentWorkflow && /* @__PURE__ */ (0, U.jsx)("p", {
+									}, e.id)), !w.documentWorkflow && /* @__PURE__ */ (0, U.jsx)("p", {
 										className: "text-[13.5px] text-slate-500",
 										children: "Workflow chưa có trong payload hiện tại."
 									})]
@@ -26234,37 +26237,37 @@ function xd() {
 											className: "text-[#1e5aa8]"
 										}), " Hợp đồng / docgen liên kết hiện có"]
 									}),
-									Ye ? /* @__PURE__ */ (0, U.jsxs)("div", {
+									Xe ? /* @__PURE__ */ (0, U.jsxs)("div", {
 										className: "rounded-xl border-2 border-slate-200 p-4",
 										children: [
 											/* @__PURE__ */ (0, U.jsxs)("div", {
 												className: "flex flex-wrap items-center gap-2",
 												children: [/* @__PURE__ */ (0, U.jsx)("span", {
 													className: "font-extrabold text-[17px] text-[#0f2a4a]",
-													children: Ye.id
+													children: Xe.id
 												}), /* @__PURE__ */ (0, U.jsx)(J, {
-													tone: Ye.statusTone,
+													tone: Xe.statusTone,
 													size: "sm",
-													children: Ye.status
+													children: Xe.status
 												})]
 											}),
 											/* @__PURE__ */ (0, U.jsxs)("p", {
 												className: "text-[14px] text-slate-600 mt-1",
 												children: [
-													Ye.companyLegal,
+													Xe.companyLegal,
 													" · Giá trị ",
-													is(Ye.value ?? x.finance.receivable)
+													is(Xe.value ?? w.finance.receivable)
 												]
 											}),
 											/* @__PURE__ */ (0, U.jsxs)("div", {
 												className: "grid grid-cols-2 gap-2 mt-3",
 												children: [/* @__PURE__ */ (0, U.jsxs)(H, {
-													to: Jn(Ye.id),
+													to: Jn(Xe.id),
 													className: "btn-press touch-target flex items-center justify-center gap-1.5 rounded-xl border-2 border-slate-200 font-bold text-[14.5px] min-h-[48px]",
 													children: [/* @__PURE__ */ (0, U.jsx)(G, { size: 16 }), " MỞ HỢP ĐỒNG"]
 												}), /* @__PURE__ */ (0, U.jsxs)(H, {
-													to: Jn(Ye.id) + "?tab=chung-tu",
-													onClick: () => f("Chứng từ hợp đồng " + Ye.id, "Mở workdesk chứng từ HDNT/PL/HDMB của hợp đồng (core.docgen).", "blue"),
+													to: Jn(Xe.id) + "?tab=chung-tu",
+													onClick: () => p("Chứng từ hợp đồng " + Xe.id, "Mở workdesk chứng từ HDNT/PL/HDMB của hợp đồng (core.docgen).", "blue"),
 													className: "btn-press touch-target flex items-center justify-center gap-1.5 rounded-xl bg-[#0f2a4a] text-white font-bold text-[14.5px] min-h-[48px]",
 													children: [/* @__PURE__ */ (0, U.jsx)(Mi, { size: 16 }), " MỞ CHỨNG TỪ"]
 												})]
@@ -26285,7 +26288,7 @@ function xd() {
 											children: "Chứng từ lô hàng — hiện trạng & bổ sung"
 										}), /* @__PURE__ */ (0, U.jsx)("div", {
 											className: "space-y-2",
-											children: x.docs.map((e) => /* @__PURE__ */ (0, U.jsxs)("div", {
+											children: w.docs.map((e) => /* @__PURE__ */ (0, U.jsxs)("div", {
 												className: "flex items-center gap-2.5 rounded-xl border border-slate-200 p-2.5",
 												children: [
 													/* @__PURE__ */ (0, U.jsx)("span", {
@@ -26308,7 +26311,7 @@ function xd() {
 													}),
 													!e.ok && /* @__PURE__ */ (0, U.jsxs)("button", {
 														onClick: () => {
-															s({ tab: En(e.name) }), f("Mở tab bổ sung", "Đi tới ô nhập liệu thật cho " + e.name + ".", "blue");
+															c({ tab: Dn(e.name) }), p("Mở tab bổ sung", "Đi tới ô nhập liệu thật cho " + e.name + ".", "blue");
 														},
 														className: "btn-press touch-target shrink-0 inline-flex items-center gap-1 rounded-lg bg-amber-500 text-white text-[13px] font-bold px-3 min-h-[44px]",
 														children: [/* @__PURE__ */ (0, U.jsx)(Ea, { size: 14 }), " Bổ sung"]
@@ -26319,12 +26322,12 @@ function xd() {
 									})
 								]
 							}),
-							x.commercialFlow?.mode === "CUSTOMER_SELF" ? /* @__PURE__ */ (0, U.jsxs)("section", {
-								className: K("rounded-2xl border-2 p-4 md:p-5", x.pxk.done ? "bg-amber-50 border-amber-300" : "bg-slate-50 border-slate-200"),
+							w.commercialFlow?.mode === "CUSTOMER_SELF" ? /* @__PURE__ */ (0, U.jsxs)("section", {
+								className: K("rounded-2xl border-2 p-4 md:p-5", w.pxk.done ? "bg-amber-50 border-amber-300" : "bg-slate-50 border-slate-200"),
 								children: [/* @__PURE__ */ (0, U.jsx)("h3", {
 									className: "font-extrabold text-[16.5px] text-[#0f2a4a] mb-1",
 									children: "Phiếu xuất kho (PXK)"
-								}), x.pxk.done ? /* @__PURE__ */ (0, U.jsxs)(U.Fragment, { children: [
+								}), w.pxk.done ? /* @__PURE__ */ (0, U.jsxs)(U.Fragment, { children: [
 									/* @__PURE__ */ (0, U.jsxs)("p", {
 										className: "text-[13.5px] text-amber-900",
 										children: [/* @__PURE__ */ (0, U.jsx)("b", { children: "Có PXK lịch sử từ mô hình trước." }), " Hệ thống giữ nguyên để kiểm toán nhưng không cho sinh bản PXK mới khi khách hàng tự đứng tên nhập khẩu."]
@@ -26332,15 +26335,15 @@ function xd() {
 									/* @__PURE__ */ (0, U.jsxs)("p", {
 										className: "text-[12.8px] text-amber-800 mt-1",
 										children: [
-											x.pxk.document?.fileName || x.pxk.number || "PXK",
+											w.pxk.document?.fileName || w.pxk.number || "PXK",
 											" · bản R",
-											x.pxk.document?.revision ?? 1,
+											w.pxk.document?.revision ?? 1,
 											" · ",
-											x.pxk.document?.status || "GENERATED"
+											w.pxk.document?.status || "GENERATED"
 										]
 									}),
-									x.pxk.document?.downloadAvailable && /* @__PURE__ */ (0, U.jsxs)("button", {
-										onClick: yn,
+									w.pxk.document?.downloadAvailable && /* @__PURE__ */ (0, U.jsxs)("button", {
+										onClick: bn,
 										className: "btn-press touch-target mt-2 inline-flex items-center gap-1.5 rounded-xl border-2 border-amber-500 text-amber-900 font-bold px-4 min-h-[46px]",
 										children: [/* @__PURE__ */ (0, U.jsx)(Ci, { size: 16 }), " TẢI BẢN LỊCH SỬ"]
 									})
@@ -26348,7 +26351,7 @@ function xd() {
 									className: "text-[13.5px] text-slate-600",
 									children: [/* @__PURE__ */ (0, U.jsx)("b", { children: "Không áp dụng." }), " Khách hàng tự đứng tên nhập khẩu nên workflow không yêu cầu Phiếu xuất kho của Trường Thành cho lô này."]
 								})]
-							}) : x.commercialFlow?.confirmed ? /* @__PURE__ */ (0, U.jsxs)("section", {
+							}) : w.commercialFlow?.confirmed ? /* @__PURE__ */ (0, U.jsxs)("section", {
 								className: "rounded-2xl bg-white border-2 border-[#0f2a4a] p-4 md:p-5",
 								children: [
 									/* @__PURE__ */ (0, U.jsx)("h3", {
@@ -26359,77 +26362,77 @@ function xd() {
 										className: "text-[13px] text-slate-500 mb-3",
 										children: [
 											"PXK gắn với lô đã giao, nguồn từ ",
-											x.pxk.source || x.contract,
+											w.pxk.source || w.contract,
 											". Mỗi lô 1 PXK riêng."
 										]
 									}),
-									!x.importInfo.delivered && /* @__PURE__ */ (0, U.jsx)(Os, {
+									!w.importInfo.delivered && /* @__PURE__ */ (0, U.jsx)(Os, {
 										what: "xác nhận đã giao hàng",
 										where: "Phải giao xong mới được xuất PXK",
 										actionLabel: "Sang xác nhận giao",
-										onAction: () => s({ tab: "nhap" })
+										onAction: () => c({ tab: "nhap" })
 									}),
 									/* @__PURE__ */ (0, U.jsxs)("div", {
 										className: "grid sm:grid-cols-2 gap-3 mt-3",
 										children: [
 											/* @__PURE__ */ (0, U.jsx)(X, {
 												label: "Số PXK",
-												required: !x.pxk.number,
+												required: !w.pxk.number,
 												hint: "Số pháp lý của phiếu — backend không tự đặt.",
 												children: /* @__PURE__ */ (0, U.jsx)("input", {
 													id: "fld-pxkno",
-													value: V("pxkNo", x.pxk.number ?? ""),
-													onChange: (e) => Je("pxkNo", e.target.value),
+													value: V("pxkNo", w.pxk.number ?? ""),
+													onChange: (e) => Ye("pxkNo", e.target.value),
 													placeholder: "VD: PXK-2026-0308",
-													className: Z(V("pxkNo", x.pxk.number ?? "") ? "ok" : "missing")
+													className: Z(V("pxkNo", w.pxk.number ?? "") ? "ok" : "missing")
 												})
 											}),
 											/* @__PURE__ */ (0, U.jsx)(X, {
 												label: "Ngày PXK",
-												required: !x.pxk.date,
+												required: !w.pxk.date,
 												hint: "DD/MM/YYYY hoặc YYYY-MM-DD.",
 												children: /* @__PURE__ */ (0, U.jsx)("input", {
 													id: "fld-pxkdate",
-													value: V("pxkDate", x.pxk.date ?? ""),
-													onChange: (e) => Je("pxkDate", e.target.value),
+													value: V("pxkDate", w.pxk.date ?? ""),
+													onChange: (e) => Ye("pxkDate", e.target.value),
 													placeholder: "VD: 11/09/2026",
-													className: Z(V("pxkDate", x.pxk.date ?? "") ? "ok" : "missing")
+													className: Z(V("pxkDate", w.pxk.date ?? "") ? "ok" : "missing")
 												})
 											}),
 											/* @__PURE__ */ (0, U.jsx)(X, {
 												label: "Địa điểm nhận",
-												required: !x.pxk.place,
+												required: !w.pxk.place,
 												hint: "Lưu vào 2.7.delivery_location — PXK bị chặn nếu thiếu.",
 												children: /* @__PURE__ */ (0, U.jsx)("input", {
 													id: "fld-pxplace",
-													value: V("pxPlace", x.pxk.place || x.importInfo.deliveryAddr || ""),
-													onChange: (e) => Je("pxPlace", e.target.value),
+													value: V("pxPlace", w.pxk.place || w.importInfo.deliveryAddr || ""),
+													onChange: (e) => Ye("pxPlace", e.target.value),
 													placeholder: "Kho / địa chỉ nhận thực tế",
-													className: Z(V("pxPlace", x.pxk.place || x.importInfo.deliveryAddr || "") ? "ok" : "missing")
+													className: Z(V("pxPlace", w.pxk.place || w.importInfo.deliveryAddr || "") ? "ok" : "missing")
 												})
 											}),
 											/* @__PURE__ */ (0, U.jsx)(X, {
 												label: "Người nhận",
-												required: !x.pxk.receiver,
+												required: !w.pxk.receiver,
 												hint: "Lưu vào 2.7.receiver_name.",
 												children: /* @__PURE__ */ (0, U.jsx)("input", {
 													id: "fld-pxreceiver",
-													value: V("pxReceiver", x.pxk.receiver || x.importInfo.receiver || ""),
-													onChange: (e) => Je("pxReceiver", e.target.value),
+													value: V("pxReceiver", w.pxk.receiver || w.importInfo.receiver || ""),
+													onChange: (e) => Ye("pxReceiver", e.target.value),
 													placeholder: "Tên người nhận",
-													className: Z(V("pxReceiver", x.pxk.receiver || x.importInfo.receiver || "") ? "ok" : "missing")
+													className: Z(V("pxReceiver", w.pxk.receiver || w.importInfo.receiver || "") ? "ok" : "missing")
 												})
 											}),
 											/* @__PURE__ */ (0, U.jsx)(X, {
 												label: "Chức vụ người nhận",
-												required: !x.pxk.role,
+												required: !w.pxk.role,
 												hint: "Lưu vào 2.7.receiver_title.",
 												children: /* @__PURE__ */ (0, U.jsx)("input", {
 													id: "fld-pxrole",
-													value: V("pxRole", x.pxk.role ?? ""),
-													onChange: (e) => Je("pxRole", e.target.value),
+													value: V("pxRole", w.pxk.role ?? ""),
+													onChange: (e) => Ye("pxRole", e.target.value),
 													placeholder: "Theo giấy giới thiệu",
-													className: Z(V("pxRole", x.pxk.role ?? "") ? "ok" : "missing")
+													className: Z(V("pxRole", w.pxk.role ?? "") ? "ok" : "missing")
 												})
 											}),
 											/* @__PURE__ */ (0, U.jsx)(X, {
@@ -26437,8 +26440,8 @@ function xd() {
 												hint: "Lưu vào 2.7.delivery_date — PXK cần ngày này.",
 												children: /* @__PURE__ */ (0, U.jsx)("input", {
 													id: "fld-pxdate",
-													value: V("pxDate", x.importInfo.schedule ?? ""),
-													onChange: (e) => Je("pxDate", e.target.value),
+													value: V("pxDate", w.importInfo.schedule ?? ""),
+													onChange: (e) => Ye("pxDate", e.target.value),
 													placeholder: "VD: 12/09/2026",
 													className: Z()
 												})
@@ -26447,7 +26450,7 @@ function xd() {
 												label: "Nguồn (HDMB/PL)",
 												hint: "Từ hợp đồng đã liên kết với lô — liên kết ở màn Hợp đồng.",
 												children: /* @__PURE__ */ (0, U.jsx)("input", {
-													value: x.pxk.source || x.contract,
+													value: w.pxk.source || w.contract,
 													readOnly: !0,
 													placeholder: "Chưa liên kết chứng từ nguồn",
 													className: Z()
@@ -26456,12 +26459,12 @@ function xd() {
 										]
 									}),
 									/* @__PURE__ */ (0, U.jsx)(Q, {
-										onClick: vn,
+										onClick: yn,
 										className: "w-full mt-3",
 										children: "💾 LƯU THÔNG TIN GIAO NHẬN"
 									}),
-									(x.pxk.missingDeliveryFacts ?? []).length > 0 && /* @__PURE__ */ (0, U.jsx)(Os, {
-										what: (x.pxk.missingDeliveryFacts ?? []).join(" · "),
+									(w.pxk.missingDeliveryFacts ?? []).length > 0 && /* @__PURE__ */ (0, U.jsx)(Os, {
+										what: (w.pxk.missingDeliveryFacts ?? []).join(" · "),
 										where: "core.docgen chặn PXK đến khi đủ thông tin giao nhận",
 										actionLabel: "Nhập ở trên",
 										onAction: () => document.getElementById("fld-pxplace")?.focus()
@@ -26469,48 +26472,48 @@ function xd() {
 									/* @__PURE__ */ (0, U.jsxs)("div", {
 										className: "mt-3 rounded-xl bg-slate-50 border p-3 text-[13.5px]",
 										children: [/* @__PURE__ */ (0, U.jsxs)("p", { children: ["Đã giao hàng xong: ", /* @__PURE__ */ (0, U.jsx)("b", {
-											className: x.importInfo.delivered ? "text-emerald-700" : "text-red-600",
-											children: x.importInfo.delivered ? "✅ Rồi — " + x.importInfo.actualDelivery : "❌ Chưa"
-										})] }), /* @__PURE__ */ (0, U.jsxs)("p", { children: ["Ngày giao: ", /* @__PURE__ */ (0, U.jsx)("b", { children: x.importInfo.actualDelivery || x.importInfo.schedule })] })]
+											className: w.importInfo.delivered ? "text-emerald-700" : "text-red-600",
+											children: w.importInfo.delivered ? "✅ Rồi — " + w.importInfo.actualDelivery : "❌ Chưa"
+										})] }), /* @__PURE__ */ (0, U.jsxs)("p", { children: ["Ngày giao: ", /* @__PURE__ */ (0, U.jsx)("b", { children: w.importInfo.actualDelivery || w.importInfo.schedule })] })]
 									}),
-									x.pxk.done ? /* @__PURE__ */ (0, U.jsxs)("div", {
+									w.pxk.done ? /* @__PURE__ */ (0, U.jsxs)("div", {
 										className: "mt-3 rounded-xl bg-emerald-50 border-2 border-emerald-300 p-4 text-center",
 										children: [
 											/* @__PURE__ */ (0, U.jsxs)("p", {
 												className: "font-extrabold text-emerald-800",
-												children: ["✅ ĐÃ XUẤT ", x.pxk.number]
+												children: ["✅ ĐÃ XUẤT ", w.pxk.number]
 											}),
 											/* @__PURE__ */ (0, U.jsxs)("p", {
 												className: "text-[13.5px] text-emerald-700 mt-0.5",
 												children: [
-													x.pxk.document?.fileName || "PXK",
+													w.pxk.document?.fileName || "PXK",
 													" · bản R",
-													x.pxk.document?.revision ?? 1,
+													w.pxk.document?.revision ?? 1,
 													" · ",
-													x.pxk.document?.status || "GENERATED",
-													x.pxk.document?.generatedBy ? " · " + x.pxk.document.generatedBy : ""
+													w.pxk.document?.status || "GENERATED",
+													w.pxk.document?.generatedBy ? " · " + w.pxk.document.generatedBy : ""
 												]
 											}),
-											x.pxk.document?.downloadAvailable ? /* @__PURE__ */ (0, U.jsxs)("button", {
-												onClick: yn,
+											w.pxk.document?.downloadAvailable ? /* @__PURE__ */ (0, U.jsxs)("button", {
+												onClick: bn,
 												className: "btn-press touch-target mt-2 inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 text-white font-bold px-5 min-h-[48px]",
 												children: [
 													/* @__PURE__ */ (0, U.jsx)(Ci, { size: 17 }),
 													" TẢI ",
-													x.pxk.document?.fileName || "PXK"
+													w.pxk.document?.fileName || "PXK"
 												]
 											}) : /* @__PURE__ */ (0, U.jsx)("p", {
 												className: "text-[13px] text-emerald-800 mt-2",
 												children: "File sinh ở phiên trước: metadata còn trên backend, bytes chỉ giữ trong phiên đã sinh — bấm “SINH BẢN MỚI” để có file tải."
 											}),
 											/* @__PURE__ */ (0, U.jsxs)("button", {
-												onClick: mn,
+												onClick: hn,
 												className: "btn-press touch-target mt-2 ml-2 inline-flex items-center gap-1.5 rounded-xl border-2 border-emerald-600 text-emerald-800 font-bold px-5 min-h-[48px]",
 												children: [/* @__PURE__ */ (0, U.jsx)(Mi, { size: 17 }), " SINH BẢN MỚI (R+1)"]
 											})
 										]
 									}) : /* @__PURE__ */ (0, U.jsx)(Ds, {
-										onClick: mn,
+										onClick: hn,
 										className: "w-full mt-3 text-[16px] min-h-[56px]",
 										children: "🖨 XUẤT PHIẾU XUẤT KHO"
 									})
@@ -26530,17 +26533,17 @@ function xd() {
 											" ở đầu tab trước. Backend cũng từ chối tạo PXK cho tới khi mô hình được xác nhận."
 										]
 									}),
-									x.pxk.done && /* @__PURE__ */ (0, U.jsxs)("p", {
+									w.pxk.done && /* @__PURE__ */ (0, U.jsxs)("p", {
 										className: "text-[12.8px] font-semibold text-amber-900 mt-2",
 										children: [
 											"PXK lịch sử ",
-											x.pxk.document?.fileName || x.pxk.number || "",
+											w.pxk.document?.fileName || w.pxk.number || "",
 											" vẫn được giữ; xác nhận mô hình để hệ thống đánh giá tính phù hợp, không xóa lịch sử."
 										]
 									})
 								]
 							}),
-							x.form07 && /* @__PURE__ */ (0, U.jsxs)("section", {
+							w.form07 && /* @__PURE__ */ (0, U.jsxs)("section", {
 								className: "rounded-2xl bg-white border-2 border-[#0f2a4a] p-4 md:p-5",
 								"data-testid": "shipment-form07-panel",
 								children: [
@@ -26552,93 +26555,93 @@ function xd() {
 										className: "text-[13px] text-slate-500 mb-3",
 										children: [
 											"DOCX sinh từ mẫu Owner đã làm sạch (SHA-256 đã ghim). Nguồn hàng hóa: ",
-											x.form07.source || x.contract || "chưa liên kết hợp đồng",
+											w.form07.source || w.contract || "chưa liên kết hợp đồng",
 											". Hai bên, người nhận và ngày giao lấy từ dữ liệu canonical — không nhập tay."
 										]
 									}),
-									!x.form07.delivered && /* @__PURE__ */ (0, U.jsx)(Os, {
+									!w.form07.delivered && /* @__PURE__ */ (0, U.jsx)(Os, {
 										what: "xác nhận đã giao hàng",
 										where: "Biên bản giao nhận chỉ tạo sau khi lô đã giao thực tế",
 										actionLabel: "Sang xác nhận giao",
-										onAction: () => s({ tab: "nhap" })
+										onAction: () => c({ tab: "nhap" })
 									}),
 									/* @__PURE__ */ (0, U.jsxs)("div", {
 										className: "grid sm:grid-cols-2 gap-3 mt-3",
 										children: [/* @__PURE__ */ (0, U.jsx)(X, {
 											label: "Số biên bản",
-											required: !x.form07.number,
+											required: !w.form07.number,
 											hint: "Số pháp lý của biên bản — backend không tự đặt.",
 											children: /* @__PURE__ */ (0, U.jsx)("input", {
 												id: "fld-form07no",
-												value: V("form07No", x.form07.number ?? ""),
-												onChange: (e) => Je("form07No", e.target.value),
+												value: V("form07No", w.form07.number ?? ""),
+												onChange: (e) => Ye("form07No", e.target.value),
 												placeholder: "VD: BBGN-2026-001",
-												className: Z(V("form07No", x.form07.number ?? "") ? "ok" : "missing")
+												className: Z(V("form07No", w.form07.number ?? "") ? "ok" : "missing")
 											})
 										}), /* @__PURE__ */ (0, U.jsx)(X, {
 											label: "Ngày đơn đặt hàng",
-											required: !x.form07.orderDate,
+											required: !w.form07.orderDate,
 											hint: "DD/MM/YYYY — in vào 'Căn cứ Đơn đặt hàng ngày…'.",
 											children: /* @__PURE__ */ (0, U.jsx)("input", {
 												id: "fld-form07orderdate",
-												value: V("form07OrderDate", x.form07.orderDate ?? ""),
-												onChange: (e) => Je("form07OrderDate", e.target.value),
+												value: V("form07OrderDate", w.form07.orderDate ?? ""),
+												onChange: (e) => Ye("form07OrderDate", e.target.value),
 												placeholder: "VD: 25/09/2026",
-												className: Z(V("form07OrderDate", x.form07.orderDate ?? "") ? "ok" : "missing")
+												className: Z(V("form07OrderDate", w.form07.orderDate ?? "") ? "ok" : "missing")
 											})
 										})]
 									}),
-									(x.form07.readiness?.missing ?? []).length > 0 && /* @__PURE__ */ (0, U.jsx)(Os, {
-										what: (x.form07.readiness?.missing ?? []).join(" · "),
+									(w.form07.readiness?.missing ?? []).length > 0 && /* @__PURE__ */ (0, U.jsx)(Os, {
+										what: (w.form07.readiness?.missing ?? []).join(" · "),
 										where: "core.docgen.form07 chặn đến khi đủ thông tin",
 										actionLabel: "Nhập ở trên",
 										onAction: () => document.getElementById("fld-form07no")?.focus()
 									}),
-									x.form07.done ? /* @__PURE__ */ (0, U.jsxs)("div", {
+									w.form07.done ? /* @__PURE__ */ (0, U.jsxs)("div", {
 										className: "mt-3 rounded-xl bg-emerald-50 border-2 border-emerald-300 p-4 text-center",
 										"data-testid": "form07-done",
 										children: [
 											/* @__PURE__ */ (0, U.jsxs)("p", {
 												className: "font-extrabold text-emerald-800",
-												children: ["✅ ĐÃ TẠO ", x.form07.number]
+												children: ["✅ ĐÃ TẠO ", w.form07.number]
 											}),
 											/* @__PURE__ */ (0, U.jsxs)("p", {
 												className: "text-[13.5px] text-emerald-700 mt-0.5",
 												children: [
-													x.form07.document?.fileName || "FORM_07",
+													w.form07.document?.fileName || "FORM_07",
 													" · bản R",
-													x.form07.document?.revision ?? 1,
+													w.form07.document?.revision ?? 1,
 													" · ",
-													x.form07.document?.status || "GENERATED",
-													x.form07.document?.generatedBy ? " · " + x.form07.document.generatedBy : ""
+													w.form07.document?.status || "GENERATED",
+													w.form07.document?.generatedBy ? " · " + w.form07.document.generatedBy : ""
 												]
 											}),
-											x.form07.document?.downloadBase64 ? /* @__PURE__ */ (0, U.jsxs)("button", {
-												onClick: gn,
+											w.form07.document?.downloadBase64 ? /* @__PURE__ */ (0, U.jsxs)("button", {
+												onClick: _n,
 												className: "btn-press touch-target mt-2 inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 text-white font-bold px-5 min-h-[48px]",
 												children: [
 													/* @__PURE__ */ (0, U.jsx)(Ci, { size: 17 }),
 													" TẢI ",
-													x.form07.document?.fileName || "FORM_07"
+													w.form07.document?.fileName || "FORM_07"
 												]
 											}) : /* @__PURE__ */ (0, U.jsx)("p", {
 												className: "text-[13px] text-emerald-800 mt-2",
 												children: "File sinh ở phiên trước: metadata còn trên backend — tải đúng bytes đã lưu qua lịch sử ở thẻ “Biểu mẫu & chứng từ”."
 											}),
 											/* @__PURE__ */ (0, U.jsxs)("button", {
-												onClick: hn,
+												onClick: gn,
 												className: "btn-press touch-target mt-2 ml-2 inline-flex items-center gap-1.5 rounded-xl border-2 border-emerald-600 text-emerald-800 font-bold px-5 min-h-[48px]",
 												children: [/* @__PURE__ */ (0, U.jsx)(Mi, { size: 17 }), " SINH BẢN MỚI (R+1)"]
 											})
 										]
 									}) : /* @__PURE__ */ (0, U.jsx)(Ds, {
-										onClick: hn,
+										onClick: gn,
 										className: "w-full mt-3 text-[16px] min-h-[56px]",
 										children: "🖨 TẠO BIÊN BẢN GIAO NHẬN"
 									})
 								]
 							}),
-							et.length > 0 && /* @__PURE__ */ (0, U.jsxs)("section", {
+							tt.length > 0 && /* @__PURE__ */ (0, U.jsxs)("section", {
 								id: "shipment-uploaded-templates",
 								className: "rounded-2xl bg-white border-2 border-[#0f2a4a] p-4 md:p-5",
 								"data-testid": "shipment-uploaded-templates-panel",
@@ -26653,7 +26656,7 @@ function xd() {
 									}),
 									/* @__PURE__ */ (0, U.jsx)("div", {
 										className: "space-y-3",
-										children: et.map((e) => {
+										children: tt.map((e) => {
 											let t = e.state, n = t.readiness.state === "READY", r = (t.manualFields ?? []).filter((t) => !V(`up_${e.id}_${t}`, "").trim()), i = (t.readiness.missing ?? []).filter((e) => !/nhập tay/i.test(e));
 											return /* @__PURE__ */ (0, U.jsxs)("article", {
 												"data-testid": "uploaded-template-card",
@@ -26688,7 +26691,7 @@ function xd() {
 														what: i.join(" · "),
 														where: "Backend chặn đến khi dữ liệu canonical của lô được bổ sung — không tự đặt giá trị.",
 														actionLabel: "Sang thông tin lô",
-														onAction: () => s({ tab: "info" })
+														onAction: () => c({ tab: "info" })
 													}),
 													(t.manualFields ?? []).length > 0 && /* @__PURE__ */ (0, U.jsx)("div", {
 														className: "grid sm:grid-cols-2 gap-3 mt-3",
@@ -26701,7 +26704,7 @@ function xd() {
 																children: /* @__PURE__ */ (0, U.jsx)("input", {
 																	id: n,
 																	value: r,
-																	onChange: (n) => Je(`up_${e.id}_${t}`, n.target.value),
+																	onChange: (n) => Ye(`up_${e.id}_${t}`, n.target.value),
 																	placeholder: "Nhập " + t,
 																	className: Z(r.trim() ? "ok" : "missing")
 																})
@@ -26709,7 +26712,7 @@ function xd() {
 														})
 													}),
 													/* @__PURE__ */ (0, U.jsxs)(Ds, {
-														onClick: () => _n(e.id, e.label, t.manualFields ?? []),
+														onClick: () => vn(e.id, e.label, t.manualFields ?? []),
 														disabled: !n || r.length > 0,
 														className: "w-full mt-3 text-[15px] min-h-[52px]",
 														testId: "uploaded-template-generate-" + e.id,
@@ -26734,22 +26737,22 @@ function xd() {
 								]
 							}),
 							/* @__PURE__ */ (0, U.jsx)(zl, {
-								contextCategories: st?.documentCategories,
-								shipmentId: x.id,
-								attachments: x.attachments ?? [],
-								policy: y?.attachmentPolicy
+								contextCategories: ct?.documentCategories,
+								shipmentId: w.id,
+								attachments: w.attachments ?? [],
+								policy: b?.attachmentPolicy
 							}),
-							/* @__PURE__ */ (0, U.jsx)(eu, { shipmentId: x.id })
+							/* @__PURE__ */ (0, U.jsx)(eu, { shipmentId: w.id })
 						]
 					}),
-					ut && c === "lich-su" && /* @__PURE__ */ (0, U.jsxs)("section", {
+					dt && l === "lich-su" && /* @__PURE__ */ (0, U.jsxs)("section", {
 						className: "rounded-2xl bg-white border border-slate-200 p-4 md:p-5 max-w-[800px]",
 						children: [/* @__PURE__ */ (0, U.jsxs)("h3", {
 							className: "font-extrabold text-[16.5px] text-[#0f2a4a] mb-4",
-							children: ["Dòng thời gian — ", x.id]
+							children: ["Dòng thời gian — ", w.id]
 						}), /* @__PURE__ */ (0, U.jsx)("div", {
 							className: "relative pl-6 space-y-4 before:absolute before:left-[7px] before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200",
-							children: x.timeline.map((e, t) => /* @__PURE__ */ (0, U.jsxs)("div", {
+							children: w.timeline.map((e, t) => /* @__PURE__ */ (0, U.jsxs)("div", {
 								className: "relative",
 								children: [
 									/* @__PURE__ */ (0, U.jsx)("span", { className: K("absolute -left-6 top-1 w-4 h-4 rounded-full border-[3px] border-white shadow", e.tone === "green" ? "bg-emerald-500" : e.tone === "amber" ? "bg-amber-500" : e.tone === "red" ? "bg-red-500" : "bg-blue-500") }),
@@ -26772,48 +26775,48 @@ function xd() {
 					/* @__PURE__ */ (0, U.jsxs)("div", {
 						className: "xl:hidden sticky-action -mx-3 px-3 py-3 flex gap-2",
 						children: [
-							c === "nhap" && !x.importInfo.delivered && /* @__PURE__ */ (0, U.jsx)("button", {
-								onClick: () => D(!0),
+							l === "nhap" && !w.importInfo.delivered && /* @__PURE__ */ (0, U.jsx)("button", {
+								onClick: () => O(!0),
 								className: "btn-press touch-target flex-1 rounded-xl bg-emerald-600 text-white font-extrabold min-h-[52px]",
 								children: "✅ XÁC NHẬN ĐÃ GIAO"
 							}),
-							c === "chung-tu" && x.commercialFlow?.confirmed && x.commercialFlow?.mode !== "CUSTOMER_SELF" && /* @__PURE__ */ (0, U.jsx)("button", {
-								onClick: mn,
+							l === "chung-tu" && w.commercialFlow?.confirmed && w.commercialFlow?.mode !== "CUSTOMER_SELF" && /* @__PURE__ */ (0, U.jsx)("button", {
+								onClick: hn,
 								className: "btn-press touch-target flex-1 rounded-xl bg-[#0f2a4a] text-white font-extrabold min-h-[52px]",
 								children: "🖨 XUẤT PHIẾU XUẤT KHO"
 							}),
-							c === "tai-chinh" && /* @__PURE__ */ (0, U.jsx)("button", {
-								onClick: Mt,
+							l === "tai-chinh" && /* @__PURE__ */ (0, U.jsx)("button", {
+								onClick: Nt,
 								className: "btn-press touch-target flex-1 rounded-xl bg-emerald-600 text-white font-extrabold min-h-[52px]",
 								children: "＋ GHI NHẬN THANH TOÁN"
 							})
 						]
 					})
 				]
-			}, x.id),
+			}, w.id),
 			/* @__PURE__ */ (0, U.jsx)(nd, {
-				shipment: x,
+				shipment: w,
 				onOpenTab: (e) => {
-					if (e === "lay-hang" && jn) {
-						oe(!0);
+					if (e === "lay-hang" && Mn) {
+						se(!0);
 						return;
 					}
-					s({ tab: e });
+					c({ tab: e });
 				}
 			}),
-			E && /* @__PURE__ */ (0, U.jsxs)(ks, {
+			D && /* @__PURE__ */ (0, U.jsxs)(ks, {
 				id: "delivery-confirm-sheet",
 				testId: "delivery-confirm-sheet",
 				labelledBy: "delivery-sheet-title",
 				width: 480,
-				onClose: () => D(!1),
+				onClose: () => O(!1),
 				children: [
 					/* @__PURE__ */ (0, U.jsxs)("h3", {
 						id: "delivery-sheet-title",
 						className: "font-extrabold text-[18px] text-[#0f2a4a]",
 						children: [
 							"Xác nhận đã giao ",
-							x.id,
+							w.id,
 							"?"
 						]
 					}),
@@ -26821,45 +26824,45 @@ function xd() {
 						className: "text-[14.5px] text-slate-600 mt-1.5",
 						children: [
 							"Khách ",
-							/* @__PURE__ */ (0, U.jsx)("b", { children: x.customer }),
+							/* @__PURE__ */ (0, U.jsx)("b", { children: w.customer }),
 							" đã ký nhận đủ ",
-							/* @__PURE__ */ (0, U.jsxs)("b", { children: [x.cargo.packs, " kiện"] }),
+							/* @__PURE__ */ (0, U.jsxs)("b", { children: [w.cargo.packs, " kiện"] }),
 							" tại ",
-							/* @__PURE__ */ (0, U.jsx)("b", { children: x.importInfo.deliveryAddr }),
+							/* @__PURE__ */ (0, U.jsx)("b", { children: w.importInfo.deliveryAddr }),
 							"? Sau xác nhận, lô chuyển sang “Đã giao”",
-							x.commercialFlow?.mode === "CUSTOMER_SELF" ? "." : "; bước PXK sẽ được xét theo workflow đã xác nhận."
+							w.commercialFlow?.mode === "CUSTOMER_SELF" ? "." : "; bước PXK sẽ được xét theo workflow đã xác nhận."
 						]
 					}),
 					/* @__PURE__ */ (0, U.jsxs)("div", {
 						className: "grid grid-cols-2 gap-2.5 mt-4",
 						children: [/* @__PURE__ */ (0, U.jsx)($, {
-							onClick: () => D(!1),
+							onClick: () => O(!1),
 							children: "Chưa, để sau"
 						}), /* @__PURE__ */ (0, U.jsx)(Ds, {
-							onClick: Tt,
+							onClick: Et,
 							children: "✅ ĐÃ GIAO"
 						})]
 					})
 				]
 			}),
-			w && /* @__PURE__ */ (0, U.jsxs)(ks, {
+			T && /* @__PURE__ */ (0, U.jsxs)(ks, {
 				id: "payment-record-sheet",
 				testId: "payment-record-sheet",
 				labelledBy: "payment-sheet-title",
-				pending: !!Dt,
+				pending: !!Ot,
 				width: 480,
-				onClose: () => T(!1),
+				onClose: () => E(!1),
 				children: [
 					/* @__PURE__ */ (0, U.jsxs)("h3", {
 						id: "payment-sheet-title",
 						className: "font-extrabold text-[18px] text-[#0f2a4a]",
-						children: ["Ghi nhận thanh toán — ", x.id]
+						children: ["Ghi nhận thanh toán — ", w.id]
 					}),
 					/* @__PURE__ */ (0, U.jsxs)("p", {
 						className: "text-[13.5px] text-slate-500",
 						children: ["Còn phải thu: ", /* @__PURE__ */ (0, U.jsx)("b", {
 							className: "text-red-700",
-							children: as(x.finance.outstanding, ot)
+							children: as(w.finance.outstanding, st)
 						})]
 					}),
 					/* @__PURE__ */ (0, U.jsxs)("div", {
@@ -26867,10 +26870,10 @@ function xd() {
 						children: [/* @__PURE__ */ (0, U.jsx)(X, {
 							label: "Loại khoản",
 							children: /* @__PURE__ */ (0, U.jsxs)("select", {
-								value: B,
-								disabled: !!Dt,
+								value: le,
+								disabled: !!Ot,
 								onChange: (e) => {
-									le(e.target.value), Et.current = gd("PAY");
+									ue(e.target.value), Dt.current = gd("PAY");
 								},
 								className: Z(),
 								children: [
@@ -26881,22 +26884,22 @@ function xd() {
 								]
 							})
 						}), /* @__PURE__ */ (0, U.jsx)(X, {
-							label: `Số tiền (${ot})`,
+							label: `Số tiền (${st})`,
 							required: !0,
-							error: se ? void 0 : "Nhập số tiền — VD: 150000000",
+							error: ce ? void 0 : "Nhập số tiền — VD: 150000000",
 							children: /* @__PURE__ */ (0, U.jsx)("input", {
-								value: se,
-								disabled: !!Dt,
+								value: ce,
+								disabled: !!Ot,
 								onChange: (e) => {
-									ce(e.target.value), Et.current = gd("PAY");
+									B(e.target.value), Dt.current = gd("PAY");
 								},
 								inputMode: "numeric",
 								placeholder: "VD: 150000000",
-								className: Z(se ? "ok" : "missing")
+								className: Z(ce ? "ok" : "missing")
 							})
 						})]
 					}),
-					Dt ? /* @__PURE__ */ (0, U.jsx)("p", {
+					Ot ? /* @__PURE__ */ (0, U.jsx)("p", {
 						role: "status",
 						"data-testid": "payment-record-pending",
 						className: "mt-2.5 rounded-lg bg-blue-50 border border-blue-200 px-3 py-2 text-[13.5px] font-semibold text-blue-800",
@@ -26905,45 +26908,45 @@ function xd() {
 						className: "text-[12.5px] text-slate-400 mt-2",
 						children: [
 							"Ghi theo đồng tiền của lô (",
-							ot,
+							st,
 							") — không quy đổi. Gửi lại cùng lần nhập này sẽ không tạo khoản thu thứ hai."
 						]
 					}),
-					At && /* @__PURE__ */ (0, U.jsx)("p", {
+					jt && /* @__PURE__ */ (0, U.jsx)("p", {
 						role: "alert",
 						id: "payment-record-error",
 						className: "mt-2 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-[13px] font-semibold text-red-700",
-						children: At
+						children: jt
 					}),
 					/* @__PURE__ */ (0, U.jsxs)("p", {
 						className: "text-[12.5px] text-slate-400 mt-2",
 						children: ["Mã yêu cầu: ", /* @__PURE__ */ (0, U.jsx)("b", {
 							className: "font-mono",
-							children: Et.current
+							children: Dt.current
 						})]
 					}),
 					/* @__PURE__ */ (0, U.jsxs)("div", {
 						className: "grid grid-cols-2 gap-2.5 mt-4",
 						children: [/* @__PURE__ */ (0, U.jsx)($, {
-							onClick: () => T(!1),
-							disabled: !!Dt,
+							onClick: () => E(!1),
+							disabled: !!Ot,
 							children: "Hủy"
 						}), /* @__PURE__ */ (0, U.jsx)(Ds, {
-							onClick: Pt,
-							disabled: !!Dt,
+							onClick: Ft,
+							disabled: !!Ot,
 							testId: "payment-record-submit",
-							children: Dt ? "⏳ ĐANG CHỜ BACKEND XÁC NHẬN…" : "💾 LƯU KHOẢN THU"
+							children: Ot ? "⏳ ĐANG CHỜ BACKEND XÁC NHẬN…" : "💾 LƯU KHOẢN THU"
 						})]
 					})
 				]
 			}),
-			Ft && /* @__PURE__ */ (0, U.jsxs)(ks, {
+			It && /* @__PURE__ */ (0, U.jsxs)(ks, {
 				id: "payment-correction-sheet",
 				testId: "payment-correction-sheet",
 				labelledBy: "correction-sheet-title",
-				pending: !!qt,
+				pending: !!Jt,
 				width: 520,
-				onClose: Qt,
+				onClose: $t,
 				children: [
 					/* @__PURE__ */ (0, U.jsx)("h3", {
 						id: "correction-sheet-title",
@@ -26964,7 +26967,7 @@ function xd() {
 							}),
 							/* @__PURE__ */ (0, U.jsx)("span", {
 								className: "font-bold text-slate-700 break-all text-right",
-								children: Ft.id
+								children: It.id
 							}),
 							/* @__PURE__ */ (0, U.jsx)("span", {
 								className: "text-slate-400 font-bold",
@@ -26972,7 +26975,7 @@ function xd() {
 							}),
 							/* @__PURE__ */ (0, U.jsx)("span", {
 								className: "font-bold text-slate-700 text-right",
-								children: Ft.date || "—"
+								children: It.date || "—"
 							}),
 							/* @__PURE__ */ (0, U.jsx)("span", {
 								className: "text-slate-400 font-bold",
@@ -26980,7 +26983,7 @@ function xd() {
 							}),
 							/* @__PURE__ */ (0, U.jsx)("span", {
 								className: "font-extrabold text-slate-700 text-right",
-								children: rs(Ft.amount, Ft.ccy)
+								children: rs(It.amount, It.ccy)
 							}),
 							/* @__PURE__ */ (0, U.jsx)("span", {
 								className: "text-slate-400 font-bold",
@@ -26988,7 +26991,7 @@ function xd() {
 							}),
 							/* @__PURE__ */ (0, U.jsxs)("span", {
 								className: "font-bold text-slate-700 text-right",
-								children: [Ft.kind, Ft.note && Ft.note !== Ft.kind ? " · " + Ft.note : ""]
+								children: [It.kind, It.note && It.note !== It.kind ? " · " + It.note : ""]
 							}),
 							/* @__PURE__ */ (0, U.jsx)("span", {
 								className: "text-slate-400 font-bold",
@@ -26996,7 +26999,7 @@ function xd() {
 							}),
 							/* @__PURE__ */ (0, U.jsx)("span", {
 								className: "font-bold text-slate-700 text-right",
-								children: Ft.ccy
+								children: It.ccy
 							})
 						]
 					}),
@@ -27005,15 +27008,15 @@ function xd() {
 						children: [/* @__PURE__ */ (0, U.jsx)(X, {
 							label: "Lý do điều chỉnh",
 							required: !0,
-							error: Gt && !Lt.trim() ? Gt : void 0,
+							error: Kt && !Rt.trim() ? Kt : void 0,
 							hint: "Bắt buộc — backend từ chối correction không có lý do.",
 							children: /* @__PURE__ */ (0, U.jsx)("textarea", {
-								value: Lt,
-								onChange: (e) => Rt(e.target.value),
-								disabled: !!qt,
+								value: Rt,
+								onChange: (e) => zt(e.target.value),
+								disabled: !!Jt,
 								rows: 2,
 								placeholder: "VD: Khách chuyển khoản sai nội dung — hoàn tác khoản này, khoản ghi lại sẽ nhập riêng.",
-								className: Z(Lt.trim() ? "ok" : "missing")
+								className: Z(Rt.trim() ? "ok" : "missing")
 							})
 						}), /* @__PURE__ */ (0, U.jsxs)("details", {
 							className: "rounded-xl border border-slate-200 p-3",
@@ -27024,24 +27027,24 @@ function xd() {
 								className: "grid gap-3 mt-3",
 								children: [
 									/* @__PURE__ */ (0, U.jsx)(X, {
-										label: `Số tiền liên quan (${Ft.ccy || ot})`,
-										error: Gt && zt.trim() && ls(zt) == null ? Gt : void 0,
+										label: `Số tiền liên quan (${It.ccy || st})`,
+										error: Kt && Bt.trim() && ls(Bt) == null ? Kt : void 0,
 										hint: "Chỉ lưu kèm correction làm bằng chứng. Để trống = không nhập, không tự thành 0.",
 										children: /* @__PURE__ */ (0, U.jsx)("input", {
-											value: zt,
-											onChange: (e) => Bt(e.target.value),
-											disabled: !!qt,
+											value: Bt,
+											onChange: (e) => Vt(e.target.value),
+											disabled: !!Jt,
 											inputMode: "decimal",
 											placeholder: "VD: 1.200.000",
-											className: Z(zt.trim() && ls(zt) == null ? "invalid" : "ok")
+											className: Z(Bt.trim() && ls(Bt) == null ? "invalid" : "ok")
 										})
 									}),
 									/* @__PURE__ */ (0, U.jsx)(X, {
 										label: "Ngày liên quan",
 										children: /* @__PURE__ */ (0, U.jsx)("input", {
-											value: Vt,
-											onChange: (e) => Ht(e.target.value),
-											disabled: !!qt,
+											value: Ht,
+											onChange: (e) => Ut(e.target.value),
+											disabled: !!Jt,
 											placeholder: "VD: 11/09/2026",
 											className: Z("ok")
 										})
@@ -27049,9 +27052,9 @@ function xd() {
 									/* @__PURE__ */ (0, U.jsx)(X, {
 										label: "Ghi chú",
 										children: /* @__PURE__ */ (0, U.jsx)("input", {
-											value: Ut,
-											onChange: (e) => Wt(e.target.value),
-											disabled: !!qt,
+											value: Wt,
+											onChange: (e) => Gt(e.target.value),
+											disabled: !!Jt,
 											placeholder: "Chứng từ, ủy nhiệm chi, email khách…",
 											className: Z("ok")
 										})
@@ -27060,11 +27063,11 @@ function xd() {
 							})]
 						})]
 					}),
-					Gt && Lt.trim() && /* @__PURE__ */ (0, U.jsx)("p", {
+					Kt && Rt.trim() && /* @__PURE__ */ (0, U.jsx)("p", {
 						className: "mt-2 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-[13px] font-semibold text-red-700",
 						role: "alert",
 						id: "correction-backend-error",
-						children: Gt
+						children: Kt
 					}),
 					/* @__PURE__ */ (0, U.jsxs)("p", {
 						className: "text-[12.5px] text-slate-400 mt-2",
@@ -27072,7 +27075,7 @@ function xd() {
 							"Mã yêu cầu: ",
 							/* @__PURE__ */ (0, U.jsx)("b", {
 								className: "font-mono",
-								children: Yt.current
+								children: Xt.current
 							}),
 							" — bấm lặp lại cùng ý định này không tạo correction thứ hai; đóng rồi mở lại là ý định mới với mã mới."
 						]
@@ -27080,17 +27083,17 @@ function xd() {
 					/* @__PURE__ */ (0, U.jsxs)("div", {
 						className: "grid grid-cols-2 gap-2.5 mt-4",
 						children: [/* @__PURE__ */ (0, U.jsx)($, {
-							onClick: Qt,
-							children: qt ? "Đang chờ backend…" : "Hủy"
-						}), /* @__PURE__ */ (0, U.jsx)(Q, {
 							onClick: $t,
-							disabled: !!qt,
-							children: qt ? "⏳ ĐANG GHI…" : "✅ XÁC NHẬN ĐIỀU CHỈNH / HOÀN TÁC"
+							children: Jt ? "Đang chờ backend…" : "Hủy"
+						}), /* @__PURE__ */ (0, U.jsx)(Q, {
+							onClick: en,
+							disabled: !!Jt,
+							children: Jt ? "⏳ ĐANG GHI…" : "✅ XÁC NHẬN ĐIỀU CHỈNH / HOÀN TÁC"
 						})]
 					})
 				]
 			}),
-			me > 0 && /* @__PURE__ */ (0, U.jsx)("span", { className: "hidden" })
+			he > 0 && /* @__PURE__ */ (0, U.jsx)("span", { className: "hidden" })
 		]
 	});
 }
