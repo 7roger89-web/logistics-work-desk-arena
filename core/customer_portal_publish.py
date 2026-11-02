@@ -3,16 +3,30 @@
 Never copy private shipment/quote data into a customer release. Approval is an
 Admin action; customer read access still goes through the existing OIDC tenant
 gate and its version-pinned publication reader.
+
+Issue #263 adds exactly ONE Admin action to this same module: verifying a
+pending source (written by a staff update, ``core.customer_portal_milestones``)
+at an exact id + version + content hash.  It reuses the existing Admin guard,
+tenant scope and collection; it never publishes and never bypasses the
+publisher below.
 """
 from __future__ import annotations
 
 import logging
+import secrets
 from collections.abc import Mapping
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 from typing import Any
 from uuid import uuid4
 
 from core.customer_portal import PUBLICATION_COLLECTION, _resolve_db, clean_id
+from core.customer_portal_milestones import (
+    SOURCE_COLLECTION,
+    SOURCE_STATE_VERIFIED,
+    SOURCE_STATE_WITHDRAWN,
+    content_digest,
+    public_source_content,
+)
 from core.customer_portal_sources import MAX_APPROVED_PINS, read_approved_sources
 from core.hexa_customer_publication import (
     ALLOWED_DOCUMENT_KINDS, PUBLICATION_SCHEMA, build_customer_publication,
@@ -111,6 +125,135 @@ def list_verified_sources(
                 "kind": clean_id(row.get("kind")),
             })
     return result
+
+
+_PENDING_FIELDS = {
+    "_id": 0, "id": 1, "version": 1, "public_title": 1, "stage_id": 1,
+    "occurred_at": 1, "recorded_at": 1, "recorded_by": 1, "state": 1,
+    "verified": 1, "visibility": 1, "content_sha256": 1,
+    # Needed to re-derive the approved content hash; never rendered in the UI.
+    "customer_id": 1, "shipment_id": 1,
+}
+
+
+def list_pending_sources(
+    customer_id: str, shipment_id: str, *, actor_role: str, db: Any = None,
+) -> list[dict[str, str]]:
+    """Admin-only view of staff-written sources that still await verification.
+
+    Read-only and deliberately narrow: a pending source is metadata (what, when,
+    which version), never internal shipment content. A source whose public
+    content was withdrawn is listed as such so it can never be verified by
+    accident.
+    """
+    _admin(actor_role)
+    customer_id, shipment_id = clean_id(customer_id), clean_id(shipment_id)
+    database = _resolve_db(db)
+    _scope(database, customer_id, shipment_id)
+    rows = list(database[SOURCE_COLLECTION].find(
+        {
+            "customer_id": customer_id, "shipment_id": shipment_id,
+            "visibility": "CUSTOMER", "verified": {"$ne": True},
+            "is_deleted": {"$ne": True},
+        },
+        _PENDING_FIELDS,
+    ).sort("recorded_at", 1).limit(MAX_APPROVED_PINS + 1))
+    if len(rows) > MAX_APPROVED_PINS:
+        raise PublicationWriteDenied("Quá nhiều nguồn chờ xác minh để xử lý an toàn.")
+    result: list[dict[str, str]] = []
+    for row in rows:
+        if not isinstance(row, Mapping):
+            continue
+        rid, version = clean_id(row.get("id")), clean_id(row.get("version"))
+        if not rid or not version or len(rid) > 128 or len(version) > 40:
+            continue
+        state = clean_id(row.get("state"))
+        withdrawn = (state == SOURCE_STATE_WITHDRAWN
+                     or not (clean_id(row.get("public_title")) and clean_id(row.get("occurred_at"))))
+        result.append({
+            "id": rid, "version": version,
+            "title": str(row.get("public_title") or "")[:120],
+            "stage": clean_id(row.get("stage_id")),
+            "occurred_at": clean_id(row.get("occurred_at")),
+            "recorded_at": clean_id(row.get("recorded_at"))[:40],
+            "recorded_by": clean_id(row.get("recorded_by"))[:100],
+            "state": SOURCE_STATE_WITHDRAWN if withdrawn else (state or "PENDING"),
+        })
+    return result
+
+
+def verify_source(
+    event_id: str,
+    version: str,
+    *,
+    customer_id: str,
+    shipment_id: str,
+    actor_role: str,
+    actor_username: str,
+    db: Any = None,
+) -> tuple[bool, str]:
+    """Mark ONE exact pending source version verified (Admin only).
+
+    The version AND the stored content hash are re-checked here, so a source
+    edited without a new staff write (same id/version, different content) is
+    refused instead of being approved. Verification never publishes anything.
+    """
+    _admin(actor_role)
+    event_id, version = clean_id(event_id), clean_id(version)
+    customer_id, shipment_id = clean_id(customer_id), clean_id(shipment_id)
+    username = clean_id(actor_username)
+    if not username or len(username) > 100:
+        raise PublicationWriteDenied("Không xác minh được tài khoản Admin.")
+    if not event_id or not version:
+        raise PublicationWriteDenied("Chưa chọn đúng nguồn và phiên bản cần xác minh.")
+    database = _resolve_db(db)
+    _scope(database, customer_id, shipment_id)
+    row = database[SOURCE_COLLECTION].find_one(
+        {
+            "id": event_id, "customer_id": customer_id, "shipment_id": shipment_id,
+            "is_deleted": {"$ne": True},
+        },
+        _PENDING_FIELDS,
+    )
+    if not isinstance(row, Mapping) or clean_id(row.get("visibility")) != "CUSTOMER":
+        raise PublicationWriteDenied("Không tìm thấy nguồn chờ xác minh của đúng lô này.")
+    current_version = clean_id(row.get("version"))
+    if current_version != version:
+        return False, "Nguồn đã thay đổi so với bản đang xem. Tải lại danh sách trước khi xác minh."
+    content = public_source_content(
+        customer_id=row.get("customer_id"), shipment_id=row.get("shipment_id"),
+        stage_id=row.get("stage_id"), public_title=row.get("public_title"),
+        occurred_at=row.get("occurred_at"),
+    )
+    expected_hash = str(row.get("content_sha256") or "")
+    if (len(expected_hash) != 64
+            or not secrets.compare_digest(expected_hash, content_digest(content))):
+        raise PublicationWriteDenied("Nội dung nguồn không khớp phiên bản đã ghi. Không xác minh.")
+    if not all((content["public_title"], content["occurred_at"], content["stage_id"])):
+        raise PublicationWriteDenied("Nguồn chưa có đủ nội dung công khai để xác minh.")
+    if row.get("verified") is True:
+        return True, "Nguồn này đã được xác minh ở đúng phiên bản."
+    result = database[SOURCE_COLLECTION].update_one(
+        {
+            "id": event_id, "customer_id": customer_id, "shipment_id": shipment_id,
+            "version": current_version, "verified": {"$ne": True},
+        },
+        {"$set": {
+            "verified": True, "verified_at": datetime.now(UTC).isoformat(),
+            "verified_by": username, "state": SOURCE_STATE_VERIFIED,
+        }},
+    )
+    if getattr(result, "matched_count", 0) != 1:
+        return False, "Nguồn đã thay đổi trong lúc xác minh. Chưa ghi nhận xác minh."
+    written = database[SOURCE_COLLECTION].find_one(
+        {"id": event_id, "customer_id": customer_id, "shipment_id": shipment_id},
+        _PENDING_FIELDS,
+    )
+    if (not isinstance(written, Mapping) or written.get("verified") is not True
+            or clean_id(written.get("version")) != current_version):
+        return False, "Chưa đọc lại được xác minh. Kiểm tra lại trước khi công bố."
+    LOGGER.info("CUSTOMER_SOURCE_VERIFIED event_id=%s version=%s", event_id, current_version)
+    return True, f"Đã xác minh nguồn {event_id} phiên bản {current_version}."
 
 
 def _pins(value: Any) -> dict[str, str]:

@@ -1,0 +1,44 @@
+{
+  "public_events": [
+    {
+      "id": "pickup:CUST-263-A:LO-263-A",
+      "version": "54b43afaa0d88e89",
+      "customer_id": "CUST-263-A",
+      "shipment_id": "LO-263-A",
+      "stage_id": "pickup",
+      "occurred_at": "2026-11-02",
+      "public_title": "Đã lấy hàng",
+      "verified": true,
+      "verified_at": "2026-11-02T16:08:05.698783+00:00",
+      "verified_by": "qa.263.admin",
+      "state": "VERIFIED",
+      "recorded_by": "qa.263.support"
+    }
+  ],
+  "publications": [
+    {
+      "version": "g15-4fc3d8f57a164777adb7a4c9f7d66742",
+      "customer_id": "CUST-263-A",
+      "shipment_id": "LO-263-A",
+      "state": "PUBLISHED",
+      "approved_by": "qa.263.admin",
+      "event_versions": {
+        "pickup:CUST-263-A:LO-263-A": "54b43afaa0d88e89"
+      }
+    }
+  ],
+  "shipments": [
+    {
+      "id": "LO-263-A",
+      "customer_id": "CUST-263-A",
+      "published": "g15-4fc3d8f57a164777adb7a4c9f7d66742",
+      "pickup_atd": "2026-11-02"
+    },
+    {
+      "id": "LO-263-B",
+      "customer_id": "CUST-263-B",
+      "published": "",
+      "pickup_atd": ""
+    }
+  ]
+}

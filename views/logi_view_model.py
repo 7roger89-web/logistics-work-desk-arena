@@ -24,6 +24,7 @@ import copy
 import hashlib
 import io
 import json
+import logging
 import math
 import unicodedata
 from concurrent.futures import ThreadPoolExecutor
@@ -56,6 +57,8 @@ from views import logi_docgen_upload as logi_templates
 from views import logi_inbox
 from views import journey_focus
 from views import journey_inline
+
+LOGGER = logging.getLogger("logistics.view_model")
 
 STATE_KEY = "logi_state"
 SEQ_KEY = "logi_seq"
@@ -3484,13 +3487,53 @@ def _handle_shipment_transport_save(payload: Mapping[str, Any]) -> dict[str, Any
         persisted["transport_legs"] = fresh_section.get("transport_legs")
     if has_cargo:
         persisted["cargo_summary"] = fresh_section.get("cargo_summary")
+    # Issue #263 — the staff pickup update is also the ONLY producer of the
+    # customer-facing source for that milestone. It writes an UNVERIFIED
+    # source only; Admin verification and publication keep their own existing
+    # authority. A failure here never rolls back the shipment save (the facts
+    # are already stored and readable) and is reported instead of hidden.
+    pending_source, source_error = _record_pickup_source_after_save(
+        fresh if has_legs else None, sid,
+    )
     return _result(
         "shipment_transport_save", sid, True,
         readback=_projection_for(fresh),
         persisted=persisted,
         version=int(fresh.get("version") or 0),
         audit=_audit_trail(sid),
+        pendingSource=pending_source,
+        sourceError=source_error,
     )
+
+
+def _record_pickup_source_after_save(
+    fresh: Mapping[str, Any] | None, shipment_id: str,
+) -> tuple[dict[str, Any] | None, str]:
+    """Bound the new #263 producer so a source failure cannot fake a save.
+
+    The shipment write has already committed and been read back above. This
+    helper only records the staff milestone for Admin verification; it never
+    verifies and never publishes.
+    """
+    if not isinstance(fresh, Mapping):
+        return None, ""
+    try:
+        from core.customer_portal_milestones import record_pickup_source
+        from core.database import get_db
+
+        database = get_db()
+        if database is None:
+            return None, "Chưa kết nối được cơ sở dữ liệu để ghi nguồn chờ xác minh."
+        return record_pickup_source(database, fresh, actor_username=_actor()), ""
+    except Exception as exc:  # noqa: BLE001 - reported to the operator, never swallowed
+        LOGGER.warning(
+            "PICKUP_PUBLIC_SOURCE_WRITE_FAILED shipment_id=%s type=%s",
+            shipment_id, type(exc).__name__,
+        )
+        return None, (
+            "Đã lưu chặng vận chuyển nhưng CHƯA ghi được nguồn chờ xác minh "
+            "cho mốc Lấy hàng. Mở lại lô và lưu lại để tạo nguồn."
+        )
 
 
 #: Operator-facing field names of the execution profile as they arrive from the

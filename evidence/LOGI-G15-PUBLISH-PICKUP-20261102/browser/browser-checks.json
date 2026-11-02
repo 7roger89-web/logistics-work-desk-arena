@@ -1,0 +1,419 @@
+{
+  "checks": [
+    {
+      "name": "desktop: staff lot opens before any milestone is published",
+      "pass": true,
+      "detail": "no milestone text on the staff lot"
+    },
+    {
+      "name": "desktop: the staff pickup ATD field is present",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop: staff types the real pickup date into ATD",
+      "pass": true,
+      "detail": "value=2026-11-02"
+    },
+    {
+      "name": "desktop: staff save is sent from the product UI",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop: the staff action persisted the pickup date",
+      "pass": true,
+      "detail": "pickup_atd=2026-11-02"
+    },
+    {
+      "name": "desktop: the staff action created exactly ONE unverified source",
+      "pass": true,
+      "detail": "{\"id\":\"pickup:CUST-263-A:LO-263-A\",\"version\":\"54b43afaa0d88e89\",\"customer_id\":\"CUST-263-A\",\"shipment_id\":\"LO-263-A\",\"stage_id\":\"pickup\",\"occurred_at\":\"2026-11-02\",\"public_title\":\"Đã lấy hàng\",\"verified\":false,\"verified_at\":\"\",\"verified_by\":\"\",\"state\":\"PENDING\",\"recorded_by\":\"qa.263.support\"}"
+    },
+    {
+      "name": "desktop: nothing is published yet after the staff save",
+      "pass": true,
+      "detail": "publications=0 published="
+    },
+    {
+      "name": "desktop: customer A does NOT see the milestone before publication",
+      "pass": true,
+      "detail": " DỮ LIỆU STAGING — KHÔNG PHẢI SẢN XUẤT HEXA An Phát JSC (G15-A) Theo dõi trực quan trên hải đồ theo dữ liệu Trường Thành đã xác minh 0 lô đã công bố kh***@examp"
+    },
+    {
+      "name": "desktop: Admin sees the staff source waiting for verification",
+      "pass": true,
+      "detail": "Nguồn chờ xác minh do nhân viên ghi nhận Đã lấy hàng · pickup · 2026-11-02 · pickup:CUST-263-A:LO-263-A / 54b43afaa0d88e89 · ghi lúc 2026-11-02T16:06:23.565141+00:00 bởi qa.263.support Tôi đã đối ch"
+    },
+    {
+      "name": "desktop: Admin verified THAT source and nothing else",
+      "pass": true,
+      "detail": "{\"id\":\"pickup:CUST-263-A:LO-263-A\",\"version\":\"54b43afaa0d88e89\",\"customer_id\":\"CUST-263-A\",\"shipment_id\":\"LO-263-A\",\"stage_id\":\"pickup\",\"occurred_at\":\"2026-11-02\",\"public_title\":\"Đã lấy hàng\",\"verified\":true,\"verified_at\":\"2026-11-02T16:06:36.375745+00:00\",\"verified_by\":\"qa.263.admin\",\"state\":\"VERIFIED\",\"recorded_by\":\"qa.263.support\"}"
+    },
+    {
+      "name": "desktop: verification alone did not publish anything",
+      "pass": true,
+      "detail": "publications=0"
+    },
+    {
+      "name": "desktop: the existing publisher offers exactly the ONE verified pickup version",
+      "pass": true,
+      "detail": "[\"Đã lấy hàng — pickup:CUST-263-A:LO-263-A / 54b43afaa0d88e89\"]"
+    },
+    {
+      "name": "desktop: publish stays disabled until the Admin confirms the selection",
+      "pass": true,
+      "detail": "disabled before confirmation"
+    },
+    {
+      "name": "desktop: publish becomes available only after explicit confirmation",
+      "pass": true,
+      "detail": "enabled after confirmation"
+    },
+    {
+      "name": "desktop: the publication is pinned to that exact verified version",
+      "pass": true,
+      "detail": "{\"publication\":{\"version\":\"g15-0730c5cae43f4ecb82a4cadd06d6bb49\",\"customer_id\":\"CUST-263-A\",\"shipment_id\":\"LO-263-A\",\"state\":\"PUBLISHED\",\"approved_by\":\"qa.263.admin\",\"event_versions\":{\"pickup:CUST-263-A:LO-263-A\":\"54b43afaa0d88e89\"}},\"published\":\"g15-0730c5cae43f4ecb82a4cadd06d6bb49\"}"
+    },
+    {
+      "name": "desktop: customer A reloads and sees the published milestone",
+      "pass": true,
+      "detail": " DỮ LIỆU STAGING — KHÔNG PHẢI SẢN XUẤT HEXA An Phát JSC (G15-A) Theo dõi trực quan trên hải đồ theo dữ liệu Trường Thành đã xác minh 1 lô đã công bố kh***@example.test Đang theo dõi: 1 Có ETA kho đã x"
+    },
+    {
+      "name": "desktop: the customer payload carries no INTERNAL/finance data",
+      "pass": true,
+      "detail": "[]"
+    },
+    {
+      "name": "desktop: customer B never sees customer A's lot or milestone",
+      "pass": true,
+      "detail": " DỮ LIỆU STAGING — KHÔNG PHẢI SẢN XUẤT HEXA Khách B (G15-B) Theo dõi trực quan trên hải đồ theo dữ liệu Trường Thành đã xác minh 0 lô đã công bố kh***@example.test MỘT SỐ LÔ CHƯA ĐƯỢC CÔNG BỐ: Có lô b"
+    },
+    {
+      "name": "mobile: staff lot opens before any milestone is published",
+      "pass": true,
+      "detail": "no milestone text on the staff lot"
+    },
+    {
+      "name": "mobile: the staff pickup ATD field is present",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile: staff types the real pickup date into ATD",
+      "pass": true,
+      "detail": "value=2026-11-02"
+    },
+    {
+      "name": "mobile: staff save is sent from the product UI",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile: the staff action persisted the pickup date",
+      "pass": true,
+      "detail": "pickup_atd=2026-11-02"
+    },
+    {
+      "name": "mobile: the staff action created exactly ONE unverified source",
+      "pass": true,
+      "detail": "{\"id\":\"pickup:CUST-263-A:LO-263-A\",\"version\":\"54b43afaa0d88e89\",\"customer_id\":\"CUST-263-A\",\"shipment_id\":\"LO-263-A\",\"stage_id\":\"pickup\",\"occurred_at\":\"2026-11-02\",\"public_title\":\"Đã lấy hàng\",\"verified\":false,\"verified_at\":\"\",\"verified_by\":\"\",\"state\":\"PENDING\",\"recorded_by\":\"qa.263.support\"}"
+    },
+    {
+      "name": "mobile: nothing is published yet after the staff save",
+      "pass": true,
+      "detail": "publications=0 published="
+    },
+    {
+      "name": "mobile: customer A does NOT see the milestone before publication",
+      "pass": true,
+      "detail": " DỮ LIỆU STAGING — KHÔNG PHẢI SẢN XUẤT HEXA An Phát JSC (G15-A) Theo dõi trực quan trên hải đồ theo dữ liệu Trường Thành đã xác minh 0 lô đã công bố kh***@examp"
+    },
+    {
+      "name": "mobile: Admin sees the staff source waiting for verification",
+      "pass": true,
+      "detail": "Nguồn chờ xác minh do nhân viên ghi nhận Đã lấy hàng · pickup · 2026-11-02 · pickup:CUST-263-A:LO-263-A / 54b43afaa0d88e89 · ghi lúc 2026-11-02T16:07:53.718079+00:00 bởi qa.263.support Tôi đã đối ch"
+    },
+    {
+      "name": "mobile: Admin verified THAT source and nothing else",
+      "pass": true,
+      "detail": "{\"id\":\"pickup:CUST-263-A:LO-263-A\",\"version\":\"54b43afaa0d88e89\",\"customer_id\":\"CUST-263-A\",\"shipment_id\":\"LO-263-A\",\"stage_id\":\"pickup\",\"occurred_at\":\"2026-11-02\",\"public_title\":\"Đã lấy hàng\",\"verified\":true,\"verified_at\":\"2026-11-02T16:08:05.698783+00:00\",\"verified_by\":\"qa.263.admin\",\"state\":\"VERIFIED\",\"recorded_by\":\"qa.263.support\"}"
+    },
+    {
+      "name": "mobile: verification alone did not publish anything",
+      "pass": true,
+      "detail": "publications=0"
+    },
+    {
+      "name": "mobile: the existing publisher offers exactly the ONE verified pickup version",
+      "pass": true,
+      "detail": "[\"Đã lấy hàng — pickup:CUST-263-A:LO-263-A / 54b43afaa0d88e89\"]"
+    },
+    {
+      "name": "mobile: publish stays disabled until the Admin confirms the selection",
+      "pass": true,
+      "detail": "disabled before confirmation"
+    },
+    {
+      "name": "mobile: publish becomes available only after explicit confirmation",
+      "pass": true,
+      "detail": "enabled after confirmation"
+    },
+    {
+      "name": "mobile: the publication is pinned to that exact verified version",
+      "pass": true,
+      "detail": "{\"publication\":{\"version\":\"g15-4fc3d8f57a164777adb7a4c9f7d66742\",\"customer_id\":\"CUST-263-A\",\"shipment_id\":\"LO-263-A\",\"state\":\"PUBLISHED\",\"approved_by\":\"qa.263.admin\",\"event_versions\":{\"pickup:CUST-263-A:LO-263-A\":\"54b43afaa0d88e89\"}},\"published\":\"g15-4fc3d8f57a164777adb7a4c9f7d66742\"}"
+    },
+    {
+      "name": "mobile: customer A reloads and sees the published milestone",
+      "pass": true,
+      "detail": " DỮ LIỆU STAGING — KHÔNG PHẢI SẢN XUẤT HEXA An Phát JSC (G15-A) Theo dõi trực quan trên hải đồ theo dữ liệu Trường Thành đã xác minh 1 lô đã công bố kh***@example.test Đang theo dõi: 1 Có ETA kho đã x"
+    },
+    {
+      "name": "mobile: the customer payload carries no INTERNAL/finance data",
+      "pass": true,
+      "detail": "[]"
+    },
+    {
+      "name": "mobile: customer B never sees customer A's lot or milestone",
+      "pass": true,
+      "detail": " DỮ LIỆU STAGING — KHÔNG PHẢI SẢN XUẤT HEXA Khách B (G15-B) Theo dõi trực quan trên hải đồ theo dữ liệu Trường Thành đã xác minh 0 lô đã công bố kh***@example.test MỘT SỐ LÔ CHƯA ĐƯỢC CÔNG BỐ: Có lô b"
+    }
+  ],
+  "notes": {
+    "desktop_staff_state": {
+      "public_events": [
+        {
+          "id": "pickup:CUST-263-A:LO-263-A",
+          "version": "54b43afaa0d88e89",
+          "customer_id": "CUST-263-A",
+          "shipment_id": "LO-263-A",
+          "stage_id": "pickup",
+          "occurred_at": "2026-11-02",
+          "public_title": "Đã lấy hàng",
+          "verified": false,
+          "verified_at": "",
+          "verified_by": "",
+          "state": "PENDING",
+          "recorded_by": "qa.263.support"
+        }
+      ],
+      "publications": [],
+      "shipments": [
+        {
+          "id": "LO-263-A",
+          "customer_id": "CUST-263-A",
+          "published": "",
+          "pickup_atd": "2026-11-02"
+        },
+        {
+          "id": "LO-263-B",
+          "customer_id": "CUST-263-B",
+          "published": "",
+          "pickup_atd": ""
+        }
+      ]
+    },
+    "desktop_customer_before": " DỮ LIỆU STAGING — KHÔNG PHẢI SẢN XUẤT HEXA An Phát JSC (G15-A) Theo dõi trực quan trên hải đồ theo dữ liệu Trường Thành đã xác minh 0 lô đã công bố kh***@example.test MỘT SỐ LÔ CHƯA ĐƯỢC CÔNG BỐ: Có lô bị từ chối công bố hoặc chưa có bản duyệt hợp lệ; hệ thống không hiển thị nội dung đó. Đang theo dõi: 0 Có ETA kho đã xác minh: 0 Cần khách xử lý: 0 (Chưa có yêu cầu được xác nhận) Chọn lô để mở hải đồ Journey Map → Dashboard tổng quan — 0 lô đã công bố (chọn một lô để mở hải đồ Journey Map 00–06): Nhấn vào hàng/thẻ lô để mở Journey Map. Cột Công nợ chỉ hiển thị số liệu đã đối soát; UNKNOWN / Chưa đối soát nghĩa là Trường Thành chưa duyệt công bố tài chính cho lô đó. “Chưa xác minh” nghĩa là chưa có chứng cứ công đoạn nào được duyệt công bố. Mã lô Hàng hóa & Tuyến Phương thức Chặng xác minh ETA được xác minh Công nợ Cập nhật cuối Hành trình ← Quay lại Dashboard — — — — — — — ▤ Chứng từ & Báo giá ▤ Hồ sơ & Chứng từ 0 tệp Dữ liệu Trường Thành đã duyệt × Chứng từ được công bố 0 tệp Tài liệu báo giá đã duyệt Chưa công bố Chỉ hiển thị trường nằm trong allowlist công bố đã được duyệt. TRẠNG THÁI CÔNG BỐ Trường Thành chưa công bố thông tin cho lô này Hành trình xác minh, báo giá bán và chứng từ sẽ xuất hiện trên hải đồ ngay khi Trường Thành duyệt công bố. ✓ Có bằng chứng · ◐ Đang xử lý · ◷ Chờ thông tin · · Chưa đối soát · 100% + − 100% Fit Journey ↺ Đọc rõ × Đóng Bấm vào node 00–06 trên hải đồ → bubble tóm tắt → Xem chi tiết chỉ-đọc hoặc 💬 Trao đổi / Chứng từ để mở trao đổi của đún",
+    "desktop_verified_state": {
+      "public_events": [
+        {
+          "id": "pickup:CUST-263-A:LO-263-A",
+          "version": "54b43afaa0d88e89",
+          "customer_id": "CUST-263-A",
+          "shipment_id": "LO-263-A",
+          "stage_id": "pickup",
+          "occurred_at": "2026-11-02",
+          "public_title": "Đã lấy hàng",
+          "verified": true,
+          "verified_at": "2026-11-02T16:06:36.375745+00:00",
+          "verified_by": "qa.263.admin",
+          "state": "VERIFIED",
+          "recorded_by": "qa.263.support"
+        }
+      ],
+      "publications": [],
+      "shipments": [
+        {
+          "id": "LO-263-A",
+          "customer_id": "CUST-263-A",
+          "published": "",
+          "pickup_atd": "2026-11-02"
+        },
+        {
+          "id": "LO-263-B",
+          "customer_id": "CUST-263-B",
+          "published": "",
+          "pickup_atd": ""
+        }
+      ]
+    },
+    "desktop_publisher_options": [
+      "Đã lấy hàng — pickup:CUST-263-A:LO-263-A / 54b43afaa0d88e89"
+    ],
+    "desktop_published_state": {
+      "public_events": [
+        {
+          "id": "pickup:CUST-263-A:LO-263-A",
+          "version": "54b43afaa0d88e89",
+          "customer_id": "CUST-263-A",
+          "shipment_id": "LO-263-A",
+          "stage_id": "pickup",
+          "occurred_at": "2026-11-02",
+          "public_title": "Đã lấy hàng",
+          "verified": true,
+          "verified_at": "2026-11-02T16:06:36.375745+00:00",
+          "verified_by": "qa.263.admin",
+          "state": "VERIFIED",
+          "recorded_by": "qa.263.support"
+        }
+      ],
+      "publications": [
+        {
+          "version": "g15-0730c5cae43f4ecb82a4cadd06d6bb49",
+          "customer_id": "CUST-263-A",
+          "shipment_id": "LO-263-A",
+          "state": "PUBLISHED",
+          "approved_by": "qa.263.admin",
+          "event_versions": {
+            "pickup:CUST-263-A:LO-263-A": "54b43afaa0d88e89"
+          }
+        }
+      ],
+      "shipments": [
+        {
+          "id": "LO-263-A",
+          "customer_id": "CUST-263-A",
+          "published": "g15-0730c5cae43f4ecb82a4cadd06d6bb49",
+          "pickup_atd": "2026-11-02"
+        },
+        {
+          "id": "LO-263-B",
+          "customer_id": "CUST-263-B",
+          "published": "",
+          "pickup_atd": ""
+        }
+      ]
+    },
+    "desktop_customer_after": " DỮ LIỆU STAGING — KHÔNG PHẢI SẢN XUẤT HEXA An Phát JSC (G15-A) Theo dõi trực quan trên hải đồ theo dữ liệu Trường Thành đã xác minh 1 lô đã công bố kh***@example.test Đang theo dõi: 1 Có ETA kho đã xác minh: 0 Cần khách xử lý: 0 (Chưa có yêu cầu được xác nhận) Chọn lô để mở hải đồ Journey Map → Dashboard tổng quan — 1 lô đã công bố (chọn một lô để mở hải đồ Journey Map 00–06): Nhấn vào hàng/thẻ lô để mở Journey Map. Cột Công nợ chỉ hiển thị số liệu đã đối soát; UNKNOWN / Chưa đối soát nghĩa là Trường Thành chưa duyệt công bố tài chính cho lô đó. “Chưa xác minh” nghĩa là chưa có chứng cứ công đoạn nào được duyệt công bố. Mã lô Hàng hóa & Tuyến Phương thức Chặng xác minh ETA được xác minh Công nợ Cập nhật cuối Hành trình LO-263-AChưa công bốChưa công bốChưa xác địnhLấy hàngĐã lấy hàngChưa xác minhTổng phải thanh toán: UNKNOWN / Chưa đối soátĐã thanh toán: UNKNOWN / Chưa đối soátCòn phải thanh toán: UNKNOWN / Chưa đối soát02/11/2026 16:06 +00:00Xem hành trình LO-263-AChưa xác địnhLấy hàngChưa công bốChưa công bốETA xác minh: Chưa xác minhCập nhật: 02/11/2026 16:06 +00:00Tổng phải thanh toán: UNKNOWN / Chưa đối soátĐã thanh toán: UNKNOWN / Chưa đối soátCòn phải thanh toán: UNKNOWN / Chưa đối soátXem hành trình → ← Quay lại Dashboard LO-263-A Chưa xác định An Phát JSC (G15-A) Đang ở: Lấy hàng ETA kho: Chưa xác minh ▤ Chứng từ & Báo giá ▤ Hồ sơ & Chứng từ 0 tệp Dữ liệu Trường Thành đã duyệt × Chứng từ được công bố 0 tệp Tài liệu báo giá đã duyệt Chưa công bố Chỉ hiển thị trường nằm trong allowlist công bố đã được duyệt. TRẠNG THÁI CÔNG BỐ Trường Thành chưa công bố thông tin cho lô này Hành trình xác minh, báo giá bán và chứng từ sẽ xuất hiện trên hải đồ ngay khi Trường Thành duyệt công bố. 00KẾ HOẠCHCHƯA ĐỐI SOÁT01LẤY HÀNGCÓ BẰNG CHỨNG02CHẶNG 02 — CHƯA XÁC ĐỊNH PHƯƠNG THỨCCHƯA ĐỐI SOÁT03CHẶNG 03 — CHƯA XÁC ĐỊNH PHƯƠNG THỨCCHƯA ĐỐI SOÁT04THÔNG QUANCHƯA ĐỐI SOÁT05GIAO HÀNGCHƯA ĐỐI SOÁT06THANH TOÁNCHƯA ĐỐI SOÁT ✓ Có bằng chứng · ◐ Đang xử lý · ◷ Chờ thông tin · · Chưa đối soát · 113% + − 113% Fit Journey ↺ Đọc rõ × Đóng Bấm vào node 00–06 trên hải đồ → bubble tóm tắt → Xem chi tiết chỉ-đọc hoặc 💬 Trao đổi / Chứng từ để mở trao đổi của đúng công đoạn → ← Quay lại hải đồ để về hải đồ → ← Quay lại Dashboard để xem lại danh sách lô. /* HEXA customer portal — ported verbatim from the Owner reference HEXA_LucGiac_DEMO.html (826,336 bytes, SHA-256 b91c878e44256e741c533f75e62fdcc89507413d609b0b3d365af85810fbb40a). Only the scoping changed: :root/body become the .hexa-portal component root, because a Streamlit Components v2 mount lives in a shadow root. No visual token, size, spacing or colour was re-designed. */ .hexa-portal { --bg: #eef2f6; --surface: #ffffff; --border: #cbd5e1; --text: #0f172a; --muted: #475569; --primary: #1a4b75; --mono: \"IBM Plex Mono\", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; --sans: \"Inter\", -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, sans-serif; } .hexa-portal, .hexa-portal * { box-sizing: border-box; } .hexa",
+    "desktop_customer_b": " DỮ LIỆU STAGING — KHÔNG PHẢI SẢN XUẤT HEXA Khách B (G15-B) Theo dõi trực quan trên hải đồ theo dữ liệu Trường Thành đã xác minh 0 lô đã công bố kh***@example.test MỘT SỐ LÔ CHƯA ĐƯỢC CÔNG BỐ: Có lô bị từ chối công bố hoặc chưa có bản duyệt hợp lệ; hệ thống không hiển thị nội dung đó. Đang theo dõi: 0 Có ETA kho đã xác minh: 0 Cần khách xử lý: 0 (Chưa có yêu cầu được xác nhận) Chọn lô để mở hải đồ Journey Map → Dashboard tổng quan — 0 lô đã công bố (chọn một lô để mở hải đồ Journey Map 00–06): Nhấn vào hàng/thẻ lô để mở Journey Map. Cột Công nợ chỉ hiển thị số liệu đã đối soát; UNKNOWN / Chưa đối soát nghĩa là Trường Thành chưa duyệt công bố tài chính cho lô đó. “Chưa xác minh” nghĩa là chưa có chứng cứ công đoạn nào được duyệt công bố. Mã lô Hàng hóa & Tuyến Phương thức Chặng xác minh ETA được xác minh Công nợ Cập nhật cuối Hành trình ← Quay lại Dashboard — — — — — — — ▤ Chứng từ & Báo giá ▤ Hồ sơ & Chứng từ 0 tệp Dữ liệu Trường Thành đã duyệt × Chứng từ được công bố 0 tệp Tài liệu báo giá đã duyệt Chưa công bố Chỉ hiển thị trường nằm trong allowlist công bố đã được duyệt. TRẠNG THÁI CÔNG BỐ Trường Thành chưa công bố thông tin cho lô này Hành trình xác minh, báo giá bán và chứng từ sẽ xuất hiện trên hải đồ ngay khi Trường Thành duyệt công bố. ✓ Có bằng chứng · ◐ Đang xử lý · ◷ Chờ thông tin · · Chưa đối soát · 100% + − 100% Fit Journey ↺ Đọc rõ × Đóng Bấm vào node 00–06 trên hải đồ → bubble tóm tắt → Xem chi tiết chỉ-đọc hoặc 💬 Trao đổi / Chứng từ để mở trao đổi của đúng cô",
+    "mobile_staff_state": {
+      "public_events": [
+        {
+          "id": "pickup:CUST-263-A:LO-263-A",
+          "version": "54b43afaa0d88e89",
+          "customer_id": "CUST-263-A",
+          "shipment_id": "LO-263-A",
+          "stage_id": "pickup",
+          "occurred_at": "2026-11-02",
+          "public_title": "Đã lấy hàng",
+          "verified": false,
+          "verified_at": "",
+          "verified_by": "",
+          "state": "PENDING",
+          "recorded_by": "qa.263.support"
+        }
+      ],
+      "publications": [],
+      "shipments": [
+        {
+          "id": "LO-263-A",
+          "customer_id": "CUST-263-A",
+          "published": "",
+          "pickup_atd": "2026-11-02"
+        },
+        {
+          "id": "LO-263-B",
+          "customer_id": "CUST-263-B",
+          "published": "",
+          "pickup_atd": ""
+        }
+      ]
+    },
+    "mobile_customer_before": " DỮ LIỆU STAGING — KHÔNG PHẢI SẢN XUẤT HEXA An Phát JSC (G15-A) Theo dõi trực quan trên hải đồ theo dữ liệu Trường Thành đã xác minh 0 lô đã công bố kh***@example.test MỘT SỐ LÔ CHƯA ĐƯỢC CÔNG BỐ: Có lô bị từ chối công bố hoặc chưa có bản duyệt hợp lệ; hệ thống không hiển thị nội dung đó. Đang theo dõi: 0 Có ETA kho đã xác minh: 0 Cần khách xử lý: 0 (Chưa có yêu cầu được xác nhận) Chọn lô để mở hải đồ Journey Map → Dashboard tổng quan — 0 lô đã công bố (chọn một lô để mở hải đồ Journey Map 00–06): Nhấn vào hàng/thẻ lô để mở Journey Map. Cột Công nợ chỉ hiển thị số liệu đã đối soát; UNKNOWN / Chưa đối soát nghĩa là Trường Thành chưa duyệt công bố tài chính cho lô đó. “Chưa xác minh” nghĩa là chưa có chứng cứ công đoạn nào được duyệt công bố. Mã lô Hàng hóa & Tuyến Phương thức Chặng xác minh ETA được xác minh Công nợ Cập nhật cuối Hành trình ← Quay lại Dashboard — — — — — — — ▤ Chứng từ & Báo giá ▤ Hồ sơ & Chứng từ 0 tệp Dữ liệu Trường Thành đã duyệt × Chứng từ được công bố 0 tệp Tài liệu báo giá đã duyệt Chưa công bố Chỉ hiển thị trường nằm trong allowlist công bố đã được duyệt. TRẠNG THÁI CÔNG BỐ Trường Thành chưa công bố thông tin cho lô này Hành trình xác minh, báo giá bán và chứng từ sẽ xuất hiện trên hải đồ ngay khi Trường Thành duyệt công bố. ✓ Có bằng chứng · ◐ Đang xử lý · ◷ Chờ thông tin · · Chưa đối soát · 100% + − 100% Fit Journey ↺ Đọc rõ × Đóng Bấm vào node 00–06 trên hải đồ → bubble tóm tắt → Xem chi tiết chỉ-đọc hoặc 💬 Trao đổi / Chứng từ để mở trao đổi của đún",
+    "mobile_verified_state": {
+      "public_events": [
+        {
+          "id": "pickup:CUST-263-A:LO-263-A",
+          "version": "54b43afaa0d88e89",
+          "customer_id": "CUST-263-A",
+          "shipment_id": "LO-263-A",
+          "stage_id": "pickup",
+          "occurred_at": "2026-11-02",
+          "public_title": "Đã lấy hàng",
+          "verified": true,
+          "verified_at": "2026-11-02T16:08:05.698783+00:00",
+          "verified_by": "qa.263.admin",
+          "state": "VERIFIED",
+          "recorded_by": "qa.263.support"
+        }
+      ],
+      "publications": [],
+      "shipments": [
+        {
+          "id": "LO-263-A",
+          "customer_id": "CUST-263-A",
+          "published": "",
+          "pickup_atd": "2026-11-02"
+        },
+        {
+          "id": "LO-263-B",
+          "customer_id": "CUST-263-B",
+          "published": "",
+          "pickup_atd": ""
+        }
+      ]
+    },
+    "mobile_publisher_options": [
+      "Đã lấy hàng — pickup:CUST-263-A:LO-263-A / 54b43afaa0d88e89"
+    ],
+    "mobile_published_state": {
+      "public_events": [
+        {
+          "id": "pickup:CUST-263-A:LO-263-A",
+          "version": "54b43afaa0d88e89",
+          "customer_id": "CUST-263-A",
+          "shipment_id": "LO-263-A",
+          "stage_id": "pickup",
+          "occurred_at": "2026-11-02",
+          "public_title": "Đã lấy hàng",
+          "verified": true,
+          "verified_at": "2026-11-02T16:08:05.698783+00:00",
+          "verified_by": "qa.263.admin",
+          "state": "VERIFIED",
+          "recorded_by": "qa.263.support"
+        }
+      ],
+      "publications": [
+        {
+          "version": "g15-4fc3d8f57a164777adb7a4c9f7d66742",
+          "customer_id": "CUST-263-A",
+          "shipment_id": "LO-263-A",
+          "state": "PUBLISHED",
+          "approved_by": "qa.263.admin",
+          "event_versions": {
+            "pickup:CUST-263-A:LO-263-A": "54b43afaa0d88e89"
+          }
+        }
+      ],
+      "shipments": [
+        {
+          "id": "LO-263-A",
+          "customer_id": "CUST-263-A",
+          "published": "g15-4fc3d8f57a164777adb7a4c9f7d66742",
+          "pickup_atd": "2026-11-02"
+        },
+        {
+          "id": "LO-263-B",
+          "customer_id": "CUST-263-B",
+          "published": "",
+          "pickup_atd": ""
+        }
+      ]
+    },
+    "mobile_customer_after": " DỮ LIỆU STAGING — KHÔNG PHẢI SẢN XUẤT HEXA An Phát JSC (G15-A) Theo dõi trực quan trên hải đồ theo dữ liệu Trường Thành đã xác minh 1 lô đã công bố kh***@example.test Đang theo dõi: 1 Có ETA kho đã xác minh: 0 Cần khách xử lý: 0 (Chưa có yêu cầu được xác nhận) Chọn lô để mở hải đồ Journey Map → Dashboard tổng quan — 1 lô đã công bố (chọn một lô để mở hải đồ Journey Map 00–06): Nhấn vào hàng/thẻ lô để mở Journey Map. Cột Công nợ chỉ hiển thị số liệu đã đối soát; UNKNOWN / Chưa đối soát nghĩa là Trường Thành chưa duyệt công bố tài chính cho lô đó. “Chưa xác minh” nghĩa là chưa có chứng cứ công đoạn nào được duyệt công bố. Mã lô Hàng hóa & Tuyến Phương thức Chặng xác minh ETA được xác minh Công nợ Cập nhật cuối Hành trình LO-263-AChưa công bốChưa công bốChưa xác địnhLấy hàngĐã lấy hàngChưa xác minhTổng phải thanh toán: UNKNOWN / Chưa đối soátĐã thanh toán: UNKNOWN / Chưa đối soátCòn phải thanh toán: UNKNOWN / Chưa đối soát02/11/2026 16:08 +00:00Xem hành trình LO-263-AChưa xác địnhLấy hàngChưa công bốChưa công bốETA xác minh: Chưa xác minhCập nhật: 02/11/2026 16:08 +00:00Tổng phải thanh toán: UNKNOWN / Chưa đối soátĐã thanh toán: UNKNOWN / Chưa đối soátCòn phải thanh toán: UNKNOWN / Chưa đối soátXem hành trình → ← Quay lại Dashboard LO-263-A Chưa xác định An Phát JSC (G15-A) Đang ở: Lấy hàng ETA kho: Chưa xác minh ▤ Chứng từ & Báo giá ▤ Hồ sơ & Chứng từ 0 tệp Dữ liệu Trường Thành đã duyệt × Chứng từ được công bố 0 tệp Tài liệu báo giá đã duyệt Chưa công bố Chỉ hiển thị trường nằm trong allowlist công bố đã được duyệt. TRẠNG THÁI CÔNG BỐ Trường Thành chưa công bố thông tin cho lô này Hành trình xác minh, báo giá bán và chứng từ sẽ xuất hiện trên hải đồ ngay khi Trường Thành duyệt công bố. 00KẾ HOẠCHCHƯA ĐỐI SOÁT01LẤY HÀNGCÓ BẰNG CHỨNG02CHẶNG 02 — CHƯA XÁC ĐỊNH PHƯƠNG THỨCCHƯA ĐỐI SOÁT03CHẶNG 03 — CHƯA XÁC ĐỊNH PHƯƠNG THỨCCHƯA ĐỐI SOÁT04THÔNG QUANCHƯA ĐỐI SOÁT05GIAO HÀNGCHƯA ĐỐI SOÁT06THANH TOÁNCHƯA ĐỐI SOÁT ✓ Có bằng chứng · ◐ Đang xử lý · ◷ Chờ thông tin · · Chưa đối soát · 91% + − 91% Fit Journey ↺ Đọc rõ × Đóng Bấm vào node 00–06 trên hải đồ → bubble tóm tắt → Xem chi tiết chỉ-đọc hoặc 💬 Trao đổi / Chứng từ để mở trao đổi của đúng công đoạn → ← Quay lại hải đồ để về hải đồ → ← Quay lại Dashboard để xem lại danh sách lô. /* HEXA customer portal — ported verbatim from the Owner reference HEXA_LucGiac_DEMO.html (826,336 bytes, SHA-256 b91c878e44256e741c533f75e62fdcc89507413d609b0b3d365af85810fbb40a). Only the scoping changed: :root/body become the .hexa-portal component root, because a Streamlit Components v2 mount lives in a shadow root. No visual token, size, spacing or colour was re-designed. */ .hexa-portal { --bg: #eef2f6; --surface: #ffffff; --border: #cbd5e1; --text: #0f172a; --muted: #475569; --primary: #1a4b75; --mono: \"IBM Plex Mono\", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; --sans: \"Inter\", -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, sans-serif; } .hexa-portal, .hexa-portal * { box-sizing: border-box; } .hexa-p",
+    "mobile_customer_b": " DỮ LIỆU STAGING — KHÔNG PHẢI SẢN XUẤT HEXA Khách B (G15-B) Theo dõi trực quan trên hải đồ theo dữ liệu Trường Thành đã xác minh 0 lô đã công bố kh***@example.test MỘT SỐ LÔ CHƯA ĐƯỢC CÔNG BỐ: Có lô bị từ chối công bố hoặc chưa có bản duyệt hợp lệ; hệ thống không hiển thị nội dung đó. Đang theo dõi: 0 Có ETA kho đã xác minh: 0 Cần khách xử lý: 0 (Chưa có yêu cầu được xác nhận) Chọn lô để mở hải đồ Journey Map → Dashboard tổng quan — 0 lô đã công bố (chọn một lô để mở hải đồ Journey Map 00–06): Nhấn vào hàng/thẻ lô để mở Journey Map. Cột Công nợ chỉ hiển thị số liệu đã đối soát; UNKNOWN / Chưa đối soát nghĩa là Trường Thành chưa duyệt công bố tài chính cho lô đó. “Chưa xác minh” nghĩa là chưa có chứng cứ công đoạn nào được duyệt công bố. Mã lô Hàng hóa & Tuyến Phương thức Chặng xác minh ETA được xác minh Công nợ Cập nhật cuối Hành trình ← Quay lại Dashboard — — — — — — — ▤ Chứng từ & Báo giá ▤ Hồ sơ & Chứng từ 0 tệp Dữ liệu Trường Thành đã duyệt × Chứng từ được công bố 0 tệp Tài liệu báo giá đã duyệt Chưa công bố Chỉ hiển thị trường nằm trong allowlist công bố đã được duyệt. TRẠNG THÁI CÔNG BỐ Trường Thành chưa công bố thông tin cho lô này Hành trình xác minh, báo giá bán và chứng từ sẽ xuất hiện trên hải đồ ngay khi Trường Thành duyệt công bố. ✓ Có bằng chứng · ◐ Đang xử lý · ◷ Chờ thông tin · · Chưa đối soát · 100% + − 100% Fit Journey ↺ Đọc rõ × Đóng Bấm vào node 00–06 trên hải đồ → bubble tóm tắt → Xem chi tiết chỉ-đọc hoặc 💬 Trao đổi / Chứng từ để mở trao đổi của đúng cô"
+  },
+  "failure": null
+}
