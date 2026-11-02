@@ -1,0 +1,183 @@
+{
+  "support_b": [
+    {
+      "event": "payment_record",
+      "requestId": "PAY-255-LEGACY-A",
+      "ok": true,
+      "persisted.amount": 35000000.0,
+      "readback.finance": {
+        "canView": true,
+        "quote": [
+          {
+            "label": "Cước vận chuyển trọn gói",
+            "amount": 28450000.0,
+            "ccy": "VND",
+            "kind": "quote"
+          }
+        ],
+        "actual": [
+          {
+            "id": "4996a521-a37b-43be-aaea-038128e6bf7a",
+            "label": "Cước xe TQ Đông Bằng → Hữu Nghị",
+            "name": "Cước xe TQ Đông Bằng → Hữu Nghị",
+            "code": "DV-VC-TQ",
+            "unit": "Lần",
+            "note": "",
+            "journeyStage": "",
+            "amount": 62000000.0,
+            "price": 62000000.0,
+            "cost": 57000000.0,
+            "qty": 1.0,
+            "vat": 8.0,
+            "ccy": "VND",
+            "kind": "actual"
+          }
+        ],
+        "currency": "VND",
+        "hasActualLines": true,
+        "receivable": 66960000.0,
+        "received": 35000000.0,
+        "receivableNet": 62000000.0,
+        "outputVat": 4960000.0,
+        "outstanding": 31960000.0,
+        "payable": 57000000.0,
+        "paid": null,
+        "commission": 0.0,
+        "profit": 5000000.0,
+        "profitMargin": 8.06,
+        "payments": [
+          {
+            "id": "PAY-B99A73CF57D840CF80B735F328866A9A",
+            "requestId": "PAY-255-LEGACY-A",
+            "date": "01/11/2026",
+            "kind": "x",
+            "amount": 35000000.0,
+            "ccy": "VND",
+            "by": "qa.s255.support.a",
+            "note": "x",
+            "reversed": false
+          }
+        ],
+        "partner": {
+          "partnerId": "AGT-PHUANH",
+          "partnerName": "CÔNG TY TNHH PHÚ ANH LOGISTICS",
+          "suggested": true,
+          "status": "UNKNOWN",
+          "payable": null,
+          "paid": null,
+          "remaining": null,
+          "currency": null,
+          "payments": []
+        },
+        "source": "core.logic.calculate_from_shipment over data.3.4"
+      },
+      "readback.costAmount": null,
+      "has_provenance_key": false
+    },
+    {
+      "event": "cost_rate_save",
+      "requestId": "COST-255-LEGACY-A",
+      "ok": true,
+      "persisted.amount": null,
+      "readback.finance": null,
+      "readback.costAmount": 4250.0,
+      "has_provenance_key": false
+    }
+  ],
+  "sale": [
+    {
+      "event": "cost_rate_save",
+      "requestId": "COST-255-LEGACY-A",
+      "ok": true,
+      "persisted.amount": null,
+      "readback.finance": null,
+      "readback.costAmount": 4250.0,
+      "has_provenance_key": false
+    }
+  ],
+  "support_a_same_actor": [
+    {
+      "event": "payment_record",
+      "requestId": "PAY-255-LEGACY-A",
+      "ok": true,
+      "persisted.amount": 35000000.0,
+      "readback.finance": {
+        "canView": true,
+        "quote": [
+          {
+            "label": "Cước vận chuyển trọn gói",
+            "amount": 28450000.0,
+            "ccy": "VND",
+            "kind": "quote"
+          }
+        ],
+        "actual": [
+          {
+            "id": "4996a521-a37b-43be-aaea-038128e6bf7a",
+            "label": "Cước xe TQ Đông Bằng → Hữu Nghị",
+            "name": "Cước xe TQ Đông Bằng → Hữu Nghị",
+            "code": "DV-VC-TQ",
+            "unit": "Lần",
+            "note": "",
+            "journeyStage": "",
+            "amount": 62000000.0,
+            "price": 62000000.0,
+            "cost": 57000000.0,
+            "qty": 1.0,
+            "vat": 8.0,
+            "ccy": "VND",
+            "kind": "actual"
+          }
+        ],
+        "currency": "VND",
+        "hasActualLines": true,
+        "receivable": 66960000.0,
+        "received": 35000000.0,
+        "receivableNet": 62000000.0,
+        "outputVat": 4960000.0,
+        "outstanding": 31960000.0,
+        "payable": 57000000.0,
+        "paid": null,
+        "commission": 0.0,
+        "profit": 5000000.0,
+        "profitMargin": 8.06,
+        "payments": [
+          {
+            "id": "PAY-B99A73CF57D840CF80B735F328866A9A",
+            "requestId": "PAY-255-LEGACY-A",
+            "date": "01/11/2026",
+            "kind": "x",
+            "amount": 35000000.0,
+            "ccy": "VND",
+            "by": "qa.s255.support.a",
+            "note": "x",
+            "reversed": false
+          }
+        ],
+        "partner": {
+          "partnerId": "AGT-PHUANH",
+          "partnerName": "CÔNG TY TNHH PHÚ ANH LOGISTICS",
+          "suggested": true,
+          "status": "UNKNOWN",
+          "payable": null,
+          "paid": null,
+          "remaining": null,
+          "currency": null,
+          "payments": []
+        },
+        "source": "core.logic.calculate_from_shipment over data.3.4"
+      },
+      "readback.costAmount": null,
+      "has_provenance_key": false
+    },
+    {
+      "event": "cost_rate_save",
+      "requestId": "COST-255-LEGACY-A",
+      "ok": true,
+      "persisted.amount": null,
+      "readback.finance": null,
+      "readback.costAmount": 4250.0,
+      "has_provenance_key": false
+    }
+  ]
+}

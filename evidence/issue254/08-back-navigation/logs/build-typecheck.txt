@@ -1,0 +1,17 @@
+### npm run build (fixed tree)
+transforming...
+✓ 1926 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/logi-shell.css     96.81 kB │ gzip:  18.84 kB
+dist/logi-shell.js   1,594.70 kB │ gzip: 342.07 kB
+
+✓ built in 797ms
+exit=0
+
+### npm run typecheck
+
+> logi-shell-component@0.1.0 typecheck
+> tsc --noEmit
+
+exit=0

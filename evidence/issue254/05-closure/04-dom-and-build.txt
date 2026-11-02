@@ -1,0 +1,180 @@
+# DOM + component build receipt — LOGI-255-LASTWRITES-ISOLATION
+# date_utc: 2026-11-01T14:20:56Z
+# npm ci: done in component/ (87 packages)
+
+
+> logi-shell-component@0.1.0 typecheck
+> tsc --noEmit
+
+TYPECHECK_EXIT=0
+
+> logi-shell-component@0.1.0 build
+> vite build
+
+vite v8.2.2 building client environment for production...
+transforming...
+✓ 1925 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/logi-shell.css     96.81 kB │ gzip:  18.84 kB
+dist/logi-shell.js   1,593.04 kB │ gzip: 341.68 kB
+
+✓ built in 833ms
+BUILD_EXIT=0
+--- node tests/component/dom_acceptance_c2a.mjs
+STEP 1 — boot bundle and open Finance Actual
+node:internal/modules/run_main:123
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: clickable "LO-0308" not found
+    at click (file:///home/user/logistics-work-desk-arena/tests/component/dom_acceptance_c2a.mjs:89:10)
+    at file:///home/user/logistics-work-desk-arena/tests/component/dom_acceptance_c2a.mjs:165:9 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: null,
+  expected: true,
+  operator: '==',
+  diff: 'simple'
+}
+
+Node.js v22.22.3
+dom_acceptance_c2a_EXIT=1
+--- node tests/component/dom_acceptance_c2c.mjs
+STEP 1 — boot bundle and open Thu tiền / Phải thu
+  ✓ global receivables route renders (not the placeholder)
+STEP 2 — summary tiles, rows, currency separation
+  ✓ 5 receivable rows + per-currency totals rendered
+STEP 3 — payment_record: authoritative outcome (LOGI_FRONTEND_WORKFLOW_OVERHAUL_01)
+  ✓ one intent dispatched with identity PAY-REQ-MVXX413O-ZZBO9U; double click absorbed
+  ✓ unrelated lastWrites cannot fake success
+  ✓ refusal preserves the form and surfaces the backend's own error
+  ✓ retry minted a NEW identity PAY-REQ-MVXX41EW-W2PG0W; old refusal X cannot settle it
+  ✓ correlated ok WITHOUT finance readback = still pending, truthful
+  ✓ success = correlated ok AND finance.payments requestId readback
+STEP 4 — open the linked shipment
+node:internal/modules/run_main:123
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: finance tab must be present on the detail page
+    at file:///home/user/logistics-work-desk-arena/tests/component/dom_acceptance_c2c.mjs:306:10 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: false,
+  expected: true,
+  operator: '==',
+  diff: 'simple'
+}
+
+Node.js v22.22.3
+dom_acceptance_c2c_EXIT=1
+--- node tests/component/dom_acceptance_partner_context.mjs
+STEP 1 — boot production bundle (unselected state)
+  ✓ boot clean, shell rendered
+STEP 2 — sidebar honesty: no 'Sắp có' on Đại Lý Trường Thành
+  ✓ visible label renamed; the route stays /ngu-canh-doi-tac, no deferred marker
+STEP 3 — /ngu-canh-doi-tac renders Đại Lý Trường Thành (agent master desk)
+  ✓ renamed agent-master desk over the existing picker; no placeholder, no invented context
+STEP 4 — partner selection emits ONE bounded READ-ONLY trigger
+  ✓ one typed partner_context_select trigger, entity key only, no other event
+STEP 5 — fresh readback renders authoritative identity + shipment + payable
+  ✓ identity + linked shipment + canonical payable rendered from the readback
+STEP 6 — UNKNOWN != ZERO for a partner with no canonical payable
+  ✓ no canonical payable ⇒ UNKNOWN, explicitly not 0
+STEP 7 — unknown partner key fails honest (no fabricated record)
+  ✓ PARTNER_NOT_FOUND rendered without inventing anything
+STEP 8 — no CRM surface; unavailable context is stated, not faked
+  ✓ no CRM controls; missing context is declared instead of padded
+STEP 9 — EDIT: form prefills from the master; saved only via readback
+  ✓ edit goes through ONE authority_agent_save; the saved master arrives via readback
+STEP 10 — CREATE: + THÊM ĐẠI LÝ saves a NEW master, shown immediately
+  ✓ create writes through the existing writer; saved master visible immediately
+STEP 11 — RBAC refusal: real backend error shown, nothing faked
+  ✓ RBAC refusal displayed verbatim; form stays, nothing persisted
+STEP 12 — mobile: drawer reaches the workspace; cards + 48px targets
+  ✓ drawer routing, card stack, gated table, 48px controls, reachable Open Shipment
+STEP 13 — other real routes are undisturbed
+  ✓ /tai-chinh/cong-no-doi-tac and /tai-chinh/thu-tien still render their real pages
+
+DOM acceptance PASSED — 13 checks
+dom_acceptance_partner_context_EXIT=0
+--- node tests/component/dom_acceptance_real_use_repair.mjs
+STEP 1 — boot the real bundle on the customers page
+  ✓ boot clean; /khach-hang renders with the customer genuinely absent
+STEP 2 — P0-A · TRANSPORT FAILURE keeps the data and claims nothing
+  ✓ transport failure → data retained, modal open, no success claim, useful failure state
+STEP 3 — P0-A · TRANSPORT SUCCESS is still not persistence
+  ✓ transport success → still no claim; bounded waiting state, button locked, requestId sent
+STEP 4 — P0-A · one click can never double-send
+  ✓ second click while in flight emits nothing
+STEP 5 — P0-A · an UNRELATED backend write is never success
+  ✓ unrelated write + version change → still waiting, no false success
+STEP 6 — P0-A · BACKEND REFUSAL keeps the data and shows the real error
+  ✓ backend refusal → data retained, real error verbatim, form usable again
+STEP 7 — P0-A · BACKEND SUCCESS is the only thing that closes the form
+  ✓ authoritative success (outcome + fresh readback) → closes, clears, claims
+STEP 8 — P1-A · 'XỬ LÝ NGAY' opens the REAL hyphenated work tab
+node:internal/modules/run_main:123
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: shipment link LO-0295 not found
+    at file:///home/user/logistics-work-desk-arena/tests/component/dom_acceptance_real_use_repair.mjs:344:10 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: undefined,
+  expected: true,
+  operator: '==',
+  diff: 'simple'
+}
+
+Node.js v22.22.3
+dom_acceptance_real_use_repair_EXIT=1
+--- node tests/component/dom_acceptance_create_shipment.mjs
+STEP 1 — boot + the create page renders over the existing route
+  ✓ boot clean; /tao-lo-moi renders the real form
+STEP 2 — one typed shipment_create trigger; NO navigation on transport
+  ✓ one shipment_create trigger with requestId; stays on form, button locked
+STEP 3 — backend FAILURE keeps the form and shows the real error
+  ✓ failure delivered → stays on form, backend error shown verbatim
+STEP 4 — backend SUCCESS navigates only after the fresh readback
+  ✓ success readback → navigated to the existing shipment detail, no re-emit
+STEP 5 — REGRESSION: pre-existing duplicate + unrelated version change never false-navigate
+  ✓ pre-existing duplicate + unrelated version change can never false-navigate
+
+CREATE-SHIPMENT DOM acceptance PASSED — 5 checks
+dom_acceptance_create_shipment_EXIT=0
+--- node tests/component/dom_acceptance_role_trust.mjs
+SCENARIO 1 — production-like runtime shows ONLY the actual role
+  ✓ normal runtime shows the actual role only (SUPPORT, no switcher)
+SCENARIO 2 — sandbox keeps the preview switcher, labelled display-only
+  ✓ sandbox preview switcher labelled and truthful about being display-only
+
+ROLE_TRUST_DOM_ACCEPTANCE=PASSED checks=2
+dom_acceptance_role_trust_EXIT=0
+--- node tests/component/dom_acceptance_cost_market_benchmark.mjs
+STEP 1 — Kho giá vốn shows internal row, no market card, no fetch on load
+  ✓ O/F eligible; PICK UP / FEEDER BAF / THC excluded; no auto-fetch
+STEP 2 — So với thị trường dispatches the read-only event
+  ✓ click maps CNNGB/VNHPH/40HQ and does not persist
+STEP 3 — market card is separate, attributed, and wrap-safe
+  ✓ separated card + attribution + no invented live hard-code in source path
+
+DOM_ACCEPTANCE_COST_MARKET_BENCHMARK=3 checks passed
+dom_acceptance_cost_market_benchmark_EXIT=0
+
+# ---------------------------------------------------------------------------
+# BASELINE vs WITH-FIX cho 3 DOM lane headless (chay bang node truc tiep, KHONG qua pytest harness)
+# cung fixture committed tai HEAD, chay 2 lan lien tiep truoc/sau khi ap fix:
+#   WITH_FIX  dom_acceptance_c2a  EXIT=1 :: AssertionError clickable "LO-0308" not found
+#   BASELINE  dom_acceptance_c2a  EXIT=1 :: AssertionError clickable "LO-0308" not found
+#   WITH_FIX  dom_acceptance_c2c  EXIT=1 :: AssertionError finance tab must be present on the detail page
+#   BASELINE  dom_acceptance_c2c  EXIT=1 :: AssertionError finance tab must be present on the detail page
+#   WITH_FIX  dom_acceptance_real_use_repair EXIT=1 :: AssertionError shipment link LO-0295 not found
+#   BASELINE  dom_acceptance_real_use_repair EXIT=1 :: AssertionError shipment link LO-0295 not found
+# => 0 DOM failure MOI. Ba lane nay da hong tu truoc (can fixture/stdin do pytest harness cap), khong phai regression cua LOGI-255.
+#
+# DOM lane THAT SU chay trong repo (pytest wrapper, jsdom + bundle dist vua build):
+#   python -m pytest tests/test_issue254_shipment_debt_glance.py::test_shipments_list_dom_bundle_acceptance
+#   -> PASSED (xem 02-pass-after-focused.txt)

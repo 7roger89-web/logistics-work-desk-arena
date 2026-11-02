@@ -1,0 +1,11 @@
+# Full pytest — AFTER fix (clean, no concurrent git ops)
+# command: python -m pytest tests -p no:cacheprovider -W ignore -v -rs
+# ref: 05b65537bb524b6c0c550f538cce1032f934a6e7 + working tree (fix + new tests)
+# result: 2375 passed, 44 skipped, 10 subtests passed in 152.58s
+# FAILED ids: (none)
+# ERROR ids: (none)
+# SKIPPED count: 44 (node ids in 03-skipped-ids.txt)
+#
+# Full pytest — BASELINE (source = HEAD 05b6553, chua fix, khong co 5 test moi)
+# result: 2370 passed, 44 skipped, 0 failed (03-full-pytest-baseline-05b6553.txt)
+# delta: +5 passed = dung 5 test moi; 0 failed truoc va sau; tap SKIPPED 44 khong doi (diff 0)

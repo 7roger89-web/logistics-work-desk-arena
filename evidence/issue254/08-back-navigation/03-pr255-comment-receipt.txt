@@ -1,0 +1,18 @@
+# PR #255 comment — attempted and POSTED (not a 403)
+date: 2026-11-01T18:40:32Z
+command: gh pr comment 255 --body-file /tmp/pr255-comment.md
+exit_code: 0
+url: https://github.com/7roger89-web/logistics-work-desk-arena/pull/255#issuecomment-6562217209
+
+PR #255 head branch at the time of posting:
+{
+    "baseRefName": "arena/ae5f9f47-logistics-work-desk-arena",
+    "headRefName": "arena/0d73ca3b-logistics-work-desk-arena",
+    "headRefOid": "6934f4b1973aa51d60ddb7936d69651cd58d1590",
+    "mergeable": "MERGEABLE",
+    "state": "OPEN"
+}
+
+This session's branch (pushed, no new PR, no force-push to another branch):
+branch: arena/3cba5333-logistics-work-desk-arena
+head: cc7f220719871364bcc4c1577455a687e627362f

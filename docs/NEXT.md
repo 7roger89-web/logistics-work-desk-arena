@@ -57,6 +57,7 @@ Hoàn thiện **Logistics Work Desk thực sự dùng được**: Trường Thà
 
 ## Nhật ký mốc quan trọng
 
+- **01/11 (LOGI-255 legacy fail-closed):** `_last_writes_for_actor` không còn giao row `lastWrites` thiếu/sai `_provenance`; 4 test mới FAIL trước sửa (Support B nhận 35.000.000 VND của Support A, Sale nhận readback giá vốn 4.250 USD) → PASS sau sửa, Support A không đổi danh tính/quyền vẫn nhận đủ readback. Full suite 2 lượt `2385 passed / 44 skipped / 0 failed`; baseline `911f317` `2375 passed / 44 skipped` (+10 test mới, tập skip không đổi). Bằng chứng: `evidence/issue254/07-legacy-closure/`. PR #255 vẫn OPEN, không merge/deploy.
 - **31/10 (S1–S3):** Review độc lập source/JSON/ảnh Chromium trên ba lát Issue #247; chuyển commit S3 vào chính PR #248 qua fast-forward; không merge staging/main hay ghi Cloud. Lấy docs/NEXT từ staging PR #249 làm gốc để giữ quy trình và Ruleset hiện hành; pending hai full suite sạch + exact-head review + gate trước merge.
 - **31/10 (quy trình):** Owner yêu cầu thay đổi cách thực thi thay vì thêm luật. Chốt Issue #247 làm Goal (0 FAILED/ERROR), comment SPEC_LOCK trước sửa; bổ sung AGENTS project-level execution-to-acceptance lock, PR template và workflow shape check vào nhánh staging qua PR process-only, không thay code nghiệp vụ. Thời điểm ghi nhật ký PR #249 chưa có required check; sau đó Owner bật và đã xác minh Ruleset `26255872` Active.
 - **30/10:** PR #233 merged staging; PR #232 có independent challenge và merged staging tại `e75a239`.

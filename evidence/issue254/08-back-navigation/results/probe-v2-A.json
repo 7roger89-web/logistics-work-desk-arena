@@ -1,0 +1,98 @@
+{
+  "baseUrl": "http://127.0.0.1:9521/",
+  "tag": "after",
+  "tests": {
+    "A": {
+      "tag": "after",
+      "filter_before": {
+        "q": "LO-0",
+        "periodPressed": [
+          "Tất cả thời gian"
+        ],
+        "archivePressed": [
+          "Tất cả"
+        ],
+        "statusChips": [
+          "Thêm",
+          "NHẬP GETFLY DSDH"
+        ],
+        "from": null,
+        "to": null,
+        "rows": [
+          "LO-0299",
+          "LO-0306",
+          "LO-0307",
+          "LO-0308",
+          "LO-0295"
+        ],
+        "cards": [
+          "LO-0299",
+          "LO-0306",
+          "LO-0307",
+          "LO-0308",
+          "LO-0295"
+        ],
+        "summary": "Tìm thấy 5 lô cho “LO-0” · Mỗi lô: hiện trạng → Incoterm · phương thức · loại hàng · ETD/ETA → việc tiếp theo → nút xử lý."
+      },
+      "detailOpened": true,
+      "backControl": {
+        "present": true,
+        "tag": "A",
+        "href": "/lo-hang?period=tat-ca&archive=tat-ca&q=LO-0",
+        "dataReturnTo": "/lo-hang?period=tat-ca&archive=tat-ca&q=LO-0",
+        "text": "Về danh sách lô",
+        "aria": "Về danh sách lô, giữ nguyên bộ lọc",
+        "rect": {
+          "x": 97,
+          "y": 201,
+          "w": 176,
+          "h": 44
+        },
+        "fontSize": 14,
+        "visible": true
+      },
+      "returnPathUsed": "in_app_button",
+      "returnClicked": true,
+      "filter_after": {
+        "q": "LO-0",
+        "periodPressed": [
+          "Tất cả thời gian"
+        ],
+        "archivePressed": [
+          "Tất cả"
+        ],
+        "statusChips": [
+          "Thêm",
+          "NHẬP GETFLY DSDH"
+        ],
+        "from": null,
+        "to": null,
+        "rows": [
+          "LO-0299",
+          "LO-0306",
+          "LO-0307",
+          "LO-0308",
+          "LO-0295"
+        ],
+        "cards": [
+          "LO-0299",
+          "LO-0306",
+          "LO-0307",
+          "LO-0308",
+          "LO-0295"
+        ],
+        "summary": "Tìm thấy 5 lô cho “LO-0” · Mỗi lô: hiện trạng → Incoterm · phương thức · loại hàng · ETD/ETA → việc tiếp theo → nút xử lý."
+      },
+      "qPreserved": true,
+      "rowsPreserved": true,
+      "verdict": "PASS"
+    }
+  },
+  "browser": {
+    "version": "153.0.8010.0",
+    "executable": "/tmp/chromium"
+  },
+  "summary": {
+    "A": "PASS"
+  }
+}

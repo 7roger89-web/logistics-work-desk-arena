@@ -1,0 +1,385 @@
+{
+  "chromiumVersion": "Chromium 153.0.8010.0",
+  "checks": [
+    {
+      "name": "desktop_1440x900_support_glance_multiccy_unknown_no_overflow",
+      "ok": true,
+      "docOverflowPx": 0,
+      "tableOverflowPx": 0
+    },
+    {
+      "name": "desktop_payment_record_updates_shipments_list",
+      "ok": true,
+      "currency": "VND",
+      "hasActual": "true",
+      "receivable": "66.960.000 VND",
+      "received": "35.000.000 VND",
+      "outstanding": "31.960.000 VND",
+      "rect": {
+        "x": 739,
+        "y": 1367,
+        "width": 209,
+        "height": 65
+      }
+    },
+    {
+      "name": "mobile_390x844_support_cards_no_overflow",
+      "ok": true,
+      "docOverflowPx": 0,
+      "maxRight": 362
+    },
+    {
+      "name": "desktop_payment_reversal_updates_shipments_list_no_stale_balance",
+      "ok": true,
+      "currency": "VND",
+      "hasActual": "true",
+      "receivable": "66.960.000 VND",
+      "received": "0 VND",
+      "outstanding": "66.960.000 VND",
+      "rect": {
+        "x": 739,
+        "y": 1367,
+        "width": 209,
+        "height": 65
+      }
+    },
+    {
+      "name": "sale_role_server_payload_and_ui_gated_desktop_and_mobile",
+      "ok": true
+    }
+  ],
+  "metrics": {
+    "desktopSupportInitial": {
+      "itemCount": 8,
+      "headers": [
+        "Lô · Khách hàng · Tuyến",
+        "Nhận dạng nhanh",
+        "Công nợ dịch vụ",
+        "Việc tiếp theo",
+        "Trách nhiệm",
+        "Hành động"
+      ],
+      "docOverflowPx": 0,
+      "tableOverflowPx": 0,
+      "maxRight": 1336,
+      "minLeft": 368,
+      "totalClusterCount": 16,
+      "clusters": {
+        "LO-0299": {
+          "currency": "VND",
+          "hasActual": "true",
+          "receivable": "101.520.000 VND",
+          "received": "60.000.000 VND",
+          "outstanding": "41.520.000 VND",
+          "rect": {
+            "x": 739,
+            "y": 752,
+            "width": 209,
+            "height": 65
+          }
+        },
+        "LO-0306": {
+          "currency": "VND",
+          "hasActual": "true",
+          "receivable": "112.860.000 VND",
+          "received": "60.000.000 VND",
+          "outstanding": "52.860.000 VND",
+          "rect": {
+            "x": 739,
+            "y": 963,
+            "width": 209,
+            "height": 65
+          }
+        },
+        "LO-0307": {
+          "currency": "VND",
+          "hasActual": "true",
+          "receivable": "173.016.000 VND",
+          "received": "90.000.000 VND",
+          "outstanding": "83.016.000 VND",
+          "rect": {
+            "x": 739,
+            "y": 1165,
+            "width": 209,
+            "height": 65
+          }
+        },
+        "LO-0308": {
+          "currency": "VND",
+          "hasActual": "true",
+          "receivable": "66.960.000 VND",
+          "received": "0 VND",
+          "outstanding": "66.960.000 VND",
+          "rect": {
+            "x": 739,
+            "y": 1367,
+            "width": 209,
+            "height": 65
+          }
+        },
+        "LO-254-CNY": {
+          "currency": "CNY",
+          "hasActual": "true",
+          "receivable": "18.000 CNY",
+          "received": "18.000 CNY",
+          "outstanding": "0 CNY",
+          "rect": {
+            "x": 739,
+            "y": 1579,
+            "width": 209,
+            "height": 65
+          }
+        },
+        "LO-254-QUOTE": {
+          "currency": "VND",
+          "hasActual": "false",
+          "receivable": "—",
+          "received": "0 VND",
+          "outstanding": "—",
+          "rect": {
+            "x": 739,
+            "y": 1811,
+            "width": 209,
+            "height": 68
+          }
+        },
+        "LO-254-USD": {
+          "currency": "USD",
+          "hasActual": "true",
+          "receivable": "2.400 USD",
+          "received": "900 USD",
+          "outstanding": "1.500 USD",
+          "rect": {
+            "x": 739,
+            "y": 2046,
+            "width": 209,
+            "height": 65
+          }
+        },
+        "LO-0295": {
+          "currency": "VND",
+          "hasActual": "true",
+          "receivable": "146.232.000 VND",
+          "received": "130.000.000 VND",
+          "outstanding": "16.232.000 VND",
+          "rect": {
+            "x": 739,
+            "y": 2258,
+            "width": 209,
+            "height": 65
+          }
+        }
+      },
+      "mainText": "Nhập GetFly DSDHDSDH.xlsx → xem trước trên server → xác nhận tạo các lô còn thiếuNHẬP GETFLY DSDHChọn đúng file DSDH.xlsx để xem số đơn, doanh thu, lợi nhuận, dịch vụ và trạng thái đã có/chưa có. Chọn file chỉ tạo preview, chưa ghi lô hay Finance Actual.Lô HàngTìm theo mã lô · khách · container · hợp đồng · trạng thái · Sale · Support · tuyến · cửa khẩu＋ Tạo lô mới LọcTháng nàyTháng trướcNăm nayThời gian khácTất cả thời gianĐang làmĐã hoàn tất & thanh toánTất cảTìm thấy 8 lô · Mỗi lô: hiện trạng → Incoterm · phương thức · loại hàng · ETD/ETA → việc tiếp theo → nút xử lý.Lô · Khách hàng · TuyếnNhận dạng nhanhCông nợ dịch vụViệc tiếp theoTrách nhiệmHành độngLO-0299Chờ giaoHồng Hà Co.Bằng Tường (Quảng Tây) → Kho Hồng Hà — KCN Yên Phong, Bắc Ninh · cập nhật 01/11/2026 04:50DAPĐường bộLoại hàng —ETD 05/09→ETA 06/09Phải thu101.520.000 VNDĐã thu60.000.000 VNDCòn phải thu41.520.000 VNDQuá hạn kháchPhụ trách: Chưa phân côngCập nhật bởi: staging.supportXỬ LÝ 360°LO-0306Chờ thông quanAn Phát JSCBằng Tường (Quảng Tây) → Hữu Nghị (Lạng Sơn)HDMB-0306 · cập nhật 01/11/2026 04:50DAPĐường bộLoại hàng —ETD 08/09→ETA 08/09Phải thu112.860.000 VNDĐã thu60.000.000 VNDCòn phải thu52.860.000 VNDQuá hạnQuá free timePhụ trách: Chưa phân côngCập nhật bởi: staging.supportXỬ LÝ 360°LO-0307Chờ thông quanĐức Long Co.Nam Ninh (Quảng Tây) → Hữu Nghị → Hải PhòngHDNT-0307 · cập nhật 01/11/2026 04:50DAPĐường bộLoại hàng —ETD 08/09→ETA 09/09Phải thu173.016.000 VNDĐã thu90.000.000 VNDCòn phải thu83.016.000 VNDQuá free timePhụ trách: Chưa phân côngCập nhật bởi: staging.supportXỬ LÝ 360°LO-0308Chờ thông quanMinh Đức JSCĐông Bằng (Quảng Tây) → Hữu Nghị (Lạng Sơn) · cập nhật 01/11/2026 04:50DAPĐường bộLoại hàng —ETD 12/09→ETA 12/09Phải thu66.960.000 VNDĐã thu0 VNDCòn phải thu66.960.000 VNDQuá hạnQuá hạn kháchPhụ trách: Chưa phân côngCập nhật bởi: staging.supportXỬ LÝ 360°LO-254-CNYChờ thông quanThâm Quyến Hưng Phát (CNY)Đông Bằng (Quảng Tây) → Hữu Nghị (Lạng Sơn) · cập nhật 01/11/2026 04:50DAPĐường bộLoại hàng —ETD 12/09→ETA 12/09Phải thu18.000 CNYĐã thu18.000 CNYCòn phải thu0 CNYQuá hạn kháchPhụ trách: Chưa phân côngCập nhật bởi: staging.supportXỬ LÝ 360°LO-254-QUOTEChờ thông quanCông ty CP Minh Long (Chỉ báo giá)Đông Bằng (Quảng Tây) → Hữu Nghị (Lạng Sơn) · cập nhật 01/11/2026 04:50DAPĐường bộLoại hàng —ETD 12/09→ETA 12/09Phải thu—Đã thu0 VNDCòn phải thu—Quá hạn kháchPhụ trách: Chưa phân côngCập nhật bởi: staging.supportXỬ LÝ 360°LO-254-USDChờ thông quanGlobal Tech Trading (USD)Đông Bằng (Quảng Tây) → Hữu Nghị (Lạng Sơn) · cập nhật 01/11/2026 04:50DAPĐường bộLoại hàng —ETD 12/09→ETA 12/09Phải thu2.400 USDĐã thu900 USDCòn phải thu1.500 USDQuá hạn kháchPhụ trách: Chưa phân côngCập nhật bởi: staging.supportXỬ LÝ 360°LO-0295Đã giaoThiên Ân JSCQuảng Châu → Kho Thiên Ân — KP.2, Thủ Đức, TP.HCMHDMB-0295 · cập nhật 01/11/2026 04:50DAPĐường bộLoại hàng —ETD 04/09→ETA 06/09Phải thu146.232.000 VNDĐã thu130.000.000 VNDCòn phải thu16.232.000 VNDQuá hạnBổ sung hồ sơ thực hiện lôPhụ trách: Chưa phân côngCập nhật bởi: staging.supportXỬ LÝ 360°LO-0299Chờ giaoHồng Hà Co.Bằng Tường (Quảng Tây) → Kho Hồng Hà — KCN Yên Phong, Bắc NinhDAPĐường bộLoại hàng —ETD 05/09→ETA 06/09Công nợ dịch vụTài chính · VND →Phải thu101.520.000 VNDĐã thu60.000.000 VNDCòn phải thu41.520.000 VNDViệc tiếp theoQuá hạn kháchPhụ trách Chưa phân công · cập nhật bởi staging.support · 01/11/2026 04:50XỬ LÝ XEM 360°LO-0306Chờ thông quanAn Phát JSCBằng Tường (Quảng Tây) → Hữu Nghị (Lạng Sơn)DAPĐường bộLoại hàng —ETD 08/09→ETA 08/09Công nợ dịch vụTài chính · VND →Phải thu112.860.000 VNDĐã thu60.000.000 VNDCòn phải thu52.860.000 VNDViệc tiếp theoQuá hạnQuá free timePhụ trách Chưa phân công · cập nhật bởi staging.support · 01/11/2026 04:50XỬ LÝ XEM 360°LO-0307Chờ thông quanĐức Long Co.Nam Ninh (Quảng Tây) → Hữu Nghị → Hải PhòngDAPĐường bộLoại hàng —ETD 08/09→ETA 09/09Công nợ dịch vụTài chính · VND →Phải thu173.016.000 VNDĐã thu90.000.000 VNDCòn phải thu83.016.000 VNDViệc tiếp theoQuá free timePhụ trách Chưa phân công · cập nhật bởi staging.support · 01/11/2026 04:50XỬ LÝ XEM 360°LO-0308Chờ thông quanMinh Đức JSCĐông Bằng (Quảng Tây) → Hữu Nghị (Lạng Sơn)DAPĐường bộLoại hàng —ETD 12/09→ETA 12/09Công nợ dịch vụTài chính · VND →Phải thu66.960.000 VNDĐã thu0 VNDCòn phải thu66.960.000 VNDViệc tiếp theoQuá hạnQuá hạn kháchPhụ trách Chưa phân công · cập nhật bởi staging.support · 01/11/2026 04:50XỬ LÝ XEM 360°LO-254-CNYChờ thông quanThâm Quyến Hưng Phát (CNY)Đông Bằng (Quảng Tây) → Hữu Nghị (Lạng Sơn)DAPĐường bộLoại hàng —ETD 12/09→ETA 12/09Công nợ dịch vụTài chính · CNY →Phải thu18.000 CNYĐã thu18.000 CNYCòn phải thu0 CNYViệc tiếp theoQuá hạn kháchPhụ trách Chưa phân công · cập nhật bởi staging.support · 01/11/2026 04:50XỬ LÝ XEM 360°LO-254-QUOTEChờ thông quanCông ty CP Minh Long (Chỉ báo giá)Đông Bằng (Quảng Tây) → Hữu Nghị (Lạng Sơn)DAPĐường bộLoại hàng —ETD 12/09→ETA 12/09Công nợ dịch vụChưa chốt thực tế →Phải thu—Đã thu0 VNDCòn phải thu—Việc tiếp theoQuá hạn kháchPhụ trách Chưa phân công · cập nhật bởi staging.support · 01/11/2026 04:50XỬ LÝ XEM 360°LO-254-USDChờ thông quanGlobal Tech Trading (USD)Đông Bằng (Quảng Tây) → Hữu Nghị (Lạng Sơn)DAPĐường bộLoại hàng —ETD 12/09→ETA 12/09Công nợ dịch vụTài chính · USD →Phải thu2.400 USDĐã thu900 USDCòn phải thu1.500 USDViệc tiếp theoQuá hạn kháchPhụ trách Chưa phân công · cập nhật bởi staging.support · 01/11/2026 04:50XỬ LÝ XEM 360°LO-0295Đã giaoThiên Ân JSCQuảng Châu → Kho Thiên Ân — KP.2, Thủ Đức, TP.HCMDAPĐường bộLoại hàng —ETD 04/09→ETA 06/09Công nợ dịch vụTài chính · VND →Phải thu146.232.000 VNDĐã thu130.000.000 VNDCòn phải thu16.232.000 VNDViệc tiếp theoQuá hạnBổ sung hồ sơ thực hiện lôPhụ trách Chưa phân công · cập nhật bởi staging.support · 01/11/2026 04:50XỬ LÝ XEM 360°Trường Thành Logistics · Bản nội bộ — môi trường staging cách ly, mọi ghi nhận đi qua writer/RBAC/audit thật"
+    },
+    "mobileSupport": {
+      "itemCount": 8,
+      "headers": [
+        "Lô · Khách hàng · Tuyến",
+        "Nhận dạng nhanh",
+        "Công nợ dịch vụ",
+        "Việc tiếp theo",
+        "Trách nhiệm",
+        "Hành động"
+      ],
+      "docOverflowPx": 0,
+      "tableOverflowPx": 0,
+      "maxRight": 362,
+      "minLeft": 28,
+      "totalClusterCount": 16,
+      "clusters": {
+        "LO-0299": {
+          "currency": "VND",
+          "hasActual": "true",
+          "receivable": "101.520.000 VND",
+          "received": "60.000.000 VND",
+          "outstanding": "41.520.000 VND",
+          "rect": {
+            "x": 44,
+            "y": 237,
+            "width": 302,
+            "height": 95
+          }
+        },
+        "LO-0306": {
+          "currency": "VND",
+          "hasActual": "true",
+          "receivable": "112.860.000 VND",
+          "received": "60.000.000 VND",
+          "outstanding": "52.860.000 VND",
+          "rect": {
+            "x": 44,
+            "y": 710,
+            "width": 302,
+            "height": 95
+          }
+        },
+        "LO-0307": {
+          "currency": "VND",
+          "hasActual": "true",
+          "receivable": "173.016.000 VND",
+          "received": "90.000.000 VND",
+          "outstanding": "83.016.000 VND",
+          "rect": {
+            "x": 44,
+            "y": 1209,
+            "width": 302,
+            "height": 95
+          }
+        },
+        "LO-0308": {
+          "currency": "VND",
+          "hasActual": "true",
+          "receivable": "66.960.000 VND",
+          "received": "35.000.000 VND",
+          "outstanding": "31.960.000 VND",
+          "rect": {
+            "x": 44,
+            "y": 1683,
+            "width": 302,
+            "height": 95
+          }
+        },
+        "LO-254-CNY": {
+          "currency": "CNY",
+          "hasActual": "true",
+          "receivable": "18.000 CNY",
+          "received": "18.000 CNY",
+          "outstanding": "0 CNY",
+          "rect": {
+            "x": 44,
+            "y": 2182,
+            "width": 302,
+            "height": 95
+          }
+        },
+        "LO-254-QUOTE": {
+          "currency": "VND",
+          "hasActual": "false",
+          "receivable": "—",
+          "received": "0 VND",
+          "outstanding": "—",
+          "rect": {
+            "x": 44,
+            "y": 2655,
+            "width": 302,
+            "height": 98
+          }
+        },
+        "LO-254-USD": {
+          "currency": "USD",
+          "hasActual": "true",
+          "receivable": "2.400 USD",
+          "received": "900 USD",
+          "outstanding": "1.500 USD",
+          "rect": {
+            "x": 44,
+            "y": 3131,
+            "width": 302,
+            "height": 95
+          }
+        },
+        "LO-0295": {
+          "currency": "VND",
+          "hasActual": "true",
+          "receivable": "146.232.000 VND",
+          "received": "130.000.000 VND",
+          "outstanding": "16.232.000 VND",
+          "rect": {
+            "x": 44,
+            "y": 3605,
+            "width": 302,
+            "height": 95
+          }
+        }
+      },
+      "mainText": "Nhập GetFly DSDHDSDH.xlsx → xem trước trên server → xác nhận tạo các lô còn thiếuNHẬP GETFLY DSDHChọn đúng file DSDH.xlsx để xem số đơn, doanh thu, lợi nhuận, dịch vụ và trạng thái đã có/chưa có. Chọn file chỉ tạo preview, chưa ghi lô hay Finance Actual.Lô HàngTìm theo mã lô · khách · container · hợp đồng · trạng thái · Sale · Support · tuyến · cửa khẩu＋ Tạo lô mới LọcTháng nàyTháng trướcNăm nayThời gian khácTất cả thời gianĐang làmĐã hoàn tất & thanh toánTất cảTìm thấy 8 lô · Mỗi lô: hiện trạng → Incoterm · phương thức · loại hàng · ETD/ETA → việc tiếp theo → nút xử lý.Lô · Khách hàng · TuyếnNhận dạng nhanhCông nợ dịch vụViệc tiếp theoTrách nhiệmHành độngLO-0299Chờ giaoHồng Hà Co.Bằng Tường (Quảng Tây) → Kho Hồng Hà — KCN Yên Phong, Bắc Ninh · cập nhật 01/11/2026 04:50DAPĐường bộLoại hàng —ETD 05/09→ETA 06/09Phải thu101.520.000 VNDĐã thu60.000.000 VNDCòn phải thu41.520.000 VNDQuá hạn kháchPhụ trách: Chưa phân côngCập nhật bởi: staging.supportXỬ LÝ 360°LO-0306Chờ thông quanAn Phát JSCBằng Tường (Quảng Tây) → Hữu Nghị (Lạng Sơn)HDMB-0306 · cập nhật 01/11/2026 04:50DAPĐường bộLoại hàng —ETD 08/09→ETA 08/09Phải thu112.860.000 VNDĐã thu60.000.000 VNDCòn phải thu52.860.000 VNDQuá hạnQuá free timePhụ trách: Chưa phân côngCập nhật bởi: staging.supportXỬ LÝ 360°LO-0307Chờ thông quanĐức Long Co.Nam Ninh (Quảng Tây) → Hữu Nghị → Hải PhòngHDNT-0307 · cập nhật 01/11/2026 04:50DAPĐường bộLoại hàng —ETD 08/09→ETA 09/09Phải thu173.016.000 VNDĐã thu90.000.000 VNDCòn phải thu83.016.000 VNDQuá free timePhụ trách: Chưa phân côngCập nhật bởi: staging.supportXỬ LÝ 360°LO-0308Chờ thông quanMinh Đức JSCĐông Bằng (Quảng Tây) → Hữu Nghị (Lạng Sơn) · cập nhật 01/11/2026 04:50DAPĐường bộLoại hàng —ETD 12/09→ETA 12/09Phải thu66.960.000 VNDĐã thu35.000.000 VNDCòn phải thu31.960.000 VNDQuá hạnQuá hạn kháchPhụ trách: Chưa phân côngCập nhật bởi: qa.s254.supportXỬ LÝ 360°LO-254-CNYChờ thông quanThâm Quyến Hưng Phát (CNY)Đông Bằng (Quảng Tây) → Hữu Nghị (Lạng Sơn) · cập nhật 01/11/2026 04:50DAPĐường bộLoại hàng —ETD 12/09→ETA 12/09Phải thu18.000 CNYĐã thu18.000 CNYCòn phải thu0 CNYQuá hạn kháchPhụ trách: Chưa phân côngCập nhật bởi: staging.supportXỬ LÝ 360°LO-254-QUOTEChờ thông quanCông ty CP Minh Long (Chỉ báo giá)Đông Bằng (Quảng Tây) → Hữu Nghị (Lạng Sơn) · cập nhật 01/11/2026 04:50DAPĐường bộLoại hàng —ETD 12/09→ETA 12/09Phải thu—Đã thu0 VNDCòn phải thu—Quá hạn kháchPhụ trách: Chưa phân côngCập nhật bởi: staging.supportXỬ LÝ 360°LO-254-USDChờ thông quanGlobal Tech Trading (USD)Đông Bằng (Quảng Tây) → Hữu Nghị (Lạng Sơn) · cập nhật 01/11/2026 04:50DAPĐường bộLoại hàng —ETD 12/09→ETA 12/09Phải thu2.400 USDĐã thu900 USDCòn phải thu1.500 USDQuá hạn kháchPhụ trách: Chưa phân côngCập nhật bởi: staging.supportXỬ LÝ 360°LO-0295Đã giaoThiên Ân JSCQuảng Châu → Kho Thiên Ân — KP.2, Thủ Đức, TP.HCMHDMB-0295 · cập nhật 01/11/2026 04:50DAPĐường bộLoại hàng —ETD 04/09→ETA 06/09Phải thu146.232.000 VNDĐã thu130.000.000 VNDCòn phải thu16.232.000 VNDQuá hạnBổ sung hồ sơ thực hiện lôPhụ trách: Chưa phân côngCập nhật bởi: staging.supportXỬ LÝ 360°LO-0299Chờ giaoHồng Hà Co.Bằng Tường (Quảng Tây) → Kho Hồng Hà — KCN Yên Phong, Bắc NinhDAPĐường bộLoại hàng —ETD 05/09→ETA 06/09Công nợ dịch vụTài chính · VND →Phải thu101.520.000 VNDĐã thu60.000.000 VNDCòn phải thu41.520.000 VNDViệc tiếp theoQuá hạn kháchPhụ trách Chưa phân công · cập nhật bởi staging.support · 01/11/2026 04:50XỬ LÝ XEM 360°LO-0306Chờ thông quanAn Phát JSCBằng Tường (Quảng Tây) → Hữu Nghị (Lạng Sơn)DAPĐường bộLoại hàng —ETD 08/09→ETA 08/09Công nợ dịch vụTài chính · VND →Phải thu112.860.000 VNDĐã thu60.000.000 VNDCòn phải thu52.860.000 VNDViệc tiếp theoQuá hạnQuá free timePhụ trách Chưa phân công · cập nhật bởi staging.support · 01/11/2026 04:50XỬ LÝ XEM 360°LO-0307Chờ thông quanĐức Long Co.Nam Ninh (Quảng Tây) → Hữu Nghị → Hải PhòngDAPĐường bộLoại hàng —ETD 08/09→ETA 09/09Công nợ dịch vụTài chính · VND →Phải thu173.016.000 VNDĐã thu90.000.000 VNDCòn phải thu83.016.000 VNDViệc tiếp theoQuá free timePhụ trách Chưa phân công · cập nhật bởi staging.support · 01/11/2026 04:50XỬ LÝ XEM 360°LO-0308Chờ thông quanMinh Đức JSCĐông Bằng (Quảng Tây) → Hữu Nghị (Lạng Sơn)DAPĐường bộLoại hàng —ETD 12/09→ETA 12/09Công nợ dịch vụTài chính · VND →Phải thu66.960.000 VNDĐã thu35.000.000 VNDCòn phải thu31.960.000 VNDViệc tiếp theoQuá hạnQuá hạn kháchPhụ trách Chưa phân công · cập nhật bởi qa.s254.support · 01/11/2026 04:50XỬ LÝ XEM 360°LO-254-CNYChờ thông quanThâm Quyến Hưng Phát (CNY)Đông Bằng (Quảng Tây) → Hữu Nghị (Lạng Sơn)DAPĐường bộLoại hàng —ETD 12/09→ETA 12/09Công nợ dịch vụTài chính · CNY →Phải thu18.000 CNYĐã thu18.000 CNYCòn phải thu0 CNYViệc tiếp theoQuá hạn kháchPhụ trách Chưa phân công · cập nhật bởi staging.support · 01/11/2026 04:50XỬ LÝ XEM 360°LO-254-QUOTEChờ thông quanCông ty CP Minh Long (Chỉ báo giá)Đông Bằng (Quảng Tây) → Hữu Nghị (Lạng Sơn)DAPĐường bộLoại hàng —ETD 12/09→ETA 12/09Công nợ dịch vụChưa chốt thực tế →Phải thu—Đã thu0 VNDCòn phải thu—Việc tiếp theoQuá hạn kháchPhụ trách Chưa phân công · cập nhật bởi staging.support · 01/11/2026 04:50XỬ LÝ XEM 360°LO-254-USDChờ thông quanGlobal Tech Trading (USD)Đông Bằng (Quảng Tây) → Hữu Nghị (Lạng Sơn)DAPĐường bộLoại hàng —ETD 12/09→ETA 12/09Công nợ dịch vụTài chính · USD →Phải thu2.400 USDĐã thu900 USDCòn phải thu1.500 USDViệc tiếp theoQuá hạn kháchPhụ trách Chưa phân công · cập nhật bởi staging.support · 01/11/2026 04:50XỬ LÝ XEM 360°LO-0295Đã giaoThiên Ân JSCQuảng Châu → Kho Thiên Ân — KP.2, Thủ Đức, TP.HCMDAPĐường bộLoại hàng —ETD 04/09→ETA 06/09Công nợ dịch vụTài chính · VND →Phải thu146.232.000 VNDĐã thu130.000.000 VNDCòn phải thu16.232.000 VNDViệc tiếp theoQuá hạnBổ sung hồ sơ thực hiện lôPhụ trách Chưa phân công · cập nhật bởi staging.support · 01/11/2026 04:50XỬ LÝ XEM 360°Trường Thành Logistics · Bản nội bộ — môi trường staging cách ly, mọi ghi nhận đi qua writer/RBAC/audit thật"
+    },
+    "desktopSale": {
+      "itemCount": 8,
+      "headers": [
+        "Lô · Khách hàng · Tuyến",
+        "Nhận dạng nhanh",
+        "Việc tiếp theo",
+        "Trách nhiệm",
+        "Hành động"
+      ],
+      "docOverflowPx": 0,
+      "tableOverflowPx": 0,
+      "maxRight": 1336,
+      "minLeft": 368,
+      "totalClusterCount": 0,
+      "clusters": {
+        "LO-0299": null,
+        "LO-0306": null,
+        "LO-0307": null,
+        "LO-0308": null,
+        "LO-254-CNY": null,
+        "LO-254-QUOTE": null,
+        "LO-254-USD": null,
+        "LO-0295": null
+      },
+      "mainText": "Nhập GetFly DSDHDSDH.xlsx → xem trước trên server → xác nhận tạo các lô còn thiếuNHẬP GETFLY DSDHChọn đúng file DSDH.xlsx để xem số đơn, doanh thu, lợi nhuận, dịch vụ và trạng thái đã có/chưa có. Chọn file chỉ tạo preview, chưa ghi lô hay Finance Actual.Lô HàngTìm theo mã lô · khách · container · hợp đồng · trạng thái · Sale · Support · tuyến · cửa khẩu＋ Tạo lô mới LọcTháng nàyTháng trướcNăm nayThời gian khácTất cả thời gianĐang làmĐã hoàn tất & thanh toánTất cảTìm thấy 8 lô · Mỗi lô: hiện trạng → Incoterm · phương thức · loại hàng · ETD/ETA → việc tiếp theo → nút xử lý.Lô · Khách hàng · TuyếnNhận dạng nhanhViệc tiếp theoTrách nhiệmHành độngLO-0299Chờ giaoHồng Hà Co.Bằng Tường (Quảng Tây) → Kho Hồng Hà — KCN Yên Phong, Bắc Ninh · cập nhật 01/11/2026 04:50DAPĐường bộLoại hàng —ETD 05/09→ETA 06/09Quá hạn kháchPhụ trách: Chưa phân côngCập nhật bởi: staging.supportXỬ LÝ 360°LO-0306Chờ thông quanAn Phát JSCBằng Tường (Quảng Tây) → Hữu Nghị (Lạng Sơn)HDMB-0306 · cập nhật 01/11/2026 04:50DAPĐường bộLoại hàng —ETD 08/09→ETA 08/09Quá hạnQuá free timePhụ trách: Chưa phân côngCập nhật bởi: staging.supportXỬ LÝ 360°LO-0307Chờ thông quanĐức Long Co.Nam Ninh (Quảng Tây) → Hữu Nghị → Hải PhòngHDNT-0307 · cập nhật 01/11/2026 04:50DAPĐường bộLoại hàng —ETD 08/09→ETA 09/09Quá free timePhụ trách: Chưa phân côngCập nhật bởi: staging.supportXỬ LÝ 360°LO-0308Chờ thông quanMinh Đức JSCĐông Bằng (Quảng Tây) → Hữu Nghị (Lạng Sơn) · cập nhật 01/11/2026 04:50DAPĐường bộLoại hàng —ETD 12/09→ETA 12/09Quá hạnQuá hạn kháchPhụ trách: Chưa phân côngCập nhật bởi: qa.s254.supportXỬ LÝ 360°LO-254-CNYChờ thông quanThâm Quyến Hưng Phát (CNY)Đông Bằng (Quảng Tây) → Hữu Nghị (Lạng Sơn) · cập nhật 01/11/2026 04:50DAPĐường bộLoại hàng —ETD 12/09→ETA 12/09Quá hạn kháchPhụ trách: Chưa phân côngCập nhật bởi: staging.supportXỬ LÝ 360°LO-254-QUOTEChờ thông quanCông ty CP Minh Long (Chỉ báo giá)Đông Bằng (Quảng Tây) → Hữu Nghị (Lạng Sơn) · cập nhật 01/11/2026 04:50DAPĐường bộLoại hàng —ETD 12/09→ETA 12/09Quá hạn kháchPhụ trách: Chưa phân côngCập nhật bởi: staging.supportXỬ LÝ 360°LO-254-USDChờ thông quanGlobal Tech Trading (USD)Đông Bằng (Quảng Tây) → Hữu Nghị (Lạng Sơn) · cập nhật 01/11/2026 04:50DAPĐường bộLoại hàng —ETD 12/09→ETA 12/09Quá hạn kháchPhụ trách: Chưa phân côngCập nhật bởi: staging.supportXỬ LÝ 360°LO-0295Đã giaoThiên Ân JSCQuảng Châu → Kho Thiên Ân — KP.2, Thủ Đức, TP.HCMHDMB-0295 · cập nhật 01/11/2026 04:50DAPĐường bộLoại hàng —ETD 04/09→ETA 06/09Quá hạnBổ sung hồ sơ thực hiện lôPhụ trách: Chưa phân côngCập nhật bởi: staging.supportXỬ LÝ 360°LO-0299Chờ giaoHồng Hà Co.Bằng Tường (Quảng Tây) → Kho Hồng Hà — KCN Yên Phong, Bắc NinhDAPĐường bộLoại hàng —ETD 05/09→ETA 06/09Việc tiếp theoQuá hạn kháchPhụ trách Chưa phân công · cập nhật bởi staging.support · 01/11/2026 04:50XỬ LÝ XEM 360°LO-0306Chờ thông quanAn Phát JSCBằng Tường (Quảng Tây) → Hữu Nghị (Lạng Sơn)DAPĐường bộLoại hàng —ETD 08/09→ETA 08/09Việc tiếp theoQuá hạnQuá free timePhụ trách Chưa phân công · cập nhật bởi staging.support · 01/11/2026 04:50XỬ LÝ XEM 360°LO-0307Chờ thông quanĐức Long Co.Nam Ninh (Quảng Tây) → Hữu Nghị → Hải PhòngDAPĐường bộLoại hàng —ETD 08/09→ETA 09/09Việc tiếp theoQuá free timePhụ trách Chưa phân công · cập nhật bởi staging.support · 01/11/2026 04:50XỬ LÝ XEM 360°LO-0308Chờ thông quanMinh Đức JSCĐông Bằng (Quảng Tây) → Hữu Nghị (Lạng Sơn)DAPĐường bộLoại hàng —ETD 12/09→ETA 12/09Việc tiếp theoQuá hạnQuá hạn kháchPhụ trách Chưa phân công · cập nhật bởi qa.s254.support · 01/11/2026 04:50XỬ LÝ XEM 360°LO-254-CNYChờ thông quanThâm Quyến Hưng Phát (CNY)Đông Bằng (Quảng Tây) → Hữu Nghị (Lạng Sơn)DAPĐường bộLoại hàng —ETD 12/09→ETA 12/09Việc tiếp theoQuá hạn kháchPhụ trách Chưa phân công · cập nhật bởi staging.support · 01/11/2026 04:50XỬ LÝ XEM 360°LO-254-QUOTEChờ thông quanCông ty CP Minh Long (Chỉ báo giá)Đông Bằng (Quảng Tây) → Hữu Nghị (Lạng Sơn)DAPĐường bộLoại hàng —ETD 12/09→ETA 12/09Việc tiếp theoQuá hạn kháchPhụ trách Chưa phân công · cập nhật bởi staging.support · 01/11/2026 04:50XỬ LÝ XEM 360°LO-254-USDChờ thông quanGlobal Tech Trading (USD)Đông Bằng (Quảng Tây) → Hữu Nghị (Lạng Sơn)DAPĐường bộLoại hàng —ETD 12/09→ETA 12/09Việc tiếp theoQuá hạn kháchPhụ trách Chưa phân công · cập nhật bởi staging.support · 01/11/2026 04:50XỬ LÝ XEM 360°LO-0295Đã giaoThiên Ân JSCQuảng Châu → Kho Thiên Ân — KP.2, Thủ Đức, TP.HCMDAPĐường bộLoại hàng —ETD 04/09→ETA 06/09Việc tiếp theoQuá hạnBổ sung hồ sơ thực hiện lôPhụ trách Chưa phân công · cập nhật bởi staging.support · 01/11/2026 04:50XỬ LÝ XEM 360°Trường Thành Logistics · Bản nội bộ — môi trường staging cách ly, mọi ghi nhận đi qua writer/RBAC/audit thật"
+    },
+    "mobileSale": {
+      "itemCount": 8,
+      "headers": [
+        "Lô · Khách hàng · Tuyến",
+        "Nhận dạng nhanh",
+        "Việc tiếp theo",
+        "Trách nhiệm",
+        "Hành động"
+      ],
+      "docOverflowPx": 0,
+      "tableOverflowPx": 0,
+      "maxRight": 362,
+      "minLeft": 28,
+      "totalClusterCount": 0,
+      "clusters": {
+        "LO-0299": null,
+        "LO-0306": null,
+        "LO-0307": null,
+        "LO-0308": null,
+        "LO-254-CNY": null,
+        "LO-254-QUOTE": null,
+        "LO-254-USD": null,
+        "LO-0295": null
+      },
+      "mainText": "Nhập GetFly DSDHDSDH.xlsx → xem trước trên server → xác nhận tạo các lô còn thiếuNHẬP GETFLY DSDHChọn đúng file DSDH.xlsx để xem số đơn, doanh thu, lợi nhuận, dịch vụ và trạng thái đã có/chưa có. Chọn file chỉ tạo preview, chưa ghi lô hay Finance Actual.Lô HàngTìm theo mã lô · khách · container · hợp đồng · trạng thái · Sale · Support · tuyến · cửa khẩu＋ Tạo lô mới LọcTháng nàyTháng trướcNăm nayThời gian khácTất cả thời gianĐang làmĐã hoàn tất & thanh toánTất cảTìm thấy 8 lô · Mỗi lô: hiện trạng → Incoterm · phương thức · loại hàng · ETD/ETA → việc tiếp theo → nút xử lý.Lô · Khách hàng · TuyếnNhận dạng nhanhViệc tiếp theoTrách nhiệmHành độngLO-0299Chờ giaoHồng Hà Co.Bằng Tường (Quảng Tây) → Kho Hồng Hà — KCN Yên Phong, Bắc Ninh · cập nhật 01/11/2026 04:50DAPĐường bộLoại hàng —ETD 05/09→ETA 06/09Quá hạn kháchPhụ trách: Chưa phân côngCập nhật bởi: staging.supportXỬ LÝ 360°LO-0306Chờ thông quanAn Phát JSCBằng Tường (Quảng Tây) → Hữu Nghị (Lạng Sơn)HDMB-0306 · cập nhật 01/11/2026 04:50DAPĐường bộLoại hàng —ETD 08/09→ETA 08/09Quá hạnQuá free timePhụ trách: Chưa phân côngCập nhật bởi: staging.supportXỬ LÝ 360°LO-0307Chờ thông quanĐức Long Co.Nam Ninh (Quảng Tây) → Hữu Nghị → Hải PhòngHDNT-0307 · cập nhật 01/11/2026 04:50DAPĐường bộLoại hàng —ETD 08/09→ETA 09/09Quá free timePhụ trách: Chưa phân côngCập nhật bởi: staging.supportXỬ LÝ 360°LO-0308Chờ thông quanMinh Đức JSCĐông Bằng (Quảng Tây) → Hữu Nghị (Lạng Sơn) · cập nhật 01/11/2026 04:50DAPĐường bộLoại hàng —ETD 12/09→ETA 12/09Quá hạnQuá hạn kháchPhụ trách: Chưa phân côngCập nhật bởi: qa.s254.supportXỬ LÝ 360°LO-254-CNYChờ thông quanThâm Quyến Hưng Phát (CNY)Đông Bằng (Quảng Tây) → Hữu Nghị (Lạng Sơn) · cập nhật 01/11/2026 04:50DAPĐường bộLoại hàng —ETD 12/09→ETA 12/09Quá hạn kháchPhụ trách: Chưa phân côngCập nhật bởi: staging.supportXỬ LÝ 360°LO-254-QUOTEChờ thông quanCông ty CP Minh Long (Chỉ báo giá)Đông Bằng (Quảng Tây) → Hữu Nghị (Lạng Sơn) · cập nhật 01/11/2026 04:50DAPĐường bộLoại hàng —ETD 12/09→ETA 12/09Quá hạn kháchPhụ trách: Chưa phân côngCập nhật bởi: staging.supportXỬ LÝ 360°LO-254-USDChờ thông quanGlobal Tech Trading (USD)Đông Bằng (Quảng Tây) → Hữu Nghị (Lạng Sơn) · cập nhật 01/11/2026 04:50DAPĐường bộLoại hàng —ETD 12/09→ETA 12/09Quá hạn kháchPhụ trách: Chưa phân côngCập nhật bởi: staging.supportXỬ LÝ 360°LO-0295Đã giaoThiên Ân JSCQuảng Châu → Kho Thiên Ân — KP.2, Thủ Đức, TP.HCMHDMB-0295 · cập nhật 01/11/2026 04:50DAPĐường bộLoại hàng —ETD 04/09→ETA 06/09Quá hạnBổ sung hồ sơ thực hiện lôPhụ trách: Chưa phân côngCập nhật bởi: staging.supportXỬ LÝ 360°LO-0299Chờ giaoHồng Hà Co.Bằng Tường (Quảng Tây) → Kho Hồng Hà — KCN Yên Phong, Bắc NinhDAPĐường bộLoại hàng —ETD 05/09→ETA 06/09Việc tiếp theoQuá hạn kháchPhụ trách Chưa phân công · cập nhật bởi staging.support · 01/11/2026 04:50XỬ LÝ XEM 360°LO-0306Chờ thông quanAn Phát JSCBằng Tường (Quảng Tây) → Hữu Nghị (Lạng Sơn)DAPĐường bộLoại hàng —ETD 08/09→ETA 08/09Việc tiếp theoQuá hạnQuá free timePhụ trách Chưa phân công · cập nhật bởi staging.support · 01/11/2026 04:50XỬ LÝ XEM 360°LO-0307Chờ thông quanĐức Long Co.Nam Ninh (Quảng Tây) → Hữu Nghị → Hải PhòngDAPĐường bộLoại hàng —ETD 08/09→ETA 09/09Việc tiếp theoQuá free timePhụ trách Chưa phân công · cập nhật bởi staging.support · 01/11/2026 04:50XỬ LÝ XEM 360°LO-0308Chờ thông quanMinh Đức JSCĐông Bằng (Quảng Tây) → Hữu Nghị (Lạng Sơn)DAPĐường bộLoại hàng —ETD 12/09→ETA 12/09Việc tiếp theoQuá hạnQuá hạn kháchPhụ trách Chưa phân công · cập nhật bởi qa.s254.support · 01/11/2026 04:50XỬ LÝ XEM 360°LO-254-CNYChờ thông quanThâm Quyến Hưng Phát (CNY)Đông Bằng (Quảng Tây) → Hữu Nghị (Lạng Sơn)DAPĐường bộLoại hàng —ETD 12/09→ETA 12/09Việc tiếp theoQuá hạn kháchPhụ trách Chưa phân công · cập nhật bởi staging.support · 01/11/2026 04:50XỬ LÝ XEM 360°LO-254-QUOTEChờ thông quanCông ty CP Minh Long (Chỉ báo giá)Đông Bằng (Quảng Tây) → Hữu Nghị (Lạng Sơn)DAPĐường bộLoại hàng —ETD 12/09→ETA 12/09Việc tiếp theoQuá hạn kháchPhụ trách Chưa phân công · cập nhật bởi staging.support · 01/11/2026 04:50XỬ LÝ XEM 360°LO-254-USDChờ thông quanGlobal Tech Trading (USD)Đông Bằng (Quảng Tây) → Hữu Nghị (Lạng Sơn)DAPĐường bộLoại hàng —ETD 12/09→ETA 12/09Việc tiếp theoQuá hạn kháchPhụ trách Chưa phân công · cập nhật bởi staging.support · 01/11/2026 04:50XỬ LÝ XEM 360°LO-0295Đã giaoThiên Ân JSCQuảng Châu → Kho Thiên Ân — KP.2, Thủ Đức, TP.HCMDAPĐường bộLoại hàng —ETD 04/09→ETA 06/09Việc tiếp theoQuá hạnBổ sung hồ sơ thực hiện lôPhụ trách Chưa phân công · cập nhật bởi staging.support · 01/11/2026 04:50XỬ LÝ XEM 360°Trường Thành Logistics · Bản nội bộ — môi trường staging cách ly, mọi ghi nhận đi qua writer/RBAC/audit thật"
+    }
+  },
+  "seedTruth": {
+    "LO-0308": {
+      "revenue": 66960000,
+      "revenue_net": 62000000,
+      "output_vat": 4960000,
+      "receivable": 66960000,
+      "cost": 57000000,
+      "commission": 0,
+      "profit": 5000000,
+      "paid": 0,
+      "debt": 66960000,
+      "currency": "VND"
+    },
+    "LO-254-QUOTE": {
+      "hasActualLines": false,
+      "quoteAmount": 28450000,
+      "receivable": null,
+      "received": 0,
+      "outstanding": null
+    },
+    "LO-254-USD": {
+      "currency": "USD",
+      "receivable": 2400,
+      "received": 900,
+      "outstanding": 1500
+    },
+    "LO-254-CNY": {
+      "currency": "CNY",
+      "receivable": 18000,
+      "received": 18000,
+      "outstanding": 0
+    }
+  },
+  "exitCode": 0
+}

@@ -1,0 +1,74 @@
+{
+  "baseUrl": "http://127.0.0.1:9517/",
+  "tag": "baseline",
+  "tests": {
+    "B": {
+      "tag": "baseline",
+      "statusApplied": true,
+      "filter_before": {
+        "q": "",
+        "periodPressed": [
+          "Thời gian khác"
+        ],
+        "archivePressed": [
+          "Tất cả"
+        ],
+        "statusChips": [
+          "Thêm",
+          "NHẬP GETFLY DSDH",
+          "Lọc"
+        ],
+        "from": "",
+        "to": "2030-12-31",
+        "rows": [
+          "LO-0306",
+          "LO-0307",
+          "LO-0308",
+          "LO-R255-QUOTE",
+          "LO-R255-USD"
+        ],
+        "cards": [
+          "LO-0306",
+          "LO-0307",
+          "LO-0308",
+          "LO-R255-QUOTE",
+          "LO-R255-USD"
+        ],
+        "summary": "Tìm thấy 5 lô · Mỗi lô: hiện trạng → Incoterm · phương thức · loại hàng · ETD/ETA → việc tiếp theo → nút xử lý."
+      },
+      "detailOpened": true,
+      "backControl": {
+        "present": false
+      },
+      "filter_after": {
+        "q": "",
+        "periodPressed": [
+          "Tháng này"
+        ],
+        "archivePressed": [
+          "Đang làm"
+        ],
+        "statusChips": [
+          "Thêm",
+          "NHẬP GETFLY DSDH"
+        ],
+        "from": null,
+        "to": null,
+        "rows": [],
+        "cards": [],
+        "summary": "Tìm thấy 0 lô · Mỗi lô: hiện trạng → Incoterm · phương thức · loại hàng · ETD/ETA → việc tiếp theo → nút xử lý."
+      },
+      "sameParams": false,
+      "sameRows": false,
+      "returnPathUsed": "sidebar_fallback",
+      "verdict": "FAIL"
+    }
+  },
+  "browser": {
+    "version": "153.0.8010.0",
+    "executable": "/tmp/chromium"
+  },
+  "summary": {
+    "B": "FAIL"
+  }
+}

@@ -104,24 +104,28 @@ def authenticate(document: Mapping[str, Any], password: str) -> dict[str, Any] |
     if not document.get("active", True):
         return None
     username = str(document.get("username", ""))
+    raw_role = document.get("role")
+    role = raw_role.strip() if isinstance(raw_role, str) else ""
     return {
         "user_id": str(document.get("user_id", username)),
         "username": username,
         "display_name": str(document.get("display_name", username)),
         "email": str(document.get("email", "")),
-        "role": str(document.get("role", "support")),
+        "role": role,
     }
 
 
 def public_identity(document: Mapping[str, Any]) -> dict[str, Any]:
     """Public view of a user document — never includes password material."""
     username = str(document.get("username", ""))
+    raw_role = document.get("role")
+    role = raw_role.strip() if isinstance(raw_role, str) else ""
     return {
         "user_id": str(document.get("user_id", username)),
         "username": username,
         "display_name": str(document.get("display_name", username)),
         "email": str(document.get("email", "")),
-        "role": str(document.get("role", "support")),
+        "role": role,
         "active": bool(document.get("active", True)),
     }
 

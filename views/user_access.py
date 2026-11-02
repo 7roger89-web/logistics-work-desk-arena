@@ -73,7 +73,11 @@ def _current_user_view(current_user: Mapping[str, Any] | None) -> dict[str, Any]
 
     user = dict(current_user or {})
     username = _text(user.get("username"))
-    role = str(user.get("role") or "viewer").strip().lower()
+    raw_role = user.get("role")
+    if username:
+        role = raw_role.strip().lower() if isinstance(raw_role, str) else ""
+    else:
+        role = str(raw_role or "viewer").strip().lower()
     permissions = _role_permissions(role)
     return {
         "present": bool(username),

@@ -1,0 +1,31 @@
+{
+  "legacy_rows_without_provenance": {
+    "support_b": [],
+    "sale": [],
+    "support_a": []
+  },
+  "valid_provenance": {
+    "support_a": [
+      {
+        "event": "payment_record",
+        "requestId": "PAY-255-LEGACY-A",
+        "ok": true,
+        "persisted.amount": 35000000.0,
+        "readback.finance.received": 35000000.0,
+        "readback.costAmount": null,
+        "has_provenance_key": false
+      },
+      {
+        "event": "cost_rate_save",
+        "requestId": "COST-255-LEGACY-A",
+        "ok": true,
+        "persisted.amount": null,
+        "readback.finance.received": null,
+        "readback.costAmount": 4250.0,
+        "has_provenance_key": false
+      }
+    ],
+    "support_b": [],
+    "sale": []
+  }
+}

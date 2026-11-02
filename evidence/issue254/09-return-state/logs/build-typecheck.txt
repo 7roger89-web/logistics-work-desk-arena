@@ -1,0 +1,19 @@
+
+> logi-shell-component@0.1.0 typecheck
+> tsc --noEmit
+
+TYPECHECK_EXIT=0
+
+> logi-shell-component@0.1.0 build
+> vite build
+
+vite v8.2.2 building client environment for production...
+transforming...
+✓ 1926 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/logi-shell.css     96.81 kB │ gzip:  18.84 kB
+dist/logi-shell.js   1,594.78 kB │ gzip: 342.13 kB
+
+✓ built in 1.70s
+BUILD_EXIT=0
