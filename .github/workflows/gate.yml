@@ -1,0 +1,43 @@
+name: gate
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: gate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  static:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r requirements-dev.txt
+      # Giai đoạn 1: chưa chặn, vì code cũ còn lỗi sẵn.
+      # Ticket sau khi dọn sạch sẽ bỏ continue-on-error.
+      - run: ruff check .
+        continue-on-error: true
+      - run: python scripts/check_router.py
+      - run: python scripts/check_config.py
+        continue-on-error: true
+
+  suite:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r requirements.txt -r requirements-dev.txt
+      - run: python -m pytest tests -q --continue-on-collection-errors --junitxml=out.xml
+        continue-on-error: true
+      - run: python scripts/compare_baseline.py out.xml
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: junit
+          path: out.xml

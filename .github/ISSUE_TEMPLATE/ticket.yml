@@ -1,0 +1,23 @@
+name: Ticket
+description: Một việc, một phiên
+body:
+  - type: textarea
+    id: viec
+    attributes:
+      label: Việc duy nhất
+      description: Một câu. Nếu có chữ "và" thì tách.
+    validations:
+      required: true
+  - type: textarea
+    id: bangchung
+    attributes:
+      label: Bằng chứng
+      description: Lấy gì để chứng minh xong
+    validations:
+      required: true
+  - type: textarea
+    id: khonglam
+    attributes:
+      label: Không làm gì
+    validations:
+      required: true
