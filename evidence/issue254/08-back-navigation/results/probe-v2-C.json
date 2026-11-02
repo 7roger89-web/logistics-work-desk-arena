@@ -1,0 +1,27 @@
+{
+  "baseUrl": "http://127.0.0.1:9521/",
+  "tag": "after",
+  "tests": {
+    "C": {
+      "tag": "after",
+      "detailOpened": true,
+      "history_before": 2,
+      "history_on_detail": 2,
+      "url_before": "http://127.0.0.1:9521/",
+      "url_on_detail": "http://127.0.0.1:9521/",
+      "url_after_back": "about:blank",
+      "shellPresent": false,
+      "blankPage": true,
+      "filter_after": null,
+      "qPreserved": false,
+      "verdict": "FAIL"
+    }
+  },
+  "browser": {
+    "version": "153.0.8010.0",
+    "executable": "/tmp/chromium"
+  },
+  "summary": {
+    "C": "FAIL"
+  }
+}

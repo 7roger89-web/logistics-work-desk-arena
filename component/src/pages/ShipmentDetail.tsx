@@ -1,8 +1,9 @@
 import { contractPath } from "../lib/contractRoute";
 import { shipmentIdFromPath } from "../lib/shipmentRoute";
+import { listReturnFromState } from "../lib/listReturn";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { ArrowRight, Building2, CheckCircle2, ChevronDown, CircleAlert, Download, Eye, FileText, Lock, MapPin, PenLine, Phone, Truck, Wallet, FileDown, FileSpreadsheet } from "lucide-react";
+import { ArrowLeft, ArrowRight, Building2, CheckCircle2, ChevronDown, CircleAlert, Download, Eye, FileText, Lock, MapPin, PenLine, Phone, Truck, Wallet, FileDown, FileSpreadsheet } from "lucide-react";
 import { Field, GhostBtn, MissingBox, PrimaryBtn, SearchPicker, SectionTitle, SheetDialog, StateRow, SuccessBtn, ToneBadge, inputCls } from "../components/ui";
 import ShipmentOperations from "../components/ShipmentOperations";
 import ShipmentExecutionProfile from "../components/ShipmentExecutionProfile";
@@ -118,8 +119,16 @@ export default function ShipmentDetail() {
   // stays the fallback for any location that is not this route. The adjacent
   // contract detail has used this same bounded mechanism since Issue #59.
   const { id: paramId } = useParams();
-  const { pathname } = useLocation();
+  const { pathname, state: locationState } = useLocation();
   const id = shipmentIdFromPath(pathname, paramId);
+  // LOGI-255-RETURN-TO-LIST — the list screen hands its exact location
+  // (q/status/period/from/to/archive) through router state. A direct entry
+  // (Home card, Inbox, Receivables, deep link) carries no such state and falls
+  // back to the plain list, so "return" can never land on a blank screen.
+  const listReturn = listReturnFromState(locationState);
+  const cameFromList = listReturn !== "/lo-hang" || Boolean(
+    locationState && typeof locationState === "object" && "listReturn" in (locationState as Record<string, unknown>)
+  );
   const [sp, setSp] = useSearchParams();
   const tab = sp.get("tab") || "van-tai";
   const { shipments, attention, updateShipment, toast, contracts, customers, dispatch, financeServices, environment } = useStore();
@@ -1460,6 +1469,25 @@ export default function ShipmentDetail() {
           </div>
         </div>
       </div>
+
+      {/* LOGI-255-RETURN-TO-LIST — ONE explicit way back to the list, carrying
+          the operator's exact filters. It sits on its own row so it stays
+          readable at 390x844 without competing with the identity bar's
+          right-hand actions. The label states what it preserves. */}
+      <div className="flex flex-wrap items-center gap-2" data-testid="shipment-back-row">
+        <Link
+          to={listReturn}
+          data-testid="shipment-back-to-list"
+          data-return-to={listReturn}
+          aria-label={cameFromList ? "Về danh sách lô, giữ nguyên bộ lọc" : "Về danh sách lô"}
+          className="btn-press touch-target inline-flex items-center gap-1.5 rounded-xl border-2 border-slate-200 bg-white px-3.5 min-h-[44px] text-[14px] font-bold text-[#0f2a4a] hover:border-[#1e5aa8]"
+        >
+          <ArrowLeft size={17} aria-hidden="true" /> Về danh sách lô
+        </Link>
+        {cameFromList && (
+          <span className="hidden sm:inline text-[12.5px] text-slate-500">giữ nguyên bộ lọc đang xem</span>
+        )}
+      </div>
         {/* OWNER_RUNTIME_UAT_REPAIR — the duplicated "HỒ SƠ THỰC HIỆN LÔ ·
             Hồ sơ lô còn thiếu…" yellow band is GONE from the top path: the
             "Hồ sơ thực hiện lô" section below already owns that configuration
@@ -2051,7 +2079,18 @@ export default function ShipmentDetail() {
       )}
 
       {/* ============ TAB: FINANCE ============ */}
-      {showExistingWork && tab === "tai-chinh" && (
+      {showExistingWork && tab === "tai-chinh" && s.finance.canView === false && (
+        <section
+          data-testid="finance-view-restricted"
+          className="rounded-2xl bg-white border border-slate-200 p-5 space-y-1.5"
+        >
+          <h3 className="font-extrabold text-[16px] text-[#0f2a4a]">Không có quyền xem Tài chính / Công nợ</h3>
+          <p className="text-[13.5px] text-slate-600">
+            Vai trò hiện tại không có quyền <code className="rounded bg-slate-100 px-1.5 py-0.5 text-[12px]">finance_view</code>; dữ liệu công nợ dịch vụ và lịch sử thu/chi đã được chặn từ server.
+          </p>
+        </section>
+      )}
+      {showExistingWork && tab === "tai-chinh" && s.finance.canView !== false && (
         <div className="space-y-4" id="missing-anchor">
           {/* 1 — DỊCH VỤ & CHI PHÍ THỰC TẾ: what Sale/Support really enter first. */}
           <FinanceActualEntry

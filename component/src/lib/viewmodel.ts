@@ -609,6 +609,8 @@ export interface PartnerFinance {
 }
 
 export interface Finance {
+  /** Issue #254 — server-side finance_view gate (false when actor lacks finance_view). */
+  canView?: boolean;
   quote: MoneyLine[];
   /** Booked actual service lines — the canonical editor rows, see above. */
   actual: FinanceActualLine[];
@@ -2463,7 +2465,7 @@ export interface UploadedTemplateShipmentState {
 export interface ViewModel {
   version: string;
   environment?: Environment;
-  user: { name: string; role: Role; username?: string; displayOnly?: boolean };
+  user: { name: string; role: Role; username?: string; canViewFinance?: boolean; displayOnly?: boolean };
   shipments: Shipment[];
   home?: Home;
   tasks: Task[];

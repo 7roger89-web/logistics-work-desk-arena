@@ -1,14 +1,16 @@
-import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { useMemo, useState, useSyncExternalStore } from "react";
+import { Link, useLocation } from "react-router-dom";
 import { shipmentPath } from "../lib/shipmentRoute";
 import { useQueryParam } from "../lib/queryParam";
+import { listReturnState, listReturnTarget } from "../lib/listReturn";
 import { Search, ArrowRight, Eye, SlidersHorizontal } from "lucide-react";
 import { SectionTitle, ToneBadge, StatusDot } from "../components/ui";
 import { ShipmentQuickFacts } from "../components/ShipmentQuickFacts";
+import { ShipmentFinanceSummary } from "../components/ShipmentFinanceSummary";
 import { useStore } from "../lib/store";
 import { cx } from "../lib/format";
 import { createdTs } from "../lib/costHistory";
-import type { Shipment } from "../lib/viewmodel";
+import { getViewModel, subscribeViewModel, type Shipment } from "../lib/viewmodel";
 import GetFlyImport from "../components/GetFlyImport";
 
 /**
@@ -58,6 +60,19 @@ export function periodBounds(period: PeriodId, now: Date, from: string, to: stri
 
 export default function Shipments() {
   const { shipments, attention } = useStore();
+  const vm = useSyncExternalStore(subscribeViewModel, getViewModel, getViewModel);
+  const canViewFinance =
+    vm?.user?.canViewFinance !== false &&
+    shipments.every((s) => s.finance?.canView !== false);
+  // LOGI-255-RETURN-TO-LIST — the shell is a MemoryRouter, so opening a record
+  // creates no history entry: the browser Back button cannot bring the operator
+  // back to this filtered list. The list therefore hands its OWN location
+  // (q/status/period/from/to/archive all live in the search params) to the
+  // detail screen through router state, which shows one explicit
+  // "Về danh sách lô" control that returns exactly here.
+  const listLocation = useLocation();
+  const listReturn = listReturnTarget(listLocation.pathname, listLocation.search);
+  const detailState = listReturnState(listReturn);
   // LOGI_FRONTEND_WORKFLOW_OVERHAUL_01 — query/status live in the route's own
   // search params: lọc → mở lô → Quay lại restores the exact list context.
   const [q, setQ] = useQueryParam("q");
@@ -224,29 +239,33 @@ export default function Shipments() {
           `transportLegs` are already on the row the backend projected once
           (EXECUTION_PROFILE_BUILDS_PER_ROW=1, PRIMARY_LIST_DB_READS_ADDED=0). */}
       <div className="hidden md:block rounded-2xl bg-white border border-slate-200 overflow-hidden">
-        <div className="overflow-x-auto"><table className="tbl w-full text-[14px] min-w-[1000px]">
-          <thead><tr><th>Lô · Khách hàng · Tuyến</th><th>Nhận dạng nhanh</th><th>Việc tiếp theo</th><th>Trách nhiệm</th><th>Hành động</th></tr></thead>
+        <div className="overflow-x-auto"><table className="tbl w-full text-[13.5px] [&_th]:px-2.5 [&_td]:px-2.5">
+          <thead><tr><th>Lô · Khách hàng · Tuyến</th><th>Nhận dạng nhanh</th>{canViewFinance && <th data-testid="shipments-finance-header">Công nợ dịch vụ</th>}<th>Việc tiếp theo</th><th>Trách nhiệm</th><th>Hành động</th></tr></thead>
           <tbody>
             {list.map((s) => (
               <tr key={s.id} data-testid="shipment-row" data-shipment-id={s.id} className="hover:bg-slate-50 align-top">
                 {/* 1 — IDENTITY: what this lot is and where it stands. */}
-                <td className="max-w-[300px]">
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <Link to={shipmentPath(s.id)} className="font-extrabold text-[#1e5aa8] hover:underline text-[15px]">{s.id}</Link>
-                    <ToneBadge tone={s.statusTone} size="sm">{s.status}</ToneBadge>
+                <td className="max-w-[205px]">
+                  <div className="max-w-[195px]">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <Link to={shipmentPath(s.id)} state={detailState} className="font-extrabold text-[#1e5aa8] hover:underline text-[15px]">{s.id}</Link>
+                      <ToneBadge tone={s.statusTone} size="sm">{s.status}</ToneBadge>
+                    </div>
+                    <span className="block text-[13.5px] font-semibold text-slate-800 mt-1">{s.customer}</span>
+                    <span className="block text-[12px] text-slate-500 mt-0.5">{s.route}</span>
+                    <span className="block text-[11.5px] text-slate-400 mt-0.5">{s.contract} · cập nhật {s.updated}</span>
                   </div>
-                  <span className="block text-[14px] font-semibold text-slate-800 mt-1 max-w-[280px]">{s.customer}</span>
-                  <span className="block text-[12.5px] text-slate-500 mt-0.5">{s.route}</span>
-                  <span className="block text-[12px] text-slate-400 mt-0.5">{s.contract} · cập nhật {s.updated}</span>
                 </td>
                 {/* 2 — QUICK FACTS (missing facts stay visible as amber "—"). */}
-                <td className="max-w-[320px]"><ShipmentQuickFacts shipment={s} dense /></td>
-                {/* 3 — the ONE primary action the backend composed (s.nextAction). */}
-                <td className="max-w-[240px]" data-attention-band={alertByShipment.get(s.id)?.band || undefined}>{nextActionCell(s)}</td>
-                {/* 4 — responsibility: `support` is `updated_by`, labelled truthfully. */}
-                <td className="text-[13px] whitespace-nowrap"><span className="block">Phụ trách: <b>{s.sale}</b></span><span className="block whitespace-nowrap text-slate-500">Cập nhật bởi: <b>{s.support || "—"}</b></span></td>
-                {/* 5 — actions: the same XỬ LÝ route and the same 360° entry. */}
-                <td><div className="flex gap-1.5"><Link to={s.nextRoute} className="btn-press touch-target inline-flex items-center rounded-lg bg-[#0f2a4a] text-white text-[13px] font-bold px-3.5 min-h-[44px]">XỬ LÝ</Link><Link to={shipmentPath(s.id)} className="btn-press touch-target inline-flex items-center gap-1 rounded-lg border-2 border-slate-200 text-[13px] font-bold px-3 min-h-[44px]"><Eye size={15} /> 360°</Link></div></td>
+                <td className="max-w-[195px]"><div className="max-w-[185px]"><ShipmentQuickFacts shipment={s} dense /></div></td>
+                {/* 3 — SERVICE DEBT AT A GLANCE (Issue #254, finance_view only). */}
+                {canViewFinance && <td className="w-[188px]"><ShipmentFinanceSummary shipment={s} variant="desktop" listReturn={listReturn} /></td>}
+                {/* 4 — the ONE primary action the backend composed (s.nextAction). */}
+                <td className="max-w-[190px]" data-attention-band={alertByShipment.get(s.id)?.band || undefined}><div className="max-w-[180px]">{nextActionCell(s)}</div></td>
+                {/* 5 — responsibility: `support` is `updated_by`, labelled truthfully. */}
+                <td className="text-[12px] leading-snug"><div className="max-w-[138px]"><span className="block">Phụ trách: <b>{s.sale}</b></span><span className="block text-slate-500 mt-0.5">Cập nhật bởi: <b>{s.support || "—"}</b></span></div></td>
+                {/* 6 — actions: the same XỬ LÝ route and the same 360° entry. */}
+                <td className="whitespace-nowrap"><div className="flex gap-1"><Link to={s.nextRoute} state={detailState} className="btn-press touch-target inline-flex items-center rounded-lg bg-[#0f2a4a] text-white text-[12.5px] font-bold px-2.5 min-h-[44px]">XỬ LÝ</Link><Link to={shipmentPath(s.id)} state={detailState} className="btn-press touch-target inline-flex items-center gap-1 rounded-lg border-2 border-slate-200 text-[12.5px] font-bold px-2 min-h-[44px]"><Eye size={14} /> 360°</Link></div></td>
               </tr>
             ))}
           </tbody>
@@ -268,6 +287,7 @@ export default function Shipments() {
                   on the card itself, wrapping inside the card width: no horizontal
                   overflow, and no need to open the lot to read it. */}
               <div className="mt-2.5"><ShipmentQuickFacts shipment={s} dense /></div>
+              {canViewFinance && <ShipmentFinanceSummary shipment={s} variant="mobile" listReturn={listReturn} />}
               <div className="mt-2.5 rounded-xl border border-slate-200 bg-slate-50 p-3" data-attention-band={alertByShipment.get(s.id)?.band || undefined}>
                 <p className="text-[11.5px] font-bold uppercase tracking-wide text-slate-500">Việc tiếp theo</p>
                 <div className="mt-1">{nextActionCell(s)}</div>
@@ -275,8 +295,8 @@ export default function Shipments() {
               <p className="text-[12.5px] text-slate-400 mt-2">Phụ trách <b className="text-slate-600">{s.sale}</b> · cập nhật bởi {s.support || "—"} · {s.updated}</p>
             </div>
             <div className="grid grid-cols-2 border-t">
-              <Link to={s.nextRoute} className="touch-target flex items-center justify-center gap-1.5 bg-[#0f2a4a] text-white font-extrabold text-[15px] min-h-[52px]">XỬ LÝ <ArrowRight size={17} /></Link>
-              <Link to={shipmentPath(s.id)} className="touch-target flex items-center justify-center gap-1.5 font-bold text-[15px] text-[#0f2a4a] min-h-[52px]"><Eye size={17} /> XEM 360°</Link>
+              <Link to={s.nextRoute} state={detailState} className="touch-target flex items-center justify-center gap-1.5 bg-[#0f2a4a] text-white font-extrabold text-[15px] min-h-[52px]">XỬ LÝ <ArrowRight size={17} /></Link>
+              <Link to={shipmentPath(s.id)} state={detailState} className="touch-target flex items-center justify-center gap-1.5 font-bold text-[15px] text-[#0f2a4a] min-h-[52px]"><Eye size={17} /> XEM 360°</Link>
             </div>
           </div>
         ))}

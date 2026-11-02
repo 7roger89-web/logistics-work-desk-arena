@@ -1,0 +1,166 @@
+{
+  "observed_ns": 1793508621645917531,
+  "user": {
+    "name": "qa.s254.sale",
+    "role": "SALE",
+    "username": "qa.s254.sale",
+    "canViewFinance": false,
+    "displayOnly": true
+  },
+  "finance_view_permission": false,
+  "home_outstanding_total": null,
+  "home_outstanding_count": 0,
+  "receivables_count": 0,
+  "payables_count": 0,
+  "reconciliation_count": 0,
+  "shipments_finance": {
+    "LO-0308": {
+      "canView": false,
+      "quote": [
+        {
+          "label": "Cước vận chuyển trọn gói",
+          "amount": 28450000.0,
+          "ccy": "VND",
+          "kind": "quote"
+        }
+      ],
+      "actual": [],
+      "currency": "VND",
+      "hasActualLines": false,
+      "receivable": null,
+      "received": null,
+      "receivableNet": null,
+      "outputVat": null,
+      "outstanding": null,
+      "payable": null,
+      "paid": null,
+      "commission": null,
+      "profit": null,
+      "profitMargin": null,
+      "payments": [],
+      "partner": {
+        "partnerId": null,
+        "partnerName": null,
+        "suggested": false,
+        "status": "RESTRICTED",
+        "payable": null,
+        "paid": null,
+        "remaining": null,
+        "currency": null,
+        "payments": []
+      },
+      "source": "restricted:finance_view"
+    },
+    "LO-254-CNY": {
+      "canView": false,
+      "quote": [
+        {
+          "label": "Cước vận chuyển trọn gói",
+          "amount": 28450000.0,
+          "ccy": "VND",
+          "kind": "quote"
+        }
+      ],
+      "actual": [],
+      "currency": "CNY",
+      "hasActualLines": false,
+      "receivable": null,
+      "received": null,
+      "receivableNet": null,
+      "outputVat": null,
+      "outstanding": null,
+      "payable": null,
+      "paid": null,
+      "commission": null,
+      "profit": null,
+      "profitMargin": null,
+      "payments": [],
+      "partner": {
+        "partnerId": null,
+        "partnerName": null,
+        "suggested": false,
+        "status": "RESTRICTED",
+        "payable": null,
+        "paid": null,
+        "remaining": null,
+        "currency": null,
+        "payments": []
+      },
+      "source": "restricted:finance_view"
+    },
+    "LO-254-QUOTE": {
+      "canView": false,
+      "quote": [
+        {
+          "label": "Cước vận chuyển trọn gói",
+          "amount": 28450000.0,
+          "ccy": "VND",
+          "kind": "quote"
+        }
+      ],
+      "actual": [],
+      "currency": "VND",
+      "hasActualLines": false,
+      "receivable": null,
+      "received": null,
+      "receivableNet": null,
+      "outputVat": null,
+      "outstanding": null,
+      "payable": null,
+      "paid": null,
+      "commission": null,
+      "profit": null,
+      "profitMargin": null,
+      "payments": [],
+      "partner": {
+        "partnerId": null,
+        "partnerName": null,
+        "suggested": false,
+        "status": "RESTRICTED",
+        "payable": null,
+        "paid": null,
+        "remaining": null,
+        "currency": null,
+        "payments": []
+      },
+      "source": "restricted:finance_view"
+    },
+    "LO-254-USD": {
+      "canView": false,
+      "quote": [
+        {
+          "label": "Cước vận chuyển trọn gói",
+          "amount": 28450000.0,
+          "ccy": "VND",
+          "kind": "quote"
+        }
+      ],
+      "actual": [],
+      "currency": "USD",
+      "hasActualLines": false,
+      "receivable": null,
+      "received": null,
+      "receivableNet": null,
+      "outputVat": null,
+      "outstanding": null,
+      "payable": null,
+      "paid": null,
+      "commission": null,
+      "profit": null,
+      "profitMargin": null,
+      "payments": [],
+      "partner": {
+        "partnerId": null,
+        "partnerName": null,
+        "suggested": false,
+        "status": "RESTRICTED",
+        "payable": null,
+        "paid": null,
+        "remaining": null,
+        "currency": null,
+        "payments": []
+      },
+      "source": "restricted:finance_view"
+    }
+  }
+}

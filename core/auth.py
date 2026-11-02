@@ -122,22 +122,31 @@ ROLE_PERMISSIONS: dict[str, set[str]] = {
 
 
 def _role_permissions(role: str) -> set[str]:
-    normalized = str(role or "viewer").lower()
-    return ROLE_PERMISSIONS.get(normalized, ROLE_PERMISSIONS["viewer"])
+    normalized = str(role or "").strip().lower()
+    if not normalized:
+        return set()
+    return ROLE_PERMISSIONS.get(normalized, set())
 
 
 def has_permission(permission: str) -> bool:
     """Kiểm tra quyền của người dùng hiện tại trong session."""
     user = current_user()
-    role = str(user.get("role", "viewer")).lower()
-    permissions = _role_permissions(role)
+    if user.get("username"):
+        raw_role = user.get("role")
+        role = raw_role.strip().lower() if isinstance(raw_role, str) else ""
+        if not role or role not in ROLE_PERMISSIONS:
+            return False
+        permissions = ROLE_PERMISSIONS[role]
+        return "*" in permissions or permission in permissions
+
+    raw_role = user.get("role")
+    fallback_role = raw_role.strip().lower() if isinstance(raw_role, str) and raw_role.strip() else "viewer"
+    permissions = ROLE_PERMISSIONS.get(fallback_role, ROLE_PERMISSIONS["viewer"])
     if "*" in permissions:
         return True
     if permission in permissions:
         return True
-    if not user.get("username"):
-        return permission in _role_permissions("anonymous")
-    return False
+    return permission in _role_permissions("anonymous")
 
 
 def has_write_permission(permission: str) -> bool:
@@ -707,11 +716,15 @@ def _complete_bootstrap(
 
 
 def logout() -> None:
-    for key in ("current_user",):
+    for key in ("current_user", "logi_last_writes"):
         try:
             st.session_state.pop(key, None)  # type: ignore[attr-defined]
         except Exception:
             pass
+    # LOGI-255 — ket qua ghi tien cu cua actor khong duoc ke thua boi actor
+    # moi (dang nhap lai / doi role) cung session: xoa LAST_WRITES_KEY cung
+    # voi current_user. (Key cung duoc bo loc tai build_view_model theo
+    # finance_view; xoa o day la tien che trung lap.)
     # Rotation for logout in same session: next login visit prefers a
     # different image from the one just shown.
     try:

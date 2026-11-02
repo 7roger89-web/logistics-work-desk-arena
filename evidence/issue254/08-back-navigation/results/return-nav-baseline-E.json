@@ -1,0 +1,34 @@
+{
+  "baseUrl": "http://127.0.0.1:9517/",
+  "tag": "baseline",
+  "tests": {
+    "E": {
+      "desktop": {
+        "viewport": 1440,
+        "opened": true,
+        "backControl": {
+          "present": false
+        },
+        "docOverflowPx": 0,
+        "rootOverflowPx": 0
+      },
+      "mobile": {
+        "viewport": 390,
+        "opened": false,
+        "backControl": {
+          "present": false
+        },
+        "docOverflowPx": 0,
+        "rootOverflowPx": 0
+      },
+      "verdict": "FAIL"
+    }
+  },
+  "browser": {
+    "version": "153.0.8010.0",
+    "executable": "/tmp/chromium"
+  },
+  "summary": {
+    "E": "FAIL"
+  }
+}

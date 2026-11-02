@@ -1,0 +1,17 @@
+{
+  "task_id": "LOGI-254-REVIEW-CLOSURE-20261101",
+  "code_head": "e325d4d722010cd71bd382dcd315ed985b5cfcb4",
+  "collect_command": ".venv/bin/python -m pytest tests --collect-only -q -p no:cacheprovider",
+  "collect_exit_code": 0,
+  "collected_count": 2410,
+  "pytest_command": ".venv/bin/python -m pytest tests -q -rs -p no:cacheprovider",
+  "pytest_exit_code": 0,
+  "junit_testcases": 2410,
+  "passed_count": 2366,
+  "skipped_count": 44,
+  "failed_count": 0,
+  "error_count": 0,
+  "failed_ids": [],
+  "error_ids": [],
+  "summary_line": "2366 passed, 44 skipped, 7 warnings, 10 subtests passed in 165.25s (0:02:45)"
+}
