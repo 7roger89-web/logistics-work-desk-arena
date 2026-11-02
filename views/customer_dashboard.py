@@ -388,6 +388,51 @@ def render_owner_portal_access_control(
     _render_admin_publication_control(user, key_prefix=key_prefix, db=db)
 
 
+def _render_pending_source_verification(
+    pending: list[dict[str, str]], *, customer_id: str, shipment_id: str, role: str,
+    user: Mapping[str, Any], database: Any, key_prefix: str,
+) -> None:
+    """Admin verifies ONE exact staff-written source (id + version + content)."""
+    from core import customer_portal_publish as publisher
+
+    if not pending:
+        return
+    st.markdown("**Nguồn chờ xác minh do nhân viên ghi nhận**")
+    for item in pending:
+        withdrawn = item.get("state") == "WITHDRAWN"
+        label = item.get("title") or "(chưa đủ dữ liệu)"
+        st.caption(
+            f"{label} · {item.get('stage') or '—'} · {item.get('occurred_at') or '—'} · "
+            f"{item['id']} / {item['version']} · ghi lúc {item.get('recorded_at') or '—'}"
+            + (f" bởi {item['recorded_by']}" if item.get("recorded_by") else "")
+        )
+        if withdrawn:
+            st.info("Nguồn này đã bị gỡ ở bản ghi nghiệp vụ. Không thể xác minh.")
+            continue
+        base_key = f"{key_prefix}_verify_{customer_id}_{shipment_id}_{item['id']}_{item['version']}"
+        cols = st.columns([3, 1])
+        confirmed = cols[0].checkbox(
+            "Tôi đã đối chiếu nguồn này với dữ liệu vận hành của lô.",
+            key=f"{base_key}_confirm",
+        )
+        if cols[1].button("Xác minh nguồn", key=base_key, disabled=not confirmed):
+            try:
+                success, message = publisher.verify_source(
+                    item["id"], item["version"],
+                    customer_id=customer_id, shipment_id=shipment_id,
+                    actor_role=role, actor_username=str(user.get("username") or ""),
+                    db=database,
+                )
+            except publisher.PublicationWriteDenied as exc:
+                st.error(str(exc))
+                continue
+            if success:
+                st.success(message)
+                st.rerun()
+            else:
+                st.error(message)
+
+
 def _render_admin_publication_control(
     user: Mapping[str, Any], *, key_prefix: str, db: Any = None,
 ) -> None:
@@ -433,12 +478,23 @@ def _render_admin_publication_control(
             candidates = publisher.list_verified_sources(
                 customer_id, shipment_id, actor_role=role, db=database,
             )
+            pending = publisher.list_pending_sources(
+                customer_id, shipment_id, actor_role=role, db=database,
+            )
         except (portal.PortalDataError, publisher.PublicationWriteDenied):
             st.error("Không đọc được danh sách công bố hợp lệ. Chưa có dữ liệu nào được thay đổi.")
             return
         except Exception:  # noqa: BLE001 - no internal source detail in UI
             st.error("Không tải được nguồn công bố. Vui lòng thử lại.")
             return
+
+        # Issue #263 — a staff update writes an UNVERIFIED source. It must be
+        # verifiable here, on this same Admin screen, before it can ever appear
+        # in the list below (which only reads already verified versions).
+        _render_pending_source_verification(
+            pending, customer_id=customer_id, shipment_id=shipment_id, role=role,
+            user=user, database=database, key_prefix=key_prefix,
+        )
 
         event_options = {str(i): item for i, item in enumerate(candidates["events"])}
         document_options = {str(i): item for i, item in enumerate(candidates["documents"])}

@@ -1,0 +1,19 @@
+SKIPPED [1] tests/test_journey_fresh_parity_188.py:112: component dev dependencies not installed (run npm ci in component/)
+SKIPPED [1] tests/test_lg05_excel_roundtrip_gnt.py:134: Owner's Excel file not present in test environment
+SKIPPED [1] tests/test_lg05_excel_roundtrip_gnt.py:140: Owner's Excel file not present in test environment
+SKIPPED [1] tests/test_lg05_excel_roundtrip_gnt.py:146: Owner's Excel file not present in test environment
+SKIPPED [1] tests/test_lg05_excel_roundtrip_gnt.py:153: Owner's Excel file not present in test environment
+SKIPPED [1] tests/test_lg05_excel_roundtrip_gnt.py:161: Owner's Excel file not present in test environment
+SKIPPED [1] tests/test_lg05_excel_roundtrip_gnt.py:202: Owner's Excel file not present in test environment
+SKIPPED [1] tests/test_log_docgen_01.py:406: Template assets not present
+SKIPPED [1] tests/test_log_docgen_01.py:414: Template assets not present
+SKIPPED [1] tests/test_log_docgen_01.py:427: Template assets not present
+SKIPPED [1] tests/test_log_docgen_01.py:439: Template assets not present
+SKIPPED [1] tests/test_log_docgen_01.py:465: Template assets not present
+SKIPPED [1] tests/test_log_docgen_01.py:475: Template assets not present
+SKIPPED [1] tests/test_log_docgen_01.py:524: Requires local templates
+SKIPPED [1] tests/test_log_docgen_01.py:604: no assets
+SKIPPED [1] tests/test_log_docgen_01.py:611: no assets
+SKIPPED [1] tests/test_log_docgen_01.py:617: no assets
+SKIPPED [21] ../../../tmp/venv/lib/python3.11/site-packages/_pytest/unittest.py:521: Historical source workbook is unavailable: D:\Copy of TOYS-2025 - Copy.xls
+SKIPPED [7] ../../../tmp/venv/lib/python3.11/site-packages/_pytest/unittest.py:521: set LOG_C02_RUN_MONGO_FIXTURES=1 for isolated Mongo proof
