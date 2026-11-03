@@ -4,8 +4,11 @@ bước 1 thì dừng, hỏi lại, không tự đoán. Một phiên một ticke
 CI thì chưa được coi là xong. Đọc docs/PROCESS.md trước khi bắt đầu.
 
 ## Đọc gì trước
-Đọc hết file này là đủ. Có .p2p/portable/P2P-OPERATIONS-NOTEBOOK.md thì đọc
-thêm, thiếu nó KHÔNG được dừng việc. In LAW_SOURCE=<file|NONE> ở đầu task.
+Đọc `AGENTS.md`, `docs/PROCESS.md` và Luật Tối Thượng P2P hợp lệ trước khi
+làm việc thực chất. Ưu tiên nguồn canonical đang truy cập được; nếu không,
+dùng bản portable `.p2p/portable/P2P-OPERATIONS-NOTEBOOK.md` còn hiệu lực.
+Không có nguồn luật hợp lệ thì dừng. Báo `LAW_CHECK` với nguồn đã thực đọc;
+không dùng trí nhớ hoặc bản portable đã lỗi thời để thay luật.
 
 ## Luật nhánh
 Một task một nhánh, tên task/<số-issue>-<mô-tả>. Nhánh quá 30 ngày chưa gộp
@@ -37,9 +40,15 @@ logistics_db. Không in URI, khóa, mật khẩu. Không thêm thư viện khi t
 hiện có làm được. Không đổi stack.
 
 ## Skill
-Skill có sẵn của repo trong .agents/skills/: security-audit,
-frontend-code-review, react-doctor, qa, debugging, p2p-uiux,
-scope-reality-check. Chọn tối đa 3, đúng việc.
+Skill có sẵn trong `.agents/skills/`: security-audit, frontend-code-review,
+react-doctor, qa, debugging, p2p-uiux, scope-reality-check, p2p-karpathy.
+Chọn tối đa 3 skill phù hợp cho mỗi task, không tải hết các skill.
+Khi triển khai, sửa lỗi hoặc refactor code: đọc và áp dụng
+`.agents/skills/p2p-karpathy/SKILL.md` trước khi sửa; kiểm SHA-256 trong
+`.p2p/portable/P2P-SKILL-PROJECTION.json`. Skill này chiếm một trong ba suất.
+Nếu xung đột kỹ năng bắt buộc hoặc yêu cầu bảo mật/quyền Owner, ưu tiên luật
+và phạm vi task; ghi rõ lý do thay thế. Không ép skill code cho task chỉ viết
+tài liệu hoặc nghiên cứu. Không đọc skill thay cho đọc Luật Tối Thượng.
 Skill ngoài đã cài, gọi thẳng tên, KHÔNG thuộc danh sách P2P: grill-me,
 diagnosing-bugs, tdd, code-review, developing-with-streamlit, webapp-testing.
 Cài thêm phải báo Owner. Không cài gói lớn.
