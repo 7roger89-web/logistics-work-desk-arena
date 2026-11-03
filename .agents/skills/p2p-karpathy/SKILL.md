@@ -24,10 +24,12 @@ description: >-
 ## 1. Before coding: establish the small real goal
 
 1. State the requested outcome and an **observable acceptance check** in one or two sentences. Prefer behavior and invariants over vague requests like "clean it up".
-2. Inspect the relevant current code, callers/contracts, and focused tests. Find whether the repo already has a suitable pattern or helper before inventing another.
+2. Inspect the relevant current code, callers/contracts, and focused tests. Find whether the repo already has a suitable pattern or helper before inventing another. **Before editing unfamiliar or surprising code**, first answer a focused *read-only codebase question*: what calls it, which invariant does it protect, and why does it have this shape? If intent remains unclear, inspect targeted `git blame`, `git log`/`git log -L`, and relevant commit/PR history **when available**. Ground the explanation in code or commit evidence, mark unknown intent `UNKNOWN`, and do not treat odd-looking code as permission to refactor.
 3. Separate **known facts**, **material assumptions**, and **unverified claims**. Resolve uncertainty using local evidence first. For a non-blocking detail, choose a reversible assumption, mention it briefly, and proceed. Ask only when ambiguity changes correctness, permissions, security, cost, or the approved contract.
 4. Prefer the simplest existing valid route. When an added abstraction, dependency, broad refactor, or support service is proposed, apply the project's existing anti-overengineering decision gate; do not invent a second gate.
 5. For multi-step or high-risk changes, use a brief step-to-check plan. Do not require planning ceremony for a trivial, reversible edit.
+
+**Pre-edit decision for non-trivial changes:** In a few lines, identify the relevant code path, the supported root-cause hypothesis or constraint (`UNKNOWN` when unproven), and the smallest fix plus its check. This is an executor self-check, not a new approval gate, mandatory report, or full-repository archaeology. For an obvious local edit, a targeted source/contract read is enough.
 
 ## 2. While coding: change the minimum necessary surface
 
