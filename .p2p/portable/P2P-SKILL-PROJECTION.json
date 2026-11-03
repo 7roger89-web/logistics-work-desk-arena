@@ -23,7 +23,7 @@
     ".agents/skills/p2p-idea/agents/openai.yaml": "6c2a587cfa886aaaee7a6ac387368fe2a627a820e6623fc21457b22a904f2b61",
     ".agents/skills/p2p-idea/assets/icon.svg": "e9301497fa98ef56aaca7ede0857b9a18dc06c34040f0679c609a6bf49b1d38b",
     ".agents/skills/p2p-idea/references/idea-compass.md": "630ef877dbca4fbd6d0139aa20ead6d01af197b8a26430d6e0226e2833f4404e",
-    ".agents/skills/p2p-karpathy/SKILL.md": "7a013aa784893dd4564193e8589e9d6bc6c11269c5e075c98ed68d429115a854",
+    ".agents/skills/p2p-karpathy/SKILL.md": "cbe1b4c9082f0e253c75df20a9ca06ba3a4cc414ae1153c8b5a0fa3c03059ecd",
     ".agents/skills/p2p-karpathy/agents/openai.yaml": "801af0f55587dfdc45be4a0f8b1eb29c0b05f92e4f5964c0a32bcd572fa3cfd0",
     ".agents/skills/p2p-metrics/SKILL.md": "e076d0e9e1c372e35f34b27ebcf0d5d74edf9de3107d38bc318d78fb03145ebd",
     ".agents/skills/p2p-metrics/agents/openai.yaml": "9e5ae6d56c6a43d3568e5be3c5f3d236ee55c74cde42af9e33bf32b3d2373198",
