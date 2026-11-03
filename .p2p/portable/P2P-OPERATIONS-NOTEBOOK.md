@@ -2,9 +2,9 @@
 P2P_PORTABLE_LAW_PROJECTION=YES
 SCHEMA=p2p-portable-law-projection/1
 CANONICAL_SOURCE=7roger89-web/P2P-upgrade-github-1@main:docs/p2p-development/P2P-OPERATIONS-NOTEBOOK.md
-SOURCE_CONTENT_SHA256=11ce33bb9c514d32ad3aec3eb7d8b40f0d0290b1dbe79eaa15751ef34668bd4b
+SOURCE_CONTENT_SHA256=84914abd55960d6a5effad957ff9ebbdf917f632c8b18baa3a29c74a5d6ae4a7
 PORTABLE_EXPERIENCE_CONTENT_SHA256=9b10fafe780e47bc82da89d6893d1a88a32c06031dfd7cfb63effc89926cce82
-PORTABLE_SKILL_MANIFEST_SHA256=f74353e4fca11635b43066e24ebff318efae77fedb4b0498f0ac27c386af51ca
+PORTABLE_SKILL_MANIFEST_SHA256=a2d4a837d015a8cde3abc6d9008516406cf452d55446845fd0ec9094c03621e3
 PACKAGE_VERSION=8.4.7-C-codex.74
 PROJECTION_DO_NOT_EDIT=YES
 CANONICAL_WINS_WHEN_REACHABLE=YES
@@ -392,6 +392,20 @@ MATCHED_SKILL_SET => SOURCE_BOUND_SKILL_HANDOFF
 NO_MATCH => SKILL_CHECK=NO_MATCH
 MAX_SELECTED_SKILLS=3
 ```
+
+**Karpathy coding-skill default (Owner-directed).** For P2P-managed tasks
+that implement, fix, or refactor code, select and actually read the verified
+repo-local `.agents/skills/p2p-karpathy/SKILL.md` **before code edits** when
+available. This applies to direct executors as well as delegated prompts.
+Treat `p2p-karpathy` as one of the existing maximum three selected skills,
+paired with at most two necessary specialist skills; reuse the normal
+source-path/SHA-256 consumption receipt and routing, with no new preflight,
+registry, or second authority. Explicit higher-priority Owner skill selections
+and mandatory security/task contracts win if three slots conflict; record the
+reason if `p2p-karpathy` is displaced. When it is explicitly required, a
+missing, unreadable, or hash-mismatched file blocks execution under the
+existing fail-closed rule. Do not force this coding skill on documentation-only,
+research-only, or read-only review work unless explicitly requested.
 
 Before ChatGPT, Control Tower, or any other P2P prompt writer emits an
 operational prompt that delegates repository work to Arena, Codex, Manus,
