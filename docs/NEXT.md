@@ -130,7 +130,7 @@ Mỗi phiên append một entry mới ở cuối mục này. Không có entry = 
   - Đo được: regression mới 7 FAILED trước fix / 13 PASS sau fix; focused finance/customs/GNT 171 passed, 7 skipped; full suite 1963 passed, 44 skipped, 10 subtests passed, 17 failed (0 mới so với base 24 failed); ruff sạch trên file đổi, 7 lỗi pre-existing không mới; router PASS.
   - Bị bác bỏ: "importInfo.tax/vat là customs facts nên giữ cho Sale" — BÁC BỎ (không có quyền customs_view; tiền thuế thật theo lô); "test 1 sentinel là đủ" — BÁC BỎ (test xanh trong khi duty/VAT vẫn rò).
   - Còn lại: re-review độc lập của diff đã sửa + Owner quyết định merge; browser UAT là cổng visual; follow-up riêng: F-4 boolean oracles, F-5 bank authority, C1 quotes cost/margin, echo-None field save (xem ACCEPTANCE.md §5/§8).
-  - Head sha: fb5d179 (branch task/LOGI-SEC-FINANCE-PAYLOAD-20261105, chưa merge).
+  - Head sha: 4af884b (commit sửa chính của phiên; branch task/LOGI-SEC-FINANCE-PAYLOAD-20261105, chưa merge).
 
 - [2026-11-05] SESSION LOGI-SEC-FINANCE-PAYLOAD-20261105 — Sale finance payload redaction (bounded security fix)
   - BASE_SHA: b0a6734af5c3ecc207530c67d185f2c366a04e8f
