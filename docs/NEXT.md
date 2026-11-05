@@ -130,7 +130,7 @@ Mỗi phiên append một entry mới ở cuối mục này. Không có entry = 
   - Đo được: regression mới 7 FAILED trước fix / 9 PASS sau fix (2 passed trước fix là test UI-shape và echo, không phụ thuộc gate mới); focused 107 passed; full suite 1972 passed, 44 skipped, 10 subtests passed, 17 failed (0 mới so với base 24 failed, so sánh tập hợp chính xác); ruff sạch trên file đổi, 7 lỗi pre-existing không mới; router PASS.
   - Bị bác bỏ: "finance.quote=[] là đủ để PASS" — BÁC BỎ (phép thử phân biệt đặt sentinel riêng vào C1 quote, agreement margin, excelQuote.source_costs và XLSX); "echo import_duty_amount:null gây mất dữ liệu trong luồng UI" — BÁC BỎ (form customs chỉ gửi khi operator gõ vào field, ShipmentDetail.tsx:164,547; API-level explicit null vẫn ghi đè theo thiết kế, write policy không đổi).
   - Còn lại: re-review độc lập của diff đã sửa + Owner quyết định merge; follow-up riêng (policy UNKNOWN, không chặn): supplier rates qua costIntelligence, contract values qua model["contracts"], contract docgen documents trong lastWrites; F-4 boolean oracles, F-5 bank authority (xem ACCEPTANCE.md §5/§9).
-  - Head sha: TBD (cập nhật sau commit; branch task/LOGI-SEC-FINANCE-PAYLOAD-20261105, chưa merge).
+  - Head sha: 241c4f2 (commit sửa chính của phiên; branch task/LOGI-SEC-FINANCE-PAYLOAD-20261105, chưa merge).
 
 - [2026-11-05] SESSION LOGI-SEC-FINANCE-PAYLOAD-20261105-CORRECTION — Sửa tối thiểu sau review độc lập REJECT (PR #269, cùng branch)
   - BASE_SHA: b0a6734af5c3ecc207530c67d185f2c366a04e8f
