@@ -675,22 +675,74 @@ def _last_writes_readback() -> list[dict[str, Any]]:
     rows = st.session_state.get(LAST_WRITES_KEY) or []
     out = [dict(row) for row in rows if isinstance(row, Mapping)]
     # LOGI-SEC-FINANCE-PAYLOAD-20261105 — a write outcome's readback is a full
-    # shipment projection, so a finance outcome recorded under a previous
-    # role would replay restricted figures to the downgraded actor. Redact
-    # the finance block AND the sibling importInfo tax/VAT at this payload
-    # boundary; the outcome itself (event / ok / error) is still delivered.
-    if _can_view_finance():
+    # projection (shipment, quote or agreement), so a finance/commercial
+    # outcome recorded under a previous role would replay restricted figures
+    # to the downgraded actor. The gates are evaluated INDEPENDENTLY: an
+    # actor can hold finance_view without commercial_view (accounting) or
+    # commercial_view without commercial_write (viewer, legacy sales), and
+    # each missing grant redacts only its own data. The outcome itself
+    # (event / requestId / ok / error) is always delivered; only the
+    # restricted figures and downloadable bytes are removed.
+    can_finance = _can_view_finance()
+    can_commercial = _can_view_commercial()
+    can_write_commercial = _can_view_commercial_write()
+    if can_finance and can_commercial and can_write_commercial:
         return out
     for row in out:
+        event = str(row.get("event") or "")
         readback = row.get("readback")
-        if not isinstance(readback, Mapping):
-            continue
-        redacted = dict(readback)
-        if isinstance(redacted.get("finance"), Mapping):
-            redacted["finance"] = _restricted_finance(redacted["finance"])
-        if isinstance(redacted.get("importInfo"), Mapping):
-            redacted["importInfo"] = _restricted_import_info(redacted["importInfo"])
-        row["readback"] = redacted
+        if isinstance(readback, Mapping):
+            redacted = dict(readback)
+            # Shipment readback: finance/importInfo per finance_view; the
+            # finance quote per commercial_view (accounting keeps actuals).
+            if not can_finance:
+                if isinstance(redacted.get("finance"), Mapping):
+                    redacted["finance"] = _restricted_finance(redacted["finance"])
+                if isinstance(redacted.get("importInfo"), Mapping):
+                    redacted["importInfo"] = _restricted_import_info(redacted["importInfo"])
+            elif not can_commercial:
+                if isinstance(redacted.get("finance"), Mapping):
+                    redacted["finance"] = _without_quote(redacted["finance"])
+            # C1 quote readbacks: same restriction as model["quotes"].
+            if event in ("quote_create", "quote_edit", "quote_transition"):
+                if not can_commercial:
+                    redacted = {}
+                elif not can_write_commercial:
+                    redacted = _restricted_quote(redacted)
+            elif event == "quote_preview":
+                if not can_commercial:
+                    redacted = {}
+                elif not can_write_commercial and isinstance(redacted.get("quote"), Mapping):
+                    redacted = {**redacted, "quote": _restricted_quote(redacted["quote"])}
+            elif event == "quote_import_excel":
+                if not can_commercial:
+                    redacted = {}
+                elif not can_write_commercial:
+                    redacted = _restricted_excel_quote(redacted)
+            elif event == "quote_source_workbook_view":
+                # overview is sheet metadata only; page holds raw source
+                # cells rendered under the creator's grant.
+                if not can_commercial:
+                    redacted = {}
+                elif not can_write_commercial:
+                    redacted = {**redacted, "page": None}
+            # C1 agreement readbacks: same restriction as model["agreements"].
+            elif event in ("agreement_create", "agreement_edit", "agreement_transition"):
+                if not can_commercial:
+                    redacted = _restricted_agreement_no_commercial(redacted)
+                elif not can_write_commercial:
+                    redacted = _restricted_agreement(redacted)
+            row["readback"] = redacted
+        # Outcome documents: strip the bytes when the current actor lacks
+        # the grant the document required at creation. Contract docgen
+        # documents are a separate authorization domain (can_generate_documents)
+        # and are deliberately NOT touched here.
+        document = row.get("document")
+        if isinstance(document, Mapping):
+            if event == "quote_export_xlsx" and not can_commercial:
+                row["document"] = _stripped_document(document)
+            elif event == "quote_source_download" and not can_write_commercial:
+                row["document"] = _stripped_document(document)
     return out
 
 
@@ -894,6 +946,34 @@ def _can_view_commercial() -> bool:
     return bool(is_authenticated() and has_permission("commercial_view"))
 
 
+def _can_view_commercial_write() -> bool:
+    """Server payload gate: does the AUTHENTICATED session actor hold
+    ``commercial_write`` (the single ROLE_PERMISSIONS matrix in core.auth)?
+
+    Fail closed like the other gates: an anonymous session never sees
+    internal commercial data, even though the bare role matrix would fall
+    back to Viewer (which does NOT hold commercial_write, so the fallback
+    cannot grant it — the authentication check is kept anyway so the gate
+    stays fail-closed by construction, not by matrix accident).
+    This is a pure session read, so it is consistent within one render.
+    """
+    from core.auth import has_permission, is_authenticated
+
+    return bool(is_authenticated() and has_permission("commercial_write"))
+
+
+def _without_quote(finance: Mapping[str, Any] | None) -> Any:
+    """A finance block with its commercial quote removed.
+
+    Used for an actor who holds ``finance_view`` (so the actual finance
+    survives) but NOT ``commercial_view`` (so the quote — commercial data —
+    must not). Returns a new dict; the source block is never mutated.
+    """
+    if not isinstance(finance, Mapping):
+        return finance
+    return {**finance, "quote": []}
+
+
 def _restricted_finance(finance: Mapping[str, Any] | None) -> dict[str, Any]:
     """Finance block for an actor without ``finance_view``.
 
@@ -969,6 +1049,119 @@ def _restricted_import_info(import_info: Mapping[str, Any] | None) -> dict[str, 
     return redacted
 
 
+def _restricted_excel_quote(excel_quote: Any) -> Any:
+    """An excelQuote for an actor WITHOUT ``commercial_write``.
+
+    The parsed supplier cost rows (``source_costs``) and the cost unit on
+    the option service lines are internal data — they are the same grant
+    that gates the raw-workbook viewer and the source download — so they
+    become [] / None (UNKNOWN, never 0). The customer-sheet goods table,
+    source facts and warnings are kept: the parser prefers the explicit
+    customer sheet, and the customer snapshot allowlist
+    (``core.quotations.customer_quote_snapshot``) treats the goods table as
+    customer-facing data. The source mapping is never mutated.
+    """
+    if not isinstance(excel_quote, Mapping):
+        return excel_quote
+    restricted = dict(excel_quote)
+    restricted["source_costs"] = []
+    options = excel_quote.get("options")
+    if isinstance(options, Mapping):
+        new_options: dict[str, Any] = {}
+        for key, opt in options.items():
+            if not isinstance(opt, Mapping):
+                new_options[key] = opt
+                continue
+            lines = [
+                {**line, "cost_unit": None} if isinstance(line, Mapping) else line
+                for line in opt.get("service_lines") or []
+            ]
+            new_options[key] = {**opt, "service_lines": lines}
+        restricted["options"] = new_options
+    return restricted
+
+
+def _restricted_quote(quote: Mapping[str, Any] | None) -> dict[str, Any]:
+    """A C1 quote projection for an actor with ``commercial_view`` but
+    WITHOUT ``commercial_write``.
+
+    Sell prices, identity, status and customer-facing notes survive; the
+    cost/margin figures (per-line costUnit/costTotal/costVnd,
+    estimatedCostVnd, estimatedMarginVnd) become None (UNKNOWN, never 0)
+    and the internal Excel source data is restricted by
+    ``_restricted_excel_quote``. Returns a new dict; the source is never
+    mutated.
+    """
+    if not isinstance(quote, Mapping):
+        return {}
+    restricted = dict(quote)
+    restricted["serviceLines"] = [
+        {**line, "costUnit": None, "costTotal": None, "costVnd": None}
+        if isinstance(line, Mapping) else line
+        for line in quote.get("serviceLines") or []
+    ]
+    restricted["estimatedCostVnd"] = None
+    restricted["estimatedMarginVnd"] = None
+    restricted["excelQuote"] = _restricted_excel_quote(quote.get("excelQuote"))
+    return restricted
+
+
+def _restricted_agreement(agreement: Mapping[str, Any] | None) -> dict[str, Any]:
+    """An agreement projection for an actor with ``commercial_view`` but
+    WITHOUT ``commercial_write``.
+
+    Only the estimated margin in the snapshot's calculation summary is
+    internal (it is the quote's margin, frozen into the agreement); the
+    agreed sell terms survive. Returns a new dict.
+    """
+    if not isinstance(agreement, Mapping):
+        return {}
+    restricted = dict(agreement)
+    snap = agreement.get("commercialSnapshot")
+    if isinstance(snap, Mapping):
+        summary = snap.get("calculationSummary")
+        if isinstance(summary, Mapping):
+            restricted["commercialSnapshot"] = {
+                **snap,
+                "calculationSummary": {**summary, "estimated_margin_vnd": None},
+            }
+    return restricted
+
+
+def _restricted_agreement_no_commercial(agreement: Mapping[str, Any] | None) -> dict[str, Any]:
+    """An agreement projection for an actor WITHOUT ``commercial_view``.
+
+    The commercial snapshot is a copy of quote data, so its money goes:
+    service lines [] and calculation summary {}. The agreement shell —
+    identity, customer, status, dates, payment terms, responsibilities,
+    documents, factory lots, shipment links — survives, because that is
+    contract/operations information, not quote data. Returns a new dict.
+    """
+    if not isinstance(agreement, Mapping):
+        return {}
+    restricted = dict(agreement)
+    snap = agreement.get("commercialSnapshot")
+    if isinstance(snap, Mapping):
+        restricted["commercialSnapshot"] = {
+            **snap, "serviceLines": [], "calculationSummary": {},
+        }
+    return restricted
+
+
+def _stripped_document(document: Mapping[str, Any] | None) -> dict[str, Any]:
+    """An outcome document with the downloadable bytes removed.
+
+    Identity survives (fileName, mime, byteSize) so the UI can still match
+    the outcome by requestId; ``downloadBase64`` becomes None and
+    ``downloadAvailable`` False, so nothing can be downloaded from the
+    replayed outcome. Returns a new dict.
+    """
+    stripped = dict(document) if isinstance(document, Mapping) else {}
+    stripped["downloadBase64"] = None
+    stripped["downloadAvailable"] = False
+    return stripped
+
+
 def _redact_getfly_preview(preview: Mapping[str, Any]) -> dict[str, Any]:
     """GetFly preview with money figures removed for a no-finance actor.
 
@@ -1021,6 +1214,8 @@ def build_view_model() -> dict:
     # order changes nothing there).
     transport = logi_sandbox.ensure_backend()
     can_see_finance = _can_view_finance()
+    can_see_commercial = _can_view_commercial()
+    can_write_commercial = _can_view_commercial_write()
     # LOGI_INTERACTION_LATENCY_FINALIZE_02 — every Streamlit-owned resource this
     # render needs is resolved HERE, on the script thread (the database handle
     # below; the session values inside _attachment_download_state), and only the
@@ -1106,6 +1301,16 @@ def build_view_model() -> dict:
                 "finance": _restricted_finance(row.get("finance")),
                 "importInfo": _restricted_import_info(row.get("importInfo")),
             }
+            for row in rows
+        ]
+    # LOGI-SEC-COMMERCIAL-BOUNDARY-20261105 — the finance quote is commercial
+    # data, not finance data: an actor who holds finance_view but NOT
+    # commercial_view (accounting) keeps the actual finance and loses only
+    # the quote. (_restricted_finance already gates the quote for actors
+    # without finance_view, so this step only changes the accounting case.)
+    if not can_see_commercial:
+        rows = [
+            {**row, "finance": _without_quote(row.get("finance"))}
             for row in rows
         ]
 
@@ -1220,8 +1425,26 @@ def build_view_model() -> dict:
         "operationsControl": operations_control,
         "contracts": c1["contracts"],
         "customers": c1["customers"],
-        "quotes": c1["quotes"],
-        "agreements": c1["agreements"],
+        # LOGI-SEC-COMMERCIAL-BOUNDARY-20261105 — C1 quotes and agreements
+        # are commercial data, so they are restricted by the commercial
+        # grants, independently of finance_view: no commercial_view means
+        # no quotes at all and an agreement shell without quote money;
+        # commercial_view without commercial_write means sell prices kept
+        # but cost/margin/internal Excel source data removed.
+        "quotes": (
+            []
+            if not can_see_commercial
+            else c1["quotes"]
+            if can_write_commercial
+            else [_restricted_quote(q) for q in c1["quotes"]]
+        ),
+        "agreements": (
+            [_restricted_agreement_no_commercial(a) for a in c1["agreements"]]
+            if not can_see_commercial
+            else c1["agreements"]
+            if can_write_commercial
+            else [_restricted_agreement(a) for a in c1["agreements"]]
+        ),
         "authority": c1["authority"],
         "notifications": _notifications(rows),
         # C2C — global customer-receivable worklist, a read-only projection over

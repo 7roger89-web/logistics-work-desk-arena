@@ -124,6 +124,14 @@ Mỗi phiên append một entry mới ở cuối mục này. Không có entry = 
 
 ### Entries
 
+- [2026-11-05] SESSION LOGI-SEC-COMMERCIAL-BOUNDARY-20261105 — Hoàn thiện ranh giới phân quyền payload thương mại (PR #269, cùng branch)
+  - BASE_SHA: b0a6734af5c3ecc207530c67d185f2c366a04e8f
+  - Làm: đóng đầy đủ đường đưa báo giá thương mại + nguồn Excel nội bộ trái quyền vào payload React: finance_view/commercial_view/commercial_write đánh giá độc lập tại payload boundary (helper mới _can_view_commercial_write, _without_quote, _restricted_excel_quote/_restricted_quote/_restricted_agreement/_restricted_agreement_no_commercial/_stripped_document); model["quotes"]=[] khi thiếu commercial_view, cost/margin/source_costs bị chặn khi thiếu commercial_write; finance.quote [] cho accounting (giữ actual finance); lastWrites re-check theo quyền hiện tại (quote/agreement readbacks, workbook-view page, document export/source-download); thêm 9 regression tests với sentinel riêng (quote cost 27182818, margin 16180339, source_cost 24681357, agreement margin 13579246).
+  - Đo được: regression mới 7 FAILED trước fix / 9 PASS sau fix (2 passed trước fix là test UI-shape và echo, không phụ thuộc gate mới); focused 107 passed; full suite 1972 passed, 44 skipped, 10 subtests passed, 17 failed (0 mới so với base 24 failed, so sánh tập hợp chính xác); ruff sạch trên file đổi, 7 lỗi pre-existing không mới; router PASS.
+  - Bị bác bỏ: "finance.quote=[] là đủ để PASS" — BÁC BỎ (phép thử phân biệt đặt sentinel riêng vào C1 quote, agreement margin, excelQuote.source_costs và XLSX); "echo import_duty_amount:null gây mất dữ liệu trong luồng UI" — BÁC BỎ (form customs chỉ gửi khi operator gõ vào field, ShipmentDetail.tsx:164,547; API-level explicit null vẫn ghi đè theo thiết kế, write policy không đổi).
+  - Còn lại: re-review độc lập của diff đã sửa + Owner quyết định merge; follow-up riêng (policy UNKNOWN, không chặn): supplier rates qua costIntelligence, contract values qua model["contracts"], contract docgen documents trong lastWrites; F-4 boolean oracles, F-5 bank authority (xem ACCEPTANCE.md §5/§9).
+  - Head sha: TBD (cập nhật sau commit; branch task/LOGI-SEC-FINANCE-PAYLOAD-20261105, chưa merge).
+
 - [2026-11-05] SESSION LOGI-SEC-FINANCE-PAYLOAD-20261105-CORRECTION — Sửa tối thiểu sau review độc lập REJECT (PR #269, cùng branch)
   - BASE_SHA: b0a6734af5c3ecc207530c67d185f2c366a04e8f
   - Làm: redact importInfo.tax/vat → None cho actor không có finance_view (shipments + lastWrites readback, helper mới _restricted_import_info); gate quote copy trong _restricted_finance bằng commercial_view (Operations quote rỗng); bổ sung 2 regression tests + sentinel duty 222222222 / VAT 333333333 (13 tests); sửa sai lệch ACCEPTANCE.md (FAIL-before 5 failed/6 passed, law hash 84914abd, NEXT head sha, số full suite đo thật).
