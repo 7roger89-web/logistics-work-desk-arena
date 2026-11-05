@@ -124,6 +124,14 @@ Mỗi phiên append một entry mới ở cuối mục này. Không có entry = 
 
 ### Entries
 
+- [2026-11-05] SESSION LOGI-SEC-FINANCE-PAYLOAD-20261105 — Sale finance payload redaction (bounded security fix)
+  - BASE_SHA: b0a6734af5c3ecc207530c67d185f2c366a04e8f
+  - Làm: enforce `finance_view` tại payload boundary `build_view_model` (views/logi_view_model.py): finance bị redacted thành UNKNOWN/None cho Sale, payables + reconciliation không build, aggregates/CEO/partnerContext thừa hưởng redaction, lastWrites + GetFly preview tự redacted; thêm 11 regression tests (sentinel 123456789 VND) + ACCEPTANCE.md.
+  - Đo được: regression 5 FAILED trước fix / 11 PASS sau fix; full suite 1961 passed, 44 skipped, 10 subtests passed, 17 failed (toàn baseline, 0 mới); ruff sạch trên file đổi; router PASS.
+  - Bị bác bỏ: "Sale không nhận finance qua payload" — BÁC BỎ trước fix (sentinel có trong payload Sale qua build_view_model thật); "ẩn control React là đủ" — BÁC BỎ (data vẫn tới client payload).
+  - Còn lại: draft PR + independent review (ChatGPT) + Owner quyết định merge; browser UAT là cổng visual (không có bằng chứng browser từ sandbox).
+  - Head sha: 4f94040 (branch task/LOGI-SEC-FINANCE-PAYLOAD-20261105, chưa merge).
+
 - [2026-10-26] SESSION LOG-NEXT-W1-BOOTSTRAP-HANDOFF — Bootstrap và đo lại trạng thái
   - BASE_SHA: a98884b1905c2470fae750d93526fe69930b1958 (PR #219 merge, 2026-10-26T07:13:41Z)
   - Làm: đo BASE_SHA từ GitHub API; kiểm tra tồn tại `docs/NEXT.md` (contents API + thư mục gốc + local + git ls-tree); xác nhận PR #219 là PR merge cuối; chạy full suite trên BASE_SHA; tạo `docs/NEXT.md` này.
