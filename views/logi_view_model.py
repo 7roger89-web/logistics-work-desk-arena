@@ -673,7 +673,19 @@ def _last_writes_readback() -> list[dict[str, Any]]:
     be mistaken for the answer to a different request.
     """
     rows = st.session_state.get(LAST_WRITES_KEY) or []
-    return [dict(row) for row in rows if isinstance(row, Mapping)]
+    out = [dict(row) for row in rows if isinstance(row, Mapping)]
+    # LOGI-SEC-FINANCE-PAYLOAD-20261105 — a write outcome's readback is a full
+    # shipment projection, so a finance outcome recorded under a previous
+    # role would replay restricted figures to the downgraded actor. Redact
+    # the finance block at this payload boundary; the outcome itself (event /
+    # ok / error) is still delivered.
+    if _can_view_finance():
+        return out
+    for row in out:
+        readback = row.get("readback")
+        if isinstance(readback, Mapping) and isinstance(readback.get("finance"), Mapping):
+            row["readback"] = {**readback, "finance": _restricted_finance(readback["finance"])}
+    return out
 
 
 def _read_sources(shipments: Mapping[str, Any], references: Mapping[str, Any], *, db: Any = _UNSET_DB) -> dict[str, Any]:
@@ -849,6 +861,105 @@ def _work_module_library(templates: list[dict[str, Any]], user: Mapping[str, Any
     }
 
 
+def _can_view_finance() -> bool:
+    """Server payload gate: does the AUTHENTICATED session actor hold
+    ``finance_view`` (the single ROLE_PERMISSIONS matrix in core.auth)?
+
+    Fail closed: an anonymous session never sees finance, even though the
+    bare role matrix would fall back to Viewer (which holds finance_view).
+    This is a pure session read, so it is consistent within one render.
+    """
+    from core.auth import has_permission, is_authenticated
+
+    return bool(is_authenticated() and has_permission("finance_view"))
+
+
+def _restricted_finance(finance: Mapping[str, Any] | None) -> dict[str, Any]:
+    """Finance block for an actor without ``finance_view``.
+
+    Keeps exactly what a no-finance actor is still allowed to see and what
+    the UI dereferences directly, and nothing else:
+
+    * ``quote`` — the commercial quote estimate (commercial_view), copied
+      verbatim from the actor's own finance block;
+    * ``currency`` — the currency label, not an amount;
+    * ``actual`` / ``payments`` / ``partner.payments`` — empty lists, so
+      React's ``.length`` / ``.map`` reads cannot crash;
+    * every restricted money figure — None (UNKNOWN, never a fabricated 0).
+
+    ``hasActualLines`` is False here in the sense "no finance is visible to
+    this actor", NOT "the book is empty": every downstream derivation keys
+    off it, so it yields UNKNOWN/empty aggregates instead of leaking a sum.
+    The ``restricted`` marker distinguishes this block from a genuinely
+    empty book.
+    """
+    source = finance if isinstance(finance, Mapping) else {}
+    quote = source.get("quote")
+    return {
+        "quote": [dict(line) for line in quote if isinstance(line, Mapping)]
+        if isinstance(quote, list)
+        else [],
+        "actual": [],
+        "currency": rd.text(source.get("currency")) or "VND",
+        "hasActualLines": False,
+        "receivable": None,
+        "received": None,
+        "receivableNet": None,
+        "outputVat": None,
+        "outstanding": None,
+        "payable": None,
+        "paid": None,
+        "commission": None,
+        "profit": None,
+        "profitMargin": None,
+        "payments": [],
+        "partner": {
+            "partnerId": None,
+            "partnerName": None,
+            "suggested": False,
+            "status": "UNKNOWN",
+            "payable": None,
+            "paid": None,
+            "remaining": None,
+            "currency": None,
+            "payments": [],
+        },
+        "restricted": True,
+        "source": "restricted: finance_view required",
+    }
+
+
+def _redact_getfly_preview(preview: Mapping[str, Any]) -> dict[str, Any]:
+    """GetFly preview with money figures removed for a no-finance actor.
+
+    The preview is the current session's own uploaded XLSX, but its
+    revenue/profit/cost/price ARE restricted finance figures, and the same
+    session key can outlive a logout / role downgrade — so the payload
+    boundary redacts them regardless of who uploaded the file. Order /
+    customer / quantity identity survives; every money field becomes None
+    (UNKNOWN, never 0), including the audit ``normalizedRows``.
+    """
+    redacted = copy.deepcopy(dict(preview))
+    for order in redacted.get("orders") or []:
+        if not isinstance(order, Mapping):
+            continue
+        order["revenue"] = None
+        order["profit"] = None
+        for line in order.get("serviceLines") or []:
+            if isinstance(line, Mapping):
+                for key in ("cost", "price", "revenue", "profit"):
+                    line[key] = None
+    for row in redacted.get("normalizedRows") or []:
+        if isinstance(row, Mapping):
+            for key in ("cost", "price", "revenue", "profit"):
+                row[key] = None
+    summary = redacted.get("summary")
+    if isinstance(summary, Mapping):
+        summary["revenue"] = None
+        summary["profit"] = None
+    return redacted
+
+
 def build_view_model() -> dict:
     """Assemble the JSON payload for the component `data` channel."""
     from core.auth import current_user
@@ -856,7 +967,20 @@ def build_view_model() -> dict:
     from core.cost_intelligence import json_safe as _cost_json_safe
     from core.shipment_dashboard import build_dashboard_summary
 
+    # LOGI-SEC-FINANCE-PAYLOAD-20261105 — server payload boundary. The
+    # finance_view read gate is evaluated ONCE per render from the canonical
+    # session actor (core.auth) and applied to every finance-bearing
+    # projection below; the React role selector is client state and is never
+    # consulted. Helpers that can also run standalone (_getfly_preview_projection,
+    # _last_writes_readback) re-check the same gate themselves.
+    #
+    # The gate is read AFTER ensure_backend() on purpose: on the sandbox
+    # transport ensure_backend() promotes an empty session to the staging
+    # actor, and the gate must describe the actor this render actually
+    # serves (in production require_login() already authenticated, so the
+    # order changes nothing there).
     transport = logi_sandbox.ensure_backend()
+    can_see_finance = _can_view_finance()
     # LOGI_INTERACTION_LATENCY_FINALIZE_02 — every Streamlit-owned resource this
     # render needs is resolved HERE, on the script thread (the database handle
     # below; the session values inside _attachment_download_state), and only the
@@ -927,6 +1051,14 @@ def build_view_model() -> dict:
         registry_rows=registry_rows,
     )
 
+    # LOGI-SEC-FINANCE-PAYLOAD-20261105 — redact BEFORE any derived
+    # projection reads the rows: home aggregates, receivables, the CEO
+    # actuals and the attention/control derivations all read row["finance"].
+    # The restricted block keeps the commercial quote + UI-safe empty shapes,
+    # so every downstream derivation yields UNKNOWN/empty instead of a sum.
+    if not can_see_finance:
+        rows = [{**row, "finance": _restricted_finance(row.get("finance"))} for row in rows]
+
     summary = build_dashboard_summary(views.values())
     user = current_user() or {}
     # The contract→shipment links read the SAME shipment map this render already
@@ -950,10 +1082,19 @@ def build_view_model() -> dict:
     # /ngu-canh-doi-tac partner-context slice — one payable truth, no second
     # derivation of a partner's financial position. It derives from the SAME
     # render-local ledger snapshot the per-shipment C2B block used.
-    payables = rd.partner_payables_projection(
-        records=sources["ledger"],
-        shipment_ids=sources["shipmentIds"],
-        agents=sources["agents"],
+    # LOGI-SEC-FINANCE-PAYLOAD-20261105 — C2D payables come from the
+    # canonical ledger snapshot, NOT from the rows above, so row redaction
+    # alone cannot cover them. Without finance_view the ledger is not read
+    # at all: the empty shape is byte-identical to the no-records case
+    # (UNKNOWN, never a 0 payable).
+    payables = (
+        rd.partner_payables_projection(
+            records=sources["ledger"],
+            shipment_ids=sources["shipmentIds"],
+            agents=sources["agents"],
+        )
+        if can_see_finance
+        else {"rows": [], "totals": {}, "status": "UNKNOWN", "derived": True, "read_only": True}
     )
     tasks = _task_projection(rows, references)
     # One business-calendar boundary for all date-sensitive projections.
@@ -976,11 +1117,18 @@ def build_view_model() -> dict:
     receivables = rd.receivables_projection(rows)
     # The reconciliation desk derives from the SAME render-local snapshot (ids +
     # ledger rows) instead of re-reading both collections once per shipment.
-    reconciliation = logi_reconciliation.reconciliation_view(
-        st.session_state.get(RECONCILIATION_FILTER_KEY),
-        known_shipment_ids=list(shipments.keys()),
-        shipment_ids=sources["shipmentIds"],
-        records=sources["ledger"],
+    # LOGI-SEC-FINANCE-PAYLOAD-20261105 — same ledger-boundary rule as C2D:
+    # without finance_view the reconciliation desk is the shared empty shape
+    # (UNKNOWN, summary None), and the ledger snapshot is never consulted.
+    reconciliation = (
+        logi_reconciliation.reconciliation_view(
+            st.session_state.get(RECONCILIATION_FILTER_KEY),
+            known_shipment_ids=list(shipments.keys()),
+            shipment_ids=sources["shipmentIds"],
+            records=sources["ledger"],
+        )
+        if can_see_finance
+        else logi_reconciliation._empty(None, "UNKNOWN")
     )
     # LOGI_CEO_REPORT_01 — one bounded READ-ONLY presentation adapter over
     # projections already built above. It does not open a second reader, create
@@ -1728,7 +1876,7 @@ def _getfly_preview_projection() -> dict[str, Any]:
             "revenue": source_order.get("revenue"),
             "profit": source_order.get("profit"),
         })
-    return {
+    preview = {
         "status": state.get("status", "READY"),
         "previewId": state.get("previewId", ""),
         "requestId": state.get("requestId", ""),
@@ -1741,6 +1889,11 @@ def _getfly_preview_projection() -> dict[str, Any]:
         "summary": copy.deepcopy(state.get("summary") or {"orders": 0, "revenue": None, "profit": None}),
         "error": state.get("error", ""),
     }
+    # LOGI-SEC-FINANCE-PAYLOAD-20261105 — money figures in the preview are
+    # restricted finance data; redact them at this payload boundary when the
+    # actor holds no finance_view (covers a preview left in session state by
+    # a previous role as well as the actor's own upload).
+    return preview if _can_view_finance() else _redact_getfly_preview(preview)
 
 
 def _decode_getfly_payload(payload: Mapping[str, Any]) -> tuple[bytes, str]:
