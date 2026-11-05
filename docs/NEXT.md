@@ -124,13 +124,21 @@ Mỗi phiên append một entry mới ở cuối mục này. Không có entry = 
 
 ### Entries
 
+- [2026-11-05] SESSION LOGI-SEC-FINANCE-PAYLOAD-20261105-CORRECTION — Sửa tối thiểu sau review độc lập REJECT (PR #269, cùng branch)
+  - BASE_SHA: b0a6734af5c3ecc207530c67d185f2c366a04e8f
+  - Làm: redact importInfo.tax/vat → None cho actor không có finance_view (shipments + lastWrites readback, helper mới _restricted_import_info); gate quote copy trong _restricted_finance bằng commercial_view (Operations quote rỗng); bổ sung 2 regression tests + sentinel duty 222222222 / VAT 333333333 (13 tests); sửa sai lệch ACCEPTANCE.md (FAIL-before 5 failed/6 passed, law hash 84914abd, NEXT head sha, số full suite đo thật).
+  - Đo được: regression mới 7 FAILED trước fix / 13 PASS sau fix; focused finance/customs/GNT 171 passed, 7 skipped; full suite 1963 passed, 44 skipped, 10 subtests passed, 17 failed (0 mới so với base 24 failed); ruff sạch trên file đổi, 7 lỗi pre-existing không mới; router PASS.
+  - Bị bác bỏ: "importInfo.tax/vat là customs facts nên giữ cho Sale" — BÁC BỎ (không có quyền customs_view; tiền thuế thật theo lô); "test 1 sentinel là đủ" — BÁC BỎ (test xanh trong khi duty/VAT vẫn rò).
+  - Còn lại: re-review độc lập của diff đã sửa + Owner quyết định merge; browser UAT là cổng visual; follow-up riêng: F-4 boolean oracles, F-5 bank authority, C1 quotes cost/margin, echo-None field save (xem ACCEPTANCE.md §5/§8).
+  - Head sha: fb5d179 (branch task/LOGI-SEC-FINANCE-PAYLOAD-20261105, chưa merge).
+
 - [2026-11-05] SESSION LOGI-SEC-FINANCE-PAYLOAD-20261105 — Sale finance payload redaction (bounded security fix)
   - BASE_SHA: b0a6734af5c3ecc207530c67d185f2c366a04e8f
   - Làm: enforce `finance_view` tại payload boundary `build_view_model` (views/logi_view_model.py): finance bị redacted thành UNKNOWN/None cho Sale, payables + reconciliation không build, aggregates/CEO/partnerContext thừa hưởng redaction, lastWrites + GetFly preview tự redacted; thêm 11 regression tests (sentinel 123456789 VND) + ACCEPTANCE.md.
-  - Đo được: regression 5 FAILED trước fix / 11 PASS sau fix; full suite 1961 passed, 44 skipped, 10 subtests passed, 17 failed (toàn baseline, 0 mới); ruff sạch trên file đổi; router PASS.
+  - Đo được: regression 5 FAILED trước fix / 11 PASS sau fix; full suite 1961 passed, 44 skipped, 10 subtests passed, 17 failed (toàn baseline, 0 mới); ruff sạch trên file đổi; router PASS. (Hiệu chỉnh 2026-11-05: FAIL-before đúng là 5 failed, 6 passed = 11 tests; review độc lập đo lại trên cùng host được 1960 passed / 18 failed — lệch +1 là test timing pre-existing, fail cả trên base; kết luận 0 mới vẫn đúng.)
   - Bị bác bỏ: "Sale không nhận finance qua payload" — BÁC BỎ trước fix (sentinel có trong payload Sale qua build_view_model thật); "ẩn control React là đủ" — BÁC BỎ (data vẫn tới client payload).
   - Còn lại: draft PR + independent review (ChatGPT) + Owner quyết định merge; browser UAT là cổng visual (không có bằng chứng browser từ sandbox).
-  - Head sha: 4f94040 (branch task/LOGI-SEC-FINANCE-PAYLOAD-20261105, chưa merge).
+  - Head sha: 08e5a63 (sửa 2026-11-05: ghi nhầm 4f94040 — đó là commit fix, không phải HEAD; branch task/LOGI-SEC-FINANCE-PAYLOAD-20261105, chưa merge).
 
 - [2026-10-26] SESSION LOG-NEXT-W1-BOOTSTRAP-HANDOFF — Bootstrap và đo lại trạng thái
   - BASE_SHA: a98884b1905c2470fae750d93526fe69930b1958 (PR #219 merge, 2026-10-26T07:13:41Z)

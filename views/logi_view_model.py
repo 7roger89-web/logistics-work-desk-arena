@@ -677,14 +677,20 @@ def _last_writes_readback() -> list[dict[str, Any]]:
     # LOGI-SEC-FINANCE-PAYLOAD-20261105 — a write outcome's readback is a full
     # shipment projection, so a finance outcome recorded under a previous
     # role would replay restricted figures to the downgraded actor. Redact
-    # the finance block at this payload boundary; the outcome itself (event /
-    # ok / error) is still delivered.
+    # the finance block AND the sibling importInfo tax/VAT at this payload
+    # boundary; the outcome itself (event / ok / error) is still delivered.
     if _can_view_finance():
         return out
     for row in out:
         readback = row.get("readback")
-        if isinstance(readback, Mapping) and isinstance(readback.get("finance"), Mapping):
-            row["readback"] = {**readback, "finance": _restricted_finance(readback["finance"])}
+        if not isinstance(readback, Mapping):
+            continue
+        redacted = dict(readback)
+        if isinstance(redacted.get("finance"), Mapping):
+            redacted["finance"] = _restricted_finance(redacted["finance"])
+        if isinstance(redacted.get("importInfo"), Mapping):
+            redacted["importInfo"] = _restricted_import_info(redacted["importInfo"])
+        row["readback"] = redacted
     return out
 
 
@@ -874,14 +880,32 @@ def _can_view_finance() -> bool:
     return bool(is_authenticated() and has_permission("finance_view"))
 
 
+def _can_view_commercial() -> bool:
+    """Server payload gate: does the AUTHENTICATED session actor hold
+    ``commercial_view`` (the single ROLE_PERMISSIONS matrix in core.auth)?
+
+    Fail closed like ``_can_view_finance``: an anonymous session never sees
+    commercial data, even though the bare role matrix would fall back to
+    Viewer (which holds commercial_view).
+    This is a pure session read, so it is consistent within one render.
+    """
+    from core.auth import has_permission, is_authenticated
+
+    return bool(is_authenticated() and has_permission("commercial_view"))
+
+
 def _restricted_finance(finance: Mapping[str, Any] | None) -> dict[str, Any]:
     """Finance block for an actor without ``finance_view``.
 
     Keeps exactly what a no-finance actor is still allowed to see and what
     the UI dereferences directly, and nothing else:
 
-    * ``quote`` — the commercial quote estimate (commercial_view), copied
-      verbatim from the actor's own finance block;
+    * ``quote`` — the commercial quote estimate, copied verbatim from the
+      actor's own finance block, but ONLY when the actor also holds
+      ``commercial_view`` (Sale, legacy Sales, Viewer, Admin, Support).
+      An actor without it (Operations) gets ``[]`` — the quote is
+      commercial data, and the restricted block must not hand it to an
+      actor the role matrix does not permit to see it;
     * ``currency`` — the currency label, not an amount;
     * ``actual`` / ``payments`` / ``partner.payments`` — empty lists, so
       React's ``.length`` / ``.map`` reads cannot crash;
@@ -894,7 +918,7 @@ def _restricted_finance(finance: Mapping[str, Any] | None) -> dict[str, Any]:
     empty book.
     """
     source = finance if isinstance(finance, Mapping) else {}
-    quote = source.get("quote")
+    quote = source.get("quote") if _can_view_commercial() else None
     return {
         "quote": [dict(line) for line in quote if isinstance(line, Mapping)]
         if isinstance(quote, list)
@@ -927,6 +951,22 @@ def _restricted_finance(finance: Mapping[str, Any] | None) -> dict[str, Any]:
         "restricted": True,
         "source": "restricted: finance_view required",
     }
+
+
+def _restricted_import_info(import_info: Mapping[str, Any] | None) -> dict[str, Any]:
+    """importInfo for an actor without ``finance_view``.
+
+    Declaration identity survives (declaration number, dates, customs
+    status, GNT readiness); the two ACTUAL tax money figures — import duty
+    (``tax``) and import VAT (``vat``), operator-keyed from the customs
+    notice / GNT — become None (UNKNOWN, never a fabricated 0). The source
+    mapping is never mutated: the redacted block is a new dict, so the
+    stored shipment document keeps its true figures.
+    """
+    redacted = dict(import_info) if isinstance(import_info, Mapping) else {}
+    redacted["tax"] = None
+    redacted["vat"] = None
+    return redacted
 
 
 def _redact_getfly_preview(preview: Mapping[str, Any]) -> dict[str, Any]:
@@ -1056,8 +1096,18 @@ def build_view_model() -> dict:
     # actuals and the attention/control derivations all read row["finance"].
     # The restricted block keeps the commercial quote + UI-safe empty shapes,
     # so every downstream derivation yields UNKNOWN/empty instead of a sum.
+    # The sibling importInfo tax/VAT are redacted at the same point: they
+    # are ACTUAL tax money projected by shipment_projection, not ledger
+    # finance, so swapping row["finance"] alone cannot cover them.
     if not can_see_finance:
-        rows = [{**row, "finance": _restricted_finance(row.get("finance"))} for row in rows]
+        rows = [
+            {
+                **row,
+                "finance": _restricted_finance(row.get("finance")),
+                "importInfo": _restricted_import_info(row.get("importInfo")),
+            }
+            for row in rows
+        ]
 
     summary = build_dashboard_summary(views.values())
     user = current_user() or {}

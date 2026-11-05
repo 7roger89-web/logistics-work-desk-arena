@@ -9,15 +9,21 @@ Proven here, on the isolated staging database (mongomock), through the REAL
 ``build_view_model`` path — no mocked view model, no fake renderer payload:
 
     synthetic shipment with finance sentinel 123456789 VND (actual line
-    price/cost, customer payment, canonical ledger obligation)
-      -> build_view_model() as Admin / Support / Viewer / Sale / anonymous
+    price/cost, customer payment, canonical ledger obligation) AND distinct
+    customs-tax sentinels — duty 222222222 VND, VAT 333333333 VND in
+    data["2.4"] (importInfo.tax/vat are ACTUAL tax money, so they need their
+    own sentinels: the ledger sentinel never lands in those fields)
+      -> build_view_model() as Admin / Support / Viewer / Sale / Operations / anonymous
       -> serialize the finance-bearing sections exactly as the renderer
-         would receive them, and scan for the sentinel (raw + derived)
+         would receive them, and scan for each sentinel (raw + derived)
       -> Sale still sees shipment id, journey, customer and commercial quote
+      -> Operations (neither finance_view nor commercial_view) sees no quote
       -> stale Admin write outcomes + GetFly preview lingering in the same
          session must not leak to Sale after a role downgrade
       -> the frontend role selector (React state only) cannot change the
          server-side actor
+      -> a customs field write (tk_no) and a redacted render must not mutate
+         the stored true tax figures
 
 Production database is never touched.
 
@@ -45,6 +51,10 @@ from views import logi_view_model as vm
 
 SENTINEL = 123456789
 SENTINEL_TEXT = str(SENTINEL)
+DUTY = 222222222
+VAT = 333333333
+DUTY_TEXT = str(DUTY)
+VAT_TEXT = str(VAT)
 SHIPMENT = "LO-SEC-0306"
 SOURCE_SHIPMENT = "LO-0306"
 PARTNER = "AGT-PHUANH"
@@ -68,6 +78,7 @@ ROLE_USERS = {
     "support": {"username": "support.user", "role": "support", "user_id": "U-SUPPORT"},
     "viewer": {"username": "viewer.user", "role": "viewer", "user_id": "U-VIEWER"},
     "sale": {"username": "sale.user", "role": "sale", "user_id": "U-SALE"},
+    "operations": {"username": "ops.user", "role": "operations", "user_id": "U-OPS"},
 }
 
 
@@ -172,6 +183,28 @@ def _seed_sentinel_shipment(seq_fn) -> None:
     assert out["ok"], out["error"]
 
 
+def _seed_duty_vat() -> None:
+    """Stamp distinct duty/VAT sentinels into the customs section (data 2.4)
+    of the already-seeded sentinel shipment.
+
+    importInfo.tax/vat are ACTUAL tax money projected by shipment_projection,
+    so they need their own sentinels: the ledger sentinel (123456789) never
+    lands in these fields, and a scan for it alone cannot see a leak here.
+    """
+    from core.database import save_shipment_atomic
+
+    ship = vm.read_shipment(SHIPMENT)
+    assert ship is not None
+    ship = copy.deepcopy(ship)
+    sec = ship["data"].setdefault("2.4", {})
+    sec["import_duty_amount"] = DUTY
+    sec["import_vat_amount"] = VAT
+    assert save_shipment_atomic(ship, expected_version=int(ship.get("version") or 0))
+    fresh = vm.read_shipment(SHIPMENT)
+    assert fresh["data"]["2.4"]["import_duty_amount"] == DUTY
+    assert fresh["data"]["2.4"]["import_vat_amount"] == VAT
+
+
 def _seed_stale_session_state() -> None:
     """Lingering Admin-session artefacts: a finance write outcome and a
     GetFly preview, both carrying the sentinel. They model an Admin who
@@ -244,6 +277,14 @@ def _assert_no_sentinel(model: dict, where: str) -> None:
     assert SENTINEL_TEXT not in blob, f"sentinel leaked to {where}: {blob[:600]}"
 
 
+def _assert_no_tax_sentinels(model: dict, where: str) -> None:
+    """No duty/VAT sentinel anywhere in the finance-bearing sections —
+    shipments[].importInfo AND stale lastWrites readbacks included."""
+    blob = json.dumps(_finance_sections(model), default=str)
+    assert DUTY_TEXT not in blob, f"duty sentinel leaked to {where}: {blob[:600]}"
+    assert VAT_TEXT not in blob, f"vat sentinel leaked to {where}: {blob[:600]}"
+
+
 def _assert_sentinel_present(model: dict, where: str) -> None:
     blob = json.dumps(_finance_sections(model), default=str)
     assert SENTINEL_TEXT in blob, f"sentinel missing for {where} (fixture broken?)"
@@ -255,8 +296,10 @@ def _assert_sentinel_present(model: dict, where: str) -> None:
 
 def test_sale_payload_contains_no_finance_sentinel(staging, event_seq):
     """Fixture sentinel 123456789; Sale session; renderer payload must not
-    contain it through any raw or derived finance field."""
+    contain it through any raw or derived finance field. Same for the
+    distinct duty/VAT sentinels in importInfo (shipments + lastWrites)."""
     _seed_sentinel_shipment(event_seq)
+    _seed_duty_vat()
     _seed_stale_session_state()
     _as_role("sale")
     import streamlit as st
@@ -267,6 +310,7 @@ def test_sale_payload_contains_no_finance_sentinel(staging, event_seq):
     model = vm.build_view_model()
 
     _assert_no_sentinel(model, "Sale")
+    _assert_no_tax_sentinels(model, "Sale")
 
     # Per-field: restricted money is UNKNOWN (None), never a fabricated 0.
     finance = _row(model)["finance"]
@@ -305,6 +349,8 @@ def test_sale_payload_contains_no_finance_sentinel(staging, event_seq):
     readback = model["lastWrites"][0]["readback"]
     assert readback["finance"]["receivable"] is None
     assert readback["finance"]["actual"] == []
+    assert readback["importInfo"]["tax"] is None
+    assert readback["importInfo"]["vat"] is None
 
     # Sale still sees the permitted shipment, customer, journey and quote.
     row = _row(model)
@@ -313,6 +359,15 @@ def test_sale_payload_contains_no_finance_sentinel(staging, event_seq):
     assert row["journey"], "journey must survive redaction"
     assert row["route"], "route must survive redaction"
     assert row["status"], "status must survive redaction"
+    # Actual tax money is UNKNOWN (None), never 0; declaration identity survives.
+    assert row["importInfo"]["tax"] is None
+    assert row["importInfo"]["vat"] is None
+    assert "declarationNo" in row["importInfo"]
+    assert "gnt" in row["importInfo"]
+    # The payload hides the numbers; the stored document keeps them.
+    stored = vm.read_shipment(SHIPMENT)
+    assert stored["data"]["2.4"]["import_duty_amount"] == DUTY
+    assert stored["data"]["2.4"]["import_vat_amount"] == VAT
     quote = finance["quote"]
     assert quote, "commercial quote must survive redaction for Sale"
     assert any(line.get("amount") == 28500000 for line in quote), "BG-0306 quote line kept"
@@ -338,8 +393,11 @@ def test_sale_payload_matches_admin_quote(staging, event_seq):
 @pytest.mark.parametrize("role", ["admin", "support", "viewer"])
 def test_authorized_roles_retain_finance_sentinel(staging, event_seq, role):
     """Admin / Support / Viewer hold finance_view: the sentinel stays in
-    their payload exactly as before (no narrowing of the role matrix)."""
+    their payload exactly as before (no narrowing of the role matrix).
+    The duty/VAT sentinels stay too — authorized actors keep the true
+    tax figures in shipments and in the stale lastWrites readback."""
     _seed_sentinel_shipment(event_seq)
+    _seed_duty_vat()
     _seed_stale_session_state()
     _as_role(role)
     import streamlit as st
@@ -356,6 +414,10 @@ def test_authorized_roles_retain_finance_sentinel(staging, event_seq, role):
     assert finance["actual"][0]["amount"] == SENTINEL
     assert finance["payments"][0]["amount"] == SENTINEL
     assert finance["partner"]["payable"] == SENTINEL
+    assert _row(model)["importInfo"]["tax"] == DUTY
+    assert _row(model)["importInfo"]["vat"] == VAT
+    assert model["lastWrites"][0]["readback"]["importInfo"]["tax"] == DUTY
+    assert model["lastWrites"][0]["readback"]["importInfo"]["vat"] == VAT
     assert model["payables"]["rows"], "C2D worklist keeps the ledger row"
     assert any(
         row.get("partnerId") == PARTNER and row.get("remaining") == SENTINEL
@@ -380,6 +442,7 @@ def test_anonymous_gate_is_fail_closed(staging, event_seq):
     import streamlit as st
 
     _seed_sentinel_shipment(event_seq)
+    _seed_duty_vat()
     _seed_stale_session_state()
     _as_anonymous()
 
@@ -389,6 +452,8 @@ def test_anonymous_gate_is_fail_closed(staging, event_seq):
     assert readback, "stale outcome still delivered (redacted)"
     assert readback[0]["readback"]["finance"]["receivable"] is None
     assert readback[0]["readback"]["finance"]["actual"] == []
+    assert readback[0]["readback"]["importInfo"]["tax"] is None
+    assert readback[0]["readback"]["importInfo"]["vat"] is None
 
     preview = vm._getfly_preview_projection()
     assert preview["summary"]["revenue"] is None
@@ -425,6 +490,7 @@ def test_role_downgrade_same_session_drops_stale_finance(staging, event_seq):
     downgraded to Sale (stale lastWrites + GetFly preview still in session
     state): the rebuilt payload must not contain the sentinel."""
     _seed_sentinel_shipment(event_seq)
+    _seed_duty_vat()
     _seed_stale_session_state()
 
     _as_role("support")
@@ -433,6 +499,7 @@ def test_role_downgrade_same_session_drops_stale_finance(staging, event_seq):
     _as_role("sale")
     model = vm.build_view_model()
     _assert_no_sentinel(model, "sale after downgrade")
+    _assert_no_tax_sentinels(model, "sale after downgrade")
     assert _row(model)["id"] == SHIPMENT
     assert _row(model)["journey"]
 
@@ -442,6 +509,7 @@ def test_frontend_role_selector_cannot_bypass_server(staging, event_seq):
     value into a client-side key must not change the server-side actor or
     the payload. Authorization reads st.session_state.current_user only."""
     _seed_sentinel_shipment(event_seq)
+    _seed_duty_vat()
     _seed_stale_session_state()
     _as_role("sale")
     import streamlit as st
@@ -452,6 +520,7 @@ def test_frontend_role_selector_cannot_bypass_server(staging, event_seq):
     model = vm.build_view_model()
     assert model["user"]["role"] == "SALE"
     _assert_no_sentinel(model, "sale with spoofed client role")
+    _assert_no_tax_sentinels(model, "sale with spoofed client role")
 
 
 # ---------------------------------------------------------------------------
@@ -463,6 +532,7 @@ def test_restricted_finance_shape_is_ui_safe(staging, event_seq):
     s.finance.partner and s.finance.payments directly: the restricted block
     must keep those keys with the right types, never None/absent."""
     _seed_sentinel_shipment(event_seq)
+    _seed_duty_vat()
     _as_role("sale")
 
     finance = _row(vm.build_view_model())["finance"]
@@ -473,6 +543,68 @@ def test_restricted_finance_shape_is_ui_safe(staging, event_seq):
     assert isinstance(finance["partner"], dict)
     assert isinstance(finance["partner"]["payments"], list)
     assert finance["hasActualLines"] is False
+
+    model = vm.build_view_model()
+    assert _row(model)["importInfo"]["tax"] is None
+    assert _row(model)["importInfo"]["vat"] is None
+    assert "declarationNo" in _row(model)["importInfo"]
+
+
+def test_operations_receives_no_quote_and_no_tax(staging, event_seq):
+    """Operations holds NEITHER finance_view NOR commercial_view: no ledger
+    sentinel, no duty/VAT sentinel, and an EMPTY finance.quote — the quote is
+    commercial data the role matrix does not permit it to see. Journey,
+    route and status still survive."""
+    _seed_sentinel_shipment(event_seq)
+    _seed_duty_vat()
+    _seed_stale_session_state()
+    _as_role("operations")
+    import streamlit as st
+
+    st.session_state["logi_partner_context_selection"] = PARTNER
+
+    model = vm.build_view_model()
+    _assert_no_sentinel(model, "Operations")
+    _assert_no_tax_sentinels(model, "Operations")
+
+    row = _row(model)
+    assert row["finance"]["quote"] == []
+    assert row["importInfo"]["tax"] is None
+    assert row["importInfo"]["vat"] is None
+    assert row["id"] == SHIPMENT
+    assert row["customer"] == "An Phát JSC"
+    assert row["journey"], "journey must survive redaction"
+    assert row["route"], "route must survive redaction"
+    assert row["status"], "status must survive redaction"
+
+
+def test_customs_field_write_does_not_clobber_tax(staging, event_seq):
+    """Write-safety: saving an unrelated customs field (tk_no) must not
+    touch the true tax figures, and a redacted render must not mutate the
+    stored document — the payload hides the numbers, the source keeps them.
+    (The field-save writer takes explicit field values only; it never
+    round-trips the redacted payload.)"""
+    _seed_sentinel_shipment(event_seq)
+    _seed_duty_vat()
+
+    _as_role("support")
+    out = _dispatch(event_seq, "shipment_field_save", {
+        "shipmentId": SHIPMENT, "fields": {"tk_no": "TK-SEC-01"},
+    })
+    assert out["ok"], out["error"]
+    stored = vm.read_shipment(SHIPMENT)
+    assert stored["data"]["2.4"]["tk_no"] == "TK-SEC-01"
+    assert stored["data"]["2.4"]["import_duty_amount"] == DUTY
+    assert stored["data"]["2.4"]["import_vat_amount"] == VAT
+
+    # A Sale render hides the numbers (None) but must not mutate the source.
+    _as_role("sale")
+    model = vm.build_view_model()
+    assert _row(model)["importInfo"]["tax"] is None
+    assert _row(model)["importInfo"]["vat"] is None
+    stored = vm.read_shipment(SHIPMENT)
+    assert stored["data"]["2.4"]["import_duty_amount"] == DUTY
+    assert stored["data"]["2.4"]["import_vat_amount"] == VAT
 
 
 def test_finance_writers_and_ledger_outcomes_unchanged(staging, event_seq):
