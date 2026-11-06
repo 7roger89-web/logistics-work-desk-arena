@@ -124,6 +124,14 @@ Mỗi phiên append một entry mới ở cuối mục này. Không có entry = 
 
 ### Entries
 
+- [2026-11-06] SESSION LOGI-SEC-QUOTE-NOTE-BOUNDARY-20261106 — Chặn ghi chú nội bộ có giá vốn lọt qua C1 quotation payload (PR #269, cùng branch)
+  - BASE_SHA: b0a6734af5c3ecc207530c67d185f2c366a04e8f
+  - Làm: kiểm chứng finding C bằng probe thật trước khi sửa (báo giá thường không Excel, note "INTERNAL-COST-742913: giá vốn agent 24000000" lọt sang Viewer/legacy Sales cả ở model.quotes lẫn readback create/edit) rồi sửa tối thiểu _restricted_quote: per-line note → None cho actor thiếu commercial_write; customerNotes và giá bán giữ nguyên; không đổi writer, calculator, RBAC.
+  - Đo được: probe CONFIRMED trước fix; regression mới 4 FAILED trước fix / 4 PASS sau fix; 33 security tests pass cùng lúc (13 finance + 9 commercial + 7 nested + 4 note); ruff sạch trên file đổi, 7 lỗi pre-existing không mới; router PASS; full suite 17 failed / 1983 passed, 0 mới so với base.
+  - Bị bác bỏ: "costUnit đã None thì đường này an toàn" — BÁC BỎ (phép thử phân biệt chứng minh chuỗi INTERNAL-COST-742913 vẫn có trong nhánh C1 quote/readback của Viewer và legacy Sales).
+  - Còn lại: re-review độc lập của diff đã sửa + Owner quyết định merge; follow-up riêng (policy UNKNOWN, không chặn): supplier rates, contract values, contract docgen documents, F-4, F-5 (xem ACCEPTANCE.md §5/§11).
+  - Head sha: TBD (cập nhật sau commit; branch task/LOGI-SEC-FINANCE-PAYLOAD-20261105, chưa merge).
+
 - [2026-11-06] SESSION LOGI-SEC-NESTED-COST-LEAK-20261106 — Chặn rò rỉ giá vốn trong dữ liệu báo giá lồng sâu (PR #269, cùng branch)
   - BASE_SHA: b0a6734af5c3ecc207530c67d185f2c366a04e8f
   - Làm: mở rộng hai helper hiện có ở logi_view_model.py — _restricted_excel_quote xóa thêm cost_total/cost_vnd/calculation_basis/internal_note/cost_source từng dòng và estimated_cost/margin/margin_pct từng option (cả A và B, active/inactive); _restricted_agreement xóa thêm calculation_basis và source_reference từng dòng thỏa thuận. Tái dùng helper cho model.quotes/agreements, quote/agreement readbacks, quote_preview và quote_import_excel trong lastWrites; không đổi role matrix, writer, schema, calculator.

@@ -1110,18 +1110,24 @@ def _restricted_quote(quote: Mapping[str, Any] | None) -> dict[str, Any]:
     """A C1 quote projection for an actor with ``commercial_view`` but
     WITHOUT ``commercial_write``.
 
-    Sell prices, identity, status and customer-facing notes survive; the
-    cost/margin figures (per-line costUnit/costTotal/costVnd,
-    estimatedCostVnd, estimatedMarginVnd) become None (UNKNOWN, never 0)
-    and the internal Excel source data is restricted by
-    ``_restricted_excel_quote``. Returns a new dict; the source is never
-    mutated.
+    Sell prices, identity, status and customer-facing notes
+    (``customerNotes``) survive; the cost/margin figures (per-line
+    costUnit/costTotal/costVnd, estimatedCostVnd, estimatedMarginVnd)
+    become None (UNKNOWN, never 0) and the internal Excel source data is
+    restricted by ``_restricted_excel_quote``. The per-line operator
+    ``note`` is also internal — it is free-form operator text
+    (``views/logi_c1.py:_quote_payload`` carries it verbatim, and the
+    customer snapshot allowlist never publishes it) and may contain a
+    cost figure, so it becomes None too; the customer-facing
+    ``customerNotes`` list is a separate field and survives. Returns a
+    new dict; the source is never mutated.
     """
     if not isinstance(quote, Mapping):
         return {}
     restricted = dict(quote)
     restricted["serviceLines"] = [
-        {**line, "costUnit": None, "costTotal": None, "costVnd": None}
+        {**line, "costUnit": None, "costTotal": None, "costVnd": None,
+         "note": None}
         if isinstance(line, Mapping) else line
         for line in quote.get("serviceLines") or []
     ]

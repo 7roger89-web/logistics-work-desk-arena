@@ -43,11 +43,12 @@ just source review: before the fix, a Sale session's real
 ## 1. Source patch / diff
 
 Files changed (cumulative vs base `b0a6734`, see §8 for the
-correction-round split, §9 for the commercial-boundary split and §10 for
-the nested-cost-leak split; `git diff b0a6734 --stat`: logi_view_model.py
-+484/−13, finance test file +634 new, commercial-boundary test file +623
-new, nested-cost test file +494 new, ACCEPTANCE.md +923 new, NEXT.md
-+32):
+correction-round split, §9 for the commercial-boundary split, §10 for
+the nested-cost-leak split and §11 for the quote-note boundary split;
+`git diff b0a6734 --stat`: logi_view_model.py +490/−13, finance test
+file +634 new, commercial-boundary test file +623 new, nested-cost test
+file +494 new, quote-note test file +288 new, ACCEPTANCE.md +1077 new,
+NEXT.md +40):
 
 - `views/logi_view_model.py` — the ONLY source file touched.
   - `_can_view_finance()` — server payload gate: authenticated session actor
@@ -73,6 +74,9 @@ new, nested-cost test file +494 new, ACCEPTANCE.md +923 new, NEXT.md
     `estimated_margin_vnd` / `estimated_margin_pct`;
     `_restricted_agreement` also clears per service line
     `calculation_snapshot.calculation_basis` and `source_reference`.
+    **Quote-note boundary round:** `_restricted_quote` also clears the
+    per-line operator `note` (free-form text that may carry a cost
+    figure; the customer-facing `customerNotes` list survives).
   - `_restricted_finance()` — restricted per-shipment finance block: keeps
     the commercial quote + currency + UI-safe empty shapes; every
     restricted money figure is None (UNKNOWN, never 0).
@@ -117,6 +121,8 @@ new, nested-cost test file +494 new, ACCEPTANCE.md +923 new, NEXT.md
   (commercial-boundary round, see §2 and §9).
 - `tests/test_logi_sec_nested_cost_leak.py` — NEW, 7 tests
   (nested-cost-leak round, see §2 and §10).
+- `tests/test_logi_sec_quote_note_boundary.py` — NEW, 4 tests
+  (quote-note boundary round, see §2 and §11).
 - No change to `core/auth.py` (role matrix untouched), no change to any
   writer, no frontend change, no dist rebuild (React already renders
   `null` money as UNKNOWN via `fmtCcy`/`fmtMillionsCcy`/`fmtPct`).
@@ -261,6 +267,26 @@ NOTE-COST-B-9873, SRC-COST-B-9874; fixture real cost 31800000):
    stay UI-safe (options A/B present, service lines are lists with sell
    figures, agreement keeps its sell lines; restricted money None, never
    0).
+
+**Quote-note boundary round (2026-11-06):** `tests/
+test_logi_sec_quote_note_boundary.py` — NEW, 4 tests (see §11 for the
+full record; needle "INTERNAL-COST-742913", sell 32000000, cost
+24000000):
+
+1. `test_operator_note_stripped_for_viewer_and_sales` — Viewer/Sales:
+   note None, needle absent from the whole quote branch, sell +
+   customerNotes kept; Admin/Support/Sale keep note + cost;
+   Accounting/Operations get no quotes.
+2. `test_downgrade_create_edit_transition_readbacks_no_note` — Support
+   create/edit/transition outcomes: Viewer/Sales readbacks have note
+   None + needle absent; Operations/Accounting readbacks `{}`.
+3. `test_downgrade_quote_preview_readback_no_note` — Support preview
+   outcome: Viewer/Sales nested quote note None, customer snapshot
+   untouched; Operations/Accounting readback `{}`. Pins the preview
+   replay path of the shared helper.
+4. `test_restricted_note_ui_shape_and_source_unmutated` — restricted
+   line stays a dict, note None (never 0, key present), sell kept;
+   stored quote note + cost intact after restricted renders.
 
 ## 3. CI gates (AGENTS.md order)
 
@@ -471,6 +497,15 @@ Deliberately KEPT (permitted data, separate authorization):
     the top-level excelQuote `calculation` (sell-side estimate) and
     `customs` (duty/vat ESTIMATE, not F-1 actuals) stay by the same
     reasoning — recorded in §10 for the reviewer.
+15. **Operator note in C1 quotes — FIXED in the quote-note boundary round
+    (§11).** The per-line free-form operator `note` was carried verbatim
+    into `serviceLines[*].note` while `_restricted_quote` cleared only
+    the cost figures, so Viewer / legacy Sales received a cost-bearing
+    note even with `costUnit: None`. The note is now None for actors
+    without `commercial_write`; the customer-facing `customerNotes` list
+    (separate field, allowlisted by `customer_quote_snapshot`) survives.
+    4 new regression tests, probe-confirmed before the fix (4 failed
+    before / 4 passed after).
 
 ## 6. Full-suite result / remaining blocker
 
@@ -919,5 +954,125 @@ START_HEAD too (pre-existing, not caused by this change).
 - Evidence dir: `~/workspace/pr269-independent-review/evidence/
   LOGI-SEC-NESTED-COST-LEAK-20261106/` (05-TRANG-THAI.md,
   FOCUSED-REVIEW.md, probe_shapes.py/.log, pytest-full.log).
+- NEXT=independent re-review of the corrected diff, then Owner merge
+  decision. No merge without Owner authorization.
+
+## 11. Quote-note boundary round (2026-11-06) — operator note in C1 quotes
+
+TASK_ID=LOGI-SEC-QUOTE-NOTE-BOUNDARY-20261106. Same PR #269, same branch.
+START_HEAD=97a89458e96a9c1efae50ff44ab27be4f8774a7d (= nested-cost head).
+
+### Goal
+
+Validate, and if confirmed block, an internal operator note carrying cost
+data leaking to Viewer/legacy Sales through the C1 quotation payload.
+Do NOT redo the nested-cost round.
+
+### Finding C — CONFIRMED by discriminating probe (not by code reading alone)
+
+Probe (real handlers, isolated staging/mongomock, evidence
+`probe_note_leak.py/.log`): Support creates a plain non-Excel quote with
+one line — sellUnit 32000000, costUnit 24000000, note
+"INTERNAL-COST-742913: giá vốn agent 24000000". The stored quote keeps
+the note intact. The same session switched to Viewer, then legacy Sales:
+the real `build_view_model()` returns the quote with `costUnit: None`
+(correct) but `note` VERBATIM — the needle "INTERNAL-COST-742913" is
+present in the whole `model.quotes` branch for both roles, while sell
+price and `customerNotes` survive. The `quote_create` and `quote_edit`
+outcomes recorded as Support replay the same note to Viewer/Sales after
+downgrade. Admin/Sale keep note + costUnit.
+
+Mechanism (source-verified): `views/logi_c1.py:1149 _quote_payload`
+carries `"note"` verbatim ("core.quotations never reads it for
+arithmetic"); `quote_projection` (logi_c1.py:244) puts it into
+`serviceLines[*].note`; `_restricted_quote` cleared only the cost
+figures. The customer snapshot allowlist
+(`core.quotations.customer_quote_snapshot`) never publishes the operator
+note — only the customer-facing `customerNotes` — so stripping it for
+the restricted actor matches the customer boundary.
+
+### Source change (only `views/logi_view_model.py`, +13/−7 vs 97a8945)
+
+- `_restricted_quote()`: per service line, `"note": None` in addition to
+  the existing costUnit/costTotal/costVnd → None. Docstring updated to
+  say the operator note is internal and `customerNotes` (separate field)
+  survive. New dicts; source never mutated; UNKNOWN=None, never 0.
+- No other file changed. No role-matrix, writer, calculator or RBAC
+  change. The helper is reused unchanged by `model.quotes`, quote
+  readbacks (create/edit/transition), `quote_preview` (nested `quote`)
+  and `quote_import_excel` — the agreement path needs no change
+  (`_services_from_quote` carries no `note` field).
+
+### Tests — `tests/test_logi_sec_quote_note_boundary.py`, NEW, 4 tests
+
+Real non-Excel quote via the real `quote_create` handler; sentinel
+needle "INTERNAL-COST-742913" (sell 32000000, cost 24000000).
+
+1. `test_operator_note_stripped_for_viewer_and_sales` — Viewer/Sales:
+   note None, needle absent from the whole quote branch (recursive scan),
+   costUnit None, sell + customerNotes kept; Admin/Support/Sale: note +
+   cost intact; Accounting/Operations: `model["quotes"] == []`.
+2. `test_downgrade_create_edit_transition_readbacks_no_note` — Support
+   create/edit/transition outcomes: Viewer/Sales readbacks have note
+   None + needle absent (sell + customerNotes kept);
+   Operations/Accounting readbacks `{}`.
+3. `test_downgrade_quote_preview_readback_no_note` — Support preview
+   outcome (Excel producer, one costed line): Viewer/Sales nested quote
+   note None, customer snapshot untouched; Operations/Accounting `{}`.
+   This pins the preview replay path of the shared helper; the
+   plain-quote note leak itself is proven by tests 1–2 (the Excel draft
+   lines carry no `note` key by construction).
+4. `test_restricted_note_ui_shape_and_source_unmutated` — restricted line
+   stays a dict, note None (never 0, key present), sell kept; stored
+   quote note + cost intact after restricted renders.
+
+**FAIL-before (source stashed, tests kept, START_HEAD 97a8945): 4 failed /
+0 passed. PASS-after: 4/4.** All 33 security tests green together
+(13 finance + 9 commercial-boundary + 7 nested + 4 note).
+
+### Verification
+
+- Ruff changed files PASS (`logi_view_model.py` +
+  `test_logi_sec_quote_note_boundary.py`); repo-wide 7 errors in the same
+  5 pre-existing files as base, **0 new**; router PASS.
+- Full suite: **17 failed, 1983 passed, 44 skipped, 10 subtests passed in
+  179.98s** (log `~/workspace/pr269-independent-review/evidence/
+  LOGI-SEC-QUOTE-NOTE-BOUNDARY-20261106/pytest-full.log`). Exact test-node
+  set comparison vs the nested-cost round (18 failed / 1978 passed): 0
+  new failures; the flaky wall-clock timing test
+  `test_independent_reads_overlap_instead_of_serialising` passed this
+  run. 1983 = 1978 + 4 new tests + 1 flaky flip. The 17 failures are
+  identical to the pre-nested round set and all in
+  `tests/BASELINE_FAILED.txt`. **0 new failures vs base.**
+- F-1 tax/VAT, GNT, journey and document download: unchanged paths,
+  covered by the 33 security tests (all green) and the full-suite
+  comparison below. Source documents never mutated (new dicts in the
+  helper; asserted by the stored-quote re-read in test 4).
+- REVIEW=PENDING (no independent review claimed by this round).
+
+### Preflight receipts
+
+- `P2P_LAW_SOURCE=.p2p/portable/P2P-OPERATIONS-NOTEBOOK.md |
+  LAW_CHECK=PASS | SOURCE_CONTENT_SHA256=84914abd55960d6a5effad957ff9ebbdf917f632c8b18baa3a29c74a5d6ae4a7`
+- `SKILL_CHECK=PASS | SKILL=.agents/skills/p2p-karpathy/SKILL.md |
+  SHA256=cbe1b4c9082f0e253c75df20a9ca06ba3a4cc414ae1153c8b5a0fa3c03059ecd
+  | MANIFEST=.p2p/portable/P2P-SKILL-PROJECTION.json | MATCH=YES`
+  (skill not reinstalled/recreated/modified; security-audit SKILL.md also
+  read; custom skill `restricted_payload_redaction` re-read per
+  skill-update: map every copy, redact recursively, prove each branch
+  with its own sentinel)
+- `EXPERIENCE_CHECK=NO_MATCH` (portable capsule: 1 procedural record, no
+  trigger match)
+- `OE_GATE`: Không bị over engineering chứ? — SIMPLER_PATH=YES (probe
+  first, fix 1 field in 1 helper only if confirmed); MATERIAL_PROGRESS=YES
+  (1 concrete finding, discriminating test); NECESSITY=YES (free-form
+  note can carry cost — must verify, not assume); CORE_BEFORE_SUPPORT=YES
+  (payload boundary only, no redesign); SMALLER_VERIFIABLE_SLICE=YES
+  (1 field + 4 tests). `OE_VERDICT=DO_IT`.
+- `SECURITY_AUDIT_MODE=FOCUSED_REVIEW` (read-only trace before the probe;
+  probe_note_leak.py/.log in the task evidence dir).
+- Evidence dir: `~/workspace/pr269-independent-review/evidence/
+  LOGI-SEC-QUOTE-NOTE-BOUNDARY-20261106/` (05-TRANG-THAI.md,
+  probe_note_leak.py/.log, pytest-full.log).
 - NEXT=independent re-review of the corrected diff, then Owner merge
   decision. No merge without Owner authorization.
