@@ -20,6 +20,13 @@ def _load_restore():
     return mod
 
 
+if not RESTORE.exists():
+    # Công cụ nằm dưới docs/goals/LOG-LG02/tools/ đã bị dọn khỏi repo —
+    # không trỏ vào đường dẫn chết: bỏ qua cả module thay vì lỗi collection.
+    raise unittest.SkipTest(
+        f"công cụ {RESTORE.relative_to(REPO)} không còn trong repo — module bị bỏ qua"
+    )
+
 restore = _load_restore()
 
 

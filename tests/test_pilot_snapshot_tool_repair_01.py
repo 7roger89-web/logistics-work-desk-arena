@@ -39,6 +39,13 @@ def _load_tool():
     return mod
 
 
+if not TOOL.exists():
+    # Công cụ nằm dưới docs/goals/LOG-LG02/tools/ đã bị dọn khỏi repo —
+    # không trỏ vào đường dẫn chết: bỏ qua cả module thay vì lỗi collection.
+    raise unittest.SkipTest(
+        f"công cụ {TOOL.relative_to(REPO)} không còn trong repo — module bị bỏ qua"
+    )
+
 tool = _load_tool()
 
 
