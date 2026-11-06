@@ -47,7 +47,7 @@ correction-round split, §9 for the commercial-boundary split, §10 for
 the nested-cost-leak split and §11 for the quote-note boundary split;
 `git diff b0a6734 --stat`: logi_view_model.py +490/−13, finance test
 file +634 new, commercial-boundary test file +623 new, nested-cost test
-file +494 new, quote-note test file +288 new, ACCEPTANCE.md +1077 new,
+file +494 new, quote-note test file +288 new, ACCEPTANCE.md +1078 new,
 NEXT.md +40):
 
 - `views/logi_view_model.py` — the ONLY source file touched.

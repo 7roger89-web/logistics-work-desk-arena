@@ -130,7 +130,7 @@ Mỗi phiên append một entry mới ở cuối mục này. Không có entry = 
   - Đo được: probe CONFIRMED trước fix; regression mới 4 FAILED trước fix / 4 PASS sau fix; 33 security tests pass cùng lúc (13 finance + 9 commercial + 7 nested + 4 note); ruff sạch trên file đổi, 7 lỗi pre-existing không mới; router PASS; full suite 17 failed / 1983 passed, 0 mới so với base.
   - Bị bác bỏ: "costUnit đã None thì đường này an toàn" — BÁC BỎ (phép thử phân biệt chứng minh chuỗi INTERNAL-COST-742913 vẫn có trong nhánh C1 quote/readback của Viewer và legacy Sales).
   - Còn lại: re-review độc lập của diff đã sửa + Owner quyết định merge; follow-up riêng (policy UNKNOWN, không chặn): supplier rates, contract values, contract docgen documents, F-4, F-5 (xem ACCEPTANCE.md §5/§11).
-  - Head sha: TBD (cập nhật sau commit; branch task/LOGI-SEC-FINANCE-PAYLOAD-20261105, chưa merge).
+  - Head sha: a6ff308 (commit sửa chính của phiên; branch task/LOGI-SEC-FINANCE-PAYLOAD-20261105, chưa merge).
 
 - [2026-11-06] SESSION LOGI-SEC-NESTED-COST-LEAK-20261106 — Chặn rò rỉ giá vốn trong dữ liệu báo giá lồng sâu (PR #269, cùng branch)
   - BASE_SHA: b0a6734af5c3ecc207530c67d185f2c366a04e8f
