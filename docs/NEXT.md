@@ -130,7 +130,7 @@ Mỗi phiên append một entry mới ở cuối mục này. Không có entry = 
   - Đo được: regression mới 6 FAILED trước fix / 7 PASS sau fix (1 passed trước fix là test import readback — round-3 đã chặn source_costs, test này pin đường đó); focused C1/Excel/contract 157 passed (1 failed pre-existing trên START_HEAD: test_load_agreements_returns_dict_from_load_dict); ruff sạch trên file đổi, 7 lỗi pre-existing không mới; router PASS; full suite 18 failed / 1978 passed, 0 mới so với base (17 trùng vòng trước + 1 test timing flaky, cũng fail trên START_HEAD).
   - Bị bác bỏ: "chỉ kiểm cost_unit/source_costs là đủ để PASS" — BÁC BỎ (phép thử phân biệt quét đệ quy cả số tiền lẫn chuỗi chứa giá vốn trên đúng nhánh được bảo vệ, với sentinel riêng từng nhánh chi phí).
   - Còn lại: re-review độc lập của diff đã sửa + Owner quyết định merge; follow-up riêng (policy UNKNOWN, không chặn): supplier rates, contract values, contract docgen documents, F-4, F-5 (xem ACCEPTANCE.md §5/§10).
-  - Head sha: TBD (cập nhật sau commit; branch task/LOGI-SEC-FINANCE-PAYLOAD-20261105, chưa merge).
+  - Head sha: 607cfb9 (commit sửa chính của phiên; branch task/LOGI-SEC-FINANCE-PAYLOAD-20261105, chưa merge).
 
 - [2026-11-05] SESSION LOGI-SEC-COMMERCIAL-BOUNDARY-20261105 — Hoàn thiện ranh giới phân quyền payload thương mại (PR #269, cùng branch)
   - BASE_SHA: b0a6734af5c3ecc207530c67d185f2c366a04e8f
