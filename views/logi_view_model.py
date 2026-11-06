@@ -1052,14 +1052,21 @@ def _restricted_import_info(import_info: Mapping[str, Any] | None) -> dict[str, 
 def _restricted_excel_quote(excel_quote: Any) -> Any:
     """An excelQuote for an actor WITHOUT ``commercial_write``.
 
-    The parsed supplier cost rows (``source_costs``) and the cost unit on
+    The parsed supplier cost rows (``source_costs``) and the cost data on
     the option service lines are internal data — they are the same grant
     that gates the raw-workbook viewer and the source download — so they
-    become [] / None (UNKNOWN, never 0). The customer-sheet goods table,
+    become [] / None (UNKNOWN, never 0). That covers BOTH options (active
+    and inactive): each priced service line loses ``cost_unit``,
+    ``cost_total``, ``cost_vnd``, the ``calculation_basis`` string (it
+    embeds the cost figure as "; chi phí ..."), ``internal_note`` and
+    ``cost_source``; each option's ``calculation`` loses
+    ``estimated_cost_vnd``, ``estimated_margin_vnd`` and
+    ``estimated_margin_pct``. The customer-sheet goods table, the
+    sell-side estimate (``calculation.estimate_vnd`` and friends),
     source facts and warnings are kept: the parser prefers the explicit
     customer sheet, and the customer snapshot allowlist
-    (``core.quotations.customer_quote_snapshot``) treats the goods table as
-    customer-facing data. The source mapping is never mutated.
+    (``core.quotations.customer_quote_snapshot``) treats the goods table
+    as customer-facing data. The source mapping is never mutated.
     """
     if not isinstance(excel_quote, Mapping):
         return excel_quote
@@ -1073,10 +1080,28 @@ def _restricted_excel_quote(excel_quote: Any) -> Any:
                 new_options[key] = opt
                 continue
             lines = [
-                {**line, "cost_unit": None} if isinstance(line, Mapping) else line
+                {
+                    **line,
+                    "cost_unit": None,
+                    "cost_total": None,
+                    "cost_vnd": None,
+                    "calculation_basis": None,
+                    "internal_note": None,
+                    "cost_source": None,
+                }
+                if isinstance(line, Mapping) else line
                 for line in opt.get("service_lines") or []
             ]
-            new_options[key] = {**opt, "service_lines": lines}
+            new_opt = {**opt, "service_lines": lines}
+            calc = opt.get("calculation")
+            if isinstance(calc, Mapping):
+                new_opt["calculation"] = {
+                    **calc,
+                    "estimated_cost_vnd": None,
+                    "estimated_margin_vnd": None,
+                    "estimated_margin_pct": None,
+                }
+            new_options[key] = new_opt
         restricted["options"] = new_options
     return restricted
 
@@ -1112,19 +1137,39 @@ def _restricted_agreement(agreement: Mapping[str, Any] | None) -> dict[str, Any]
 
     Only the estimated margin in the snapshot's calculation summary is
     internal (it is the quote's margin, frozen into the agreement); the
-    agreed sell terms survive. Returns a new dict.
+    agreed sell terms survive. The service lines also carry internal
+    data copied from the quote's priced lines: each line's
+    ``calculation_snapshot.calculation_basis`` string embeds the cost
+    figure ("; chi phí ...") and ``source_reference`` is the cost-source
+    text — both become None (UNKNOWN, never 0). Sell totals, tax pct and
+    identity survive. Returns a new dict.
     """
     if not isinstance(agreement, Mapping):
         return {}
     restricted = dict(agreement)
     snap = agreement.get("commercialSnapshot")
     if isinstance(snap, Mapping):
+        new_snap = dict(snap)
         summary = snap.get("calculationSummary")
         if isinstance(summary, Mapping):
-            restricted["commercialSnapshot"] = {
-                **snap,
-                "calculationSummary": {**summary, "estimated_margin_vnd": None},
-            }
+            new_snap["calculationSummary"] = {**summary, "estimated_margin_vnd": None}
+        lines = snap.get("serviceLines")
+        if isinstance(lines, list):
+            new_lines: list[Any] = []
+            for line in lines:
+                if not isinstance(line, Mapping):
+                    new_lines.append(line)
+                    continue
+                new_line = dict(line)
+                calc_snap = line.get("calculation_snapshot")
+                if isinstance(calc_snap, Mapping):
+                    new_line["calculation_snapshot"] = {
+                        **calc_snap, "calculation_basis": None,
+                    }
+                new_line["source_reference"] = None
+                new_lines.append(new_line)
+            new_snap["serviceLines"] = new_lines
+        restricted["commercialSnapshot"] = new_snap
     return restricted
 
 

@@ -124,6 +124,14 @@ Mỗi phiên append một entry mới ở cuối mục này. Không có entry = 
 
 ### Entries
 
+- [2026-11-06] SESSION LOGI-SEC-NESTED-COST-LEAK-20261106 — Chặn rò rỉ giá vốn trong dữ liệu báo giá lồng sâu (PR #269, cùng branch)
+  - BASE_SHA: b0a6734af5c3ecc207530c67d185f2c366a04e8f
+  - Làm: mở rộng hai helper hiện có ở logi_view_model.py — _restricted_excel_quote xóa thêm cost_total/cost_vnd/calculation_basis/internal_note/cost_source từng dòng và estimated_cost/margin/margin_pct từng option (cả A và B, active/inactive); _restricted_agreement xóa thêm calculation_basis và source_reference từng dòng thỏa thuận. Tái dùng helper cho model.quotes/agreements, quote/agreement readbacks, quote_preview và quote_import_excel trong lastWrites; không đổi role matrix, writer, schema, calculator.
+  - Đo được: regression mới 6 FAILED trước fix / 7 PASS sau fix (1 passed trước fix là test import readback — round-3 đã chặn source_costs, test này pin đường đó); focused C1/Excel/contract 157 passed (1 failed pre-existing trên START_HEAD: test_load_agreements_returns_dict_from_load_dict); ruff sạch trên file đổi, 7 lỗi pre-existing không mới; router PASS; full suite 18 failed / 1978 passed, 0 mới so với base (17 trùng vòng trước + 1 test timing flaky, cũng fail trên START_HEAD).
+  - Bị bác bỏ: "chỉ kiểm cost_unit/source_costs là đủ để PASS" — BÁC BỎ (phép thử phân biệt quét đệ quy cả số tiền lẫn chuỗi chứa giá vốn trên đúng nhánh được bảo vệ, với sentinel riêng từng nhánh chi phí).
+  - Còn lại: re-review độc lập của diff đã sửa + Owner quyết định merge; follow-up riêng (policy UNKNOWN, không chặn): supplier rates, contract values, contract docgen documents, F-4, F-5 (xem ACCEPTANCE.md §5/§10).
+  - Head sha: TBD (cập nhật sau commit; branch task/LOGI-SEC-FINANCE-PAYLOAD-20261105, chưa merge).
+
 - [2026-11-05] SESSION LOGI-SEC-COMMERCIAL-BOUNDARY-20261105 — Hoàn thiện ranh giới phân quyền payload thương mại (PR #269, cùng branch)
   - BASE_SHA: b0a6734af5c3ecc207530c67d185f2c366a04e8f
   - Làm: đóng đầy đủ đường đưa báo giá thương mại + nguồn Excel nội bộ trái quyền vào payload React: finance_view/commercial_view/commercial_write đánh giá độc lập tại payload boundary (helper mới _can_view_commercial_write, _without_quote, _restricted_excel_quote/_restricted_quote/_restricted_agreement/_restricted_agreement_no_commercial/_stripped_document); model["quotes"]=[] khi thiếu commercial_view, cost/margin/source_costs bị chặn khi thiếu commercial_write; finance.quote [] cho accounting (giữ actual finance); lastWrites re-check theo quyền hiện tại (quote/agreement readbacks, workbook-view page, document export/source-download); thêm 9 regression tests với sentinel riêng (quote cost 27182818, margin 16180339, source_cost 24681357, agreement margin 13579246).

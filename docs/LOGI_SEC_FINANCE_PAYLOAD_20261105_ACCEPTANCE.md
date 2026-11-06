@@ -43,10 +43,11 @@ just source review: before the fix, a Sale session's real
 ## 1. Source patch / diff
 
 Files changed (cumulative vs base `b0a6734`, see §8 for the
-correction-round split and §9 for the commercial-boundary split;
-`git diff b0a6734 --stat`: logi_view_model.py +439/−13, finance test
-file +634 new, commercial-boundary test file +623 new, ACCEPTANCE.md
-+690 new, NEXT.md +24):
+correction-round split, §9 for the commercial-boundary split and §10 for
+the nested-cost-leak split; `git diff b0a6734 --stat`: logi_view_model.py
++484/−13, finance test file +634 new, commercial-boundary test file +623
+new, nested-cost test file +494 new, ACCEPTANCE.md +923 new, NEXT.md
++32):
 
 - `views/logi_view_model.py` — the ONLY source file touched.
   - `_can_view_finance()` — server payload gate: authenticated session actor
@@ -65,7 +66,13 @@ file +634 new, commercial-boundary test file +623 new, ACCEPTANCE.md
     `_stripped_document()` (commercial-boundary round) — per-tier
     restriction of a C1 quote projection, an agreement projection and an
     outcome document; cost/margin/internal Excel source data become None
-    / `[]`, bytes are removed, identity survives.
+    / `[]`, bytes are removed, identity survives. **Nested-cost-leak
+    round:** `_restricted_excel_quote` also clears per option line
+    `cost_total` / `cost_vnd` / `calculation_basis` / `internal_note` /
+    `cost_source` and per option calculation `estimated_cost_vnd` /
+    `estimated_margin_vnd` / `estimated_margin_pct`;
+    `_restricted_agreement` also clears per service line
+    `calculation_snapshot.calculation_basis` and `source_reference`.
   - `_restricted_finance()` — restricted per-shipment finance block: keeps
     the commercial quote + currency + UI-safe empty shapes; every
     restricted money figure is None (UNKNOWN, never 0).
@@ -108,6 +115,8 @@ file +634 new, commercial-boundary test file +623 new, ACCEPTANCE.md
 - `tests/test_logi_sec_finance_payload.py` — NEW, 13 tests (see §2).
 - `tests/test_logi_sec_commercial_boundary.py` — NEW, 9 tests
   (commercial-boundary round, see §2 and §9).
+- `tests/test_logi_sec_nested_cost_leak.py` — NEW, 7 tests
+  (nested-cost-leak round, see §2 and §10).
 - No change to `core/auth.py` (role matrix untouched), no change to any
   writer, no frontend change, no dist rebuild (React already renders
   `null` money as UNKNOWN via `fmtCcy`/`fmtMillionsCcy`/`fmtPct`).
@@ -218,6 +227,40 @@ source_cost 24681357, agreement margin 13579246):
    (by design, write policy unchanged).
 9. `test_restricted_payload_ui_shape` — restricted payloads stay UI-safe
    (lists stay lists, restricted money None never 0, identity survives).
+
+**Nested-cost-leak round (2026-11-06):** `tests/
+test_logi_sec_nested_cost_leak.py` — NEW, 7 tests (see §10 for the full
+record; sentinels: option A cost 51234567 / sell 91234567 / margin
+40000000, option B cost 62345678 / sell 87654321 / margin 25308643,
+internal-note/source strings NOTE-COST-A-9871, SRC-COST-A-9872,
+NOTE-COST-B-9873, SRC-COST-B-9874; fixture real cost 31800000):
+
+1. `test_nested_excel_cost_stripped_for_viewer` — both excelQuote options:
+   Viewer/Sales get no cost figure or cost string (field asserts +
+   recursive branch scan), sell/goods/source_facts kept; Admin/Support/
+   Sale keep the full nested data; Accounting/Operations get no quotes.
+2. `test_nested_agreement_cost_strings_stripped` — agreement service
+   lines: Viewer/Sales get basis None + source_reference None + margin
+   None, sell kept; privileged roles keep the basis string, source text
+   and margin; Accounting/Operations get the shell.
+3. `test_downgrade_quote_transition_readback_no_nested_cost` — Support
+   quote_transition outcome: Viewer/Sales readback has no nested cost
+   (sell kept); Operations/Accounting readback `{}`.
+4. `test_downgrade_agreement_transition_readback_no_cost_strings` —
+   Support agreement_transition outcome: Viewer/Sales readback has no
+   basis string / source text / margin; Operations gets the shell.
+5. `test_downgrade_quote_preview_readback_no_nested_cost` — Support
+   quote_preview outcome: Viewer/Sales nested quote clean, customer
+   snapshot untouched; Operations/Accounting readback `{}`.
+6. `test_downgrade_quote_import_readback_no_nested_cost` — real import
+   outcome: Viewer source_costs `[]`, no "31800000" in the readback
+   branch, goods kept; Sale keeps the real source costs. Also PASSED
+   before the fix (round-3 protection already covered it) — pins the
+   import replay path, does not prove the new behaviour.
+7. `test_restricted_nested_payload_ui_shape` — restricted nested payloads
+   stay UI-safe (options A/B present, service lines are lists with sell
+   figures, agreement keeps its sell lines; restricted money None, never
+   0).
 
 ## 3. CI gates (AGENTS.md order)
 
@@ -416,6 +459,18 @@ Deliberately KEPT (permitted data, separate authorization):
     commercial_view. Only the two quote documents (export XLSX,
     source workbook) are stripped in this round. Owner policy decision
     needed.
+14. **Nested C1 cost data — FIXED in the nested-cost-leak round (§10).**
+    The round-3 helpers cleared only top-level cost fields; the nested
+    excelQuote options (cost_total / cost_vnd / calculation_basis string /
+    internal_note / cost_source / option calculation cost+margin) and the
+    agreement service lines (calculation_basis string / source_reference)
+    still reached Viewer / legacy Sales. Both helpers now clear the full
+    nested set; 7 new regression tests with distinct sentinels per cost
+    branch (6 failed before fix / 7 passed after). The classification
+    decisions in item 10 (goods / source_facts stay) are unchanged, and
+    the top-level excelQuote `calculation` (sell-side estimate) and
+    `customs` (duty/vat ESTIMATE, not F-1 actuals) stay by the same
+    reasoning — recorded in §10 for the reviewer.
 
 ## 6. Full-suite result / remaining blocker
 
@@ -686,5 +741,183 @@ Recorded as §5 items 11–12; Owner policy decision needed.
   LOGI-SEC-COMMERCIAL-BOUNDARY-20261105/` (05-TRANG-THAI.md,
   COVERAGE-TABLE.md, probe_c1_mapping.py/.log,
   probe_unknown_policies.py/.log, pytest-full.log).
+- NEXT=independent re-review of the corrected diff, then Owner merge
+  decision. No merge without Owner authorization.
+
+## 10. Nested cost-leak round (2026-11-06) — C1 quote/agreement nested objects
+
+TASK_ID=LOGI-SEC-NESTED-COST-LEAK-20261106. Same PR #269, same branch.
+START_HEAD=725c13798d1bfc68bdca7c1e8b1f1c885db0cda3 (= previous round's head).
+
+### Goal
+
+Close the cost/margin/internal-source data still leaking through the
+NESTED objects of C1 quotes/agreements, including copies in lastWrites
+after a role downgrade. Keep every permission path fixed in the earlier
+rounds unchanged.
+
+### Findings (FOCUSED_REVIEW, source-verified before any edit)
+
+**Finding A — excelQuote options carry cost figures + cost strings.**
+`core/quotations.py:482 _calculate_excel_quote()` prices each option's
+service lines with `calculate_quote`, so every priced line carries
+`cost_total` / `cost_vnd` / `calculation_basis` (a string that EMBEDS the
+cost figure as "; chi phí ...") / `internal_note` / `cost_source`, and each
+option's `calculation` carries `estimated_cost_vnd` /
+`estimated_margin_vnd` / `estimated_margin_pct`.
+`views/logi_c1.py:214 quote_projection()` puts the whole `excel_quote`
+verbatim into `model.quotes[*].excelQuote`. The old
+`_restricted_excel_quote()` cleared only `source_costs` and per-line
+`cost_unit` — so Viewer / legacy Sales (commercial_view, no
+commercial_write) still received the nested cost data from BOTH options
+(active and inactive).
+
+**Finding B — agreement serviceLines carry cost basis + source.**
+`core/commercial_agreements.py:78 _services_from_quote()` copies the
+quote's priced lines, so each agreement service line carries
+`calculation_snapshot.calculation_basis` (same cost-embedding string) and
+`source_reference` (= the cost-source text).
+`views/logi_c1.py:301 agreement_projection()` copies the snapshot's
+service lines verbatim. The old `_restricted_agreement()` cleared only
+`calculationSummary.estimated_margin_vnd`.
+
+Full review record: `~/workspace/pr269-independent-review/evidence/
+LOGI-SEC-NESTED-COST-LEAK-20261106/FOCUSED-REVIEW.md` (producer chains,
+reuse check, considered-and-kept decisions).
+
+### Source changes (only `views/logi_view_model.py`, +56/−11 vs 725c137)
+
+- `_restricted_excel_quote()` extended: per option service line,
+  `cost_total` / `cost_vnd` / `calculation_basis` / `internal_note` /
+  `cost_source` → None (in addition to the existing `cost_unit` → None);
+  per option `calculation`, `estimated_cost_vnd` /
+  `estimated_margin_vnd` / `estimated_margin_pct` → None. Both options
+  A and B, active and inactive. New dicts throughout; source never
+  mutated; UNKNOWN=None, never 0.
+- `_restricted_agreement()` extended: per service line,
+  `calculation_snapshot.calculation_basis` → None and `source_reference`
+  → None (in addition to the existing `estimated_margin_vnd` → None).
+  Sell totals, tax pct and identity survive.
+
+No other file changed. No role-matrix change, no writer/schema/calculator
+change, no RBAC change. The two helpers are reused unchanged by
+`model.quotes` / `model.agreements`, quote readbacks
+(quote_create/edit/transition), `quote_preview` (nested `quote`),
+`quote_import_excel` (the readback IS the excel_quote) and agreement
+readbacks — verified by call-site read, no new call sites added.
+
+### Considered and NOT stripped (decision, reviewer may challenge)
+
+- excelQuote top-level `calculation` (goods/estimate VND) and `customs`
+  (duty/vat ESTIMATE): sell-side customer-facing estimate, a different
+  fact from the F-1 ACTUAL duty/VAT from the customs notice/GNT
+  (shipments[].importInfo, gated by finance_view). The packet's removal
+  list does not include them.
+- `calculation.unknown_reasons` ("Chưa biết tổng chi phí..."): states cost
+  is UNKNOWN, carries no figure and no source.
+- Per-line `rate_snapshot_id` / `rate_row_id`: identifiers, no money,
+  no lookup path in the payload for the restricted actor.
+- `options[*].scope`, `public_note`, goods table, source_facts, warnings:
+  customer-facing data per the round-3 classification.
+
+### Tests — `tests/test_logi_sec_nested_cost_leak.py`, NEW, 7 tests
+
+Real fixture workbook (`scripts/make_luc_giac_quote_fixture`) parsed by the
+real import, both options costed with distinct sentinels and priced by the
+real `calculate_quote`; agreement built through the real
+quote_transition → agreement_create handlers. Sentinels:
+XCOST_A=51234567 / XSELL_A=91234567 / XMARGIN_A=40000000,
+XCOST_B=62345678 / XSELL_B=87654321 / XMARGIN_B=25308643,
+XNOTE_A="NOTE-COST-A-9871", XSRC_A="SRC-COST-A-9872",
+XNOTE_B="NOTE-COST-B-9873", XSRC_B="SRC-COST-B-9874";
+fixture real cost 31800000. Recursive JSON scan runs on the exact protected
+branch only (excelQuote / commercialSnapshot / replayed readback).
+
+1. `test_nested_excel_cost_stripped_for_viewer` — Viewer/Sales: no cost or
+   margin needle in either option (field asserts + branch scan), sell
+   prices/goods/source_facts kept; Admin/Support/Sale: full nested data
+   (basis string contains "chi phí 51234567"); Accounting/Operations:
+   `model["quotes"] == []`.
+2. `test_nested_agreement_cost_strings_stripped` — Viewer/Sales: basis
+   None, source_reference None, margin None, sell kept; privileged roles:
+   basis string + source text + margin present; Accounting/Operations:
+   agreement shell.
+3. `test_downgrade_quote_transition_readback_no_nested_cost` — Support
+   quote_transition outcome: Viewer/Sales readback has no nested cost
+   (sell kept); Operations/Accounting readback `{}`.
+4. `test_downgrade_agreement_transition_readback_no_cost_strings` —
+   Support agreement_transition outcome: Viewer/Sales readback has no
+   basis string / source text / margin; Operations gets the shell.
+5. `test_downgrade_quote_preview_readback_no_nested_cost` — Support
+   quote_preview outcome: Viewer/Sales nested quote clean, customer
+   snapshot untouched; Operations/Accounting readback `{}`.
+6. `test_downgrade_quote_import_readback_no_nested_cost` — real import
+   outcome: Viewer source_costs `[]`, no "31800000" anywhere in the
+   readback branch, goods kept; Sale keeps the real source costs. This
+   test also PASSED before the fix: the round-3 helper already cleared
+   `source_costs` and the fixture's raw proposal carries no priced lines
+   — it pins the import replay path against regression of the round-3
+   fix, it does not prove the new behaviour.
+7. `test_restricted_nested_payload_ui_shape` — restricted nested payloads
+   stay UI-safe (options A/B present, service lines are lists with sell
+   figures, agreement keeps its sell lines; restricted money None, never
+   0).
+
+**FAIL-before (source stashed, tests kept, START_HEAD 725c137): 6 failed /
+1 passed** — the 1 passing is test 6 (pre-existing protection, by design).
+**PASS-after: 7/7.** Existing suites still green alongside: 13 finance +
+9 commercial-boundary + 7 nested = 29 passed in one run. Focused
+C1/Excel/contract set (10 files incl. the 3 security files): 157 passed,
+4 subtests passed, 1 failed — the failure is
+`test_agreements_api.py::LoadAgreementsTests::
+test_load_agreements_returns_dict_from_load_dict`, verified to fail on
+START_HEAD too (pre-existing, not caused by this change).
+
+### Verification
+
+- Ruff changed files PASS (`logi_view_model.py` +
+  `test_logi_sec_nested_cost_leak.py`); repo-wide 7 errors in the same 5
+  pre-existing files as base, **0 new**; router PASS.
+- Full suite: **18 failed, 1978 passed, 44 skipped, 10 subtests passed in
+  340.48s** (log `~/workspace/pr269-independent-review/evidence/
+  LOGI-SEC-NESTED-COST-LEAK-20261106/pytest-full.log`). Exact test-node
+  set comparison vs the previous round (17 failed / 1972 passed): the
+  only delta is the known flaky wall-clock timing test
+  `test_independent_reads_overlap_instead_of_serialising`, which also
+  fails standalone on START_HEAD (verified: 1 failed with the fix stashed)
+  — environmental, not a regression; it is the same test that failed in
+  the independent-review run and passed in rounds 2–3. 1978 = 1972 + 7
+  new tests − 1 flaky flip. The other 17 failures are identical to the
+  previous round and all in `tests/BASELINE_FAILED.txt`. **0 new
+  failures vs base.**
+- F-1 tax/VAT, GNT, journey and document download: unchanged paths,
+  covered by the 13 finance tests + 9 commercial-boundary tests (29/29
+  green) and the full-suite comparison below. Source documents never
+  mutated (new dicts in both helpers; asserted by the privileged-role
+  reads of the stored quote in test 1, which see the true figures).
+- REVIEW=PENDING (no independent review claimed by this round).
+
+### Preflight receipts
+
+- `P2P_LAW_SOURCE=.p2p/portable/P2P-OPERATIONS-NOTEBOOK.md |
+  LAW_CHECK=PASS | SOURCE_CONTENT_SHA256=84914abd55960d6a5effad957ff9ebbdf917f632c8b18baa3a29c74a5d6ae4a7`
+- `SKILL_CHECK=PASS | SKILL=.agents/skills/p2p-karpathy/SKILL.md |
+  SHA256=cbe1b4c9082f0e253c75df20a9ca06ba3a4cc414ae1153c8b5a0fa3c03059ecd
+  | MANIFEST=.p2p/portable/P2P-SKILL-PROJECTION.json | MATCH=YES`
+  (skill not reinstalled/recreated/modified; security-audit SKILL.md also
+  read)
+- `EXPERIENCE_CHECK=NO_MATCH` (portable capsule: 1 procedural record, no
+  trigger match)
+- `OE_GATE`: Không bị over engineering chứ? — SIMPLER_PATH=YES (extend 2
+  existing helpers, no new abstraction); MATERIAL_PROGRESS=YES (closes 2
+  concrete leak paths); NECESSITY=YES (sentinel-proven leak paths named
+  in the packet); CORE_BEFORE_SUPPORT=YES (payload boundary only, no
+  redesign); SMALLER_VERIFIABLE_SLICE=YES (2 helpers + 7 tests).
+  `OE_VERDICT=DO_IT`.
+- `SECURITY_AUDIT_MODE=FOCUSED_REVIEW` (read-only mapping before any edit;
+  FOCUSED-REVIEW.md + probe_shapes.py/.log in the task evidence dir).
+- Evidence dir: `~/workspace/pr269-independent-review/evidence/
+  LOGI-SEC-NESTED-COST-LEAK-20261106/` (05-TRANG-THAI.md,
+  FOCUSED-REVIEW.md, probe_shapes.py/.log, pytest-full.log).
 - NEXT=independent re-review of the corrected diff, then Owner merge
   decision. No merge without Owner authorization.
