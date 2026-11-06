@@ -8,9 +8,8 @@ phân quyền, biểu thuế, đối soát.
 - **Dữ liệu:** MongoDB là nguồn sự thật. `st.session_state` chỉ là cache theo phiên.
 - **Entry point:** `app.py`.
 
-**Đây là tài liệu cài đặt DUY NHẤT.** `README_HOTFIX.md`, `README_UPGRADE.md`,
-`ROUTER_HOTFIX.md`, `BUILD_REPORT.md` là hồ sơ lịch sử — đọc khi cần truy vết, không
-dùng để cài. Muốn hiểu kiến trúc và policy: `docs/ARCHITECTURE-PRINCIPLES.md`.
+**Đây là tài liệu cài đặt DUY NHẤT.** Muốn hiểu kiến trúc và policy:
+`docs/ARCHITECTURE-PRINCIPLES.md`.
 
 ---
 
@@ -205,6 +204,9 @@ Test cần Streamlit/Mongo thật được skip theo thiết kế.
 
 - Kiến trúc và policy: `docs/ARCHITECTURE-PRINCIPLES.md`.
 - Luật làm việc cho AI executor/agent trong repo này: `AGENTS.md`.
+- 5 điều kiện "xong" của app: `docs/DONE.md`.
+- Quy trình 5 bước, 3 cổng: `docs/PROCESS.md`.
+- Việc tiếp theo và lịch sử phiên: `docs/NEXT.md`.
 - Không commit `.env`, `.streamlit/secrets.toml`, khóa service account
   (`google_key.json`, `*.pem`...) hay database đã có dữ liệu — `.gitignore` đã chặn
   sẵn; nếu `git status` vẫn hiện các file này thì dừng lại và kiểm tra trước khi commit.
@@ -215,8 +217,7 @@ Test cần Streamlit/Mongo thật được skip theo thiết kế.
 
 - LICENSE chưa có (GitHub báo `license: null`).
 - Không có repo description và topics.
-- `.agents/` bị ignore một phần nên file mới thêm vào đó vô hình với `git add .`.
-- 258 branch, 1 tag, 25 open issue.
+- 142 branch, 1 tag, 17 open issue.
 - Thiếu `pyproject.toml` / `pytest.ini` / `ruff.toml`.
 - `requirements.txt` không lock, còn `streamlit-option-menu` nghi đã chết.
 - Repo ~189 MB nên clone chậm.
