@@ -722,12 +722,17 @@ def equipment_profile(facts: Mapping[str, Any]) -> dict[str, Any]:
     other = sum(1 for row in containers
                 if row.get("typeSize") and row.get("typeSize", "").upper() not in
                 {code for code, _ in CONTAINER_PRESETS if code != LOADMODEL_OTHER})
+    # One typed container does NOT complete a multi-container FCL booking.
+    # Every already-recorded unit must have an explicit equipment type; the
+    # number/type of additional, unrecorded units is never inferred.
+    missing_type_count = sum(1 for row in containers if not _text(row.get("typeSize")))
     return {
         "units": containers,
         "count": len(containers),
         "presets": presets,
         "otherCount": other,
-        "known": bool(containers) and any(row.get("typeSize") for row in containers),
+        "missingTypeCount": missing_type_count,
+        "known": bool(containers) and missing_type_count == 0,
     }
 
 
@@ -1014,7 +1019,9 @@ def derive_stages(profile: Mapping[str, Any], facts: Mapping[str, Any]) -> list[
             "SEA_EQUIPMENT", "Thiết bị container (FCL)", REASON_LOAD_MODEL_REQUIREMENT,
             done=bool(equipment.get("known")),
             detail="FCL: container dành riêng cho lô này — ghi nhận đủ từng container/thiết bị.",
-            prompt="Bổ sung loại container (20GP / 40GP / 40HC / khác)."))
+            prompt=(f"Bổ sung loại container cho {equipment['missingTypeCount']} container chưa xác nhận (20GP / 40GP / 40HC / khác)."
+                    if equipment.get("missingTypeCount") else
+                    "Bổ sung loại container (20GP / 40GP / 40HC / khác).")))
     elif mode == MODE_SEA and load_model == LOADMODEL_LCL:
         stages.append(_stage(
             "SEA_CONSOLIDATION", "Hàng lẻ ghép container (LCL)", REASON_LOAD_MODEL_REQUIREMENT,
